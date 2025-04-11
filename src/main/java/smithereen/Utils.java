@@ -56,6 +56,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import smithereen.activitypub.objects.Actor;
@@ -65,6 +66,8 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
+import smithereen.model.friends.FriendList;
+import smithereen.model.friends.PublicFriendList;
 import smithereen.text.TextProcessor;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.UriBuilder;
@@ -928,6 +931,16 @@ public class Utils{
 
 	public static boolean uriHostMatches(URI a, URI b){
 		return a.getHost().equalsIgnoreCase(b.getHost()) || PublicSuffixList.isSameRegisteredDomain(a.getHost(), b.getHost());
+	}
+
+	public static void addFriendLists(User self, Lang l, ApplicationContext ctx, RenderedTemplateResponse model){
+		List<FriendList> lists=ctx.getFriendsController().getFriendLists(self);
+		model.with("lists", lists);
+		List<FriendList> publicLists=Arrays.stream(PublicFriendList.values())
+				.map(lt->new FriendList(FriendList.FIRST_PUBLIC_LIST_ID+lt.ordinal(), l.get(lt.getLangKey())))
+				.toList();
+		model.with("publicLists", publicLists)
+				.with("allLists", Stream.of(lists, publicLists).flatMap(List::stream).collect(Collectors.toMap(FriendList::id, Function.identity())));
 	}
 
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}

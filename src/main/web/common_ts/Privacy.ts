@@ -500,7 +500,7 @@ class MobileFriendListChoiceBox extends BaseScrollableBox{
 	private searchFieldWrap:HTMLElement;
 	private extraField:HTMLInputElement;
 
-	public constructor(title:string, callback:{(selectedIDs:number[]):void}, currentValue:number[]){
+	public constructor(title:string, callback:{(selectedIDs:number[]):void}, currentValue:number[], includeLists:boolean=false){
 		super(title, [lang("save"), lang("cancel")], (idx)=>{
 			if(idx==0){
 				if(!this.extraField || this.extraField.reportValidity())
@@ -518,6 +518,19 @@ class MobileFriendListChoiceBox extends BaseScrollableBox{
 		]);
 		this.setContent(root);
 		this.searchInput.addEventListener("input", this.onSearchInputChanged.bind(this));
+
+		if(includeLists){
+			for(var _lid in cur.friendLists){
+				var lid=parseInt(_lid);
+				var row=this.makeListRow(lid);
+				if(currentValue.indexOf(-lid)!=-1){
+					this.selectedIDs.push(-lid);
+					var cbox=row.qs("input") as HTMLInputElement;
+					cbox.checked=true;
+				}
+				this.allFriendsList.appendChild(row);
+			}
+		}
 
 		for(var friend of cur.friendListForPrivacy){
 			var row=this.makeRow(friend);
@@ -558,6 +571,27 @@ class MobileFriendListChoiceBox extends BaseScrollableBox{
 					this.selectedIDs.push(id);
 			}else{
 				this.selectedIDs.remove(id);
+			}
+		});
+		return row;
+	}
+
+	private makeListRow(id:number):HTMLElement{
+		var cbox:HTMLInputElement;
+		var ava;
+		var row=ce("label", {className: "row compactUserRow", id: "selectFriendsRowList"+id}, [
+			cbox=ce("input", {type: "checkbox"}),
+			ava=ce("span", {className: "ava avaListPlaceholder sizeA l"+((id-1)%8)}),
+			ce("div", {className: "name ellipsize", innerText: cur.friendLists[id]})
+		]);
+		ava.style.width=ava.style.height="32px";
+		row.dataset.uid=(-id)+"";
+		cbox.addEventListener("change", (ev)=>{
+			if(cbox.checked){
+				if(this.selectedIDs.indexOf(-id)==-1)
+					this.selectedIDs.push(-id);
+			}else{
+				this.selectedIDs.remove(-id);
 			}
 		});
 		return row;
@@ -609,6 +643,18 @@ function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=
 		return row;
 	}
 
+	function makeListRow(id:number):HTMLElement{
+		var ava;
+		var row=ce("div", {className: "compactUserRow", id: "listRow"+id}, [
+			ava=ce("span", {className: "ava avaListPlaceholder sizeA l"+((id-1)%8)}),
+			ce("div", {className: "name ellipsize", innerText: cur.friendLists[id]}),
+			ce("a", {href: "javascript:void(0)", className: "remove actionIcon", title: lang("delete"), onclick: (ev)=>removeList(id)})
+		]);
+		ava.style.width=ava.style.height="32px";
+		row.dataset.lid=id+"";
+		return row;
+	}
+
 	function setValue(value:PrivacySetting){
 		currentValue=value;
 		if(updateField)
@@ -619,6 +665,15 @@ function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=
 			return;
 		allowedList.innerHTML="";
 		deniedList.innerHTML="";
+		for(var _lid in cur.friendLists){
+			var lid=parseInt(_lid);
+			if(value.al.indexOf(lid)!=-1){
+				allowedList.appendChild(makeListRow(lid));
+			}
+			if(value.xl.indexOf(lid)!=-1){
+				deniedList.appendChild(makeListRow(lid));
+			}
+		}
 		for(var friend of cur.friendListForPrivacy){
 			if(value.au.indexOf(friend[0])!=-1){
 				allowedList.appendChild(makeUserRow(friend));
@@ -640,10 +695,16 @@ function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=
 		}
 	}
 
+	function removeList(id:number){
+		currentValue.al.remove(id);
+		currentValue.xl.remove(id);
+		setValue(currentValue);
+	}
+
 	ge("options").addEventListener("change", (ev)=>{
 		var target=ev.target as HTMLInputElement;
 		var allowedVisible=(target.value=="certain_friends");
-		var deniedVisible=(["only_me", "no_one", "certain_friends"].indexOf(target.value)==-1);
+		var deniedVisible=(["only_me", "no_one"].indexOf(target.value)==-1);
 		if(allowedVisible){
 			allowedListW.show();
 		}else{
@@ -673,25 +734,51 @@ function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=
 				rule="n";
 				break;
 		}
-		setValue({r: rule, au: allowedVisible ? currentValue.au : [], xu: deniedVisible ? currentValue.xu : []});
+		setValue({r: rule, au: allowedVisible ? currentValue.au : [], xu: deniedVisible ? currentValue.xu : [], al: allowedVisible ? currentValue.al : [], xl: deniedVisible ? currentValue.xl : []});
 	});
 	for(var btn of document.querySelectorAll(".compactUserRow .remove").unfuck()){
-		var id=parseInt(btn.parentElement.dataset.uid);
-		btn.addEventListener("click", ((id:number, ev:Event)=>removeUser(id)).bind(this, id));
+		if(btn.parentElement.dataset.uid){
+			var id=parseInt(btn.parentElement.dataset.uid);
+			btn.addEventListener("click", ((id:number, ev:Event)=>removeUser(id)).bind(this, id));
+		}else{
+			var id=parseInt(btn.parentElement.dataset.lid);
+			btn.addEventListener("click", ((id:number, ev:Event)=>removeList(id)).bind(this, id));
+		}
 	}
 	document.body.qs("#allowedFriends .selectFriends").addEventListener("click", (ev)=>loadFriendsForBoxes(()=>{
+		var ids=[...currentValue.au];
+		for(var lid of currentValue.al)
+			ids.push(-lid);
 		var box:MobileFriendListChoiceBox=new MobileFriendListChoiceBox(lang("select_friends_title"), ids=>{
-			setValue({r: "n", au: ids, xu: []});
+			currentValue.au=[];
+			currentValue.al=[];
+			for(var id of ids){
+				if(id>0)
+					currentValue.au.push(id);
+				else
+					currentValue.al.push(-id);
+			}
+			setValue(currentValue);
 			box.dismiss();
-		}, currentValue.au);
+		}, ids, true);
 		box.show();
 	}));
 	document.body.qs("#deniedFriends .selectFriends").addEventListener("click", (ev)=>loadFriendsForBoxes(()=>{
+		var ids=[...currentValue.xu];
+		for(var lid of currentValue.xl)
+			ids.push(-lid);
 		var box:MobileFriendListChoiceBox=new MobileFriendListChoiceBox(lang("select_friends_title"), ids=>{
-			currentValue.xu=ids;
+			currentValue.xu=[];
+			currentValue.xl=[];
+			for(var id of ids){
+				if(id>0)
+					currentValue.xu.push(id);
+				else
+					currentValue.xl.push(-id);
+			}
 			setValue(currentValue);
 			box.dismiss();
-		}, currentValue.xu);
+		}, ids, true);
 		box.show();
 	}));
 }
@@ -718,24 +805,30 @@ function showMobilePrivacyBox(key:string, value:PrivacySetting, onlyMe:boolean){
 						uiStr=lang("privacy_value_friends_of_friends");
 						break;
 					case "n":
-						if(setting.au.length){
+						if(setting.au.length || setting.al.length){
 							uiStr=lang("privacy_value_certain_friends");
 						}else{
 							uiStr=lang(onlyMe ? "privacy_value_only_me" : "privacy_value_no_one");
 						}
 						break;
 				}
-				if(setting.au.length){
+				if(setting.au.length || setting.al.length){
 					uiStr+=lang("privacy_settings_value_certain_friends_before");
 					var names=[];
+					for(var id of setting.al){
+						names.push(cur.friendLists[id]);
+					}
 					for(var id of setting.au){
 						names.push(getFriendForPrivacy(id)[1]);
 					}
 					uiStr+=names.join(lang("privacy_settings_value_name_separator"));
 				}
-				if(setting.xu.length){
+				if(setting.xu.length || setting.xl.length){
 					uiStr+=lang("privacy_settings_value_except");
 					var names=[];
+					for(var id of setting.xl){
+						names.push(cur.friendLists[id]);
+					}
 					for(var id of setting.xu){
 						names.push(getFriendForPrivacy(id)[3]);
 					}

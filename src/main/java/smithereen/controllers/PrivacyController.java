@@ -400,10 +400,10 @@ public class PrivacyController{
 				ps.allowLists.removeIf(lid->!validListIDs.contains(lid) && lid<FriendList.FIRST_PUBLIC_LIST_ID);
 				ps.exceptLists.removeIf(lid->!validListIDs.contains(lid) && lid<FriendList.FIRST_PUBLIC_LIST_ID);
 				if(!ps.allowLists.isEmpty()){
-					ps.allowListUsers=ps.allowLists.stream().map(friendsInLists::get).flatMap(Set::stream).collect(Collectors.toSet());
+					ps.allowListUsers=ps.allowLists.stream().map(friendsInLists::get).filter(Objects::nonNull).flatMap(Set::stream).collect(Collectors.toSet());
 				}
 				if(!ps.exceptLists.isEmpty()){
-					ps.exceptListUsers=ps.exceptLists.stream().map(friendsInLists::get).flatMap(Set::stream).collect(Collectors.toSet());
+					ps.exceptListUsers=ps.exceptLists.stream().map(friendsInLists::get).filter(Objects::nonNull).flatMap(Set::stream).collect(Collectors.toSet());
 				}
 			}
 		}catch(SQLException x){

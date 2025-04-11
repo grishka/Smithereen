@@ -2800,3 +2800,53 @@ input.searchField{
 	}
 }
 
+.avaListPlaceholder{
+	vertical-align: top;
+	margin: 0;
+	background-color: #fff;
+	background-image: svg-load("img/friend_list_icons.svg");
+	background-repeat: no-repeat;
+	box-shadow: 0 0 0 1px inset;
+	border-radius: 2px;
+	&.l0{
+		background-color: #F5E9E2;
+		color: #8B4C2320;
+		background-position: 0 0;
+	}
+	&.l1{
+		background-color: #FAEAD8;
+		color: #764F1420;
+		background-position: 0 -32px;
+	}
+	&.l2{
+		background-color: #FAF3D8;
+		color: #81794520;
+		background-position: 0 -64px;
+	}
+	&.l3{
+		background-color: #E8F2DC;
+		color: #37702A20;
+		background-position: 0 -96px;
+	}
+	&.l4{
+		background-color: #E0ECEA;
+		color: #4C717120;
+		background-position: 0 -128px;
+	}
+	&.l5{
+		background-color: #E4EBF1;
+		color: #0B558820;
+		background-position: 0 -160px;
+	}
+	&.l6{
+		background-color: #E4E7F2;
+		color: #2F54AA20;
+		background-position: 0 -192px;
+	}
+	&.l7{
+		background-color: #EDE5F0;
+		color: #80478F20;
+		background-position: 0 -224px;
+	}
+}
+

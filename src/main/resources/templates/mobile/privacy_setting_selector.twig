@@ -1,4 +1,4 @@
-{% if setting.allowUsers is not empty %}
+{% if setting.allowUsers is not empty or setting.allowLists is not empty %}
 	{%- set currentRule="certain_friends" %}
 {% elseif setting.baseRule=="NONE" %}
 	{%- set currentRule=onlyMe ? "only_me" : "no_one" %}
@@ -21,6 +21,13 @@
 <div id="allowedFriends" class="privacyFriendList" style="{% if currentRule!="certain_friends" %}display: none{% endif %}">
 	<h3>{{ L('privacy_allowed_title') }}</h3>
 	<div id="allowedFriendsItems">
+	{% for id in setting.allowLists %}
+		<div class="compactUserRow" data-lid="{{ id }}" id="listRow{{ id }}">
+			<span class="ava avaListPlaceholder sizeA l{{ (id-1)%8 }}" style="width: 32px; height: 32px;"></span>
+			<div class="name ellipsize">{{ allLists[id].name }}</div>
+			<a href="javascript:void(0)" title="{{ L('delete') }}" class="remove actionIcon"></a>
+		</div>
+	{% endfor %}
 	{% for id in setting.allowUsers %}
 		<div class="compactUserRow" data-uid="{{ id }}" id="userRow{{ id }}">
 			{{ users[id] | pictureForAvatar('a', 32) }}
@@ -31,9 +38,16 @@
 	</div>
 	<a href="javascript:void(0)" class="selectFriends">{{ L('select_friends_button') }}</a>
 </div>
-<div id="deniedFriends" class="privacyFriendList" style="{% if ["only_me", "no_one", "certain_friends"] contains currentRule %}display: none{% endif %}">
+<div id="deniedFriends" class="privacyFriendList" style="{% if ["only_me", "no_one"] contains currentRule %}display: none{% endif %}">
 	<h3>{{ L('privacy_denied_title') }}</h3>
 	<div id="deniedFriendsItems">
+	{% for id in setting.exceptLists %}
+		<div class="compactUserRow" data-lid="{{ id }}" id="listRow{{ id }}">
+			<span class="ava avaListPlaceholder sizeA l{{ (id-1)%8 }}" style="width: 32px; height: 32px;"></span>
+			<div class="name ellipsize">{{ allLists[id].name }}</div>
+			<a href="javascript:void(0)" title="{{ L('delete') }}" class="remove actionIcon"></a>
+		</div>
+	{% endfor %}
 	{% for id in setting.exceptUsers %}
 		<div class="compactUserRow" data-uid="{{ id }}" id="userRow{{ id }}">
 			{{ users[id] | pictureForAvatar('a', 32) }}
@@ -44,3 +58,4 @@
 	</div>
 	<a href="javascript:void(0)" class="selectFriends">{{ L('select_friends_button') }}</a>
 </div>
+{% include "friend_lists_script" %}

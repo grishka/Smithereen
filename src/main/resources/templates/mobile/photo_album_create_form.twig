@@ -5,4 +5,5 @@
 {% include "photo_album_form" %}
 </form>
 </div>
+{% if owner.ownerID>0 %}{% include "friend_lists_script" %}{% endif %}
 {% endblock %}

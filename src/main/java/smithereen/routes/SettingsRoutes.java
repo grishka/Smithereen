@@ -573,14 +573,7 @@ public class SettingsRoutes{
 
 		Lang l=lang(req);
 
-		List<FriendList> lists=ctx.getFriendsController().getFriendLists(self.user);
-		model.with("lists", lists);
-		List<FriendList> publicLists=Arrays.stream(PublicFriendList.values())
-				.map(lt->new FriendList(FriendList.FIRST_PUBLIC_LIST_ID+lt.ordinal(), l.get(lt.getLangKey())))
-				.toList();
-		model.with("publicLists", publicLists)
-				.with("allLists", Stream.of(lists, publicLists).flatMap(List::stream).collect(Collectors.toMap(FriendList::id, Function.identity())));
-
+		addFriendLists(self.user, l, ctx, model);
 		Templates.addJsLangForPrivacySettings(req);
 		return model;
 	}
@@ -635,11 +628,13 @@ public class SettingsRoutes{
 		needUsers.addAll(ps.exceptUsers);
 		needUsers.addAll(ps.allowUsers);
 		jsLangKey(req, "save", "select_friends_title", "friends_search_placeholder");
-		return new RenderedTemplateResponse("settings_privacy_edit", req)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_privacy_edit", req)
 				.with("key", key)
 				.with("setting", ps)
 				.with("users", ctx.getUsersController().getUsers(needUsers))
 				.pageTitle(lang(req).get("privacy_settings_title"));
+		addFriendLists(self.user, lang(req), ctx, model);
+		return model;
 	}
 
 	public static Object mobileFeedTypes(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -661,10 +656,12 @@ public class SettingsRoutes{
 		Set<Integer> needUsers=new HashSet<>();
 		needUsers.addAll(setting.exceptUsers);
 		needUsers.addAll(setting.allowUsers);
-		return new RenderedTemplateResponse("privacy_setting_selector", req)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("privacy_setting_selector", req)
 				.with("setting", setting)
 				.with("onlyMe", onlyMe)
 				.with("users", ctx.getUsersController().getUsers(needUsers));
+		addFriendLists(self.user, lang(req), ctx, model);
+		return model;
 	}
 
 	public static Object deactivateAccountForm(Request req, Response resp, Account self, ApplicationContext ctx){
