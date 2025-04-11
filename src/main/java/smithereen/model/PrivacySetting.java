@@ -102,12 +102,12 @@ public class PrivacySetting{
 				Map<Integer, User> users=serializerContext.appContext.getUsersController().getUsers(needUsers);
 				for(int id:allAllowedUsers){
 					User user=users.get(id);
-					if(user!=null && user.domain.equalsIgnoreCase(domain))
+					if(user!=null && user.domain!=null && user.domain.equalsIgnoreCase(domain))
 						allowed.add(user.activityPubID.toString());
 				}
 				for(int id:allDeniedUsers){
 					User user=users.get(id);
-					if(user!=null && user.domain.equalsIgnoreCase(domain))
+					if(user!=null && user.domain!=null && user.domain.equalsIgnoreCase(domain))
 						except.add(user.activityPubID.toString());
 				}
 			}
