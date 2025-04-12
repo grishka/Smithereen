@@ -204,6 +204,17 @@ public class PhotoStorage{
 				.executeNoResult();
 	}
 
+	public static void updateUserAlbumPrivacy(long id, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy) throws SQLException{
+		new SQLQueryBuilder()
+				.update("photo_albums")
+				.value("privacy", Utils.gson.toJson(Map.of(
+						"view", viewPrivacy,
+						"comment", commentPrivacy
+				)))
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
 	public static void updateGroupAlbum(long id, String title, String description, EnumSet<PhotoAlbum.Flag> flags) throws SQLException{
 		new SQLQueryBuilder()
 				.update("photo_albums")

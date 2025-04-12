@@ -10,11 +10,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPub;
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.InaccessibleProfileException;
 import smithereen.exceptions.UserErrorException;
@@ -50,6 +53,7 @@ import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
+import smithereen.storage.PhotoStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
 import spark.Request;
@@ -405,6 +409,62 @@ public class PrivacyController{
 				if(!ps.exceptLists.isEmpty()){
 					ps.exceptListUsers=ps.exceptLists.stream().map(friendsInLists::get).filter(Objects::nonNull).flatMap(Set::stream).collect(Collectors.toSet());
 				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	void updatePrivacySettingsAffectedByFriendListChanges(User owner, Set<Integer> listIDs){
+		try{
+			HashSet<UserPrivacySettingKey> affectedUserSettings=new HashSet<>();
+			ArrayList<PhotoAlbum> affectedPhotoAlbums=new ArrayList<>();
+
+			owner.privacySettings.forEach((key, setting)->{
+				for(int listID:listIDs){
+					if(setting.allowLists.contains(listID) || setting.exceptLists.contains(listID)){
+						affectedUserSettings.add(key);
+						break;
+					}
+				}
+			});
+
+			List<PhotoAlbum> albums=PhotoStorage.getAllAlbums(owner.id);
+			for(PhotoAlbum album:albums){
+				for(int listID:listIDs){
+					if(album.viewPrivacy.allowLists.contains(listID) || album.viewPrivacy.exceptLists.contains(listID)
+							|| album.commentPrivacy.allowLists.contains(listID) || album.commentPrivacy.exceptLists.contains(listID)){
+						affectedPhotoAlbums.add(album);
+						break;
+					}
+				}
+			}
+
+			if(affectedUserSettings.isEmpty() && affectedPhotoAlbums.isEmpty())
+				return;
+
+			ArrayList<PrivacySetting> settingsToBeUpdated=new ArrayList<>();
+			for(UserPrivacySettingKey key:affectedUserSettings){
+				settingsToBeUpdated.add(owner.privacySettings.get(key));
+			}
+			for(PhotoAlbum album:affectedPhotoAlbums){
+				settingsToBeUpdated.add(album.viewPrivacy);
+				settingsToBeUpdated.add(album.commentPrivacy);
+			}
+			for(PrivacySetting ps:settingsToBeUpdated){
+				ps.allowListUsers=Set.of();
+				ps.exceptListUsers=Set.of();
+			}
+
+			populatePrivacySettingsFriendListUsers(owner, settingsToBeUpdated);
+
+			if(!affectedUserSettings.isEmpty()){
+				UserStorage.setPrivacySettings(owner, owner.privacySettings);
+				context.getActivityPubWorker().sendUpdateUserActivity(owner);
+			}
+			for(PhotoAlbum album:affectedPhotoAlbums){
+				PhotoStorage.updateUserAlbumPrivacy(album.id, album.viewPrivacy, album.commentPrivacy);
+				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

@@ -251,6 +251,15 @@ public class FriendsController{
 	public void blockUser(User self, User user){
 		try{
 			FriendshipStatus status=UserStorage.getFriendshipStatus(self.id, user.id);
+			Set<Integer> user1Lists=Set.of(), user2Lists=Set.of();
+			if(status==FriendshipStatus.FRIENDS){
+				if(!(self instanceof ForeignUser)){
+					user1Lists=getFriendListIDsForUser(self, user);
+				}
+				if(!(user instanceof ForeignUser)){
+					user2Lists=getFriendListIDsForUser(user, self);
+				}
+			}
 			UserStorage.blockUser(self.id, user.id);
 			if(user instanceof ForeignUser fu)
 				ctx.getActivityPubWorker().sendBlockActivity(self, fu);
@@ -260,6 +269,10 @@ public class FriendsController{
 				if(!(user instanceof ForeignUser)){
 					ctx.getNewsfeedController().deleteFriendsFeedEntry(user, self.id, NewsfeedEntry.Type.ADD_FRIEND);
 				}
+				if(!user1Lists.isEmpty())
+					ctx.getPrivacyController().updatePrivacySettingsAffectedByFriendListChanges(self, user1Lists);
+				if(!user2Lists.isEmpty())
+					ctx.getPrivacyController().updatePrivacySettingsAffectedByFriendListChanges(user, user2Lists);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -282,6 +295,15 @@ public class FriendsController{
 			if(status!=FriendshipStatus.FRIENDS && status!=FriendshipStatus.REQUEST_SENT && status!=FriendshipStatus.FOLLOWING && status!=FriendshipStatus.FOLLOW_REQUESTED){
 				throw new UserErrorException("err_not_friends");
 			}
+			Set<Integer> user1Lists=Set.of(), user2Lists=Set.of();
+			if(status==FriendshipStatus.FRIENDS){
+				if(!(self instanceof ForeignUser)){
+					user1Lists=getFriendListIDsForUser(self, user);
+				}
+				if(!(user instanceof ForeignUser)){
+					user2Lists=getFriendListIDsForUser(user, self);
+				}
+			}
 			UserStorage.unfriendUser(self.id, user.id);
 			if(user instanceof ForeignUser){
 				ctx.getActivityPubWorker().sendUnfriendActivity(self, user);
@@ -292,6 +314,10 @@ public class FriendsController{
 				if(!(user instanceof ForeignUser)){
 					ctx.getNewsfeedController().deleteFriendsFeedEntry(user, self.id, NewsfeedEntry.Type.ADD_FRIEND);
 				}
+				if(!user1Lists.isEmpty())
+					ctx.getPrivacyController().updatePrivacySettingsAffectedByFriendListChanges(self, user1Lists);
+				if(!user2Lists.isEmpty())
+					ctx.getPrivacyController().updatePrivacySettingsAffectedByFriendListChanges(user, user2Lists);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -388,8 +414,21 @@ public class FriendsController{
 		}
 	}
 
+	public Set<Integer> getFriendListIDsForUser(User self, User friend){
+		try{
+			return UserStorage.getFriendListsForUsers(self.id, Set.of(friend.id)).getOrDefault(friend.id, new BitSet())
+					.stream()
+					.map(i->i+1)
+					.boxed()
+					.collect(Collectors.toSet());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void setUserFriendLists(User self, User friend, BitSet lists){
 		try{
+			Set<Integer> prevLists=getFriendListIDsForUser(self, friend);
 			if(!lists.isEmpty()){
 				Set<Integer> validListIDs=getFriendLists(self).stream().map(FriendList::id).collect(Collectors.toSet());
 				lists.stream().forEach(id->{
@@ -400,8 +439,21 @@ public class FriendsController{
 				});
 			}
 			UserStorage.setFriendListsForUser(self.id, friend.id, lists);
+			Set<Integer> newLists=lists.stream()
+					.map(i->i+1)
+					.boxed()
+					.collect(Collectors.toSet());
 
-			// TODO federate everything affected by privacy settings that include changed lists
+			HashSet<Integer> allAffectedLists=new HashSet<>();
+			for(int id:prevLists){
+				if(!newLists.contains(id))
+					allAffectedLists.add(id);
+			}
+			for(int id:newLists){
+				if(!prevLists.contains(id))
+					allAffectedLists.add(id);
+			}
+			ctx.getPrivacyController().updatePrivacySettingsAffectedByFriendListChanges(self, allAffectedLists);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -415,8 +467,7 @@ public class FriendsController{
 		try{
 			UserStorage.deleteFriendList(owner.id, id);
 			friendListsCache.remove(owner.id);
-
-			// TODO federate everything affected by privacy settings that include changed lists
+			ctx.getPrivacyController().updatePrivacySettingsAffectedByFriendListChanges(owner, Set.of(id));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}finally{
@@ -465,7 +516,7 @@ public class FriendsController{
 				if(!toRemove.isEmpty())
 					UserStorage.removeFromFriendList(owner.id, id, toRemove);
 
-				// TODO federate everything affected by privacy settings that include changed lists
+				ctx.getPrivacyController().updatePrivacySettingsAffectedByFriendListChanges(owner, Set.of(id));
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
