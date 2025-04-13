@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -18,6 +19,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -69,6 +71,7 @@ import smithereen.activitypub.tasks.RetryActivityRunnable;
 import smithereen.activitypub.tasks.SendActivitySequenceRunnable;
 import smithereen.activitypub.tasks.SendOneActivityRunnable;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -93,6 +96,7 @@ import smithereen.model.photos.PhotoTag;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
@@ -112,6 +116,10 @@ public class ActivityPubWorker{
 	private final ExecutorService executor=Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("ActivityPubWorker-", 0).factory());
 	private final ScheduledExecutorService retryExecutor=Executors.newSingleThreadScheduledExecutor();
 	private final Random rand=new Random();
+	private final NamedMutexCollection mutex=new NamedMutexCollection();
+
+	private final HashSet<Integer> scheduledActorUpdates=new HashSet<>();
+	private final ConcurrentHashMap<Integer, Instant> lastActorUpdates=new ConcurrentHashMap<>();
 
 	// These must be accessed from synchronized(this)
 	private final HashMap<URI, Future<List<Post>>> fetchingWallReplyThreads=new HashMap<>();
@@ -459,11 +467,45 @@ public class ActivityPubWorker{
 	}
 
 	public void sendUpdateUserActivity(User user){
-		Update update=new Update()
-				.withActorLinkAndObject(user, user)
-				.withActorFragmentID("updateProfile"+System.currentTimeMillis());
-		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
-		submitActivityForFollowers(update, user);
+		Runnable action=()->{
+			scheduledActorUpdates.remove(user.id);
+			User upToDateUser;
+			try{
+				// Make sure that any updates to this user made between when this was scheduled and now are incorporated
+				upToDateUser=context.getUsersController().getUserOrThrow(user.id);
+			}catch(ObjectNotFoundException x){
+				LOG.warn("Failed to send a delayed Update{Person} for user {} because the user somehow no longer exists", user.id);
+				return;
+			}
+			Update update=new Update()
+					.withActorLinkAndObject(upToDateUser, upToDateUser)
+					.withActorFragmentID("updateProfile"+System.currentTimeMillis());
+			update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+			submitActivityForFollowers(update, upToDateUser);
+		};
+		String mutexName="updatePerson"+user.id;
+		try{
+			mutex.acquire(mutexName);
+			if(scheduledActorUpdates.contains(user.id)){
+				LOG.trace("Update{Person} for user {} is already scheduled", user.id);
+				return;
+			}
+			Instant removeBefore=Instant.now().minus(5, ChronoUnit.MINUTES);
+			lastActorUpdates.values().removeIf(removeBefore::isAfter);
+			Instant lastUpdate=lastActorUpdates.get(user.id);
+			if(lastUpdate==null){
+				LOG.trace("Sending Update{Person} for user {} immediately", user.id);
+				lastActorUpdates.put(user.id, Instant.now());
+				action.run();
+			}else{
+				long delay=lastUpdate.plus(5, ChronoUnit.MINUTES).toEpochMilli()-System.currentTimeMillis();
+				LOG.trace("Delaying Update{Person} for user {} by {}s", user.id, delay/1000.0);
+				scheduledActorUpdates.add(user.id);
+				retryExecutor.schedule(action, delay, TimeUnit.MILLISECONDS);
+			}
+		}finally{
+			mutex.release(mutexName);
+		}
 	}
 
 	public void sendUpdateGroupActivity(Group group){
