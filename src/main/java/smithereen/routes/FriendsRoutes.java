@@ -485,7 +485,8 @@ public class FriendsRoutes{
 				.filter(i->i>0 && i<=64)
 				.forEach(id->lists.set(id-1));
 		ctx.getFriendsController().setUserFriendLists(self.user, friend, lists);
-		return "";
+		resp.type("application/json");
+		return "{}";
 	}
 
 	public static Object createFriendList(Request req, Response resp, Account self, ApplicationContext ctx){

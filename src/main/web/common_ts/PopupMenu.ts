@@ -351,8 +351,10 @@ class FriendListsPopupMenu extends PopupMenu{
 				if(cbox.checked){
 					var id=cbox.customData.listID;
 					selectedLists.push(id);
-					this.listsCont.appendChild(ce("span", {className: "friendListLabel l"+((id-1)%8), innerText: cur.friendLists[id]}));
-					this.listsCont.append(" ");
+					if(this.listsCont){
+						this.listsCont.appendChild(ce("span", {className: "friendListLabel l"+((id-1)%8), innerText: cur.friendLists[id]}));
+						this.listsCont.append(" ");
+					}
 				}
 			}
 			this.root.dataset.lists=selectedLists.join(',');

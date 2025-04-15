@@ -6,11 +6,14 @@ import org.jsoup.Jsoup;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
@@ -277,6 +280,16 @@ public class ProfileRoutes{
 							.with("canMute", true);
 				}
 				jsLangKey(req, "block", "unblock", "unfollow", "remove_friend");
+				if(status==FriendshipStatus.FRIENDS && !isMobile(req)){
+					addFriendLists(self.user, l, ctx, model);
+					Set<Integer> lists=ctx.getFriendsController().getFriendListsForUsers(self.user, self.user, List.of(user.id))
+							.getOrDefault(user.id, new BitSet())
+							.stream()
+							.map(i->i+1)
+							.boxed()
+							.collect(Collectors.toSet());
+					model.with("userLists", lists);
+				}
 			}
 		}else{
 			HashMap<String, String> meta=new LinkedHashMap<>();

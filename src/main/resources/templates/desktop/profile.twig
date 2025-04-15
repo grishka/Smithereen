@@ -116,6 +116,9 @@
 		{% endif %}
 		{%if currentUser is not null and currentUser.id!=user.id%}
 		{% if user.followersCount>0 or taggedPhotoCount>0 %}<li class="separator"></li>{% endif %}
+		{% if isFriend %}
+			<li class="popupMenuW" id="friendListsButton{{ user.id }}" data-lists="{% for listID in userLists %}{{ listID }}{% if not loop.last %},{% endif %}{% endfor %}"><a href="javascript:void(0)" onclick="showFriendListsMenu('{{ user.id }}')" class="opener">{{ L('friend_set_lists') }}</a></li>
+		{% endif %}
 		{%if isFriend or following or friendRequestSent or followRequested%}
 			<li><a href="/users/{{ user.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.dataset.confirm,'/users/{{ user.id }}/doRemoveFriend')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 		{%endif%}
@@ -189,4 +192,5 @@
 	</div>
 </div>
 {% script %}initExpandingProfileColumn(ge("right"), ge("left"), ge("profileLayout"));{% endscript %}
+{% if isFriend %}{% include "friend_lists_script" %}{% endif %}
 {%endblock%}
