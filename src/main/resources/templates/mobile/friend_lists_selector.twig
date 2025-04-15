@@ -1,0 +1,3 @@
+{% for list in allLists.values() %}
+	<label class="radioButtonWrap"><input type="checkbox" name="list{{ list.id }}"{% if userLists contains list.id %} checked{% endif %}/>{{ list.name }}</label>
+{% endfor %}

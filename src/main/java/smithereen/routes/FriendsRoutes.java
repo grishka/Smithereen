@@ -477,13 +477,20 @@ public class FriendsRoutes{
 	}
 
 	public static Object setUserFriendLists(Request req, Response resp, Account self, ApplicationContext ctx){
-		requireQueryParams(req, "lists");
 		User friend=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		BitSet lists=new BitSet(64);
-		Arrays.stream(req.queryParams("lists").split(","))
-				.map(Utils::safeParseInt)
-				.filter(i->i>0 && i<=64)
-				.forEach(id->lists.set(id-1));
+		String listsStr=req.queryParams("lists");
+		if(StringUtils.isNotEmpty(listsStr)){
+			Arrays.stream(listsStr.split(","))
+					.map(Utils::safeParseInt)
+					.filter(i->i>0 && i<=64)
+					.forEach(id->lists.set(id-1));
+		}else{
+			for(int i=1;i<=64;i++){
+				if("on".equals(req.queryParams("list"+i)))
+					lists.set(i-1);
+			}
+		}
 		ctx.getFriendsController().setUserFriendLists(self.user, friend, lists);
 		resp.type("application/json");
 		return "{}";
@@ -568,5 +575,20 @@ public class FriendsRoutes{
 		ctx.getFriendsController().updateFriendList(self.user, id, name, members);
 
 		return ajaxAwareRedirect(req, resp, "/my/friends?section=list&list="+id);
+	}
+
+	public static Object setUserListsMobileBox(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		User user=ctx.getUsersController().getUserOrThrow(id);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("friend_lists_selector", req);
+		addFriendLists(self.user, lang(req), ctx, model);
+		Set<Integer> lists=ctx.getFriendsController().getFriendListsForUsers(self.user, self.user, List.of(user.id))
+				.getOrDefault(user.id, new BitSet())
+				.stream()
+				.map(i->i+1)
+				.boxed()
+				.collect(Collectors.toSet());
+		model.with("userLists", lists);
+		return wrapForm(req, resp, "friend_lists_selector", "/users/"+id+"/setFriendLists", lang(req).get("friend_set_lists"), "save", model);
 	}
 }

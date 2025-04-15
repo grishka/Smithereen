@@ -89,7 +89,6 @@ import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
-import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.MaintenanceScheduler;
 import smithereen.util.PublicSuffixList;
@@ -600,6 +599,7 @@ public class SmithereenApplication{
 			getWithCSRF("/unmute", ProfileRoutes::unmuteUser);
 
 			postWithCSRF("/setFriendLists", FriendsRoutes::setUserFriendLists);
+			getLoggedIn("/setListsMobileBox", FriendsRoutes::setUserListsMobileBox);
 		});
 
 		path("/groups/:id", ()->{

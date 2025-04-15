@@ -115,6 +115,9 @@
 				{% if canMute %}
 				{% set _=buttonOptions.add({'label' : L(isMuted ? 'profile_unmute' : 'profile_mute', {'name': user.firstAndGender}).toString(), 'href': "/users/#{user.id}/#{isMuted ? 'unmute' : 'mute'}?csrf=#{csrf}", 'type': 'link', 'ajax': 'box'}) %}
 				{% endif %}
+				{% if isFriend %}
+				{% set _=buttonOptions.add({'label': L('friend_set_lists').toString(), 'href': "/users/#{user.id}/setListsMobileBox", 'type': 'link', 'ajax': 'box'}) %}
+				{% endif %}
 				<a href="/users/{{ user.id }}/confirmRemoveFriend" class="button secondary" id="profileFriendButton" onclick="return showOptions(this)" data-options="{{ json(buttonOptions) }}"><span class="ellipsize">
 					{% if isFriend %}
 					{{ L('profile_user_is_friend') }}
