@@ -400,6 +400,7 @@ public class FriendsRoutes{
 							.stream()
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
+			addFriendLists(self.user, lang(req), ctx, model);
 		}
 		return model;
 	}
@@ -417,8 +418,16 @@ public class FriendsRoutes{
 			throw new BadRequestException();
 		}
 		if(isAjax(req)){
-			return new WebDeltaResponse(resp).setContent("friendReqBtns"+user.id,
-					"<div class=\"settingsMessage\">"+lang(req).get(accept ? "friend_req_accepted" : "friend_req_declined")+"</div>");
+			Lang l=lang(req);
+			String content;
+			if(accept){
+				content=l.get("friend_req_accepted")+" <span class=\"popupMenuW\" id=\"friendListsButton"+user.id+"\" data-lists=\"\">" +
+						"<a href=\"javascript:void(0)\" onclick=\"showFriendListsMenu('"+user.id+"')\" class=\"opener\">"+l.get("friend_req_accepted_specify_lists")+
+						"</a></span>";
+			}else{
+				content=l.get("friend_req_declined");
+			}
+			return new WebDeltaResponse(resp).setContent("friendReqBtns"+user.id, "<div class=\"grayText marginBefore\">"+content+"</div>");
 		}
 		resp.redirect(Utils.back(req));
 		return "";

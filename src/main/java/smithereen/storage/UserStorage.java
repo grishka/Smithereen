@@ -1594,7 +1594,7 @@ public class UserStorage{
 		new SQLQueryBuilder()
 				.update("followings")
 				.where("follower_id=? AND followee_id=?", ownerID, userID)
-				.value("lists", lists.toLongArray()[0])
+				.value("lists", lists.isEmpty() ? 0 : lists.toLongArray()[0])
 				.executeNoResult();
 	}
 
