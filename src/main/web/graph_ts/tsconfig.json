@@ -1,5 +1,6 @@
 {
 	"compilerOptions":{
+		"target": "ES2015",
 		"outFile": "../../resources/public/res/graph.js",
 		"sourceMap": true,
 		"sourceRoot": "/res/graph_ts/",
