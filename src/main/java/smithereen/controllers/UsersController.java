@@ -631,6 +631,8 @@ public class UsersController{
 	}
 
 	public void maybeCreateRelationshipStatusNewsfeedEntry(User self, User.RelationshipStatus newStatus, User newPartner){
+		if(newStatus==null)
+			return;
 		int partnerID=newPartner==null || !newStatus.canHavePartner() ? 0 : newPartner.id;
 		if(self.relationship==newStatus && self.relationshipPartnerID==partnerID)
 			return;
