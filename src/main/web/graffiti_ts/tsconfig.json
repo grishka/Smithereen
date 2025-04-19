@@ -1,5 +1,6 @@
 {
 	"compilerOptions":{
+		"target": "ES2015",
 		"outFile": "../../resources/public/res/graffiti.js",
 		"sourceMap": true,
 		"sourceRoot": "/res/graffiti_ts/",
