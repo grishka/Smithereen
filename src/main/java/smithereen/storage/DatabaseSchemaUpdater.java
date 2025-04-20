@@ -1122,7 +1122,7 @@ public class DatabaseSchemaUpdater{
 				}else{
 					throw new IllegalStateException();
 				}
-				if(!attachments.getFirst().has("_p"))
+				if(!attachments.getFirst().has("_lid"))
 					continue;
 				long[] attachmentIDs=migrateMediaAttachments(conn, attachments, ownerID);
 				JsonArray newAttachments=new JsonArray();
@@ -1168,7 +1168,7 @@ public class DatabaseSchemaUpdater{
 				}else{
 					throw new IllegalStateException();
 				}
-				if(!attachments.getFirst().has("_p"))
+				if(!attachments.getFirst().has("_lid"))
 					continue;
 				long[] attachmentIDs=migrateMediaAttachments(conn, attachments, ownerID);
 				JsonArray newAttachments=new JsonArray();
@@ -1199,7 +1199,7 @@ public class DatabaseSchemaUpdater{
 
 	private static long migrateOneAvatar(DatabaseConnection conn, JsonObject avaObj, int id) throws SQLException{
 		String fileID=avaObj.get("_lid").getAsString();
-		String dirName=avaObj.get("_p").getAsString();
+		String dirName=avaObj.has("_p") ? avaObj.get("_p").getAsString() : "avatars";
 
 		File actualFile=new File(Config.uploadPath, dirName+"/"+fileID+".webp");
 		if(!actualFile.exists()){
@@ -1243,7 +1243,7 @@ public class DatabaseSchemaUpdater{
 		int i=0;
 		for(JsonObject obj:attachments){
 			String fileID=obj.get("_lid").getAsString();
-			String dirName=obj.get("_p").getAsString();
+			String dirName=obj.has("_p") ? obj.get("_p").getAsString() : "post_media";
 
 			File actualFile=new File(Config.uploadPath, dirName+"/"+fileID+".webp");
 			if(!actualFile.exists()){
