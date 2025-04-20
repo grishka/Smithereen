@@ -749,7 +749,7 @@ public class ActivityPubRoutes{
 		Actor actor;
 		boolean canUpdate=true;
 		// special case: when users delete themselves but are not in local database, ignore that
-		if(activity instanceof Delete && activity.actor.link.equals(activity.object.link)){
+		if(activity instanceof Delete && (activity.actor.link.equals(activity.object.link) || (activity.object.object!=null && activity.actor.link.equals(activity.object.object.activityPubID)))){
 			try{
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, false, false, false);
 			}catch(ObjectNotFoundException x){

@@ -40,6 +40,7 @@ import smithereen.activitypub.tasks.FetchCollectionTotalTask;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -429,7 +430,7 @@ public class ObjectLinkResolver{
 	private static <T> T ensureTypeAndCast(Object obj, Class<T> type){
 		if(type.isInstance(obj))
 			return type.cast(obj);
-		throw new IllegalStateException("Expected object of type "+type.getName()+", but got "+obj.getClass().getName()+" instead");
+		throw new UnsupportedRemoteObjectTypeException("Expected object of type "+type.getName()+", but got "+obj.getClass().getName()+" instead");
 	}
 
 	public <T extends ActivityPubObject> T convertToActivityPubObject(Object o, Class<T> type){
@@ -448,7 +449,7 @@ public class ObjectLinkResolver{
 		}else if(type.isAssignableFrom(ActivityPubPhoto.class) && o instanceof Photo p){
 			return type.cast(ActivityPubPhoto.fromNativePhoto(p, context.getPhotosController().getAlbumIgnoringPrivacy(p.albumID), context));
 		}
-		throw new IllegalStateException("Native type "+o.getClass().getName()+" does not have an ActivityPub representation");
+		throw new UnsupportedRemoteObjectTypeException("Native type "+o.getClass().getName()+" does not have an ActivityPub representation");
 	}
 
 	public <T> T convertToNativeObject(ActivityPubObject o, Class<T> type){
@@ -463,7 +464,7 @@ public class ObjectLinkResolver{
 		}else if(type.isAssignableFrom(o.getClass())){
 			return type.cast(o);
 		}
-		throw new IllegalStateException("Can't convert ActivityPub "+o.getClass().getName()+" to a native object of type "+type.getName());
+		throw new UnsupportedRemoteObjectTypeException("Can't convert ActivityPub "+o.getClass().getName()+" to a native object of type "+type.getName());
 	}
 
 	public void ensureObjectIsInCollection(@NotNull Actor collectionOwner, @NotNull URI collectionID, @NotNull URI objectID){
