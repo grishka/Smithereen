@@ -166,7 +166,7 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			return;
 		}
 
-		if(actor.activityPubID.equals(owner.activityPubID) && post.inReplyTo==null){
+		if(actor.activityPubID.equals(owner.activityPubID) && post.inReplyTo==null && post.target!=null){
 			if(followers==null || !recipients.contains(followers)){
 				LOG.warn("Dropping post {} because it's public but doesn't address any followers", post.activityPubID);
 				return;
