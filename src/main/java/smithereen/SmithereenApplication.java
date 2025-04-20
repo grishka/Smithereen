@@ -120,6 +120,8 @@ public class SmithereenApplication{
 			// Gets rid of "The requested route ... has not been mapped in Spark"
 			System.setProperty("org.slf4j.simpleLogger.log.spark.http.matching", "warn");
 		}
+		// Gets rid of "Missing chars table for block: ..."
+		System.setProperty("org.slf4j.simpleLogger.log.cz.jirutka.unidecode", "warn");
 		String addProperties=System.getenv("SMITHEREEN_SET_PROPS");
 		if(addProperties!=null){
 			Arrays.stream(addProperties.split("&")).forEach(s->{

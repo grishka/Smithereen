@@ -769,7 +769,7 @@ public class ActivityPubRoutes{
 			try{
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
 			}catch(ObjectNotFoundException x){
-				LOG.warn("Exception while refreshing remote actor {}", activity.actor.link, x);
+				LOG.debug("Exception while refreshing remote actor {}", activity.actor.link, x);
 			}
 		}
 
