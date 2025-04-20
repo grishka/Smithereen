@@ -190,6 +190,10 @@ public abstract class Actor extends ActivityPubObject{
 		if(StringUtils.isEmpty(username)){
 			throw new FederationException("Unable to determine actor username: preferredUsername not present and last path segment of ID is blank");
 		}
+		if(!Utils.isValidUsername(username)){
+			username="_"+username.replaceAll("[^a-zA-Z0-9\\u0080-\\uffff._-]", "_"); // First, replace all disallowed ASCII characters with '_'
+			username=TextProcessor.transliterate(username); // Then, transliterate non-ASCII characters, if any
+		}
 		if(username.length()>USERNAME_MAX_LENGTH)
 			username=username.substring(0, USERNAME_MAX_LENGTH);
 		domain=activityPubID.getHost();
