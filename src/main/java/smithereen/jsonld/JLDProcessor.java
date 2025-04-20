@@ -244,7 +244,7 @@ public class JLDProcessor{
 				return JsonParser.parseReader(reader).getAsJsonObject();
 			}
 		}catch(Exception x){
-			LOG.warn("Failed to load remote context from '{}'", url, x);
+			LOG.debug("Failed to load remote context from '{}'", url, x);
 			return null;
 		}
 	}
@@ -271,7 +271,7 @@ public class JLDProcessor{
 						yield alreadyLoaded;
 					yield loadRemoteContext(iri);
 				}
-				LOG.warn("Can't dereference remote context '{}'", iri);
+				LOG.debug("Can't dereference remote context '{}'", iri);
 				yield null;
 			}
 		};
@@ -323,7 +323,7 @@ public class JLDProcessor{
 					throw new JLDException("relative context IRIs are not supported");
 				}
 				if(remoteContexts.contains(c)){
-					LOG.warn("Recursive context inclusion of {}", c);
+					LOG.debug("Recursive context inclusion of {}", c);
 					continue;
 //					throw new JLDException("recursive context inclusion");
 				}
