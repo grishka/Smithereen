@@ -79,8 +79,8 @@ public class UserInteractionsRoutes{
 		User self=info!=null && info.account!=null ? info.account.user : null;
 
 		context(req).getPrivacyController().enforceObjectPrivacy(self, obj);
-		List<User> users=ctx.getUserInteractionsController().getLikesForObject(obj, self, 0, 6).list;
-		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
+		List<Integer> users=ctx.getUserInteractionsController().getLikesForObject(obj, self, 0, 6).list;
+		String _content=new RenderedTemplateResponse("like_popover", req).with("ids", users).with("users", ctx.getUsersController().getUsers(users)).renderToString();
 		UserInteractions interactions=obj instanceof Post post ?
 				ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self).get(post.getIDForInteractions())
 				: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self).get(obj.getObjectID());
@@ -129,7 +129,8 @@ public class UserInteractionsRoutes{
 				ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self!=null ? self.user : null).get(post.getIDForInteractions())
 				: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self!=null ? self.user : null).get(obj.getObjectID());
 		int offset=offset(req);
-		PaginatedList<User> likes=ctx.getUserInteractionsController().getLikesForObject(obj, null, offset, 100);
+		PaginatedList<Integer> likes=ctx.getUserInteractionsController().getLikesForObject(obj, null, offset, 100);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(likes.list);
 		RenderedTemplateResponse model;
 		if(isMobile(req)){
 			model=new RenderedTemplateResponse("content_interactions_likes", req);
@@ -149,6 +150,7 @@ public class UserInteractionsRoutes{
 		};
 
 		model.paginate(likes)
+				.with("users", users)
 				.with("emptyMessage", lang(req).get("likes_empty"))
 				.with("interactions", interactions)
 				.with("object", obj)
@@ -157,7 +159,7 @@ public class UserInteractionsRoutes{
 				.with("elementID", elementID);
 
 		if(!isMobile(req)){
-			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(likes.list);
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(users.values());
 			model.with("avatarPhotos", userPhotos)
 					.with("avatarPvInfos", userPhotos.values()
 							.stream()

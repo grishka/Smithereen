@@ -170,7 +170,7 @@ public class GroupsController{
 		}
 	}
 
-	public PaginatedList<User> getMembers(@NotNull Group group, int offset, int count, boolean tentative){
+	public PaginatedList<Integer> getMembers(@NotNull Group group, int offset, int count, boolean tentative){
 		try{
 			return GroupStorage.getMembers(group.id, offset, count, tentative);
 		}catch(SQLException x){
@@ -178,7 +178,7 @@ public class GroupsController{
 		}
 	}
 
-	public PaginatedList<User> getAllMembers(@NotNull Group group, int offset, int count){
+	public PaginatedList<Integer> getAllMembers(@NotNull Group group, int offset, int count){
 		try{
 			return GroupStorage.getMembers(group.id, offset, count, null);
 		}catch(SQLException x){

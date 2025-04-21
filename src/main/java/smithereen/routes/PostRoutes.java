@@ -497,8 +497,6 @@ public class PostRoutes{
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		PostViewModel.collectActorIDs(List.of(post), needUsers, needGroups);
 		PostViewModel.collectActorIDs(replies.list, needUsers, needGroups);
-		model.with("users", ctx.getUsersController().getUsers(needUsers))
-				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 
 		model.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, u, UserPrivacySettingKey.WALL_OTHERS_POSTS));
 
@@ -555,8 +553,9 @@ public class PostRoutes{
 		model.with("title", post.post.getShortTitle(50)+" | "+author.getFullName());
 		if(req.attribute("mobile")!=null){
 			model.with("toolbarTitle", lang(req).get("wall_post_title"));
-			List<User> likers=ctx.getUserInteractionsController().getLikesForObject(post.post, info!=null && info.account!=null ? info.account.user : null, 0, 10).list;
+			List<Integer> likers=ctx.getUserInteractionsController().getLikesForObject(post.post, info!=null && info.account!=null ? info.account.user : null, 0, 10).list;
 			model.with("likedBy", likers);
+			needUsers.addAll(likers);
 		}
 		if(post.post.getReplyLevel()>0){
 			model.with("jsRedirect", "/posts/"+post.post.replyKey.get(0)+"#comment"+post.post.id);
@@ -564,6 +563,9 @@ public class PostRoutes{
 		model.with("activityPubURL", post.post.getActivityPubID());
 		if(!post.post.isLocal() && owner instanceof ForeignActor)
 			model.with("noindex", true);
+
+		model.with("users", ctx.getUsersController().getUsers(needUsers))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 		return model;
 	}
 
@@ -631,8 +633,8 @@ public class PostRoutes{
 		SessionInfo info=sessionInfo(req);
 		User self=info!=null && info.account!=null ? info.account.user : null;
 		context(req).getPrivacyController().enforceObjectPrivacy(self, post);
-		List<User> users=ctx.getUserInteractionsController().getRepostedUsers(post, 6);
-		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
+		List<Integer> users=ctx.getUserInteractionsController().getRepostedUsers(post, 6);
+		String _content=new RenderedTemplateResponse("like_popover", req).with("ids", users).with("users", ctx.getUsersController().getUsers(users)).renderToString();
 		UserInteractions interactions=ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self).get(post.getIDForInteractions());
 		WebDeltaResponse b=new WebDeltaResponse(resp)
 				.setContent("shareCounterPost"+post.id, String.valueOf(interactions.repostCount));
@@ -903,12 +905,15 @@ public class PostRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
-		List<User> users=ctx.getWallController().getPollOptionVoters(option, offset, 100);
+		List<Integer> userIDs=ctx.getWallController().getPollOptionVoters(option, offset, 100);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(userIDs);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
-		model.paginate(new PaginatedList<>(users, option.numVotes, offset, 100), "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=", null);
-		model.with("emptyMessage", lang(req).get("poll_option_votes_empty")).with("summary", lang(req).get("X_people_voted_title", Map.of("count", option.numVotes)));
+		model.paginate(new PaginatedList<>(userIDs, option.numVotes, offset, 100), "/posts/"+postID+"/pollVoters/"+option.id+"?fromPagination&offset=", null);
+		model.with("emptyMessage", lang(req).get("poll_option_votes_empty"))
+				.with("summary", lang(req).get("X_people_voted_title", Map.of("count", option.numVotes)))
+				.with("users", users);
 		if(!isMobile(req)){
-			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(users);
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(users.values());
 			model.with("avatarPhotos", userPhotos)
 					.with("avatarPvInfos", userPhotos.values()
 							.stream()
@@ -949,8 +954,11 @@ public class PostRoutes{
 		@Nullable Account self=info!=null ? info.account : null;
 		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
-		List<User> users=ctx.getWallController().getPollOptionVoters(option, 0, 6);
-		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
+		List<Integer> userIDs=ctx.getWallController().getPollOptionVoters(option, 0, 6);
+		String _content=new RenderedTemplateResponse("like_popover", req)
+				.with("ids", userIDs)
+				.with("users", ctx.getUsersController().getUsers(userIDs))
+				.renderToString();
 
 		UserInteractionsRoutes.LikePopoverResponse r=new UserInteractionsRoutes.LikePopoverResponse();
 		r.actions=Collections.emptyList();

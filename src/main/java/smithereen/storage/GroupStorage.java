@@ -411,7 +411,7 @@ public class GroupStorage{
 		);
 	}
 
-	public static PaginatedList<User> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative) throws SQLException{
+	public static PaginatedList<Integer> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
 			int total=new SQLQueryBuilder(conn)
@@ -426,7 +426,7 @@ public class GroupStorage{
 					.where("group_id=? AND accepted=1"+_tentative, groupID)
 					.limit(count, offset)
 					.executeAndGetIntList();
-			return new PaginatedList<>(UserStorage.getByIdAsList(ids), total, offset, count);
+			return new PaginatedList<>(ids, total, offset, count);
 		}
 	}
 

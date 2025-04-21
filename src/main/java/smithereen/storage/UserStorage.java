@@ -103,10 +103,11 @@ public class UserStorage{
 
 	public static Map<Integer, User> getById(Collection<Integer> _ids) throws SQLException{
 		if(_ids.isEmpty())
-			return Collections.emptyMap();
+			return Map.of();
 		if(_ids.size()==1){
 			for(int id:_ids){
-				return Collections.singletonMap(id, getById(id));
+				User user=getById(id);
+				return user==null ? Map.of() : Map.of(id, user);
 			}
 		}
 		Set<Integer> ids=new HashSet<>(_ids);
@@ -147,8 +148,7 @@ public class UserStorage{
 			}
 			for(int id:ids){
 				User u=result.get(id);
-				if(u!=null)
-					putIntoCache(u);
+				putIntoCache(u);
 			}
 			return result;
 		}

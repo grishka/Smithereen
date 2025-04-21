@@ -827,9 +827,9 @@ public class WallController{
 		}
 	}
 
-	public List<User> getPollOptionVoters(PollOption option, int offset, int count){
+	public List<Integer> getPollOptionVoters(PollOption option, int offset, int count){
 		try{
-			return UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, offset, count));
+			return PostStorage.getPollOptionVoters(option.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

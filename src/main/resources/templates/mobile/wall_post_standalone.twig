@@ -21,8 +21,8 @@
 		{% if currentUser is not null %}
 			<span class="currentUserLikeAva" style="{{ interactions.isLiked ? '' : 'display: none' }}">{{ currentUser | pictureForAvatar('a', 34) }}</span>
 		{% endif %}
-		{% for user in likedBy %}
-			{{ user | pictureForAvatar('a', 34) }}
+		{% for userID in likedBy %}
+			{{ users[userID] | pictureForAvatar('a', 34) }}
 		{% endfor %}
 	</a>
 	{% if interactions.canRepost %}

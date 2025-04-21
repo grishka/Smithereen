@@ -422,14 +422,16 @@ public class GroupsRoutes{
 		SessionInfo info=sessionInfo(req);
 		ctx.getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
-		PaginatedList<User> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative);
+		PaginatedList<Integer> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative);
 		model.paginate(members);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(members.list);
+		model.with("users", users);
 		model.with("summary", lang(req).get(tentative ? "summary_event_X_tentative_members" : (group.isEvent() ? "summary_event_X_members" : "summary_group_X_members"), Map.of("count", tentative ? group.tentativeMemberCount : group.memberCount)));
 		model.with("contentTemplate", "user_grid").with("title", group.name);
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		if(!isMobile(req)){
-			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(members.list);
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(users.values());
 			model.with("avatarPhotos", userPhotos)
 					.with("avatarPvInfos", userPhotos.values()
 							.stream()
@@ -468,7 +470,9 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
-		model.paginate(ctx.getGroupsController().getAllMembers(group, offset(req), 100));
+		PaginatedList<Integer> ids=ctx.getGroupsController().getAllMembers(group, offset(req), 100);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(ids.list);
+		model.paginate(new PaginatedList<User>(ids, ids.list.stream().map(users::get).toList()));
 		model.with("group", group).with("title", group.name);
 		model.with("adminIDs", ctx.getGroupsController().getAdmins(group).stream().map(adm->adm.user.id).collect(Collectors.toList()));
 		model.with("canAddAdmins", level.isAtLeast(Group.AdminLevel.ADMIN));

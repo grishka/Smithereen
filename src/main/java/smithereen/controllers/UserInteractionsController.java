@@ -45,14 +45,12 @@ public class UserInteractionsController{
 		this.context=context;
 	}
 
-	public PaginatedList<User> getLikesForObject(LikeableContentObject object, User self, int offset, int count){
+	public PaginatedList<Integer> getLikesForObject(LikeableContentObject object, User self, int offset, int count){
 		try{
 			long id=object.getObjectID();
 			if(object instanceof Post post)
 				id=post.getIDForInteractions();
-			PaginatedList<Integer> likeIDs=LikeStorage.getLikes(id, object.getLikeObjectType(), self!=null ? self.id : 0, offset, count);
-			List<User> users=UserStorage.getByIdAsList(likeIDs.list);
-			return new PaginatedList<>(likeIDs, users);
+			return LikeStorage.getLikes(id, object.getLikeObjectType(), self!=null ? self.id : 0, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -136,12 +134,12 @@ public class UserInteractionsController{
 		}
 	}
 
-	public List<User> getRepostedUsers(Post object, int count){
+	public List<Integer> getRepostedUsers(Post object, int count){
 		try{
 			if(object.isMastodonStyleRepost()){
 				object=context.getWallController().getPostOrThrow(object.repostOf);
 			}
-			return UserStorage.getByIdAsList(PostStorage.getRepostedUsers(object.id, count));
+			return PostStorage.getRepostedUsers(object.id, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
