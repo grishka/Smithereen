@@ -796,6 +796,8 @@ public class User extends Actor{
 		SNAPCHAT,
 		DISCORD,
 		GIT,
+		MASTODON,
+		PIXELFED,
 		PHONE_NUMBER,
 		EMAIL;
 
@@ -812,6 +814,8 @@ public class User extends Actor{
 				case SNAPCHAT -> "Snapchat";
 				case DISCORD -> "Discord";
 				case GIT -> "Git";
+				case MASTODON -> "Mastodon";
+				case PIXELFED -> "Pixelfed";
 				case PHONE_NUMBER -> "Phone number";
 				case EMAIL -> "E-mail";
 			};
@@ -850,6 +854,8 @@ public class User extends Actor{
 				case SNAPCHAT -> List.of("evan", "www.snapchat.com/add/evan");
 				case DISCORD -> List.of("jason");
 				case GIT -> List.of("github.com/octocat", "gitlab.com/gitlab-org");
+				case MASTODON -> List.of("@Gargron@mastodon.social", "mastodon.social/@Gargron");
+				case PIXELFED -> List.of("@dansup@pixelfed.social", "pixelfed.social/dansup");
 				case PHONE_NUMBER, EMAIL -> List.of();
 			};
 		}

@@ -280,6 +280,8 @@ public class ForeignUser extends User implements ForeignActor{
 						case "snapchat", "snap" -> ContactInfoKey.SNAPCHAT;
 						case "discord" -> ContactInfoKey.DISCORD;
 						case "git", "github", "gitlab", "codeberg", "gitea" -> ContactInfoKey.GIT;
+						case "mastodon" -> ContactInfoKey.MASTODON;
+						case "pixelfed" -> ContactInfoKey.PIXELFED;
 						case "phone number", "phone", "sms" -> ContactInfoKey.PHONE_NUMBER;
 						case "email", "e-mail" -> ContactInfoKey.EMAIL;
 						default -> null;

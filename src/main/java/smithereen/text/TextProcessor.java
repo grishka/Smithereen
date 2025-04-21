@@ -557,7 +557,9 @@ public class TextProcessor{
 			URI uri=URI.create(value);
 			for(String domain:allowedDomains){
 				if(domain.equalsIgnoreCase(uri.getHost())){
-					return uri.getPath().substring(1);
+					String path=uri.getPath();
+					if(path.length()<=1) return null;
+					return path.substring(1);
 				}
 			}
 			return null;
@@ -625,6 +627,35 @@ public class TextProcessor{
 				}
 				yield null;
 			}
+			case MASTODON, PIXELFED -> {
+				String usernameAndDomain=null;
+				if(Utils.isURL(value)){
+					try{
+						URI uri=URI.create(value);
+						String path=uri.getPath().substring(1);
+						if(path.endsWith("/")){
+							path=path.substring(0, path.length()-1);
+						}
+						if(!path.startsWith("@") && key == User.ContactInfoKey.MASTODON){
+							yield null; // The path component for a valid Mastodon user URI always starts with @
+						}
+						if(path.contains("/")){
+							yield null;
+						}
+						String host=uri.getHost();
+						if(host==null) yield null;
+						usernameAndDomain=path + "@" + host;
+					}catch(IllegalArgumentException x){
+						yield null;
+					}
+				}else if(Utils.isUsernameAndDomain(value)){
+					usernameAndDomain=value;
+				}
+				if(usernameAndDomain != null && !usernameAndDomain.startsWith("@")){
+					usernameAndDomain="@"+usernameAndDomain;
+				}
+				yield usernameAndDomain;
+			}
 			default -> value;
 		};
 	}
@@ -643,6 +674,11 @@ public class TextProcessor{
 			case EMAIL -> "mailto:"+value;
 			case PHONE_NUMBER -> "tel:"+value;
 			case GIT -> value;
+			case MASTODON, PIXELFED -> {
+				Matcher matcher = USERNAME_DOMAIN_PATTERN.matcher(value);
+				if(!matcher.find()) yield null;
+				yield "https://"+matcher.group(2)+"/@"+matcher.group(1);
+			}
 			default -> null;
 		};
 	}
