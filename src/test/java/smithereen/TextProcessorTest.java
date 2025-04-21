@@ -46,7 +46,7 @@ public class TextProcessorTest{
 		assertEquals("pavel_123", normalizeContactInfoValue(TELEGRAM, "@pavel_123 "));
 
 		assertNull(normalizeContactInfoValue(TELEGRAM, "https://example.com/pavel"));
-		assertThrows(StringIndexOutOfBoundsException.class, ()->normalizeContactInfoValue(TELEGRAM, "https://t.me"));
+		assertNull(normalizeContactInfoValue(TELEGRAM, "https://t.me"));
 		assertNull(normalizeContactInfoValue(TELEGRAM, "ssh://t.me/pavel"));
 		assertNull(normalizeContactInfoValue(TELEGRAM, "@@pavel"));
 		assertNull(normalizeContactInfoValue(TELEGRAM, "@"));
@@ -106,7 +106,7 @@ public class TextProcessorTest{
 		assertEquals("jack_dorsey228", normalizeContactInfoValue(TWITTER, "@jack_dorsey228"));
 
 		assertNull(normalizeContactInfoValue(TWITTER, "https://twitter.com/💩"));
-		assertThrows(StringIndexOutOfBoundsException.class, ()->normalizeContactInfoValue(TWITTER, "https://twitter.com"));
+		assertNull(normalizeContactInfoValue(TWITTER, "https://twitter.com"));
 		assertNull(normalizeContactInfoValue(TWITTER, "https://example.com/jack"));
 		assertNull(normalizeContactInfoValue(TWITTER, "💩"));
 		assertNull(normalizeContactInfoValue(TWITTER, "@"));
@@ -260,7 +260,7 @@ public class TextProcessorTest{
 
 		assertNull(normalizeContactInfoValue(FACEBOOK, "https://facebook.com/💩"));
 		assertNull(normalizeContactInfoValue(FACEBOOK, "https://fuck.facebook.com/zuck"));
-		assertThrows(StringIndexOutOfBoundsException.class, ()->normalizeContactInfoValue(FACEBOOK, "https://facebook.com"));
+		assertNull(normalizeContactInfoValue(FACEBOOK, "https://facebook.com"));
 		assertNull(normalizeContactInfoValue(FACEBOOK, "https://example.com/zuck"));
 		assertNull(normalizeContactInfoValue(FACEBOOK, "💩"));
 		assertNull(normalizeContactInfoValue(FACEBOOK, "@"));
@@ -288,7 +288,7 @@ public class TextProcessorTest{
 
 		assertNull(normalizeContactInfoValue(INSTAGRAM, "https://instagram.com/💩"));
 		assertNull(normalizeContactInfoValue(INSTAGRAM, "https://fuck.instagram.com/mosseri"));
-		assertThrows(StringIndexOutOfBoundsException.class, ()->normalizeContactInfoValue(INSTAGRAM, "https://instagram.com"));
+		assertNull(normalizeContactInfoValue(INSTAGRAM, "https://instagram.com"));
 		assertNull(normalizeContactInfoValue(INSTAGRAM, "https://example.com/mosseri"));
 		assertNull(normalizeContactInfoValue(INSTAGRAM, "💩"));
 		assertNull(normalizeContactInfoValue(INSTAGRAM, "@"));
@@ -318,7 +318,7 @@ public class TextProcessorTest{
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://fuck.vk.com/durov"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://www.vk.com/durov"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://vkontakte.ru/durov"));
-		assertThrows(StringIndexOutOfBoundsException.class, ()->normalizeContactInfoValue(VKONTAKTE, "https://vk.com"));
+		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://vk.com"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://example.com/durov"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "💩"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "@"));

@@ -557,7 +557,9 @@ public class TextProcessor{
 			URI uri=URI.create(value);
 			for(String domain:allowedDomains){
 				if(domain.equalsIgnoreCase(uri.getHost())){
-					return uri.getPath().substring(1);
+					String path=uri.getPath();
+					if(path.length()<=1) return null;
+					return path.substring(1);
 				}
 			}
 			return null;
