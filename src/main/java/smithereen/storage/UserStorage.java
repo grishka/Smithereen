@@ -148,7 +148,8 @@ public class UserStorage{
 			}
 			for(int id:ids){
 				User u=result.get(id);
-				putIntoCache(u);
+				if(u!=null)
+					putIntoCache(u);
 			}
 			return result;
 		}
