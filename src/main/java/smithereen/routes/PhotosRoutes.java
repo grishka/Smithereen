@@ -465,7 +465,7 @@ public class PhotosRoutes{
 			origURL=null;
 			if(self!=null){
 				for(PhotoTag tag:tags){
-					if(tag.userID()==self.id && !tag.approved()){
+					if(tag.userID()==self.user.id && !tag.approved()){
 						topHTML=new RenderedTemplateResponse("photo_new_tag_confirm", req)
 								.with("placer", users.get(tag.placerID()))
 								.with("photo", photo)
