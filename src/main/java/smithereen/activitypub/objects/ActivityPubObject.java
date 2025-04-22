@@ -39,6 +39,7 @@ import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Move;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
@@ -601,6 +602,7 @@ public abstract class ActivityPubObject{
 			case "Event" -> new Event();
 			case "Photo" -> new ActivityPubPhoto();
 			case "TaggedPerson" -> new ActivityPubTaggedPerson();
+			case "QuoteAuthorization" -> new QuoteAuthorization();
 
 			// Collections
 			case "Collection" -> new ActivityPubCollection(false);
@@ -630,6 +632,7 @@ public abstract class ActivityPubObject{
 			case "Flag" -> new Flag();
 			case "Read" -> new Read();
 			case "Move" -> new Move();
+			case "QuoteRequest" -> new QuoteRequest();
 
 			default -> {
 				LOG.debug("Unknown object type {}", type);

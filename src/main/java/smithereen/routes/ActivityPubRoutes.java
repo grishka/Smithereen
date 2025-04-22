@@ -62,6 +62,7 @@ import smithereen.activitypub.handlers.PersonBlockPersonHandler;
 import smithereen.activitypub.handlers.PersonMovePersonHandler;
 import smithereen.activitypub.handlers.PersonRemovePersonHandler;
 import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
+import smithereen.activitypub.handlers.QuoteRequestNoteHandler;
 import smithereen.activitypub.handlers.ReadNoteHandler;
 import smithereen.activitypub.handlers.RejectAddNoteHandler;
 import smithereen.activitypub.handlers.RejectFollowGroupHandler;
@@ -96,6 +97,7 @@ import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.activitypub.objects.QuoteAuthorization;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
@@ -111,6 +113,7 @@ import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Move;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
@@ -185,6 +188,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Delete.class, NoteOrQuestion.class, new DeleteNoteHandler());
 		registerActivityHandler(Actor.class, Reject.class, Add.class, NoteOrQuestion.class, new RejectAddNoteHandler());
 		registerActivityHandler(ForeignUser.class, Read.class, NoteOrQuestion.class, new ReadNoteHandler());
+		registerActivityHandler(ForeignUser.class, QuoteRequest.class, NoteOrQuestion.class, new QuoteRequestNoteHandler());
 
 		registerActivityHandler(ForeignUser.class, Follow.class, User.class, new FollowPersonHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Follow.class, User.class, new UndoFollowPersonHandler());
@@ -1169,6 +1173,21 @@ public class ActivityPubRoutes{
 			}
 		}
 		return true;
+	}
+	
+	public static Object postQuoteAuthorization(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":quoteID")));
+		int expectedQuotedPostID=safeParseInt(req.params(":postID"));
+		if(post.repostOf!=expectedQuotedPostID || expectedQuotedPostID==0)
+			throw new ObjectNotFoundException();
+		Post quotedPost=ctx.getWallController().getLocalPostOrThrow(expectedQuotedPostID);
+		QuoteAuthorization qa=new QuoteAuthorization();
+		qa.activityPubID=UriBuilder.local().path("posts", String.valueOf(quotedPost.id), "quoteAuth", String.valueOf(post.id)).build();
+		qa.interactingObject=post.getActivityPubID();
+		qa.interactionTarget=quotedPost.getActivityPubID();
+		qa.attributedTo=ctx.getUsersController().getUserOrThrow(quotedPost.authorID).activityPubID;
+		return qa;
 	}
 
 	private record ActivityTypeHandlerRecord<A extends Actor, T extends Activity, N extends Activity, NN extends Activity, O extends ActivityPubObject>

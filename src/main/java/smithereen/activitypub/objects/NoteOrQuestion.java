@@ -45,6 +45,7 @@ import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
@@ -58,6 +59,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public URI likes;
 	public URI quoteRepostID;
 	public String action;
+	public boolean canBeReposted;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -311,6 +313,8 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 		noq.attachment=resolveLocalPhotoIDsInAttachments(context, post.attachments);
 		noq.likes=new UriBuilder(noq.activityPubID).appendPath("likes").build();
+
+		noq.canBeReposted=post.isLocal() && post.privacy==Post.Privacy.PUBLIC && (!post.replyKey.isEmpty() || post.ownerID==post.authorID);
 
 		return noq;
 	}
@@ -600,6 +604,13 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			serializerContext.addSmIdType("action");
 			serializerContext.addSmAlias(action);
 			obj.addProperty("action", action);
+		}
+		if(canBeReposted){
+			serializerContext.addAlias("gts", JLD.GOTOSOCIAL);
+			serializerContext.addType("interactionPolicy", "gts:interactionPolicy", "@id");
+			serializerContext.addType("canQuote", "gts:canQuote", "@id");
+			serializerContext.addType("automaticApproval", "gts:automaticApproval", "@id");
+			obj.add("interactionPolicy",new JsonObjectBuilder().add("canQuote", new JsonObjectBuilder().add("automaticApproval", ActivityPub.AS_PUBLIC.toString())).build());
 		}
 
 		return obj;

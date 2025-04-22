@@ -685,6 +685,7 @@ public class SmithereenApplication{
 			get("", PostRoutes::standalonePost);
 			getActivityPub("", ActivityPubRoutes::post);
 			get("/activityCreate", ActivityPubRoutes::postCreateActivity);
+			get("/quoteAuth/:quoteID", ActivityPubRoutes::postQuoteAuthorization);
 
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
 			postWithCSRF("/delete", PostRoutes::delete);

@@ -54,6 +54,7 @@ import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Move;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
@@ -756,6 +757,18 @@ public class ActivityPubWorker{
 				.withActorFragmentID("move"+destination.id+"_"+System.currentTimeMillis())
 				.withTarget(destination.activityPubID);
 		submitActivityForFollowers(move, self, Set.of(actorInbox(destination)));
+	}
+
+	public void sendAcceptQuoteRequest(User self, Post repost, Post repostedPost, ForeignUser repostAuthor, URI quoteRequestID){
+		QuoteRequest qreq=new QuoteRequest()
+				.withActorAndObjectLinks(repostAuthor, repostedPost);
+		qreq.activityPubID=quoteRequestID;
+		qreq.instrument=new LinkOrObject(repost.getActivityPubID());
+		Accept accept=new Accept()
+				.withActorLinkAndObject(self, qreq)
+				.withActorFragmentID("acceptPostQuote"+repost.id);
+		accept.result=List.of(new LinkOrObject(UriBuilder.local().path("posts", String.valueOf(repost.repostOf), "quoteAuth", String.valueOf(repost.id)).build()));
+		submitActivity(accept, self, actorInbox(repostAuthor));
 	}
 
 	// region Photo albums

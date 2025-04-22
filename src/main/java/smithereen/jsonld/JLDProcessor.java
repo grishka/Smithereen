@@ -55,6 +55,7 @@ public class JLDProcessor{
 		lc.addProperty("toot", JLD.MASTODON);
 		lc.addProperty("vcard", JLD.VCARD);
 		lc.addProperty("litepub", JLD.LITEPUB);
+		lc.addProperty("gts", JLD.GOTOSOCIAL);
 
 		// schema.org aliases
 		lc.addProperty("firstName", "sc:givenName");
@@ -149,6 +150,17 @@ public class JLDProcessor{
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");
 		lc.addProperty("acceptsJoins", "litepub:acceptsJoins");
+
+		// GoToSocial aliases
+		lc.add("interactionPolicy", idAndTypeObject("gts:interactionPolicy", "@id"));
+		lc.add("canQuote", idAndTypeObject("gts:canQuote", "@id"));
+		lc.add("automaticApproval", idAndTypeObject("gts:automaticApproval", "@id"));
+		lc.add("interactingObject", idAndTypeObject("gts:interactingObject", "@id"));
+		lc.add("interactionTarget", idAndTypeObject("gts:interactionTarget", "@id"));
+
+		// Mastodon quotes FEP
+		lc.addProperty("QuoteAuthorization", JLD.MASTODON_QUOTES_FEP+"QuoteAuthorization");
+		lc.addProperty("QuoteRequest", JLD.MASTODON_QUOTES_FEP+"QuoteRequest");
 
 		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);
