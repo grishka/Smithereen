@@ -35,7 +35,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.sql.SQLException;
-import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -53,6 +52,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -103,6 +106,9 @@ public class ActivityPub{
 	public static final String CONTENT_TYPE="application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
 	public static final HttpContentType EXPECTED_CONTENT_TYPE=new HttpContentType("application/ld+json", Map.of("profile", "https://www.w3.org/ns/activitystreams"));
 	private static final Logger LOG=LoggerFactory.getLogger(ActivityPub.class);
+	// Serializing and signing activities is compute-bound.
+	// Make the whole thing more responsive while activities are sent out to many servers at once by running that on a separate platform thread pool.
+	private static final ExecutorService serializerSignerExecutor=Executors.newCachedThreadPool(Thread.ofPlatform().name("ActivityPubSerializerSigner", 0).factory());
 
 	public static final HttpClient httpClient;
 	private static LruCache<String, String> domainRedirects=new LruCache<>(100);
@@ -267,49 +273,58 @@ public class ActivityPub{
 	}
 
 	private static HttpRequest.Builder signRequest(HttpRequest.Builder builder, URI url, Actor actor, byte[] body, String method){
-		String path=url.getPath();
-		String query=url.getRawQuery();
-		if(StringUtils.isNotEmpty(query))
-			path+="?"+query;
-		String host=url.getHost();
-		if(url.getPort()!=-1)
-			host+=":"+url.getPort();
-		String date=HTTP_DATE_FORMATTER.format(ZonedDateTime.now(GMT_TIMEZONE));
-		String digestHeader;
-		if(body!=null){
-			digestHeader="SHA-256=";
+		Future<HttpRequest.Builder> f=serializerSignerExecutor.submit(()->{
+			String path=url.getPath();
+			String query=url.getRawQuery();
+			if(StringUtils.isNotEmpty(query))
+				path+="?"+query;
+			String host=url.getHost();
+			if(url.getPort()!=-1)
+				host+=":"+url.getPort();
+			String date=HTTP_DATE_FORMATTER.format(ZonedDateTime.now(GMT_TIMEZONE));
+			String digestHeader;
+			if(body!=null){
+				digestHeader="SHA-256=";
+				try{
+					digestHeader+=Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(body));
+				}catch(NoSuchAlgorithmException x){
+					throw new RuntimeException(x);
+				}
+			}else{
+				digestHeader=null;
+			}
+			String strToSign="(request-target): "+method.toLowerCase()+" "+path+"\nhost: "+host+"\ndate: "+date;
+			if(digestHeader!=null)
+				strToSign+="\ndigest: "+digestHeader;
+
+			byte[] signature;
 			try{
-				digestHeader+=Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(body));
-			}catch(NoSuchAlgorithmException ignore){}
-		}else{
-			digestHeader=null;
-		}
-		String strToSign="(request-target): "+method.toLowerCase()+" "+path+"\nhost: "+host+"\ndate: "+date;
-		if(digestHeader!=null)
-			strToSign+="\ndigest: "+digestHeader;
+				Signature sig=Signature.getInstance("SHA256withRSA");
+				sig.initSign(actor.privateKey);
+				sig.update(strToSign.getBytes(StandardCharsets.UTF_8));
+				signature=sig.sign();
+			}catch(Exception x){
+				LOG.error("Exception while signing request", x);
+				throw new RuntimeException(x);
+			}
 
-		byte[] signature;
+			String keyID=actor.activityPubID+"#main-key";
+			builder.header("Signature", Utils.serializeSignatureHeader(List.of(Map.of(
+							"keyId", keyID,
+							"headers", "(request-target) host date"+(digestHeader!=null ? " digest" : ""),
+							"algorithm", "rsa-sha256",
+							"signature", Base64.getEncoder().encodeToString(signature)
+					))))
+					.header("Date", date);
+			if(digestHeader!=null)
+				builder.header("Digest", digestHeader);
+			return builder;
+		});
 		try{
-			Signature sig=Signature.getInstance("SHA256withRSA");
-			sig.initSign(actor.privateKey);
-			sig.update(strToSign.getBytes(StandardCharsets.UTF_8));
-			signature=sig.sign();
-		}catch(Exception x){
-			LOG.error("Exception while signing request", x);
-			throw new RuntimeException(x);
+			return f.get();
+		}catch(InterruptedException|ExecutionException e){
+			throw new RuntimeException(e);
 		}
-
-		String keyID=actor.activityPubID+"#main-key";
-		builder.header("Signature", Utils.serializeSignatureHeader(List.of(Map.of(
-					"keyId", keyID,
-					"headers", "(request-target) host date"+(digestHeader!=null ? " digest" : ""),
-					"algorithm", "rsa-sha256",
-					"signature", Base64.getEncoder().encodeToString(signature)
-				))))
-				.header("Date", date);
-		if(digestHeader!=null)
-			builder.header("Digest", digestHeader);
-		return builder;
 	}
 
 	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry, EnumSet<Server.Feature> requiredServerFeatures) throws IOException{
@@ -332,8 +347,18 @@ public class ActivityPub{
 			}
 		}
 
-		JsonObject body=activity.asRootActivityPubObject(ctx, inboxUrl.getAuthority());
-		LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
+		Future<JsonObject> f=serializerSignerExecutor.submit(()->{
+			JsonObject body=activity.asRootActivityPubObject(ctx, inboxUrl.getAuthority());
+			LinkedDataSignatures.sign(body, actor.privateKey, actor.activityPubID+"#main-key");
+			return body;
+		});
+		JsonObject body;
+		try{
+			body=f.get();
+		}catch(InterruptedException|ExecutionException x){
+			LOG.warn("Failed to serialize and sign activity to send to {}", inboxUrl, x);
+			return;
+		}
 		LOG.debug("Sending activity: {}", body);
 		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);
 	}
