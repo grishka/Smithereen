@@ -250,7 +250,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			to.add(owner.activityPubID);
 		}
 		if(post.ownerID==post.authorID && post.replyKey.isEmpty()){
-			to.add(author.getFollowersURL());
+			URI followers=author.getFollowersURL();
+			if(followers!=null)
+				to.add(followers);
 		}
 
 		noq.tag=new ArrayList<>();
