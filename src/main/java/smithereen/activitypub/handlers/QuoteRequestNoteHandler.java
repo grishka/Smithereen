@@ -48,9 +48,11 @@ public class QuoteRequestNoteHandler extends ActivityTypeHandler<ForeignUser, Qu
 		if(repost.repostOf!=post.id)
 			throw new UserActionNotAllowedException("Quote URL does not match `object`");
 
+		boolean isNew=repost.id==0;
 		context.appContext.getWallController().loadAndPreprocessRemotePostMentions(repost, repostSource);
 		context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(repost, repostSource);
-		context.appContext.getNotificationsController().createNotificationsForObject(repost);
+		if(isNew)
+			context.appContext.getNotificationsController().createNotificationsForObject(repost);
 
 		User author=context.appContext.getUsersController().getUserOrThrow(post.authorID);
 		context.appContext.getActivityPubWorker().sendAcceptQuoteRequest(author, repost, post, actor, activity.activityPubID);

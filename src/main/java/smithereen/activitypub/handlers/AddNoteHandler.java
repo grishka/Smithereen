@@ -63,8 +63,10 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuesti
 				throw new BadRequestException("Reply must have target set to top-level post owner's wall");
 		}
 
+		boolean isNew=nativePost.id==0;
 		context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 		context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
-		context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
+		if(isNew)
+			context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 	}
 }

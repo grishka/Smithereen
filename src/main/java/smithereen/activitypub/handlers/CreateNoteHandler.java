@@ -190,8 +190,10 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				if(owner instanceof User u)
 					context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_COMMENTING);
 
+				boolean isNew=nativePost.id==0;
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
-				context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
+				if(isNew)
+					context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 				if(topLevel.isLocal()){
 					if(!Objects.equals(owner.activityPubID, oaa.author().activityPubID)){
 						context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
@@ -238,8 +240,10 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				}
 			}
 
+			boolean isNew=nativePost.id==0;
 			context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
-			context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
+			if(isNew)
+				context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 			if(nativePost.ownerID!=nativePost.authorID){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
 			}else{

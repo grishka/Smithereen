@@ -48,7 +48,7 @@ public class LikeStorage{
 					.where("user_id=? AND object_id=? AND object_type=?", userID, objectID, type.ordinal())
 					.executeAndGetInt();
 			if(id==-1)
-				return 0;
+				return -1;
 			new SQLQueryBuilder(conn)
 					.deleteFrom("likes")
 					.where("id=?", id)

@@ -93,7 +93,7 @@ public class UserInteractionsController{
 
 			if(liked){
 				int id=LikeStorage.setObjectLiked(self.id, object.getObjectID(), object.getLikeObjectType(), true, apID);
-				if(id==0) // Already liked
+				if(id==-1) // Already liked
 					return;
 				if(!(oaa.author() instanceof ForeignUser) && object.getAuthorID()!=self.id){
 					OwnedContentObject related=null;
@@ -117,7 +117,7 @@ public class UserInteractionsController{
 					context.getGroupsController().incrementHintsRank(self, g, 2);
 			}else{
 				int id=LikeStorage.setObjectLiked(self.id, object.getObjectID(), object.getLikeObjectType(), false, apID);
-				if(id==0)
+				if(id==-1)
 					return;
 				if(syncedObject!=null)
 					LikeStorage.setObjectLiked(self.id, syncedObject.getObjectID(), syncedObject.getLikeObjectType(), false, null);
