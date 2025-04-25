@@ -1,7 +1,10 @@
 ///<reference path="./PopupMenu.ts"/>
 
 interface GraffitiEditorBox extends Box{
-	(title:string, form:PostForm):GraffitiEditorBox;
+}
+
+interface Window {
+	GraffitiEditorBox:new(title:string, form:PostForm)=>GraffitiEditorBox;
 }
 
 interface UploadingAttachment{
@@ -647,12 +650,12 @@ class PostForm{
 	private showGraffitiEditor(args:any){
 		if(!this.checkAttachmentCount())
 			return;
-		if((window as any).GraffitiEditorBox!==undefined){
-			new (window as any).GraffitiEditorBox(args.title, this).show();
+		if(window.GraffitiEditorBox!==undefined){
+			new window.GraffitiEditorBox(args.title, this).show();
 		}else{
 			LayerManager.getInstance().showBoxLoader();
 			var script=ce("script", {src: "/res/graffiti.js?"+args.jsHash, onload:()=>{
-				new (window as any).GraffitiEditorBox(args.title, this).show();
+				new window.GraffitiEditorBox(args.title, this).show();
 			}});
 			document.body.appendChild(script);
 		}
