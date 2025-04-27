@@ -632,7 +632,10 @@ public class TextProcessor{
 				if(Utils.isURL(value)){
 					try{
 						URI uri=URI.create(value);
-						String path=uri.getPath().substring(1);
+						String path=uri.getPath();
+						if(path.isEmpty())
+							yield null;
+						path=path.substring(1);
 						if(path.endsWith("/")){
 							path=path.substring(0, path.length()-1);
 						}
