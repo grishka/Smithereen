@@ -196,6 +196,7 @@ public class TextProcessorTest{
 
 		assertNull(normalizeContactInfoValue(MASTODON, "@Gargron:mastodon.social"));
 		assertNull(normalizeContactInfoValue(MASTODON, "mastodon.social"));
+		assertNull(normalizeContactInfoValue(MASTODON, "http://mastodon.social"));
 		assertNull(normalizeContactInfoValue(MASTODON, "@@"));
 		assertNull(normalizeContactInfoValue(MASTODON, "@"));
 		assertNull(normalizeContactInfoValue(MASTODON, ""));
@@ -226,6 +227,7 @@ public class TextProcessorTest{
 
 		assertNull(normalizeContactInfoValue(PIXELFED, "@dansup:pixelfed.social"));
 		assertNull(normalizeContactInfoValue(PIXELFED, "pixelfed.social"));
+		assertNull(normalizeContactInfoValue(PIXELFED, "http://pixelfed.social"));
 		assertNull(normalizeContactInfoValue(PIXELFED, "@@"));
 		assertNull(normalizeContactInfoValue(PIXELFED, "@"));
 		assertNull(normalizeContactInfoValue(PIXELFED, ""));
