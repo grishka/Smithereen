@@ -63,7 +63,7 @@ public class PostStorage{
 	private static final NamedMutexCollection pollVoteLocks=new NamedMutexCollection();
 
 	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey,
-									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action) throws SQLException{
+									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action, EnumSet<Post.Flag> flags) throws SQLException{
 		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
 
@@ -83,6 +83,7 @@ public class PostStorage{
 					.value("source_format", sourceFormat)
 					.value("repost_of", repostOf!=0 ? repostOf : null)
 					.value("action", action)
+					.value("flags", Utils.serializeEnumSet(flags))
 					.executeAndGetID();
 
 			if(replyKey!=null && !replyKey.isEmpty()){
@@ -317,19 +318,24 @@ public class PostStorage{
 		}
 	}
 
-	public static List<URI> getWallPostActivityPubIDs(int ownerID, boolean isGroup, int offset, int count, int[] total) throws SQLException{
+	public static PaginatedList<URI> getWallPostActivityPubIDs(int ownerID, boolean isGroup, int offset, int count, boolean includeAll) throws SQLException{
 		String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
+		String extraWhere=includeAll ? "" : " AND owner_user_id=author_id";
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			total[0]=new SQLQueryBuilder(conn)
+
+			int total=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.count()
-					.where(ownerField+"=? AND reply_key IS NULL", ownerID)
+					.where(ownerField+"=? AND reply_key IS NULL"+extraWhere, ownerID)
 					.executeAndGetInt();
 
-			return new SQLQueryBuilder(conn)
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<URI> ids=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.columns("id", "ap_id")
-					.where(ownerField+"=? AND reply_key IS NULL", ownerID)
+					.where(ownerField+"=? AND reply_key IS NULL"+extraWhere, ownerID)
 					.orderBy("id ASC")
 					.limit(count, offset)
 					.executeAsStream(res->{
@@ -341,6 +347,40 @@ public class PostStorage{
 						}
 					})
 					.toList();
+			return new PaginatedList<>(ids, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<URI> getWallCommentActivityPubIDs(int ownerID, boolean isGroup, int offset, int count, boolean includeAll) throws SQLException{
+		String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
+		String extraWhere=includeAll ? "" : " AND top_parent_is_wall_to_wall=0";
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where(ownerField+"=? AND reply_key IS NOT NULL"+extraWhere, ownerID)
+					.executeAndGetInt();
+
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<URI> ids=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.columns("id", "ap_id")
+					.where(ownerField+"=? AND reply_key IS NOT NULL"+extraWhere, ownerID)
+					.orderBy("id ASC")
+					.limit(count, offset)
+					.executeAsStream(res->{
+						String apID=res.getString(2);
+						if(StringUtils.isNotEmpty(apID)){
+							return URI.create(apID);
+						}else{
+							return UriBuilder.local().path("posts", String.valueOf(res.getInt(1))).build();
+						}
+					})
+					.toList();
+			return new PaginatedList<>(ids, total, offset, count);
 		}
 	}
 
@@ -1061,9 +1101,11 @@ public class PostStorage{
 		}
 	}
 
-	public static Map<URI, Integer> getPostLocalIDsByActivityPubIDs(Collection<URI> ids, int ownerUserID, int ownerGroupID) throws SQLException{
+	public static Map<URI, Integer> getPostLocalIDsByActivityPubIDs(Collection<URI> ids, int ownerUserID, int ownerGroupID, boolean comments) throws SQLException{
 		if(ids.isEmpty())
 			return Map.of();
+
+		String replyKeyCondition=comments ? "reply_key IS NOT NULL" : "reply_key IS NULL";
 
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 
@@ -1085,7 +1127,7 @@ public class PostStorage{
 						.selectFrom("wall_posts")
 						.columns("id", "ap_id")
 						.whereIn("ap_id", remoteIDs)
-						.andWhere("reply_key IS NULL");
+						.andWhere(replyKeyCondition);
 
 				if(ownerUserID>0 && ownerGroupID==0){
 					builder.andWhere("owner_user_id=?", ownerUserID).andWhere("owner_group_id IS NULL");
@@ -1101,7 +1143,7 @@ public class PostStorage{
 						.selectFrom("wall_posts")
 						.columns("id")
 						.whereIn("id", localIDs)
-						.andWhere("reply_key IS NULL");
+						.andWhere(replyKeyCondition);
 
 				if(ownerUserID>0 && ownerGroupID==0){
 					builder.andWhere("owner_user_id=?", ownerUserID).andWhere("owner_group_id IS NULL");

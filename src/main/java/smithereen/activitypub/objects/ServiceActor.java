@@ -44,6 +44,11 @@ public class ServiceActor extends Actor{
 	}
 
 	@Override
+	public URI getWallCommentsURL(){
+		return null;
+	}
+
+	@Override
 	public URI getPhotoAlbumsURL(){
 		return null;
 	}

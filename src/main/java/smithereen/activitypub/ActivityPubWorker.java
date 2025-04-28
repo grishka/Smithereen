@@ -311,7 +311,7 @@ public class ActivityPubWorker{
 				add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(oaa.owner().getFollowersURL()), new LinkOrObject(oaa.author().activityPubID));
 				add.cc=note.cc;
 				ActivityPubCollection target=new ActivityPubCollection(false);
-				target.activityPubID=oaa.owner().getWallURL();
+				target.activityPubID=post.getReplyLevel()>0 ? oaa.owner().getWallCommentsURL() : oaa.owner().getWallURL();
 				target.attributedTo=oaa.owner().activityPubID;
 				add.target=new LinkOrObject(target);
 

@@ -540,6 +540,7 @@ public class SmithereenApplication{
 			getActivityPubCollection("/followers", 100, ActivityPubRoutes::userFollowers);
 			getActivityPubCollection("/following", 100, ActivityPubRoutes::userFollowing);
 			getActivityPubCollection("/wall", 100, ActivityPubRoutes::userWall);
+			getActivityPubCollection("/wallComments", 50, ActivityPubRoutes::userWallComments);
 			getActivityPubCollection("/friends", 100, ActivityPubRoutes::userFriends);
 			getActivityPubCollection("/groups", 100, ActivityPubRoutes::userGroups);
 			post("/collectionQuery", ActivityPubRoutes::userCollectionQuery);
@@ -630,6 +631,7 @@ public class SmithereenApplication{
 			getActivityPubCollection("/members", 50, ActivityPubRoutes::groupMembers);
 			getActivityPubCollection("/tentativeMembers", 50, ActivityPubRoutes::groupTentativeMembers);
 			getActivityPubCollection("/wall", 50, ActivityPubRoutes::groupWall);
+			getActivityPubCollection("/wallComments", 50, ActivityPubRoutes::groupWallComments);
 			get("/actorToken", ActivityPubRoutes::groupActorToken);
 			post("/collectionQuery", ActivityPubRoutes::groupCollectionQuery);
 

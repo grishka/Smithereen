@@ -32,7 +32,7 @@ import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
 
-	private URI wall, friends, groups, photoAlbums, taggedPhotos;
+	private URI wall, friends, groups, photoAlbums, taggedPhotos, wallComments;
 	public URI movedToURL;
 	public boolean isServiceActor;
 
@@ -63,6 +63,7 @@ public class ForeignUser extends User implements ForeignActor{
 		followers=tryParseURL(ep.followers);
 		following=tryParseURL(ep.following);
 		wall=tryParseURL(ep.wall);
+		wallComments=tryParseURL(ep.wallComments);
 		friends=tryParseURL(ep.friends);
 		groups=tryParseURL(ep.groups);
 		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
@@ -166,6 +167,10 @@ public class ForeignUser extends User implements ForeignActor{
 		if(wall==null)
 			wall=tryParseURL(optString(obj, "sm:wall"));
 		ensureHostMatchesID(wall, "wall");
+		if(wall!=null){
+			wallComments=tryParseURL(optString(obj, "wallComments"));
+			ensureHostMatchesID(wallComments, "wallComments");
+		}
 		friends=tryParseURL(optString(obj, "friends"));
 		ensureHostMatchesID(friends, "friends");
 		groups=tryParseURL(optString(obj, "groups"));
@@ -372,6 +377,11 @@ public class ForeignUser extends User implements ForeignActor{
 	@Override
 	public URI getWallURL(){
 		return wall;
+	}
+
+	@Override
+	public URI getWallCommentsURL(){
+		return wallComments;
 	}
 
 	@Override

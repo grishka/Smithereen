@@ -120,6 +120,7 @@ import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.RemoteObjectFetchException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
@@ -472,27 +473,54 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinks(Collections.emptyList(), 0);
 	}
 
-	public static ActivityPubCollectionPageResponse userWall(Request req, Response resp, int offset, int count) throws SQLException{
-		int id=parseIntOrDefault(req.params(":id"), 0);
-		User user=UserStorage.getById(id);
-		if(user==null || user instanceof ForeignUser)
-			throw new ObjectNotFoundException();
-		return actorWall(req, resp, offset, count, user);
+	public static ActivityPubCollectionPageResponse userWall(Request req, Response resp, int offset, int count){
+		return actorWall(req, resp, offset, count, context(req).getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id"))));
 	}
 
-	public static ActivityPubCollectionPageResponse groupWall(Request req, Response resp, int offset, int count) throws SQLException{
-		int id=parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getById(id);
-		if(group==null || group instanceof ForeignGroup)
-			throw new ObjectNotFoundException();
-		context(req).getPrivacyController().enforceGroupContentAccess(req, group);
+	public static ActivityPubCollectionPageResponse groupWall(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
+		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
 		return actorWall(req, resp, offset, count, group);
 	}
 
-	private static ActivityPubCollectionPageResponse actorWall(Request req, Response resp, int offset, int count, Actor actor) throws SQLException{
-		int[] total={0};
-		List<URI> posts=PostStorage.getWallPostActivityPubIDs(actor.getLocalID(), actor instanceof Group, offset, count, total);
-		return ActivityPubCollectionPageResponse.forLinks(posts, total[0]);
+	private static ActivityPubCollectionPageResponse actorWall(Request req, Response resp, int offset, int count, Actor actor){
+		boolean canSeeAll;
+		if(actor instanceof User user)
+			canSeeAll=context(req).getPrivacyController().checkUserPrivacyForRemoteServer(ActivityPub.getRequesterDomain(req), user, user.getPrivacySetting(UserPrivacySettingKey.WALL_OTHERS_POSTS));
+		else
+			canSeeAll=true;
+		try{
+			PaginatedList<URI> posts=PostStorage.getWallPostActivityPubIDs(actor.getLocalID(), actor instanceof Group, offset, count, canSeeAll);
+			return ActivityPubCollectionPageResponse.forLinks(posts);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public static ActivityPubCollectionPageResponse userWallComments(Request req, Response resp, int offset, int count){
+		return actorWallComments(req, resp, offset, count, context(req).getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id"))));
+	}
+
+	public static ActivityPubCollectionPageResponse groupWallComments(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
+		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		return actorWallComments(req, resp, offset, count, group);
+	}
+
+	private static ActivityPubCollectionPageResponse actorWallComments(Request req, Response resp, int offset, int count, Actor actor){
+		boolean canSeeAll;
+		if(actor instanceof User user)
+			canSeeAll=context(req).getPrivacyController().checkUserPrivacyForRemoteServer(ActivityPub.getRequesterDomain(req), user, user.getPrivacySetting(UserPrivacySettingKey.WALL_OTHERS_POSTS));
+		else
+			canSeeAll=true;
+		try{
+			PaginatedList<URI> posts=PostStorage.getWallCommentActivityPubIDs(actor.getLocalID(), actor instanceof Group, offset, count, canSeeAll);
+			return ActivityPubCollectionPageResponse.forLinks(posts);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	public static ActivityPubCollectionPageResponse userFriends(Request req, Response resp, int offset, int count) throws SQLException{
@@ -1058,7 +1086,8 @@ public class ActivityPubRoutes{
 		if(path.startsWith(actorPrefix)){
 			String collectionPath=path.substring(actorPrefix.length());
 			filteredItems=switch(collectionPath){
-				case "/wall" -> queryWallCollection(req, owner, items);
+				case "/wall" -> queryWallCollection(req, owner, items, false);
+				case "/wallComments" -> queryWallCollection(req, owner, items, true);
 				case "/friends" -> {
 					if(owner instanceof User u){
 						yield queryUserFriendsCollection(req, u, items);
@@ -1134,8 +1163,8 @@ public class ActivityPubRoutes{
 		return res;
 	}
 
-	private static Collection<URI> queryWallCollection(Request req, Actor owner, List<URI> query){
-		return context(req).getWallController().getPostLocalIDsByActivityPubIDs(query, owner).keySet();
+	private static Collection<URI> queryWallCollection(Request req, Actor owner, List<URI> query, boolean comments){
+		return context(req).getWallController().getPostLocalIDsByActivityPubIDs(query, owner, comments).keySet();
 	}
 
 	private static Collection<URI> queryUserFriendsCollection(Request req, User owner, List<URI> query){

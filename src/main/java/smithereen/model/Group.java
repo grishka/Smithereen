@@ -58,6 +58,11 @@ public class Group extends Actor{
 	}
 
 	@Override
+	public URI getWallCommentsURL(){
+		return Config.localURI("/groups/"+id+"/wallComments");
+	}
+
+	@Override
 	public URI getPhotoAlbumsURL(){
 		return Config.localURI("/groups/"+id+"/albums");
 	}

@@ -1020,8 +1020,9 @@ CREATE TABLE `wall_posts` (
   `source` text,
   `source_format` tinyint unsigned DEFAULT NULL,
   `privacy` tinyint unsigned NOT NULL DEFAULT '0',
-  `flags` bigint unsigned NOT NULL DEFAULT '0',
+  `flags` bit(64) NOT NULL DEFAULT b'0',
   `action` tinyint unsigned DEFAULT NULL,
+  `top_parent_is_wall_to_wall` tinyint(1) GENERATED ALWAYS AS (((`flags` & 2) = 2)) VIRTUAL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -1030,6 +1031,7 @@ CREATE TABLE `wall_posts` (
   KEY `reply_key` (`reply_key`),
   KEY `owner_group_id` (`owner_group_id`),
   KEY `poll_id` (`poll_id`),
+  KEY `top_parent_is_wall_to_wall` (`top_parent_is_wall_to_wall`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -1054,4 +1056,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-04-03 19:48:06
+-- Dump completed on 2025-04-27  4:28:05

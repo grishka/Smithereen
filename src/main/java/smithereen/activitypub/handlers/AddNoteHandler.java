@@ -30,7 +30,7 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuesti
 		else
 			throw new BadRequestException("Add.target is required (either a collection ID or abbreviated collection object)");
 
-		if(!Objects.equals(actor.getWallURL(), targetCollectionID)){
+		if(!Objects.equals(actor.getWallURL(), targetCollectionID) && !Objects.equals(actor.getWallCommentsURL(), targetCollectionID)){
 			if(post.inReplyTo!=null){
 				// Comments always have inReplyTo
 				if(Config.isLocal(post.activityPubID))

@@ -647,6 +647,11 @@ public class User extends Actor{
 		return Config.localURI("/users/"+id+"/wall");
 	}
 
+	@Override
+	public URI getWallCommentsURL(){
+		return Config.localURI("/users/"+id+"/wallComments");
+	}
+
 	public URI getFriendsURL(){
 		return Config.localURI("/users/"+id+"/friends");
 	}

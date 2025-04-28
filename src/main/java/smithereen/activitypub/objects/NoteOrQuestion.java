@@ -75,6 +75,8 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			Post parent=context.getWallController().getPostOrThrow(inReplyTo);
 			post.replyKey=parent.getReplyKeyForReplies();
 			post.ownerID=parent.ownerID;
+			if(parent.flags.contains(Post.Flag.TOP_IS_WALL_TO_WALL) || (parent.replyKey.isEmpty() && parent.ownerID!=parent.authorID))
+				post.flags.add(Post.Flag.TOP_IS_WALL_TO_WALL);
 		}else if(target!=null && target.attributedTo!=null){
 			Actor owner=context.getObjectLinkResolver().resolve(target.attributedTo, Actor.class, true, true, false);
 			if(!Objects.equals(target.activityPubID, owner.getWallURL()))
@@ -537,7 +539,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			return true;
 
 		Actor owner=context.getObjectLinkResolver().resolveLocally(target.attributedTo, Actor.class);
-		return Objects.equals(owner.getWallURL(), target.activityPubID); // TODO change this when I make wall comments go into their own collection
+		return Objects.equals(owner.getWallURL(), target.activityPubID) || Objects.equals(owner.getWallCommentsURL(), target.activityPubID);
 	}
 
 	@Override

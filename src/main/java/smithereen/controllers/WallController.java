@@ -215,6 +215,8 @@ public class WallController{
 			if(text.isEmpty() && StringUtils.isEmpty(attachments) && pollID==0 && repost==null)
 				throw new BadRequestException("Empty post");
 
+			EnumSet<Post.Flag> flags=EnumSet.noneOf(Post.Flag.class);
+
 			int ownerUserID=wallOwner instanceof User u ? u.id : 0;
 			int ownerGroupID=wallOwner instanceof Group g ? g.id : 0;
 			boolean isTopLevelPostOwn=true;
@@ -227,6 +229,7 @@ public class WallController{
 				}else{
 					topLevel=inReplyTo;
 				}
+				context.getPrivacyController().enforcePostPrivacy(author, topLevel);
 
 				OwnerAndAuthor topLevelOwnership=getContentAuthorAndOwner(topLevel);
 				Actor topLevelOwner=topLevelOwnership.owner();
@@ -248,13 +251,17 @@ public class WallController{
 				if(inReplyTo!=topLevel){
 					User parentAuthor=context.getUsersController().getUserOrThrow(inReplyTo.authorID);
 					context.getFriendsController().incrementHintsRank(author, parentAuthor, 3);
+					context.getPrivacyController().enforcePostPrivacy(author, inReplyTo);
 				}
 				if(topLevelAuthor.id!=inReplyTo.authorID)
 					context.getFriendsController().incrementHintsRank(author, topLevelAuthor, 5);
+
+				if(topLevel.ownerID!=topLevel.authorID)
+					flags.add(Post.Flag.TOP_IS_WALL_TO_WALL);
 			}else{
 				replyKey=null;
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action, flags);
 			if(ownerUserID==userID && replyKey==null){
 				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
 			}else if(wallOwner instanceof Group g && replyKey==null){
@@ -667,9 +674,9 @@ public class WallController{
 		}
 	}
 
-	public Map<URI, Integer> getPostLocalIDsByActivityPubIDs(@NotNull Collection<URI> ids, Actor owner){
+	public Map<URI, Integer> getPostLocalIDsByActivityPubIDs(@NotNull Collection<URI> ids, Actor owner, boolean comments){
 		try{
-			return PostStorage.getPostLocalIDsByActivityPubIDs(ids, owner instanceof User u ? u.id : 0, owner instanceof Group g ? g.id : 0);
+			return PostStorage.getPostLocalIDsByActivityPubIDs(ids, owner instanceof User u ? u.id : 0, owner instanceof Group g ? g.id : 0, comments);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

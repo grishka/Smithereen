@@ -84,6 +84,7 @@ public class JLDProcessor{
 		lc.add("cropRegion", idAndContainerObject("sm:cropRegion", "@list"));
 		lc.addProperty("maidenName", "sm:maidenName");
 		lc.add("wall", idAndTypeObject("sm:wall", "@id"));
+		lc.add("wallComments", idAndTypeObject("sm:wallComments", "@id"));
 		lc.add("friends", idAndTypeObject("sm:friends", "@id"));
 		lc.add("groups", idAndTypeObject("sm:groups", "@id"));
 		lc.addProperty("nonAnonymous", "sm:nonAnonymous");

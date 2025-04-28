@@ -166,6 +166,11 @@ public abstract class Actor extends ActivityPubObject{
 			obj.addProperty("wall", wallUrl.toString());
 			serializerContext.addType("wall", "sm:wall", "@id");
 		}
+		URI wallCommentsUrl=getWallCommentsURL();
+		if(wallCommentsUrl!=null){
+			obj.addProperty("wallComments", wallCommentsUrl.toString());
+			serializerContext.addType("wallComments", "sm:wallComments", "@id");
+		}
 		serializerContext.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
 		serializerContext.addAlias("sm", JLD.SMITHEREEN);
 		serializerContext.addAlias("toot", JLD.MASTODON);
@@ -250,6 +255,7 @@ public abstract class Actor extends ActivityPubObject{
 
 	public abstract int getLocalID();
 	public abstract URI getWallURL();
+	public abstract URI getWallCommentsURL();
 	public abstract URI getPhotoAlbumsURL();
 	public abstract String getTypeAndIdForURL();
 	public abstract String getName();
@@ -360,6 +366,9 @@ public abstract class Actor extends ActivityPubObject{
 		URI wall=getWallURL();
 		if(wall!=null)
 			ep.wall=wall.toString();
+		URI wallComments=getWallCommentsURL();
+		if(wallComments!=null)
+			ep.wallComments=wallComments.toString();
 		if(collectionQueryEndpoint!=null)
 			ep.collectionQuery=collectionQueryEndpoint.toString();
 		URI photoAlbums=getPhotoAlbumsURL();
@@ -402,5 +411,7 @@ public abstract class Actor extends ActivityPubObject{
 		public String photoAlbums;
 		@SerializedName("tp")
 		public String taggedPhotos;
+		@SerializedName("wc")
+		public String wallComments;
 	}
 }
