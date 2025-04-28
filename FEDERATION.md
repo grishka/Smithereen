@@ -43,6 +43,9 @@ Example object:
 }
 ```
 After someone posts on a wall, the wall owner sends `Add{Note}` (with a link to the new post) to their followers to signal that a new post was added to the `sm:wall` collection.
+
+Comments on wall posts work similarly using the `sm:wallComments` collection.
+
 #### A note about comments
 Since this is modelled after VK, comments aren't supposed to appear in newsfeeds by themselves; they only exist in the context of a top-level post. Thus, comments aren't addressed to anyone's followers. They're addressed to `as:Public`, the top-level post author, the parent comment author, and mentioned users, if any.
 ### Friends and Followers
@@ -184,10 +187,13 @@ Group staff can cancel a pending invitation by sending `Undo{Invite{Group}}` to 
 All Smithereen actors have `sm:collectionSimpleQuery` endpoint under `endpoints`. This is useful for when, for example, you've received a wall post, but you don't know whether the owner of the wall accepted that post. It supports these collections:
 
 * `sm:wall`
+* `sm:wallComments`
 * `sm:friends` (for user actors)
 * `sm:groups` (for user actors)
 * `sm:members` (for group actors)
 * `sm:tentativeMembers` (for event actors)
+* Photo albums owned by groups
+* `sm:comments` in photo albums
 
 The collection query endpoint accepts POST requests with form-data fields: `collection` for the collection ID (like `https://friends.grishka.me/users/1/wall`) and one or more `item` with the object IDs that you wish to test for presence in the collection. The result is a `sm:CollectionQueryResult` (which extends `CollectionPage`) containing only the object IDs that are actually present in the collection.
 
