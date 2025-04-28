@@ -19,6 +19,7 @@
 {% endif %}
 <div class="postLayerPost post" id="postInner{{ post.post.id }}_{{ randomID }}" data-rid="{{ randomID }}">
 {% include "wall_post_inner" with {'post': post, 'repostDepth': 0, 'repostParent': post, 'standalone': true, 'randomID': randomID} %}
+{% set realPost=post.post %}{# because included template overwrote it #}
 </div>
 <div class="postLayerActions" id="postFloatingActions{{ post.post.id }}_{{ randomID }}">
 	<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
