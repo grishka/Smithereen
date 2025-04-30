@@ -809,7 +809,9 @@ public class ActivityPubRoutes{
 		try{
 			httpSigOwner=ActivityPub.verifyHttpSignature(req, actor);
 		}catch(Exception x){
-			LOG.debug("Exception while verifying HTTP signature", x);
+			LOG.warn("Exception while verifying HTTP signature on {} from {}: {}", getActivityType(activity), actor.activityPubID, (Object)x);
+			if(Config.DEBUG)
+				LOG.debug("", x);
 			throw new UserActionNotAllowedException(x);
 		}
 
@@ -830,11 +832,15 @@ public class ActivityPubRoutes{
 				LOG.debug("verified LD signature by {}", userID);
 				hasValidLDSignature=true;
 			}catch(Exception x){
-				LOG.debug("Exception while verifying LD-signature", x);
+				LOG.warn("Exception while verifying LD-signature: {}", (Object)x);
+				LOG.warn("Activity: {}", rawActivity);
+				if(Config.DEBUG)
+					LOG.debug("", x);
 			}
 		}
 		if(!hasValidLDSignature){
 			if(!actor.equals(httpSigOwner)){
+				LOG.warn("No valid signature. HTTP {}, actor {}", httpSigOwner.activityPubID, actor.activityPubID);
 				throw new BadRequestException("In the absence of a valid LD-signature, HTTP signature must be made by the activity actor");
 			}
 			LOG.debug("verified HTTP signature by {}", httpSigOwner.activityPubID);
