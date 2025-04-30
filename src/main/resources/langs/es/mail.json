@@ -34,5 +34,6 @@
   "mail_in_reply_to_own_comment": "tu comentario",
   "profile_write_message": "Enviar un mensaje",
   "messages_title": "Mensajes",
-  "mail_conversation_history": "Historial de conversación"
+  "mail_conversation_history": "Historial de conversación",
+  "mail_privacy_forbidden": "No puedes escribir a este usuario debido a sus ajustes de privacidad"
 }
