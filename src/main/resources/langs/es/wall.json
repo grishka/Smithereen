@@ -68,5 +68,9 @@
   "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> en una publicación eliminada",
   "commenting_on_repost_hint": "Tu comentario aparecerá en la publicación original de {name}.",
   "reposts_empty": "Nadie compartió esta publicación.",
-  "load_older_posts": "Mostrar las publicaciones previas"
+  "load_older_posts": "Mostrar las publicaciones previas",
+  "embed_preview": "Vista previa",
+  "comment_in_reply_to_user": "respondió a <a id=\"parentComment\">{name}</a>",
+  "comment_in_reply_to_user_short": "a <a id=\"parentComment\">{name}</a>",
+  "post_action_updated_avatar": "actualizó {gender, select, male {su} female {su} other {su}} foto de perfil:"
 }
