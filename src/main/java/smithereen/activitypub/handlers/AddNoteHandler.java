@@ -31,7 +31,7 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuesti
 			throw new BadRequestException("Add.target is required (either a collection ID or abbreviated collection object)");
 
 		if(!Objects.equals(actor.getWallURL(), targetCollectionID) && !Objects.equals(actor.getWallCommentsURL(), targetCollectionID)){
-			if(post.inReplyTo!=null){
+			if(post.inReplyTo!=null && post.target!=null){
 				// Comments always have inReplyTo
 				if(Config.isLocal(post.activityPubID))
 					return;
@@ -52,7 +52,8 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuesti
 				return;
 			}
 
-			throw new BadRequestException("Add.target doesn't match actor's wall collection or any of comments collections");
+			LOG.warn("Ignoring Add{Note} sent by {} because target collection {} is unknown or unsupported", actor.activityPubID, targetCollectionID);
+			return;
 		}
 //		if(!Objects.equals(post.owner.activityPubID, actor.activityPubID))
 //			throw new BadRequestException("Post's target collection doesn't match actor's wall collection");
