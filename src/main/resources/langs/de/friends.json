@@ -47,7 +47,6 @@
   "birthday_descr_past": "Wurde {age, plural, one {# Jahr} other {# Jahre}}",
   "birthday_descr_today": "Wird {age, plural, one {# Jahr} other {# Jahre}}",
   "birthday_descr_future": "Wird {age, plural, one {# Jahr} other {# Jahre}}",
-  "friend_req_accepted": "Freundschaftsanfrage akzeptiert",
   "friend_req_declined": "Freundschaftsanfrage abgelehnt",
   "select_friends_title": "Wähle Freunde aus",
   "friends_search_placeholder": "Beginne den Namen eines Freundes zu tippen",
