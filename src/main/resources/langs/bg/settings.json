@@ -151,7 +151,6 @@
   "settings_activity_web": "{browserName} {browserVersion} на {osName}",
   "unknown_browser": "Непознат браузър",
   "settings_deactivate_confirm": "Сигурни ли сте, че искате да изтриете своя акаунт?\n\nВашият акаунт ще бъде деактивиран и ще бъде изтрит завинаги след <b>{timeInterval}</b>. Ако размислите, ще можете да възстановите Вашия акаунт без загуба на данни през деактивационния период.",
-  "settings_deactivate_account": "Вие можете да <a id=\"deactivate\">изтриете своя акаунт</a>",
   "settings_reactivate_confirm": "Въведете паролата си, за да възстановите своя акаунт и за да прекратите неговото изтриване.",
   "settings_reactivate_title": "Възстанови акаунт",
   "err_reg_email_domain_not_allowed": "Регистрациите с имейл адреси от този доставчик не са резрешени на този сървър",
