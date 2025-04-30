@@ -1,6 +1,20 @@
 {
+  "bookmarks_title": "Marcadores",
+  "add_bookmark": "Añadir marcador",
+  "remove_bookmark": "Eliminar marcador",
   "bookmarks_people": "Personas",
   "bookmarks_communities": "Comunidades",
   "bookmarks_posts": "Publicaciones",
-  "bookmarks_photos": "Fotos"
+  "bookmarks_people_empty": "Las personas que añadas a marcadores aparecerán aquí.",
+  "bookmarks_communities_empty": "Los grupos y eventos que añadas a marcadores aparecerán aquí.",
+  "bookmarks_posts_empty": "Las publicaciones que te han gustado aparecerán aquí.",
+  "bookmarks_X_liked_posts": "Te han gustado {count, plural, one {# publicación} other {# publicaciones}}",
+  "bookmarks_photos": "Fotos",
+  "bookmarks_photos_empty": "Las fotos que te han gustado aparecerán aquí.",
+  "bookmarks_X_liked_photos": "Te han gustado {count, plural, one {# foto} other {# fotos}}",
+  "user_bookmark_added": "{name} fue añadido a tus <a id=\"bookmarks\">marcadores</a>.",
+  "user_bookmark_removed": "{name} fue eliminado de tus <a id=\"bookmarks\">marcadores</a>.",
+  "group_bookmark_added": "El grupo fue añadido a tus <a id=\"bookmarks\">marcadores</a>.",
+  "group_bookmark_removed": "El grupo fue eliminado de tus <a id=\"bookmarks\">marcadores</a>.",
+  "event_bookmark_added": "El evento fue añadido a tus <a id=\"bookmarks\">marcadores</a>."
 }
