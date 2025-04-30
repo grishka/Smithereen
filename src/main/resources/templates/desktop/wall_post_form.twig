@@ -2,15 +2,6 @@
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
 <div class="wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing' : '' }}{{ allowEmpty ? ' data-allow-empty' : '' }}>
 	{% block wallPostForm %}
-	{% if not wallOwner.hasWall and replyTo is null %}
-		<div class="wallPostFormError">
-		{% if isGroup %}
-			{{ L('server_of_group_no_wall') }}
-		{% else %}
-			{{ L('server_of_user_X_no_wall', {'name': wallOwner.firstAndGender}) }}
-		{% endif %}
-		</div>
-	{% else %}
 	<form action="{{ action | default(isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost") }}" id="wallPostFormForm_{{ id }}" method="post">
 		{% if showReplyBar %}
 		<div class="commentReplying" id="commentReplying_{{ id }}" style="display: none">
@@ -102,6 +93,5 @@
 		</noscript>
 	</form>
 	<div id="dropOverlay_{{id}}" class="dropOverlay">{{L('drop_files_here')}}</div>
-	{% endif %}
 	{% endblock %}
 </div>
