@@ -16,6 +16,5 @@
   "user_bookmark_removed": "{name} {gender, select, female {удалена} other {удалён}} из ваших <a id=\"bookmarks\">закладок</a>.",
   "group_bookmark_added": "Группа добавлена в ваши <a id=\"bookmarks\">закладки</a>.",
   "group_bookmark_removed": "Группа удалена из ваших <a id=\"bookmarks\">закладок</a>.",
-  "event_bookmark_added": "Встреча добавлена в ваши <a id=\"bookmarks\">закладки</a>.",
-  "event_bookmark_removed": "Встреча удалена из ваших <a id=\"bookmarks\">закладок</a>."
+  "event_bookmark_added": "Встреча добавлена в ваши <a id=\"bookmarks\">закладки</a>."
 }
