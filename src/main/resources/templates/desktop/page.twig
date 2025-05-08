@@ -52,7 +52,7 @@
 			<div id="headerNav">
 				{% if currentUser is not null %}
 				{% if userPermissions.canInviteNewUsers %}<a href="/settings/invites" class="nav">{{ L('invite_users') }}</a>{% endif %}
-				<a href="/account/logout?csrf={{ csrf }}" class="nav">{{ L("log_out") }}</a>
+				<a href="/account/logout?csrf={{ csrf }}" class="nav" data-no-al="1">{{ L("log_out") }}</a>
 				{% endif %}
 			</div>
 		</div>

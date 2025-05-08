@@ -101,7 +101,7 @@ public class SessionRoutes{
 			resp.removeCookie("psid");
 			info.account=null;
 			info.csrfToken=null;
-			resp.redirect("/");
+			resp.redirect(Config.localURI("/").toString());
 			return "";
 		}
 		return null;
