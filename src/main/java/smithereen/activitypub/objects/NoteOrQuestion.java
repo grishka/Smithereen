@@ -56,7 +56,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public LinkOrObject replies;
 	public Boolean sensitive;
 	public ActivityPubCollection target;
-	public URI likes;
+	public LinkOrObject likes;
 	public URI quoteRepostID;
 	public String action;
 	public boolean canBeReposted;
@@ -314,7 +314,16 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		noq.cc=cc.stream().map(LinkOrObject::new).toList();
 
 		noq.attachment=resolveLocalPhotoIDsInAttachments(context, post.attachments);
-		noq.likes=new UriBuilder(noq.activityPubID).appendPath("likes").build();
+		if(post.isLocal()){
+			ActivityPubCollection likes=new ActivityPubCollection(false);
+			likes.activityPubID=Config.localURI("/posts/"+post.id+"/likes");
+			CollectionPage likesPage=new CollectionPage(false);
+			likesPage.next=Config.localURI("/posts/"+post.id+"/likes?page=1");
+			likesPage.partOf=likes.activityPubID;
+			likesPage.items=Collections.emptyList();
+			likes.first=new LinkOrObject(likesPage);
+			noq.likes=new LinkOrObject(likes);
+		}
 
 		noq.canBeReposted=post.isLocal() && post.privacy==Post.Privacy.PUBLIC && (!post.replyKey.isEmpty() || post.ownerID==post.authorID);
 
@@ -453,7 +462,16 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			}
 		}
 		n.attachment=resolveLocalPhotoIDsInAttachments(context, comment.attachments);
-		n.likes=new UriBuilder(n.activityPubID).appendPath("likes").build();
+		if(comment.isLocal()){
+			ActivityPubCollection likes=new ActivityPubCollection(false);
+			likes.activityPubID=new UriBuilder(comment.getActivityPubID()).appendPath("likes").build();
+			CollectionPage likesPage=new CollectionPage(false);
+			likesPage.next=new UriBuilder(likes.activityPubID).queryParam("page", "1").build();
+			likesPage.partOf=likes.activityPubID;
+			likesPage.items=Collections.emptyList();
+			likes.first=new LinkOrObject(likesPage);
+			n.likes=new LinkOrObject(likes);
+		}
 
 		return n;
 	}
@@ -595,7 +613,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		if(target!=null)
 			obj.add("target", target.asActivityPubObject(new JsonObject(), serializerContext));
 		if(likes!=null)
-			obj.addProperty("likes", likes.toString());
+			obj.add("likes", likes.serialize(serializerContext));
 		if(quoteRepostID!=null){
 			serializerContext.addType("_misskey_quote", JLD.MISSKEY+"_misskey_quote", "@id");
 			obj.addProperty("_misskey_quote", quoteRepostID.toString());
