@@ -9,8 +9,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import smithereen.ApplicationContext;
+import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.InternalServerErrorException;
@@ -37,12 +40,15 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserNotifications;
+import smithereen.model.UserPresence;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.notifications.EmailNotificationFrequency;
+import smithereen.model.notifications.EmailNotificationType;
 import smithereen.model.notifications.GroupedNotification;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.NotificationWrapper;
@@ -51,6 +57,7 @@ import smithereen.model.photos.Photo;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.text.TextProcessor;
+import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
@@ -265,6 +272,46 @@ public class NotificationsController{
 	}
 
 	public void sendRealtimeNotifications(User user, String id, RealtimeNotification.Type type, Object object, OwnedContentObject relatedObject, Actor actor){
+		Account account=context.getUsersController().getAccountForUser(user);
+
+		Instant dayAgo=Instant.now().minus(24, ChronoUnit.HOURS);
+		if((account.prefs.emailNotificationFrequency==EmailNotificationFrequency.IMMEDIATE
+				|| (account.prefs.emailNotificationFrequency==EmailNotificationFrequency.DAILY && (account.prefs.lastEmailNotification==null || account.prefs.lastEmailNotification.isBefore(dayAgo))))
+				&& !account.prefs.emailNotificationTypes.isEmpty()){
+			UserPresence presence=context.getUsersController().getUserPresence(user);
+			if(presence==null || (!presence.isOnline() && presence.lastUpdated().isBefore(dayAgo))){
+				EmailNotificationType emailType=switch(type){
+					case FRIEND_REQUEST -> EmailNotificationType.FRIEND_REQUEST;
+					case MAIL_MESSAGE -> EmailNotificationType.MAIL;
+					case PHOTO_TAG -> EmailNotificationType.PHOTO_TAG;
+					case WALL_POST -> EmailNotificationType.WALL_POST;
+					case REPLY -> {
+						PostLikeObject plo=(PostLikeObject) object;
+						if(plo.getReplyLevel()>1){
+							yield EmailNotificationType.COMMENT_REPLY;
+						}else if(plo instanceof Post){
+							yield EmailNotificationType.WALL_COMMENT;
+						}else if(plo instanceof Comment comment){
+							yield switch(comment.parentObjectID.type()){
+								case PHOTO -> EmailNotificationType.PHOTO_COMMENT;
+							};
+						}else{
+							throw new IllegalStateException("Unreachable");
+						}
+					}
+					case MENTION -> EmailNotificationType.MENTION;
+					case GROUP_INVITE, EVENT_INVITE -> EmailNotificationType.GROUP_INVITE;
+					default -> null;
+				};
+				if(emailType!=null && account.prefs.emailNotificationTypes.contains(emailType)){
+					sendEmailNotification(account, emailType, object, relatedObject, actor);
+				}
+			}
+		}
+
+		if(account.prefs.notifierTypes!=null && !account.prefs.notifierTypes.contains(type.getSettingType()))
+			return;
+
 		List<WebSocketConnection> connections=null;
 		synchronized(wsMapsLock){
 			List<WebSocketConnection> actualConnections=wsConnectionsByUserID.get(user.id);
@@ -273,10 +320,6 @@ public class NotificationsController{
 		}
 
 		if(connections==null)
-			return;
-
-		Account account=connections.getFirst().session.account;
-		if(account.prefs.notifierTypes!=null && !account.prefs.notifierTypes.contains(type.getSettingType()))
 			return;
 
 		RealtimeNotification.ObjectType objType=object instanceof OwnedContentObject owned ? getRealtimeNotificationObjectTypeForObject(owned) : null;
@@ -578,6 +621,22 @@ public class NotificationsController{
 	public void recountCounters(User user){
 		NotificationsStorage.removeCountersFromCache(user.id);
 		sendRealtimeCountersUpdates(user);
+	}
+
+	private void sendEmailNotification(Account account, EmailNotificationType type, Object object, OwnedContentObject relatedObject, Actor actor){
+		if(!(actor instanceof User user)){
+			LOG.warn("Expected actor to be user here but got {} ({}, {}) instead", actor.getClass(), actor.getLocalID(), actor.activityPubID);
+			return;
+		}
+		BackgroundTaskRunner.getInstance().submit(()->{
+			try{
+				Mailer.getInstance().sendNotification(account, context, type, object, relatedObject, user);
+			}catch(Throwable x){
+				LOG.error("Failed to send email notification", x);
+			}
+		});
+		account.prefs.lastEmailNotification=Instant.now();
+		context.getUsersController().updateUserPreferences(account);
 	}
 
 	record WebSocketConnection(SessionInfo session, Session conn, Lang lang){

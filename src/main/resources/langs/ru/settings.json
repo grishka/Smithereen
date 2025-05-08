@@ -254,5 +254,12 @@
   "settings_transfer_out_no_link": "Ваша новая страница не содержит ссылку на эту. Проверьте правильность ввода адреса или имени пользователя, а также убедитесь, что вы добавили <b>{thisAccountUsername}</b> как источник переноса подписчиков в настройках учётной записи на <b>{newAccountServer}</b>.",
   "settings_transfer_remove_redirect_title": "Удаление перенаправления",
   "settings_transfer_remove_redirect": "Если вы уберёте перенаправление, вы снова сможете пользоваться этой страницей, но ранее перенесённые подписчики возвращены не будут. Продолжить?",
-  "privacy_value_certain_friend_lists": "Некоторые списки друзей"
+  "privacy_value_certain_friend_lists": "Некоторые списки друзей",
+  "settings_email_notifications": "Уведомления по электронной почте",
+  "settings_email_notifications_freq": "Частота оповещений",
+  "settings_email_notifications_immediate": "Всегда оповещать",
+  "settings_email_notifications_daily": "Оповещать не чаще раза в день",
+  "settings_email_notifications_off": "Никогда не оповещать",
+  "settings_notifications_wall_comments": "Комментарии на стене",
+  "settings_notifications_photo_comments": "Комментарии к фотографиям"
 }

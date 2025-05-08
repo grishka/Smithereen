@@ -62,6 +62,10 @@ public abstract class Actor extends ActivityPubObject{
 		return "/"+getFullUsername();
 	}
 
+	public String getAbsoluteProfileURL(){
+		return Config.localURI(getProfileURL()).toString();
+	}
+
 	public boolean hasAvatar(){
 		return icon!=null;
 	}

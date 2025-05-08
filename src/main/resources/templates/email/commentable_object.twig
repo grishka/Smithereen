@@ -1,0 +1,34 @@
+{# @pebvariable name="parent" type="smithereen.model.PostLikeObject" #}
+{# @pebvariable name="comment1" type="smithereen.model.PostLikeObject" #}
+{# @pebvariable name="comment2" type="smithereen.model.PostLikeObject" #}
+{% extends "page" %}
+{% macro renderComment(_context, comment) %}
+<div class="sep"></div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+	<tr>
+		<td valign="top" width="50">{% include "actor_avatar" with {'actor': _context.users[comment.authorID], 'size': 'a', 'domain': _context.domain} %}</td>
+		<td valign="top" style="padding-left: 10px">
+			<div style="padding-bottom: 5px"><b><a href="{{ _context.users[comment.authorID].absoluteProfileURL }}">{{ _context.users[comment.authorID] | name }}</a></b></div>
+			<div style="padding-bottom: 5px">
+				{% if comment.text is not empty %}<div style="margin: -1em 0">{{ comment.text | postprocessHTML }}</div>{% endif %}
+				{% include "media_attachments_post" with {'attachments': comment.processedAttachments} %}
+			</div>
+			<a class="grayText" href="{{ comment.internalURL }}">{{ LD(comment.createdAt, format='fullyAbsolute') }}</a>
+		</td>
+	</tr>
+</table>
+{% endmacro %}
+{% block content %}
+	<h1>{{ headerText }}</h1>
+	<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 560px">
+		<tr>
+			<td valign="top" width="100">{% include 'actor_avatar' with {'actor': users[parent.authorID], 'size': 'b'} %}</td>
+			<td valign="top" style="padding-left: 10px">
+				<div style="padding-bottom: 5px; font-size: 120%"><b><a href="{{ users[parent.authorID].absoluteProfileURL }}">{{ users[parent.authorID] | name }}</a></b></div>
+				{% block commentParent %}{% endblock %}
+				{% if comment1 is not null %}{{ renderComment(_context, comment1) }}{% endif %}
+				{% if comment2 is not null %}{{ renderComment(_context, comment2) }}{% endif %}
+			</td>
+		</tr>
+	</table>
+{% endblock %}

@@ -530,6 +530,13 @@ public class UserStorage{
 		}
 	}
 
+	public static FriendRequest getFriendRequest(int userID, int requesterID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("friend_requests")
+				.where("from_user_id=? AND to_user_id=?", requesterID, userID)
+				.executeAndGetSingleObject(FriendRequest::fromResultSet);
+	}
+
 	public static boolean acceptFriendRequest(int userID, int targetUserID, boolean followAccepted) throws SQLException{
 		boolean[] result={true};
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
@@ -624,6 +631,11 @@ public class UserStorage{
 				if(mutual>0){
 					b1.valueExpr("num_friends", "num_friends-1");
 					b2.valueExpr("num_friends", "num_friends-1");
+				}else{
+					new SQLQueryBuilder(conn)
+							.deleteFrom("friend_requests")
+							.where("from_user_id=? AND to_user_id=?", userID, targetUserID)
+							.executeNoResult();
 				}
 				b1.executeNoResult();
 				b2.executeNoResult();

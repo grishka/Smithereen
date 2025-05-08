@@ -7,17 +7,30 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.EdECPoint;
 import java.security.spec.EdECPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.NamedParameterSpec;
 import java.util.Arrays;
 
+import javax.crypto.AEADBadTagException;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
 public class CryptoUtils{
+	public static final SecureRandom RANDOM=new SecureRandom();
+
 	public static PublicKey decodeEcPublicKey(byte[] encoded){
 		if(encoded.length<32)
 			throw new IllegalArgumentException("Encoded key must be at least 32 bytes, got only "+encoded.length);
@@ -57,6 +70,42 @@ public class CryptoUtils{
 		try{
 			return MessageDigest.getInstance("SHA256").digest(input);
 		}catch(NoSuchAlgorithmException x){
+			throw new RuntimeException(x);
+		}
+	}
+
+	public static byte[] aesGcmEncrypt(byte[] input, byte[] key){
+		try{
+			byte[] iv=new byte[12];
+			RANDOM.nextBytes(iv);
+
+			Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");
+			GCMParameterSpec gcmSpec=new GCMParameterSpec(128, iv);
+			cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), gcmSpec);
+			byte[] enc=cipher.doFinal(input);
+			byte[] result=new byte[enc.length+iv.length];
+			System.arraycopy(iv, 0, result, 0, iv.length);
+			System.arraycopy(enc, 0, result, iv.length, enc.length);
+			return result;
+		}catch(NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
+			   | InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException e){
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static byte[] aesGcmDecrypt(byte[] input, byte[] key){
+		try{
+			if(input.length<12)
+				throw new IllegalArgumentException("input too short");
+
+			Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");
+			GCMParameterSpec gcmSpec=new GCMParameterSpec(128, input, 0, 12);
+			cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), gcmSpec);
+			return cipher.doFinal(input, 12, input.length-12);
+		}catch(AEADBadTagException x){
+			throw new IllegalArgumentException(x);
+		}catch(NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
+			   | InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException x){
 			throw new RuntimeException(x);
 		}
 	}

@@ -21,4 +21,9 @@ public class PhotoAttachment extends Attachment implements SizedAttachment{
 	public boolean isSizeKnown(){
 		return image.getOriginalDimensions()!=SizedImage.Dimensions.UNKNOWN;
 	}
+
+	@Override
+	public Type getType(){
+		return Type.PHOTO;
+	}
 }

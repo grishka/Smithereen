@@ -41,6 +41,8 @@ public class Lang{
 	public static List<Lang> list;
 
 	public static Lang get(Locale locale){
+		if(locale==null)
+			return langsByLocale.get("en");
 		Lang l=langsByLocale.get(locale.toLanguageTag());
 		if(l!=null)
 			return l;

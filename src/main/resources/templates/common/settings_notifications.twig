@@ -3,7 +3,7 @@
 {% block content %}
     {% include "settings_tabbar" with {'tab': 'notifications'} %}
 <div class="singleColumn gray narrowForms">
-{% if not mobile %}
+{% if not isMobile %}
 	<form action="/settings/updateNotifier?csrf={{ csrf }}" method="post" data-ajax>
 	{{ form.start("notifications", notificationsMessage) }}
 		<h2>{{ L('settings_web_notifications') }}</h2>
@@ -33,6 +33,44 @@
 	{{ form.end() }}
 	</form>
 {% endif %}
+	<form action="/settings/updateEmailNotifications?csrf={{ csrf }}" method="post" data-ajax>
+	{{ form.start("emailNotifications", emailNotificationsMessage) }}
+		<h2>{{ L('settings_email_notifications') }}</h2>
+		{{ form.customControlStart('notifierTypes') }}
+		{{ L('settings_email_notifications_freq') }}:
+		{{ form.customControlAfterLabel() }}
+		<div class="text">
+		{% if isMobile %}
+			<select name="frequency" onchange="var e=ge('emailNotificationTypes'); this.value=='DISABLED' ? e.hide() : e.show();">
+			{% for opt in allEmailNotificationFreqOptions %}
+				<option value="{{ opt }}"{% if opt==emailNotificationFreq %} selected{% endif %}>{{ L(opt.langKey) }}</option>
+			{% endfor %}
+			</select>
+		{% else %}
+			<input type="hidden" name="frequency" value="{{ emailNotificationFreq }}" id="emailNotificationFrequency"/>
+			<div class="popupMenuW" id="emailNotificationsW">
+				<a href="javascript:void(0)" onclick="return showSimplePopupMenu(this, ge('emailNotificationFrequency'), function(id){var e=ge('emailNotificationTypes'); id=='DISABLED' ? e.hide() : e.show();})" class="opener">{{ L(emailNotificationFreq.langKey) }}</a>
+				<div class="popupMenu compact" style="display: none">
+					<ul>
+					{% for opt in allEmailNotificationFreqOptions %}
+					    <li data-act="{{ opt }}">{{ L(opt.langKey) }}</li>
+					{% endfor %}
+					</ul>
+				</div>
+			</div>
+		{% endif %}
+			<div id="emailNotificationTypes" class="marginBefore" style="{% if emailNotificationFreq=='DISABLED' %}display: none{% endif %}">
+				{% for type in allEmailNotificationTypes %}
+				<div class="radioButtonWrap">
+					<label><input type="checkbox" name="type_{{ type }}" {{ emailNotificationTypes contains type ? 'checked' : '' }}/>{{ L(type.langKey) }}</label>
+				</div>
+				{% endfor %}
+			</div>
+		</div>
+		{{ form.customControlEnd() }}
+		{{ form.footer(L('save')) }}
+	{{ form.end() }}
+	</form>
 </div>
 {% script %}
 cur.notifierTypesMenu=new MultipleChoicePopupMenu(ge("notifierTypesMenuW"), {

@@ -156,6 +156,19 @@ class PopupMenu{
 	public addItem(item:PopupMenuItemSpec){
 		this.addItems([item]);
 	}
+
+	public setSelectedItem(act:string){
+		var current=this.actualMenu.qs(".selected");
+		if(current)
+			current.classList.remove("selected");
+		var selected=this.findItem(act);
+		if(selected)
+			selected.classList.add("selected");
+	}
+
+	public findItem(act:string):HTMLElement{
+		return this.actualMenu.qs("li[data-act="+act+"]");
+	}
 }
 
 interface MultipleChoicePopupMenuOptions{
@@ -374,5 +387,28 @@ class FriendListsPopupMenu extends PopupMenu{
 		this.saveTimeout=null;
 		ajaxPost("/users/"+this.userID+"/setFriendLists", {lists: ids.join(','), csrf: userConfig.csrf}, ()=>{}, ()=>{});
 	}
+}
+
+function showSimplePopupMenu(opener:HTMLElement, field:HTMLInputElement, onChange:{(id:string):void}=null){
+	var menu:PopupMenu;
+	if(!opener.customData){
+		opener.customData={};
+	}
+	if(!opener.customData.popupMenu){
+		menu=new PopupMenu(opener.closest("div.popupMenuW"), id=>{
+			var item=menu.findItem(id);
+			opener.innerHTML=item.innerHTML;
+			field.value=item.dataset.act;
+			if(onChange)
+				onChange(id);
+			return false;
+		}, false, true);
+		opener.customData.popupMenu=menu;
+	}else{
+		menu=opener.customData.popupMenu as PopupMenu;
+	}
+	menu.setSelectedItem(field.value);
+	menu.show();
+	return false;
 }
 

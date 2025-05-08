@@ -74,6 +74,8 @@ import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.notifications.EmailNotificationFrequency;
+import smithereen.model.notifications.EmailNotificationType;
 import smithereen.model.notifications.RealtimeNotificationSettingType;
 import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.ImageRect;
@@ -855,7 +857,12 @@ public class SettingsRoutes{
 				.with("notifierEnableSound", self.prefs.notifierEnableSound)
 				.with("notifierShowMessageText", self.prefs.notifierShowMessageText)
 				.with("allNotifierTypes", RealtimeNotificationSettingType.values())
-				.addMessage(req, "settings.notifierMessage", "notificationsMessage");
+				.with("emailNotificationTypes", self.prefs.emailNotificationTypes)
+				.with("emailNotificationFreq", self.prefs.emailNotificationFrequency)
+				.with("allEmailNotificationFreqOptions", EmailNotificationFrequency.values())
+				.with("allEmailNotificationTypes", EmailNotificationType.values())
+				.addMessage(req, "settings.notifierMessage", "notificationsMessage")
+				.addMessage(req, "settings.emailNotificationsMessage", "emailNotificationsMessage");
 		return model;
 	}
 
@@ -881,6 +888,62 @@ public class SettingsRoutes{
 		}
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object updateEmailNotificationSettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		EmailNotificationFrequency freq=enumValue(req.queryParams("frequency"), EmailNotificationFrequency.class);
+		EnumSet<EmailNotificationType> types=EnumSet.noneOf(EmailNotificationType.class);
+		for(EmailNotificationType type:EmailNotificationType.values()){
+			if("on".equals(req.queryParams("type_"+type)))
+				types.add(type);
+		}
+		self.prefs.emailNotificationFrequency=freq;
+		self.prefs.emailNotificationTypes=types;
+		ctx.getUsersController().updateUserPreferences(self);
+		req.session().attribute("settings.emailNotificationsMessage", lang(req).get("settings_saved"));
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.refresh();
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object emailUnsubscribe(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Mailer.UnsubscribeLinkData ud;
+		try{
+			ud=Mailer.decodeUnsubscribeLink(req.params(":key"), ctx);
+		}catch(IllegalArgumentException x){
+			throw new UserErrorException("email_unsubscribe_invalid", x);
+		}
+		return new RenderedTemplateResponse("email_unsubscribe", req)
+				.with("unsubKey", req.params(":key"))
+				.with("notificationType", ud.type())
+				.pageTitle(lang(req).get("email_unsubscribe_title"));
+	}
+
+	public static Object doEmailUnsubscribe(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Mailer.UnsubscribeLinkData ud;
+		try{
+			ud=Mailer.decodeUnsubscribeLink(req.params(":key"), ctx);
+		}catch(IllegalArgumentException x){
+			throw new UserErrorException("email_unsubscribe_invalid", x);
+		}
+		Account self=ud.account();
+		boolean all=req.queryParams("all")!=null;
+		if(all){
+			self.prefs.emailNotificationFrequency=EmailNotificationFrequency.DISABLED;
+		}else{
+			self.prefs.emailNotificationTypes.remove(ud.type());
+		}
+		ctx.getUsersController().updateUserPreferences(self);
+		return new RenderedTemplateResponse("email_unsubscribe_done", req)
+				.with("unsubKey", req.params(":key"))
+				.with("notificationType", ud.type())
+				.with("unsubscribedFromAll", all)
+				.pageTitle(lang(req).get("email_unsubscribe_title"));
 	}
 
 	public static Object filters(Request req, Response resp, Account self, ApplicationContext ctx){

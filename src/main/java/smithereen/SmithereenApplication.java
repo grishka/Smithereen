@@ -362,6 +362,9 @@ public class SmithereenApplication{
 			postWithCSRF("/transferFollowers", SettingsRoutes::transferFollowers);
 			getLoggedIn("/confirmRemoveMoveRedirect", SettingsRoutes::confirmRemoveMoveRedirect);
 			postWithCSRF("/removeMoveRedirect", SettingsRoutes::removeMoveRedirect);
+			postWithCSRF("/updateEmailNotifications", SettingsRoutes::updateEmailNotificationSettings);
+			get("/notifications/emailUnsubscribe/:key", SettingsRoutes::emailUnsubscribe);
+			post("/notifications/emailUnsubscribe/:key", SettingsRoutes::doEmailUnsubscribe);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);

@@ -1,10 +1,51 @@
 /* Styles for emails sent by the server */
 
-@import 'desktop_basics.scss';
+@import "palette.scss";
+
+*{
+	box-sizing: border-box;
+	overflow-wrap: break-word;
+	min-width: 0;
+	min-height: 0;
+}
 
 body{
+	font-family: Tahoma, Arial, sans-serif;
 	font-size: 12px;
 	padding: 0;
+}
+
+a, .link{
+	color: $normalLink;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+a:hover, a:visited:hover, .link:hover{
+	text-decoration: underline;
+}
+
+.button{
+	background: linear-gradient(to top, $buttonGradientBottom, $buttonGradientTop) repeat-x 0 -16px;
+	background-size: 1px 42px;
+	text-shadow: 0 1px 0 $headerBorderTop;
+	border: solid 1px $headerBorderTop;
+	border-radius: 2px;
+	color: $textOnAccent;
+	box-shadow: 0 1px 0 $buttonBorderTop inset, 0 0 0 1px $buttonBorder inset;
+	padding: 0 14px;
+	height: 25px;
+	line-height: 23px;
+	display: inline-block;
+	&:hover{
+		text-decoration: none;
+		background-position: 0 -8px;
+	}
+	&:active{
+		text-decoration: none;
+		background: $buttonGradientBottom;
+		box-shadow: none;
+	}
 }
 
 h1{
@@ -40,7 +81,7 @@ h1{
 		padding: 0;
 	}
 	.headerBG{
-		background: linear-gradient(to bottom, $headerGradientTop, $headerGradientBottom);
+		background: linear-gradient(to bottom, $headerGradientBottom, $headerGradientTop);
 	}
 }
 
@@ -86,4 +127,18 @@ h1{
 	font-size: 20px;
 	padding: 10px;
 	display: inline-block;
+}
+
+.grayText, a.grayText{
+	color: $auxiliaryGrey;
+}
+
+td.grayText{
+	white-space: nowrap;
+	padding-right: 5px;
+}
+
+.sep{
+	border-bottom: solid 1px #ededed;
+	margin: 10px 0;
 }

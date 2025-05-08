@@ -1,0 +1,10 @@
+{# @pebvariable name="parent" type="smithereen.model.Post" #}
+{% extends "commentable_object" %}
+{% block commentParent %}
+<div style="padding-bottom: 5px">
+	{% if parent.text is not empty %}<div style="margin: -1em 0">{{ parent.text | postprocessHTML }}</div>{% endif %}
+	{% include "media_attachments_post" with {'attachments': parent.processedAttachments} %}
+	{% if parent.poll is not null %}<div class="grayText" style="padding-top: 5px">{{ L('poll') }}{% if parent.poll.question is not empty %}: {{ parent.poll.question }}{% endif %}</div>{% endif %}
+</div>
+<a class="grayText" href="https://{{ domain }}/posts/{{ parent.id }}">{{ LD(parent.createdAt, format='fullyAbsolute') }}</a>
+{% endblock %}

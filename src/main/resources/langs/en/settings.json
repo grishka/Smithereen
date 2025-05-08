@@ -254,5 +254,12 @@
   "settings_transfer_out_no_link": "Your new profile does not contain a link to this one. Make sure that you've entered the URL or username correctly, and that you have added <b>{thisAccountUsername}</b> as a source of follower transfer in your account settings at <b>{newAccountServer}</b>.",
   "settings_transfer_remove_redirect_title": "Remove redirection",
   "settings_transfer_remove_redirect": "If you remove the redirection, you will be able to use your profile again, but the followers you transferred will not be returned. Continue?",
-  "privacy_value_certain_friend_lists": "Certain friend lists"
+  "privacy_value_certain_friend_lists": "Certain friend lists",
+  "settings_email_notifications": "Email notifications",
+  "settings_email_notifications_freq": "Notification frequency",
+  "settings_email_notifications_immediate": "Always notify",
+  "settings_email_notifications_daily": "Notify daily at most",
+  "settings_email_notifications_off": "Never notify",
+  "settings_notifications_wall_comments": "Comments on wall posts",
+  "settings_notifications_photo_comments": "Comments on photos"
 }

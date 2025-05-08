@@ -63,6 +63,17 @@ public class FriendsController{
 		}
 	}
 
+	public FriendRequest getIncomingFriendRequest(User self, User requester){
+		try{
+			FriendRequest req=UserStorage.getFriendRequest(self.id, requester.id);
+			if(req==null)
+				throw new ObjectNotFoundException();
+			return req;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public PaginatedList<User> getFollowers(User user, int offset, int count){
 		try{
 			return UserStorage.getNonMutualFollowers(user.id, true, true, offset, count, false);

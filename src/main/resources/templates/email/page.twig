@@ -28,6 +28,9 @@
 					</td>
 				</tr>
 			</table>
+			{% if unsubscribeURL is not empty %}
+			<center style="margin-top: 13px">{{ L('email_unsubscribe_footer', {'name': self.firstName}, {'self': {'href': self.absoluteProfileURL}, 'unsubscribe': {'href': unsubscribeURL}, 'settings': {'href': "https://#{domain}/settings/notifications"} }) }}</center>
+			{% endif %}
 		</td>
 		<td class="emailOuterTableSide"></td>
 	</tr>

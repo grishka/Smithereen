@@ -1,0 +1,34 @@
+{# @pebvariable name="req" type="smithereen.model.FriendRequest" #}
+{% extends "page" %}
+{% block content %}
+	<h1>{{ L('notification_title_friend_request') }}</h1>
+	<table width="100%" cellpadding="0" cellspacing="0" border="0">
+		<tr>
+			<td valign="top" width="100">{% include 'actor_avatar' with {'actor': req.from, 'size': 'b'} %}</td>
+			<td valign="top" style="padding-left: 10px">
+				<table width="100%" cellpadding="0" cellspacing="5" border="0">
+					<tr>
+						<td class="grayText">{{ L('name') }}:</td>
+						<td width="99%"><a href="{{ req.from.absoluteProfileURL }}">{{ req.from | name('complete') }}</a></td>
+					</tr>
+					{% if req.from.domain is not empty %}
+					<tr>
+						<td class="grayText">{{ L('server') }}:</td>
+						<td>{{ req.from.domain }}</td>
+					</tr>
+					{% endif %}
+					{% if req.message is not empty %}
+					<tr>
+						<td class="grayText">{{ L('message') }}:</td>
+						<td>{{ req.message }}</td>
+					</tr>
+					{% endif %}
+					<tr>
+						<td></td>
+						<td style="padding-top: 10px"><a class="button" href="https://{{ domain }}/my/incomingFriendRequests">{{ L('email_go_to_friend_requests') }}</a></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	</table>
+{% endblock %}
