@@ -752,6 +752,7 @@ public class SmithereenApplication{
 				get("/likePopover", PhotosRoutes::likePopover);
 				getWithCSRF("/setAsAlbumCover", PhotosRoutes::setPhotoAsAlbumCover);
 				getActivityPubCollection("/replies", 50, ActivityPubRoutes::photoComments);
+				getActivityPubCollection("/likes", 100, ActivityPubRoutes::photoLikes);
 				getLoggedIn("/ajaxEditDescription", PhotosRoutes::ajaxEditDescription);
 				getWithCSRF("/saveToAlbum", PhotosRoutes::saveToAlbum);
 				getWithCSRF("/rotate", PhotosRoutes::rotatePhoto);
@@ -770,6 +771,7 @@ public class SmithereenApplication{
 				get("", CommentsRoutes::comment);
 				getActivityPub("", ActivityPubRoutes::comment);
 				getActivityPubCollection("/replies", 50, ActivityPubRoutes::commentReplies);
+				getActivityPubCollection("/likes", 100, ActivityPubRoutes::commentLikes);
 				get("/ajaxCommentBranch", CommentsRoutes::ajaxCommentBranch);
 				getLoggedIn("/confirmDelete", CommentsRoutes::confirmDeleteComment);
 				postWithCSRF("/delete", CommentsRoutes::deleteComment);

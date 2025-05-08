@@ -56,6 +56,17 @@ public class UserInteractionsController{
 		}
 	}
 
+	public PaginatedList<Like> getLikeObjectsForObject(LikeableContentObject object, int offset, int count){
+		try{
+			long id=object.getObjectID();
+			if(object instanceof Post post)
+				id=post.getIDForInteractions();
+			return LikeStorage.getLikes(id, object.getActivityPubID(), object.getLikeObjectType(), offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void setObjectLiked(LikeableContentObject object, boolean liked, User self){
 		setObjectLiked(object, liked, self, null);
 	}

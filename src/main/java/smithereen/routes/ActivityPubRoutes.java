@@ -362,11 +362,11 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinks(ids, _total[0]);
 	}
 
-	public static ActivityPubCollectionPageResponse postLikes(Request req, Response resp, int offset, int count) throws SQLException{
+	public static ActivityPubCollectionPageResponse postLikes(Request req, Response resp, int offset, int count){
 		ApplicationContext ctx=context(req);
-		Post post=PostStorage.getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
+		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
 		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
-		PaginatedList<Like> likes=LikeStorage.getLikes(post.id, post.getActivityPubID(), Like.ObjectType.POST, offset, count);
+		PaginatedList<Like> likes=ctx.getUserInteractionsController().getLikeObjectsForObject(post, offset, count);
 		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
 	}
 
@@ -586,11 +586,27 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
 	}
 
+	public static ActivityPubCollectionPageResponse commentLikes(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, comment);
+		PaginatedList<Like> likes=ctx.getUserInteractionsController().getLikeObjectsForObject(comment, offset, count);
+		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
+	}
+
 	public static ActivityPubCollectionPageResponse photoComments(Request req, Response resp, int offset, int count){
 		ApplicationContext ctx=context(req);
 		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.PHOTO));
 		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, photo);
 		return objectComments(req, resp, photo, offset, count);
+	}
+
+	public static ActivityPubCollectionPageResponse photoLikes(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.PHOTO));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, photo);
+		PaginatedList<Like> likes=ctx.getUserInteractionsController().getLikeObjectsForObject(photo, offset, count);
+		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
 	}
 
 	private static ActivityPubCollectionPageResponse objectComments(Request req, Response resp, CommentableContentObject obj, int offset, int count){
