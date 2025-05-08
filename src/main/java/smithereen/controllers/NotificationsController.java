@@ -503,9 +503,9 @@ public class NotificationsController{
 						}else{
 							extraImage=null;
 						}
-						if(post.getReplyLevel()>0 && relatedObject instanceof Post parentPost){
+						if(post.getReplyLevel()>0 && post instanceof Post realPost){
 							extraAttrs=Map.of(
-									"onclick", "return openPostLayer('"+parentPost.id+"', '"+post.getObjectID()+"')"
+									"onclick", "return openPostLayer('"+realPost.replyKey.getFirst()+"', '"+post.getObjectID()+"')"
 							);
 						}else{
 							extraAttrs=Map.of(
