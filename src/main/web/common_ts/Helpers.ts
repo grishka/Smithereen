@@ -552,7 +552,8 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 }
 
 function ajaxFollowLink(link:HTMLAnchorElement):boolean{
-	if(event && (event instanceof MouseEvent || event instanceof KeyboardEvent) && (event.altKey || event.ctrlKey || event.shiftKey || event.metaKey))
+	var ev=window.event;
+	if(ev && (ev instanceof MouseEvent || ev instanceof KeyboardEvent) && (ev.altKey || ev.ctrlKey || ev.shiftKey || ev.metaKey))
 		return false;
 	if(link.dataset.ajax!=undefined){
 		var elToHide:HTMLElement;
@@ -895,7 +896,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 	var btn=wrap.querySelector(".popoverButton") as HTMLElement;
 
-	var ev:MouseEvent=event as MouseEvent;
+	var ev:MouseEvent=window.event as MouseEvent;
 	var popover=btn._popover;
 	if(entered){
 		if(!btn.customData) btn.customData={};
@@ -1721,7 +1722,9 @@ function setMenuCounters(counters:{[key:string]:number}){
 }
 
 function activateNotificationsPostForm(id:string, postID:string, type:string, randomID:string){
-	if((event.target as HTMLElement).tagName=='A')
+	var ev=window.event;
+	var target=ev.target as HTMLElement;
+	if(target.tagName=='A' || target.tagName=='LABEL' || target.tagName=='INPUT')
 		return true;
 	var formEl=ge("wallPostForm_"+id);
 	if(!formEl)
