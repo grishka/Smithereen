@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -262,7 +263,7 @@ public class Mailer{
 		String subject;
 		String templateName;
 
-		String unsubscribeKey="a="+self.id+"&t="+type.ordinal();
+		String unsubscribeKey="a="+self.id+"&t="+type.ordinal()+"&e="+URLEncoder.encode(self.email, StandardCharsets.UTF_8);
 		String unsubscribeURL=Config.localURI("/settings/notifications/emailUnsubscribe/"+Base64.getUrlEncoder().withoutPadding().encodeToString(CryptoUtils.aesGcmEncrypt(unsubscribeKey.getBytes(StandardCharsets.UTF_8), Config.emailUnsubscribeKey))).toString();
 		params.put("unsubscribeURL", unsubscribeURL);
 
@@ -488,7 +489,10 @@ public class Mailer{
 			throw new IllegalArgumentException();
 		EmailNotificationType type=EmailNotificationType.values()[typeIndex];
 		try{
-			return new UnsubscribeLinkData(ctx.getUsersController().getAccountOrThrow(accountID), type);
+			Account account=ctx.getUsersController().getAccountOrThrow(accountID);
+			if(!Objects.equals(account.email, params.get("e")))
+				throw new IllegalArgumentException();
+			return new UnsubscribeLinkData(account, type);
 		}catch(ObjectNotFoundException x){
 			throw new IllegalArgumentException();
 		}
