@@ -153,4 +153,17 @@ public class NotificationsRoutes{
 
 		return model;
 	}
+
+	public static Object ajaxReadLastNotifications(Request req, Response resp, Account self, ApplicationContext ctx){
+		// Given a notification ID, move the "last seen" marker forward, but only if it's the only counted unread notification.
+		// Called when an instant notification is clicked. Used to reset the notifications counter so the user won't have to
+		// click "my feedback" menu item just to reset it manually *after* already having seen and clicked the instant notification.
+		if(ctx.getNotificationsController().getUserCounters(self).getNewNotificationsCount()==1){
+			int id=safeParseInt(req.queryParams("id"));
+			if(self.prefs.lastSeenNotificationID<id){
+				ctx.getNotificationsController().setNotificationsSeen(self, id);
+			}
+		}
+		return "";
+	}
 }

@@ -98,6 +98,10 @@ class Notifier{
 		}
 		Notifier.idleCheckTimeout=setTimeout(Notifier.checkIdle, 30000);
 		Notifier.isIdle=false;
+		for(var el of Notifier.notificationsEl.children.unfuck()){
+			let _el=el;
+			el.customData.fadeTimeout=setTimeout(()=>Notifier.startFadingNotification(_el), 7000);
+		}
 		// console.log("set active");
 	}
 
@@ -292,6 +296,9 @@ class Notifier{
 				var target=ev.target as HTMLElement;
 				if(target.tagName=="A" && target!=closeBtn){
 					Notifier.dismissNotification(el, true);
+					if(parseInt(n.id) as any==n.id){
+						ajaxPost("/my/notifications/ajaxReadLast", {csrf: userConfig.csrf, id: n.id}, ()=>{}, ()=>{}, "text");
+					}
 				}
 			});
 			wrap.appendChild(el);

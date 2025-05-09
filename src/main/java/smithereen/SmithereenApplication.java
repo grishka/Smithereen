@@ -798,6 +798,7 @@ public class SmithereenApplication{
 			get("/followers", FriendsRoutes::followers);
 			get("/following", FriendsRoutes::following);
 			getLoggedIn("/notifications", NotificationsRoutes::notifications);
+			postWithCSRF("/notifications/ajaxReadLast", NotificationsRoutes::ajaxReadLastNotifications);
 			path("/groups", ()->{
 				getLoggedIn("", GroupsRoutes::myGroups);
 				getLoggedIn("/managed", GroupsRoutes::myManagedGroups);
