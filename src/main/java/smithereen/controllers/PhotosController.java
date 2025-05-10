@@ -852,19 +852,33 @@ public class PhotosController{
 				}
 
 				PhotoStorage.putOrUpdateForeignPhoto(photo);
+				PhotoAlbum album=getAlbumIgnoringPrivacy(photo.albumID);
 				List<PhotoTag> existingTags;
 				if(isNew){
+					if(!album.flags.contains(PhotoAlbum.Flag.COVER_SET_EXPLICITLY)){
+						boolean needUpdateCover=true;
+						if(album.coverID!=0){
+							try{
+								needUpdateCover=getPhotoIgnoringPrivacy(album.coverID).createdAt.isBefore(photo.createdAt);
+							}catch(ObjectNotFoundException ignore){}
+						}
+						if(needUpdateCover){
+							PhotoStorage.setAlbumCover(photo.albumID, photo.id);
+						}
+					}
 					existingTags=List.of();
 					synchronized(albumCacheLock){
 						albumListCache.remove(photo.ownerID);
 						albumCache.remove(photo.albumID);
 					}
-					if(photo.ownerID>0){
-						User owner=context.getUsersController().getUserOrThrow(photo.ownerID);
-						context.getNewsfeedController().putFriendsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
-					}else{
-						Group owner=context.getGroupsController().getGroupOrThrow(-photo.ownerID);
-						context.getNewsfeedController().putGroupsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+					if(album.systemType==null){
+						if(photo.ownerID>0){
+							User owner=context.getUsersController().getUserOrThrow(photo.ownerID);
+							context.getNewsfeedController().putFriendsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+						}else{
+							Group owner=context.getGroupsController().getGroupOrThrow(-photo.ownerID);
+							context.getNewsfeedController().putGroupsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+						}
 					}
 				}else{
 					existingTags=PhotoStorage.getPhotoTags(photo.id);
