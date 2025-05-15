@@ -58,7 +58,7 @@
   "events": "Events",
   "summary_X_upcoming_events": "You {count, select, 0 {don''t have any upcoming events} other {are going to attend {count, plural, one {# event} other {# events}}}}",
   "summary_X_past_events": "You have {count, plural, =0 {no past events} one {# past event} other {# past events}}",
-  "write_on_event_wall": "Write on event wall...",
+  "write_on_event_wall": "Write on event wall…",
   "leave_event": "Leave event",
   "event_organizers": "Organizers",
   "event_X_organizers": "{count, plural, one {# organizer} other {# organizers}}",
