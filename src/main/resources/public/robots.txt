@@ -48,3 +48,8 @@ Disallow: /
 User-agent: *
 Disallow: /system/downloadExternalMedia
 Disallow: /*@*
+Disallow: /account/
+Disallow: /posts/*/like
+Disallow: /posts/*/share
+Disallow: /photos/*/like
+Disallow: /comments/*/like
