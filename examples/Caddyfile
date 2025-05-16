@@ -1,0 +1,22 @@
+YOUR_DOMAIN_HERE
+
+encode
+
+# Static files
+handle /s/* {
+	root /var/www/smithereen
+	header Cache-Control max-age=31536000
+	file_server
+}
+
+# imgproxy
+handle /i/* {
+	reverse_proxy 127.0.0.1:4560
+	header Cache-Control max-age=31536000
+	# TODO figure out caching https://github.com/caddyserver/cache-handler/issues/125
+}
+
+# Server application
+handle {
+	reverse_proxy 127.0.0.1:4567
+}
