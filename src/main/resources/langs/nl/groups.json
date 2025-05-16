@@ -57,7 +57,7 @@
   "events": "Evenementen",
   "summary_X_upcoming_events": "Jij {count, select, 0 {hebt geen aankomende evenementen} other {ga aanwezig zijn {count, plural, one {# evenement} other {# evenementen}}}}",
   "summary_X_past_events": "Je hebt {count, plural, =0 {geen eerdere evenementen} one {# eerdere evenement} other {# eerdere evenementen}}",
-  "write_on_event_wall": "Schrijf op het evenement zijn prikbord...",
+  "write_on_event_wall": "Schrijf op het evenement zijn prikbord…",
   "leave_event": "Verlaat evenement",
   "event_organizers": "Organisatoren",
   "event_X_organizers": "{count, plural, one {# organisator} other {# organisatoren}}",
