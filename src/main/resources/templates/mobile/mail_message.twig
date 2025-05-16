@@ -41,7 +41,7 @@
 		{% endif %}
 		</div>
 		<div class="" id="msgActions">
-			{% if message.senderID!=currentUser.id %}<a class="button" href="/my/mail/compose?replyTo={{ message.encodedID }}">{{ L('add_reply') }}</a>{% endif %}
+			{% if message.senderID!=currentUser.id and canReply %}<a class="button" href="/my/mail/compose?replyTo={{ message.encodedID }}">{{ L('add_reply') }}</a>{% endif %}
 			<a class="button" href="/my/mail/messages/{{ message.encodedID }}/delete?csrf={{ csrf }}&fromView" data-ajax data-ajax-hide="msgActions" data-ajax-show="msgActionsLoader">{{ L('delete') }}</a>
 		</div>
 		<span class="loader" id="msgActionsLoader" style="display: none">&nbsp;</span>

@@ -2,6 +2,7 @@ package smithereen.model;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.Locale;
@@ -9,6 +10,9 @@ import java.util.Locale;
 import smithereen.model.feed.CommentsNewsfeedObjectType;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupsNewsfeedTypeFilter;
+import smithereen.model.notifications.EmailNotificationFrequency;
+import smithereen.model.notifications.EmailNotificationType;
+import smithereen.model.notifications.RealtimeNotificationSettingType;
 import smithereen.text.FormattedTextFormat;
 
 public class UserPreferences{
@@ -28,4 +32,14 @@ public class UserPreferences{
 	public EnumSet<GroupsNewsfeedTypeFilter> groupFeedFilter;
 	@SerializedName("cfeed")
 	public EnumSet<CommentsNewsfeedObjectType> commentsFeedFilter;
+	@SerializedName("ntft")
+	public EnumSet<RealtimeNotificationSettingType> notifierTypes;
+	@SerializedName("ntfs")
+	public boolean notifierEnableSound=true;
+	@SerializedName("ntfmt")
+	public boolean notifierShowMessageText=true;
+	public boolean countLikesInUnread;
+	public EnumSet<EmailNotificationType> emailNotificationTypes=EnumSet.allOf(EmailNotificationType.class);
+	public EmailNotificationFrequency emailNotificationFrequency=EmailNotificationFrequency.DAILY;
+	public Instant lastEmailNotification;
 }

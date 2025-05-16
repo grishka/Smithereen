@@ -1,0 +1,140 @@
+/* Styles used in both the desktop site and embedded posts */
+
+@import "basics.scss";
+
+body, textarea, input, select, button{
+	font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
+	font-size: 11px;
+}
+
+body{
+	background: $bg;
+	margin: 0;
+}
+
+a:hover, a:visited:hover, .link:hover{
+	text-decoration: underline;
+}
+
+input[type=submit], input[type=button], button, .button, .button:link, .button:visited{
+	background: linear-gradient(to top, $buttonGradientBottom, $buttonGradientTop) repeat-x 0 -16px;
+	background-size: 1px 42px;
+	text-shadow: 0 1px 0 $headerBorderTop;
+	border: solid 1px $headerBorderTop;
+	border-radius: 2px;
+	color: $textOnAccent;
+	box-shadow: 0 1px 0 $buttonBorderTop inset, 0 0 0 1px $buttonBorder inset;
+	cursor: pointer;
+	padding: 0 14px;
+	height: 25px;
+	line-height: 23px;
+	display: inline-block;
+	box-sizing: border-box;
+	&:hover, &:visited:hover{
+		text-decoration: none;
+		background-position: 0 -8px;
+		&.loading{
+			background-position: center, 0 -8px;
+		}
+	}
+	&:active{
+		text-decoration: none;
+		background: $buttonGradientBottom;
+		box-shadow: none;
+	}
+}
+
+.header{
+	display: flex;
+	.logo{
+		flex: none;
+	}
+}
+
+.postContent{
+	line-height: 130%;
+}
+
+.expandableText>label{
+	font-weight: bold;
+	opacity: .8;
+	transition: opacity .15s ease;
+	&:hover{
+		opacity: 1;
+	}
+}
+
+.postAttachments{
+	.aspectBox{
+		display: grid;
+		grid-gap: 2px;
+	}
+	img{
+		object-fit: cover;
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+	.aspectBox>div{
+		min-width: 0;
+		min-height: 0;
+	}
+}
+
+.repostIcon, .postOwnerArrowIcon{
+	display: inline-block;
+	width: 9px;
+	height: 11px;
+	margin: 0 3px 0 1px;
+	position: relative;
+	top: 2px;
+	background: svg-load('img/repost_icons.svg') no-repeat;
+}
+
+.postCWWrap{
+	.postCWButton{
+		display: block;
+		color: $boldHeaders;
+		font-weight: bold;
+		cursor: pointer;
+		height: 24px;
+		line-height: 24px;
+		padding-left: 23px;
+		background: color($blockBackground alpha(50%)) svg-load('img/flex_arrow_shut.svg', fill: color($iconColor alpha(70%))) no-repeat left center;
+	}
+	>.postContent, >.postAttachments, >.poll, >.repost{
+		display: none;
+	}
+}
+
+input:checked+.postCWWrap{
+	>.postCWButton{
+		background-image: svg-load('img/flex_arrow_open.svg', fill: color($iconColor alpha(70%)));
+	}
+	>.postContent, >.postAttachments, >.poll, >.repost{
+		display: block;
+	}
+}
+
+h3{
+	color: $boldHeaders;
+	font-weight: bold;
+	margin: 0;
+	padding-bottom: 2px;
+	font-size: 11px;
+	border-bottom: solid 1px $mainHeaderSeparator;
+}
+
+.poll{
+	.pollResultRow{
+		.pollResultBarW{
+			line-height: 15px;
+		}
+		.pollResultPercent{
+			width: 45px;
+		}
+		.pollResultBarBG{
+			height: 15px;
+		}
+	}
+}

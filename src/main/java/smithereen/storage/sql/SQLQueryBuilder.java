@@ -24,7 +24,6 @@ import smithereen.storage.ResultSetDeserializerFunction;
 import spark.utils.StringUtils;
 
 public class SQLQueryBuilder{
-	private static final Logger LOG=LoggerFactory.getLogger(SQLQueryBuilder.class);
 	private final DatabaseConnection conn;
 	private final boolean needCloseConnection;
 
@@ -42,6 +41,7 @@ public class SQLQueryBuilder{
 	private boolean hasLimit;
 	private String orderBy;
 	private String groupBy;
+	private String join;
 
 	public SQLQueryBuilder() throws SQLException{
 		conn=DatabaseConnectionManager.getConnection();
@@ -163,10 +163,17 @@ public class SQLQueryBuilder{
 	public SQLQueryBuilder andWhere(String where, Object... args){
 		if(StringUtils.isNotEmpty(condition))
 			condition+=" AND ";
+		else
+			condition="";
 		condition+=where;
 		if(conditionArgs==null)
 			conditionArgs=new ArrayList<>();
 		conditionArgs.addAll(List.of(args));
+		return this;
+	}
+
+	public SQLQueryBuilder join(String join){
+		this.join=join;
 		return this;
 	}
 
@@ -398,6 +405,10 @@ public class SQLQueryBuilder{
 				sb.append(" FROM `");
 				sb.append(table);
 				sb.append("` ");
+				if(join!=null){
+					sb.append(join);
+					sb.append(' ');
+				}
 				appendCondition(sb);
 			}
 			case INSERT -> {
@@ -474,9 +485,6 @@ public class SQLQueryBuilder{
 				stmt.setObject(argIndex++, convertValue(arg));
 			}
 		}
-
-		LOG.debug("{}", stmt);
-
 		return stmt;
 	}
 
@@ -494,7 +502,6 @@ public class SQLQueryBuilder{
 				stmt.setObject(i, arg);
 			i++;
 		}
-		LOG.debug("{}", stmt);
 		return stmt;
 	}
 

@@ -32,7 +32,7 @@ import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
 
-	private URI wall, friends, groups, photoAlbums, taggedPhotos;
+	private URI wall, friends, groups, photoAlbums, taggedPhotos, wallComments;
 	public URI movedToURL;
 	public boolean isServiceActor;
 
@@ -63,6 +63,7 @@ public class ForeignUser extends User implements ForeignActor{
 		followers=tryParseURL(ep.followers);
 		following=tryParseURL(ep.following);
 		wall=tryParseURL(ep.wall);
+		wallComments=tryParseURL(ep.wallComments);
 		friends=tryParseURL(ep.friends);
 		groups=tryParseURL(ep.groups);
 		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
@@ -166,6 +167,10 @@ public class ForeignUser extends User implements ForeignActor{
 		if(wall==null)
 			wall=tryParseURL(optString(obj, "sm:wall"));
 		ensureHostMatchesID(wall, "wall");
+		if(wall!=null){
+			wallComments=tryParseURL(optString(obj, "wallComments"));
+			ensureHostMatchesID(wallComments, "wallComments");
+		}
 		friends=tryParseURL(optString(obj, "friends"));
 		ensureHostMatchesID(friends, "friends");
 		groups=tryParseURL(optString(obj, "groups"));
@@ -185,13 +190,13 @@ public class ForeignUser extends User implements ForeignActor{
 		if(obj.has("movedTo")){
 			movedToURL=tryParseURL(obj.get("movedTo").getAsString());
 		}
-		if(obj.has("alsoKnownAs")){
-			List<LinkOrObject> aka=tryParseArrayOfLinksOrObjects(obj.get("alsoKnownAs"), parserContext);
+		if(obj.has("alsoKnownAs") || obj.has("as:alsoKnownAs")){
+			List<LinkOrObject> aka=tryParseArrayOfLinksOrObjects(obj.has("alsoKnownAs") ? obj.get("alsoKnownAs") : obj.get("as:alsoKnownAs"), parserContext);
 			if(aka!=null){
 				alsoKnownAs=aka.stream()
 						.filter(l->l.link!=null)
 						.map(l->l.link)
-						.collect(Collectors.toSet());
+						.toList();
 			}
 		}
 
@@ -264,7 +269,7 @@ public class ForeignUser extends User implements ForeignActor{
 					// Get rid of Mastodon :emojis: and non-ASCII characters
 					String normalizedName=pv.name.toLowerCase().replaceAll(":[a-z0-9_]{2,}:", "").replaceAll("[^a-z0-9 -]", "").trim();
 					// Match against popular strings people use for these things
-					if(Set.of("website", "web", "blog", "homepage", "www", "site", "personal page", "personal website", "personal blog").contains(normalizedName)){
+					if(Set.of("website", "web", "web site", "blog", "homepage", "www", "site", "personal page", "personal website", "personal blog").contains(normalizedName)){
 						website=TextProcessor.stripHTML(pv.value, false);
 						continue;
 					}
@@ -280,6 +285,8 @@ public class ForeignUser extends User implements ForeignActor{
 						case "snapchat", "snap" -> ContactInfoKey.SNAPCHAT;
 						case "discord" -> ContactInfoKey.DISCORD;
 						case "git", "github", "gitlab", "codeberg", "gitea" -> ContactInfoKey.GIT;
+						case "mastodon" -> ContactInfoKey.MASTODON;
+						case "pixelfed" -> ContactInfoKey.PIXELFED;
 						case "phone number", "phone", "sms" -> ContactInfoKey.PHONE_NUMBER;
 						case "email", "e-mail" -> ContactInfoKey.EMAIL;
 						default -> null;
@@ -373,6 +380,11 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
+	public URI getWallCommentsURL(){
+		return wallComments;
+	}
+
+	@Override
 	public URI getFriendsURL(){
 		return friends;
 	}
@@ -410,5 +422,25 @@ public class ForeignUser extends User implements ForeignActor{
 		if(groups!=null)
 			ep.groups=groups.toString();
 		return ep;
+	}
+
+	public void setFollowersCount(long count){
+		numFollowers=count;
+	}
+
+	public void setFollowingCount(long count){
+		numFollowing=count;
+	}
+
+	public void setFriendsCount(long count){
+		numFriends=count;
+	}
+
+	public long getRawFollowersCount(){
+		return numFollowers;
+	}
+
+	public long getRawFollowingCount(){
+		return numFollowing;
 	}
 }

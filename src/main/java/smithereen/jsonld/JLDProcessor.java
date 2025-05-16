@@ -55,6 +55,7 @@ public class JLDProcessor{
 		lc.addProperty("toot", JLD.MASTODON);
 		lc.addProperty("vcard", JLD.VCARD);
 		lc.addProperty("litepub", JLD.LITEPUB);
+		lc.addProperty("gts", JLD.GOTOSOCIAL);
 
 		// schema.org aliases
 		lc.addProperty("firstName", "sc:givenName");
@@ -83,6 +84,7 @@ public class JLDProcessor{
 		lc.add("cropRegion", idAndContainerObject("sm:cropRegion", "@list"));
 		lc.addProperty("maidenName", "sm:maidenName");
 		lc.add("wall", idAndTypeObject("sm:wall", "@id"));
+		lc.add("wallComments", idAndTypeObject("sm:wallComments", "@id"));
 		lc.add("friends", idAndTypeObject("sm:friends", "@id"));
 		lc.add("groups", idAndTypeObject("sm:groups", "@id"));
 		lc.addProperty("nonAnonymous", "sm:nonAnonymous");
@@ -145,10 +147,24 @@ public class JLDProcessor{
 		lc.add("relationshipStatus", idAndTypeObject("sm:relationshipStatus", "@id"));
 		lc.add("relationshipPartner", idAndTypeObject("sm:relationshipPartner", "@id"));
 		lc.add("taggedPhotos", idAndTypeObject("sm:taggedPhotos", "@id"));
+		addSmAlias(lc, "ActorStatus");
+		lc.add("status", idAndTypeObject("sm:status", "@id"));
+		lc.add("statusHistory", idAndTypeObject("sm:statusHistory", "@id"));
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");
 		lc.addProperty("acceptsJoins", "litepub:acceptsJoins");
+
+		// GoToSocial aliases
+		lc.add("interactionPolicy", idAndTypeObject("gts:interactionPolicy", "@id"));
+		lc.add("canQuote", idAndTypeObject("gts:canQuote", "@id"));
+		lc.add("automaticApproval", idAndTypeObject("gts:automaticApproval", "@id"));
+		lc.add("interactingObject", idAndTypeObject("gts:interactingObject", "@id"));
+		lc.add("interactionTarget", idAndTypeObject("gts:interactionTarget", "@id"));
+
+		// Mastodon quotes FEP
+		lc.addProperty("QuoteAuthorization", JLD.MASTODON_QUOTES_FEP+"QuoteAuthorization");
+		lc.addProperty("QuoteRequest", JLD.MASTODON_QUOTES_FEP+"QuoteRequest");
 
 		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);
@@ -244,7 +260,7 @@ public class JLDProcessor{
 				return JsonParser.parseReader(reader).getAsJsonObject();
 			}
 		}catch(Exception x){
-			LOG.warn("Failed to load remote context from '{}'", url, x);
+			LOG.debug("Failed to load remote context from '{}'", url, x);
 			return null;
 		}
 	}
@@ -271,7 +287,7 @@ public class JLDProcessor{
 						yield alreadyLoaded;
 					yield loadRemoteContext(iri);
 				}
-				LOG.warn("Can't dereference remote context '{}'", iri);
+				LOG.debug("Can't dereference remote context '{}'", iri);
 				yield null;
 			}
 		};
@@ -323,7 +339,7 @@ public class JLDProcessor{
 					throw new JLDException("relative context IRIs are not supported");
 				}
 				if(remoteContexts.contains(c)){
-					LOG.warn("Recursive context inclusion of {}", c);
+					LOG.debug("Recursive context inclusion of {}", c);
 					continue;
 //					throw new JLDException("recursive context inclusion");
 				}

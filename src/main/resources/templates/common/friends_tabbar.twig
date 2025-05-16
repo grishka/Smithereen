@@ -4,6 +4,7 @@
 	<a href="/users/{{ owner.id }}/friends/mutual" class="{%if tab=="mutual"%}selected{%endif%}">{{L('X_mutual_friends_short', {'count': mutualCount})}}</a>
 	{% endif %}
 	{% if not selectionMode %}
+	<a href="/users/{{ owner.id }}/friends/online" class="{% if tab=="online" %}selected{% endif %}">{{ L('friends_online') }}</a>
 	<a href="/users/{{ owner.id }}/followers" class="{%if tab=="followers"%}selected{%endif%}">{{L('followers')}}</a>
 	<a href="/users/{{ owner.id }}/following" class="{%if tab=="following"%}selected{%endif%}">{{L('following')}}</a>
 	{%if currentUser is not null and currentUser.id==owner.id%}

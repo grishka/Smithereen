@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Set;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
@@ -71,6 +72,10 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 	@Override
 	public String getURL(){
 		return "/photos/"+Utils.encodeLong(XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.PHOTO));
+	}
+
+	public String getAbsoluteURL(){
+		return Config.localURI(getURL()).toString();
 	}
 
 	public String getIdString(){

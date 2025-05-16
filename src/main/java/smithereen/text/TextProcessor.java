@@ -18,6 +18,7 @@ import org.jsoup.parser.Parser;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.select.NodeVisitor;
 import org.unbescape.html.HtmlEscape;
+import org.unbescape.javascript.JavaScriptEscape;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -159,6 +160,10 @@ public class TextProcessor{
 
 	public static String escapeHTML(String s){
 		return HtmlEscape.escapeHtml4Xml(s);
+	}
+
+	public static String escapeJS(String s){
+		return JavaScriptEscape.escapeJavaScript(s);
 	}
 
 	public static String stripHTML(String s, boolean keepLineBreaks){
@@ -482,6 +487,7 @@ public class TextProcessor{
 
 	public static String postprocessPostHTMLForActivityPub(String text){
 		Document doc=Jsoup.parseBodyFragment(text);
+		doc.outputSettings().prettyPrint(false).indentAmount(0);
 
 		for(Element el:doc.getElementsByTag("a")){
 			el.removeAttr("data-user-id");
@@ -497,6 +503,8 @@ public class TextProcessor{
 			URI href=URI.create(link.attr("href"));
 			boolean found=false;
 			for(User user:users.values()){
+				if(user.id==0)
+					continue;
 				if(href.equals(user.url) || href.equals(user.activityPubID)){
 					link.attr("data-user-id", String.valueOf(user.id));
 					found=true;
@@ -551,7 +559,9 @@ public class TextProcessor{
 			URI uri=URI.create(value);
 			for(String domain:allowedDomains){
 				if(domain.equalsIgnoreCase(uri.getHost())){
-					return uri.getPath().substring(1);
+					String path=uri.getPath();
+					if(path.length()<=1) return null;
+					return path.substring(1);
 				}
 			}
 			return null;
@@ -619,6 +629,38 @@ public class TextProcessor{
 				}
 				yield null;
 			}
+			case MASTODON, PIXELFED -> {
+				String usernameAndDomain=null;
+				if(Utils.isURL(value)){
+					try{
+						URI uri=URI.create(value);
+						String path=uri.getPath();
+						if(path.isEmpty())
+							yield null;
+						path=path.substring(1);
+						if(path.endsWith("/")){
+							path=path.substring(0, path.length()-1);
+						}
+						if(!path.startsWith("@") && key == User.ContactInfoKey.MASTODON){
+							yield null; // The path component for a valid Mastodon user URI always starts with @
+						}
+						if(path.contains("/")){
+							yield null;
+						}
+						String host=uri.getHost();
+						if(host==null) yield null;
+						usernameAndDomain=path + "@" + host;
+					}catch(IllegalArgumentException x){
+						yield null;
+					}
+				}else if(Utils.isUsernameAndDomain(value)){
+					usernameAndDomain=value;
+				}
+				if(usernameAndDomain != null && !usernameAndDomain.startsWith("@")){
+					usernameAndDomain="@"+usernameAndDomain;
+				}
+				yield usernameAndDomain;
+			}
 			default -> value;
 		};
 	}
@@ -637,6 +679,11 @@ public class TextProcessor{
 			case EMAIL -> "mailto:"+value;
 			case PHONE_NUMBER -> "tel:"+value;
 			case GIT -> value;
+			case MASTODON, PIXELFED -> {
+				Matcher matcher = USERNAME_DOMAIN_PATTERN.matcher(value);
+				if(!matcher.find()) yield null;
+				yield "https://"+matcher.group(2)+"/@"+matcher.group(1);
+			}
 			default -> null;
 		};
 	}

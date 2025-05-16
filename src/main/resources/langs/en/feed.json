@@ -40,5 +40,6 @@
   "feed_relationship_in_love_with": "<a id=\"author\">{author}</a> is in love with <a id=\"target\">{target}</a>.",
   "feed_relationship_complicated": "<a id=\"author\">{author}</a>'s relationship is complicated.",
   "feed_relationship_complicated_with": "<a id=\"author\">{author}</a>'s relationship with <a id=\"target\">{target}</a> is complicated.",
-  "feed_relationship_searching": "<a id=\"author\">{author}</a> is actively searching."
+  "feed_relationship_searching": "<a id=\"author\">{author}</a> is actively searching.",
+  "feed_post_filtered": "Post matches filter \"{filterName}\". <a id=\"show\">Show anyway</a>."
 }

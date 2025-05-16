@@ -55,8 +55,11 @@ public class SearchStorage{
 			ArrayList<SearchResult> results=new ArrayList<>();
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 
-			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id, group_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND "+
-					"((user_id IN (SELECT followee_id FROM followings WHERE follower_id=?)) OR (group_id IN (SELECT group_id FROM group_memberships WHERE user_id=?))) LIMIT ?", query, selfID, selfID, maxCount);
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT qsearch_index.user_id, qsearch_index.group_id FROM qsearch_index " +
+					"LEFT JOIN followings ON followings.followee_id=qsearch_index.user_id " +
+					"LEFT JOIN group_memberships ON group_memberships.group_id=qsearch_index.group_id " +
+					"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND (followings.follower_id=? OR group_memberships.user_id=?) " +
+					"ORDER BY IFNULL(followings.hints_rank, group_memberships.hints_rank) DESC LIMIT ?", query, selfID, selfID, maxCount);
 			try(ResultSet res=stmt.executeQuery()){
 				addResults(res, results, needUsers, needGroups);
 			}
@@ -84,8 +87,9 @@ public class SearchStorage{
 		query=prepareQuery(query);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			ArrayList<Integer> results=new ArrayList<>();
-			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND "+
-					"((user_id IN (SELECT followee_id FROM followings WHERE follower_id=?))) LIMIT ?", query, selfID, count);
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index " +
+					"LEFT JOIN followings ON followings.followee_id=qsearch_index.user_id " +
+					"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND followings.follower_id=? ORDER BY followings.hints_rank DESC LIMIT ?", query, selfID, count);
 			DatabaseUtils.intResultSetToStream(stmt.executeQuery(), null).forEach(results::add);
 			if(results.size()<count){
 				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IS NOT NULL LIMIT ?", query, count);
@@ -98,7 +102,7 @@ public class SearchStorage{
 		}
 	}
 
-	public static PaginatedList<Integer> searchFriends(String query, int selfID, int offset, int count) throws SQLException{
+	public static PaginatedList<Integer> searchFriends(String query, int selfID, int offset, int count, boolean useHints) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			query=prepareQuery(query);
 			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
@@ -106,8 +110,11 @@ public class SearchStorage{
 					query, selfID).executeQuery());
 			if(total==0)
 				return PaginatedList.emptyList(count);
+			String orderBy=useHints ? " ORDER BY hints_rank DESC" : "";
 			List<Integer> list=DatabaseUtils.intResultSetToList(SQLQueryBuilder.prepareStatement(conn,
-					"SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IN (SELECT followee_id FROM followings WHERE follower_id=? AND mutual=1 AND accepted=1) LIMIT ? OFFSET ?",
+					"SELECT user_id FROM qsearch_index " +
+							"RIGHT JOIN followings ON followee_id=user_id " +
+							"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND mutual=1 AND accepted=1 AND follower_id=?"+orderBy+" LIMIT ? OFFSET ?",
 					query, selfID, count, offset).executeQuery());
 			return new PaginatedList<>(list, total, offset, count);
 		}
@@ -122,8 +129,12 @@ public class SearchStorage{
 					query, events ? Group.Type.EVENT : Group.Type.GROUP, selfID).executeQuery());
 			if(total==0)
 				return PaginatedList.emptyList(count);
+			String orderBy=includePrivate ? " ORDER BY hints_rank DESC" : "";
 			List<Integer> list=DatabaseUtils.intResultSetToList(SQLQueryBuilder.prepareStatement(conn,
-					"SELECT group_id FROM qsearch_index JOIN `groups` ON group_id=`groups`.id WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND `groups`.`type`=?"+privateWhere+" AND group_id IN (SELECT group_id FROM group_memberships WHERE user_id=? AND accepted=1) LIMIT ? OFFSET ?",
+					"SELECT qsearch_index.group_id FROM qsearch_index " +
+							"JOIN `groups` ON qsearch_index.group_id=`groups`.id " +
+							"RIGHT JOIN group_memberships ON group_memberships.group_id=qsearch_index.group_id " +
+							"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND `groups`.`type`=?"+privateWhere+" AND group_memberships.user_id=? AND accepted=1"+orderBy+" LIMIT ? OFFSET ?",
 					query, events ? Group.Type.EVENT : Group.Type.GROUP, selfID, count, offset).executeQuery());
 			return new PaginatedList<>(list, total, offset, count);
 		}

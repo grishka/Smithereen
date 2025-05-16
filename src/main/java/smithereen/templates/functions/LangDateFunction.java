@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import smithereen.lang.Lang;
+import smithereen.templates.Templates;
 
 public class LangDateFunction implements Function{
 	@Override
@@ -18,7 +19,7 @@ public class LangDateFunction implements Function{
 		Object arg=args.get("date");
 		boolean forceAbsolute=(Boolean) args.getOrDefault("forceAbsolute", Boolean.FALSE);
 		Lang lang=Lang.get(context.getLocale());
-		ZoneId timeZone=(ZoneId) context.getVariable("timeZone");
+		ZoneId timeZone=Templates.getVariableRegardless(context, "timeZone");
 		if(arg instanceof java.sql.Date sd)
 			return lang.formatDay(sd.toLocalDate());
 		if(arg instanceof LocalDate ld)
@@ -31,7 +32,10 @@ public class LangDateFunction implements Function{
 						return lang.formatTimeOrDay(instant, timeZone);
 					}
 					case "fullyAbsolute" -> {
-						return lang.formatDateFullyAbsolute(instant, timeZone);
+						return lang.formatDateFullyAbsolute(instant, timeZone, false);
+					}
+					case "fullyAbsoluteWithSeconds" -> {
+						return lang.formatDateFullyAbsolute(instant, timeZone, true);
 					}
 				}
 			}

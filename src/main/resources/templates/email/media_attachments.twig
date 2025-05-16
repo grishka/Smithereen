@@ -1,0 +1,29 @@
+{% if attachments is not empty %}
+{% set images=[] %}
+{% set nonImages=[] %}
+{% for att in attachments %}
+	{% if att.type=='PHOTO' %}
+	{% set _=images.add(att) %}
+	{% else %}
+	{% set _=nonImages.add(att) %}
+	{% endif %}
+{% endfor %}
+{% if images is not empty %}
+<tr>
+	<td></td>
+	<td>
+		<div style="margin-bottom: -5px">
+			{% for img in images -%}
+			<div style="display: inline-block; margin: 0 5px 5px 0">{{ img.image | pictureForPhoto('s') }}</div>
+			{%- endfor %}
+		</div>
+	</td>
+</tr>
+{% endif %}
+{% for att in nonImages %}
+<tr>
+	<td></td>
+	<td class="grayText">{{ L(att.type.langKey) }}</td>
+</tr>
+{% endfor %}
+{% endif %}

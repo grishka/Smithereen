@@ -7,12 +7,18 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -22,6 +28,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
@@ -30,9 +39,12 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
+import smithereen.controllers.ObjectLinkResolver;
+import smithereen.controllers.UsersController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -41,7 +53,9 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
+import smithereen.model.ActorStatus;
 import smithereen.model.CommentViewType;
+import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.OtherSession;
 import smithereen.model.PrivacySetting;
@@ -53,10 +67,17 @@ import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
+import smithereen.model.filtering.FilterContext;
+import smithereen.model.filtering.WordFilter;
+import smithereen.model.friends.FriendList;
+import smithereen.model.friends.PublicFriendList;
 import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.notifications.EmailNotificationFrequency;
+import smithereen.model.notifications.EmailNotificationType;
+import smithereen.model.notifications.RealtimeNotificationSettingType;
 import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.ImageRect;
 import smithereen.storage.GroupStorage;
@@ -94,7 +115,8 @@ public class SettingsRoutes{
 		model.with("activationInfo", self.activationInfo);
 		model.with("currentEmailMasked", self.getCurrentEmailMasked());
 		model.with("textFormat", self.prefs.textFormat)
-				.with("commentView", self.prefs.commentViewType);
+				.with("commentView", self.prefs.commentViewType)
+				.with("countLikesInUnread", self.prefs.countLikesInUnread);
 		model.with("title", l.get("settings"));
 		OtherSession session=ctx.getUsersController().getAccountMostRecentSession(self);
 		if(session!=null){
@@ -552,6 +574,9 @@ public class SettingsRoutes{
 		model.with("users", ctx.getUsersController().getUsers(needUsers));
 		model.with("allFeedTypes", EnumSet.complementOf(EnumSet.of(FriendsNewsfeedTypeFilter.POSTS)));
 
+		Lang l=lang(req);
+
+		addFriendLists(self.user, l, ctx, model);
 		Templates.addJsLangForPrivacySettings(req);
 		return model;
 	}
@@ -573,7 +598,7 @@ public class SettingsRoutes{
 				for(FriendsNewsfeedTypeFilter type:FriendsNewsfeedTypeFilter.values()){
 					if(type==FriendsNewsfeedTypeFilter.POSTS)
 						continue;
-					if(req.queryParams("feedType_"+type)!=null)
+					if(req.queryParams("feedTypes_"+type)!=null)
 						feedTypes.add(type);
 				}
 			}
@@ -606,11 +631,13 @@ public class SettingsRoutes{
 		needUsers.addAll(ps.exceptUsers);
 		needUsers.addAll(ps.allowUsers);
 		jsLangKey(req, "save", "select_friends_title", "friends_search_placeholder");
-		return new RenderedTemplateResponse("settings_privacy_edit", req)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_privacy_edit", req)
 				.with("key", key)
 				.with("setting", ps)
 				.with("users", ctx.getUsersController().getUsers(needUsers))
 				.pageTitle(lang(req).get("privacy_settings_title"));
+		addFriendLists(self.user, lang(req), ctx, model);
+		return model;
 	}
 
 	public static Object mobileFeedTypes(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -632,10 +659,12 @@ public class SettingsRoutes{
 		Set<Integer> needUsers=new HashSet<>();
 		needUsers.addAll(setting.exceptUsers);
 		needUsers.addAll(setting.allowUsers);
-		return new RenderedTemplateResponse("privacy_setting_selector", req)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("privacy_setting_selector", req)
 				.with("setting", setting)
 				.with("onlyMe", onlyMe)
 				.with("users", ctx.getUsersController().getUsers(needUsers));
+		addFriendLists(self.user, lang(req), ctx, model);
+		return model;
 	}
 
 	public static Object deactivateAccountForm(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -656,11 +685,19 @@ public class SettingsRoutes{
 		requireQueryParams(req, "textFormat", "commentView");
 		self.prefs.textFormat=enumValue(req.queryParams("textFormat"), FormattedTextFormat.class);
 		self.prefs.commentViewType=enumValue(req.queryParams("commentView"), CommentViewType.class);
+		boolean newCountLikes="on".equals(req.queryParams("countLikesInUnread"));
+		boolean needResetCounters=newCountLikes!=self.prefs.countLikesInUnread;
+		self.prefs.countLikesInUnread=newCountLikes;
 		try{
 			SessionStorage.updatePreferences(self.id, self.prefs);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+
+		if(needResetCounters){
+			ctx.getNotificationsController().recountCounters(self.user);
+		}
+
 		String msg=lang(req).get("settings_saved");
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).show("formMessage_appearanceBehavior").setContent("formMessage_appearanceBehavior", msg);
@@ -812,5 +849,361 @@ public class SettingsRoutes{
 		req.session().attribute("settings.profileEditContactsMessage", message);
 		resp.redirect("/settings/profile/contacts");
 		return "";
+	}
+
+	public static Object notificationsSettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_notifications", req)
+				.pageTitle(lang(req).get("notifications"))
+				.with("notifierTypes", self.prefs.notifierTypes)
+				.with("notifierEnableSound", self.prefs.notifierEnableSound)
+				.with("notifierShowMessageText", self.prefs.notifierShowMessageText)
+				.with("allNotifierTypes", RealtimeNotificationSettingType.values())
+				.with("emailNotificationTypes", self.prefs.emailNotificationTypes)
+				.with("emailNotificationFreq", self.prefs.emailNotificationFrequency)
+				.with("allEmailNotificationFreqOptions", EmailNotificationFrequency.values())
+				.with("allEmailNotificationTypes", EmailNotificationType.values())
+				.addMessage(req, "settings.notifierMessage", "notificationsMessage")
+				.addMessage(req, "settings.emailNotificationsMessage", "emailNotificationsMessage");
+		return model;
+	}
+
+	public static Object updateNotifierSettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		EnumSet<RealtimeNotificationSettingType> notifierTypes;
+		if(StringUtils.isNotEmpty(req.queryParams("allNotifierTypes"))){
+			notifierTypes=null;
+		}else{
+			notifierTypes=EnumSet.noneOf(RealtimeNotificationSettingType.class);
+			for(RealtimeNotificationSettingType type:RealtimeNotificationSettingType.values()){
+				if(req.queryParams("notifierTypes_"+type)!=null)
+					notifierTypes.add(type);
+			}
+		}
+		self.prefs.notifierTypes=notifierTypes;
+		self.prefs.notifierEnableSound="on".equals(req.queryParams("notifierEnableSound"));
+		self.prefs.notifierShowMessageText="on".equals(req.queryParams("notifierShowMessageText"));
+		ctx.getUsersController().updateUserPreferences(self);
+		req.session().attribute("settings.notifierMessage", lang(req).get("settings_saved"));
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.refresh();
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object updateEmailNotificationSettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		EmailNotificationFrequency freq=enumValue(req.queryParams("frequency"), EmailNotificationFrequency.class);
+		EnumSet<EmailNotificationType> types=EnumSet.noneOf(EmailNotificationType.class);
+		for(EmailNotificationType type:EmailNotificationType.values()){
+			if("on".equals(req.queryParams("type_"+type)))
+				types.add(type);
+		}
+		self.prefs.emailNotificationFrequency=freq;
+		self.prefs.emailNotificationTypes=types;
+		ctx.getUsersController().updateUserPreferences(self);
+		req.session().attribute("settings.emailNotificationsMessage", lang(req).get("settings_saved"));
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.refresh();
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object emailUnsubscribe(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Mailer.UnsubscribeLinkData ud;
+		try{
+			ud=Mailer.decodeUnsubscribeLink(req.params(":key"), ctx);
+		}catch(IllegalArgumentException x){
+			throw new UserErrorException("email_unsubscribe_invalid", x);
+		}
+		return new RenderedTemplateResponse("email_unsubscribe", req)
+				.with("unsubKey", req.params(":key"))
+				.with("notificationType", ud.type())
+				.pageTitle(lang(req).get("email_unsubscribe_title"));
+	}
+
+	public static Object doEmailUnsubscribe(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Mailer.UnsubscribeLinkData ud;
+		try{
+			ud=Mailer.decodeUnsubscribeLink(req.params(":key"), ctx);
+		}catch(IllegalArgumentException x){
+			throw new UserErrorException("email_unsubscribe_invalid", x);
+		}
+		Account self=ud.account();
+		boolean all=req.queryParams("all")!=null;
+		if(all){
+			self.prefs.emailNotificationFrequency=EmailNotificationFrequency.DISABLED;
+		}else{
+			self.prefs.emailNotificationTypes.remove(ud.type());
+		}
+		ctx.getUsersController().updateUserPreferences(self);
+		return new RenderedTemplateResponse("email_unsubscribe_done", req)
+				.with("unsubKey", req.params(":key"))
+				.with("notificationType", ud.type())
+				.with("unsubscribedFromAll", all)
+				.pageTitle(lang(req).get("email_unsubscribe_title"));
+	}
+
+	public static Object filters(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		return new RenderedTemplateResponse("settings_filters", req)
+				.with("filters", ctx.getNewsfeedController().getWordFilters(self.user, true))
+				.pageTitle(l.get("feed_filters"))
+				.mobileToolbarTitle(l.get("settings"));
+	}
+
+	public static Object createFilterForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		return new RenderedTemplateResponse("settings_filter_create", req)
+				.pageTitle(l.get("feed_filters"))
+				.addNavBarItem(l.get("settings"), "/settings")
+				.addNavBarItem(l.get("feed_filters"), "/settings/filters")
+				.addNavBarItem(l.get("settings_create_filter"));
+	}
+
+	public static Object createFilter(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "name", "word", "expire");
+		String name=req.queryParams("name");
+		List<String> words=Arrays.stream(req.queryParamsValues("word"))
+				.map(String::trim)
+				.filter(StringUtils::isNotEmpty)
+				.toList();
+		if(words.isEmpty())
+			throw new BadRequestException();
+		int expire=safeParseInt(req.queryParams("expire"));
+		EnumSet<FilterContext> contexts=Arrays.stream(FilterContext.values())
+				.filter(c->"on".equals(req.queryParams("contexts_"+c)))
+				.collect(Collectors.toCollection(()->EnumSet.noneOf(FilterContext.class)));
+		if(contexts.isEmpty())
+			throw new BadRequestException();
+
+		ctx.getNewsfeedController().createWordFilter(self.user, name, words, contexts, expire!=0 ? Instant.now().plusSeconds(expire) : null);
+
+		return ajaxAwareRedirect(req, resp, "/settings/filters");
+	}
+
+	public static Object editFilterForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		WordFilter filter=ctx.getNewsfeedController().getWordFilter(self.user, safeParseInt(req.params(":id")));
+		return new RenderedTemplateResponse("settings_filter_create", req)
+				.with("filter", filter)
+				.with("contexts", filter.contexts.stream().map(Object::toString).collect(Collectors.toSet()))
+				.pageTitle(lang(req).get("feed_filters"));
+	}
+
+	public static Object editFilter(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "name", "word", "expire");
+
+		String name=req.queryParams("name");
+		List<String> words=Arrays.stream(req.queryParamsValues("word"))
+				.map(String::trim)
+				.filter(StringUtils::isNotEmpty)
+				.toList();
+		if(words.isEmpty())
+			throw new BadRequestException();
+		EnumSet<FilterContext> contexts=Arrays.stream(FilterContext.values())
+				.filter(c->"on".equals(req.queryParams("contexts_"+c)))
+				.collect(Collectors.toCollection(()->EnumSet.noneOf(FilterContext.class)));
+		if(contexts.isEmpty())
+			throw new BadRequestException();
+
+		WordFilter filter=ctx.getNewsfeedController().getWordFilter(self.user, safeParseInt(req.params(":id")));
+		String expireInput=req.queryParams("expire");
+		Instant expire;
+		if(expireInput.equals("unchanged")){
+			expire=filter.expiresAt;
+		}else{
+			int expireInt=safeParseInt(req.queryParams("expire"));
+			expire=expireInt!=0 ? Instant.now().plusSeconds(expireInt) : null;
+		}
+
+		ctx.getNewsfeedController().updateWordFilter(self.user, filter, name, words, contexts, expire);
+		return ajaxAwareRedirect(req, resp, "/settings/filters");
+	}
+
+	public static Object confirmDeleteFilter(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("delete"), l.get("settings_confirm_delete_filter"), "/settings/filters/"+req.params(":id")+"/delete?csrf="+info.csrfToken);
+	}
+
+	public static Object deleteFilter(Request req, Response resp, Account self, ApplicationContext ctx){
+		WordFilter filter=ctx.getNewsfeedController().getWordFilter(self.user, safeParseInt(req.params(":id")));
+		ctx.getNewsfeedController().deleteWordFilter(self.user, filter);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).remove("filter"+filter.id);
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object moveAccountOptions(Request req, Response resp, Account self, ApplicationContext ctx){
+		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("settings_move_account_options", req);
+		Lang l=lang(req);
+		String title=l.get("settings_transfer_followers_title");
+		model.pageTitle(title)
+				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(title);
+		if(isAjax(req)){
+			if(isMobile(req)){
+				return new WebDeltaResponse(resp)
+						.box(title, model.renderToString(), null, false);
+			}else{
+				return new WebDeltaResponse(resp)
+						.layer(model.renderToString(), null);
+			}
+		}else{
+			return model;
+		}
+	}
+
+	public static Object moveAccountLinks(Request req, Response resp, Account self, ApplicationContext ctx){
+		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("settings_move_account_links", req);
+		Lang l=lang(req);
+		String title=l.get("settings_transfer_links_title");
+		model.pageTitle(title)
+				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings_transfer_followers_title"), "/settings/moveAccountOptions")
+				.addNavBarItem(title);
+		if(isAjax(req)){
+			if(isMobile(req)){
+				return new WebDeltaResponse(resp)
+						.box(title, model.renderToString(), null, false);
+			}else{
+				return new WebDeltaResponse(resp)
+						.layer(model.renderToString(), null);
+			}
+		}else{
+			return model;
+		}
+	}
+
+	public static Object addAlsoKnownAs(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "link");
+		String link=req.queryParams("link").trim();
+		URI id=ctx.getUsersController().addAlsoKnownAs(self.user, link);
+		if(isAjax(req)){
+			RenderedTemplateResponse model=new RenderedTemplateResponse("settings_move_account_links", req);
+			return new WebDeltaResponse(resp)
+					.setContent("akaLinks", model.renderBlock("links"))
+					.setInputValue("akaLinkInput", "")
+					.setContent("akaLinksMessage", lang(req).get("settings_transfer_link_added", Map.of("domain", id.getHost())))
+					.show("akaLinksMessage");
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object confirmDeleteAlsoKnownAs(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("settings_transfer_delete_link_title"), l.get("settings_transfer_delete_link"),
+				"/settings/deleteAlsoKnownAs?link="+URLEncoder.encode(req.queryParams("link"), StandardCharsets.UTF_8));
+	}
+
+	public static Object deleteAlsoKnownAs(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "link");
+		String link=req.queryParams("link").trim();
+		ctx.getUsersController().deleteAlsoKnownAs(self.user, link);
+		if(isAjax(req)){
+			RenderedTemplateResponse model=new RenderedTemplateResponse("settings_move_account_links", req);
+			return new WebDeltaResponse(resp)
+					.setContent("akaLinks", model.renderBlock("links"));
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object transferFollowersForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		Instant lastTransfer=ctx.getUsersController().getUserLastFollowersTransferTime(self.user);
+		if(lastTransfer!=null && lastTransfer.isAfter(Instant.now().minus(UsersController.FOLLOWERS_TRANSFER_COOLDOWN_DAYS, ChronoUnit.DAYS))){
+			Lang l=Lang.get(self.prefs.locale);
+			throw new UserErrorException("settings_transfer_out_too_often", Map.of("lastTransferDate", l.formatDate(lastTransfer, self.prefs.timeZone, false),
+					"days", UsersController.FOLLOWERS_TRANSFER_COOLDOWN_DAYS,
+					"nextTransferDate", l.formatDate(lastTransfer.plus(UsersController.FOLLOWERS_TRANSFER_COOLDOWN_DAYS, ChronoUnit.DAYS), self.prefs.timeZone, false)));
+		}
+		Lang l=lang(req);
+		String title=l.get("settings_transfer_out_title");
+		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("settings_move_account_transfer", req)
+				.pageTitle(title)
+				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings_transfer_followers_title"), "/settings/moveAccountOptions")
+				.addNavBarItem(title);
+		if(isAjax(req)){
+			if(isMobile(req)){
+				return new WebDeltaResponse(resp)
+						.box(title, model.renderToString(), null, false);
+			}else{
+				return new WebDeltaResponse(resp)
+						.layer(model.renderToString(), null);
+			}
+		}else{
+			return model;
+		}
+	}
+
+	public static Object transferFollowers(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "link", "password");
+		String link=req.queryParams("link").trim();
+		String password=req.queryParams("password");
+		if(isAjax(req)){
+			try{
+				ctx.getUsersController().transferLocalUserFollowers(self, link, password);
+			}catch(UserErrorException x){
+				return new WebDeltaResponse(resp)
+						.show("transferFollowersMessage")
+						.setContent("transferFollowersMessage", lang(req).get(x.getMessage(), x.langArgs==null ? Map.of() : x.langArgs));
+			}
+		}else{
+			ctx.getUsersController().transferLocalUserFollowers(self, link, password);
+		}
+		return ajaxAwareRedirect(req, resp, "/feed");
+	}
+
+	public static Object confirmRemoveMoveRedirect(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("settings_transfer_remove_redirect_title"), l.get("settings_transfer_remove_redirect"), "/settings/removeMoveRedirect");
+	}
+
+	public static Object removeMoveRedirect(Request req, Response resp, Account self, ApplicationContext ctx){
+		ctx.getUsersController().clearMovedTo(self);
+		return ajaxAwareRedirect(req, resp, "/feed");
+	}
+
+	public static Object updateSelfStatus(Request req, Response resp, Account self, ApplicationContext ctx){
+		String status=req.queryParams("status");
+		status=ctx.getUsersController().updateStatus(self.user, status);
+		if(!isAjax(req)){
+			resp.redirect(back(req));
+			return "";
+		}
+		if(isMobile(req)){
+			return new WebDeltaResponse(resp).refresh();
+		}else{
+			WebDeltaResponse wdr=new WebDeltaResponse(resp)
+					.runScript("ge('profileStatusBox').customData.dismiss();");
+			if(StringUtils.isEmpty(status)){
+				wdr.hide("profileStatusCont").show("profileStatusLink");
+			}else{
+				wdr.show("profileStatusCont")
+						.hide("profileStatusLink")
+						.setContent("profileStatusCont", status);
+			}
+			return wdr;
+		}
+	}
+
+	public static Object mobileStatusForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isMobile(req)){
+			resp.redirect(back(req));
+			return "";
+		}
+		String status;
+		int groupID=safeParseInt(req.queryParams("gid"));
+		if(groupID==0)
+			status=self.user.getStatusText();
+		else
+			status=ctx.getGroupsController().getGroupOrThrow(groupID).getStatusText();
+		Lang l=lang(req);
+		return wrapForm(req, resp, "status_form", groupID>0 ? "/groups/"+groupID+"/updateStatus" : "/settings/updateStatus", l.get("update_status"), "save", new RenderedTemplateResponse("status_form", req).with("statusText", status));
 	}
 }

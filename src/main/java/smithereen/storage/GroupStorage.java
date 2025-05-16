@@ -51,6 +51,7 @@ import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.IntPair;
+import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.NamedMutexCollection;
 import spark.utils.StringUtils;
@@ -159,6 +160,7 @@ public class GroupStorage{
 					.value("access_type", group.accessType)
 					.value("endpoints", group.serializeEndpoints())
 					.value("about", group.summary)
+					.value("profile_fields", group.serializeProfileFields())
 					.valueExpr("last_updated", "CURRENT_TIMESTAMP()");
 
 			if(existingGroupID==0){
@@ -410,7 +412,7 @@ public class GroupStorage{
 		);
 	}
 
-	public static PaginatedList<User> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative) throws SQLException{
+	public static PaginatedList<Integer> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
 			int total=new SQLQueryBuilder(conn)
@@ -425,7 +427,7 @@ public class GroupStorage{
 					.where("group_id=? AND accepted=1"+_tentative, groupID)
 					.limit(count, offset)
 					.executeAndGetIntList();
-			return new PaginatedList<>(UserStorage.getByIdAsList(ids), total, offset, count);
+			return new PaginatedList<>(ids, total, offset, count);
 		}
 	}
 
@@ -522,7 +524,11 @@ public class GroupStorage{
 			int total=DatabaseUtils.oneFieldToInt(stmt.executeQuery());
 			if(total==0)
 				return new PaginatedList<>(Collections.emptyList(), 0, 0, count);
-			query+=" ORDER BY group_id ASC LIMIT ? OFFSET ?";
+			if(includePrivate)
+				query+=" ORDER BY hints_rank DESC";
+			else
+				query+=" ORDER BY group_id ASC";
+			query+=" LIMIT ? OFFSET ?";
 			stmt=SQLQueryBuilder.prepareStatement(conn, String.format(Locale.US, query, "group_id"), userID, count, offset);
 			try(ResultSet res=stmt.executeQuery()){
 				return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
@@ -807,6 +813,15 @@ public class GroupStorage{
 		removeFromCache(group);
 	}
 
+	public static void updateProfileFields(Group group) throws SQLException{
+		new SQLQueryBuilder()
+				.update("groups")
+				.value("profile_fields", group.serializeProfileFields())
+				.where("id=?", group.id)
+				.executeNoResult();
+		removeFromCache(group);
+	}
+
 	public static boolean isUserBlocked(int ownerID, int targetID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("blocks_group_user")
@@ -947,12 +962,12 @@ public class GroupStorage{
 		return ids.stream().map(i->new GroupInvitation(groups.get(i.first()), users.get(i.second()))).collect(Collectors.toList());
 	}
 
-	public static URI getInvitationApID(int userID, int groupID) throws SQLException{
+	public static Pair<Integer, URI> getInvitationInviterAndApID(int userID, int groupID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("group_invites")
-				.columns("ap_id")
+				.columns("inviter_id", "ap_id")
 				.where("invitee_id=? AND group_id=?", userID, groupID)
-				.executeAndGetSingleObject(r->r.getString(1)==null ? null : URI.create(r.getString(1)));
+				.executeAndGetSingleObject(r->new Pair<>(r.getInt(1), r.getString(2)==null ? null : URI.create(r.getString(2))));
 	}
 
 	public static int deleteInvitation(int userID, int groupID, boolean isEvent) throws SQLException{
@@ -1155,6 +1170,32 @@ public class GroupStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT COUNT(*) FROM `group_memberships` JOIN `users` ON `user_id`=`users`.id WHERE group_id=? AND accepted=1 AND `users`.domain=''", groupID);
 			return DatabaseUtils.oneFieldToInt(stmt.executeQuery());
+		}
+	}
+
+	public static boolean incrementGroupHintsRank(int userID, int groupID, int amount) throws SQLException{
+		return new SQLQueryBuilder()
+				.update("group_memberships")
+				.valueExpr("hints_rank", "hints_rank+?", amount*1000)
+				.where("user_id=? AND group_id=?", userID, groupID)
+				.executeUpdate()>0;
+	}
+
+	public static void normalizeGroupHintsRanksIfNeeded(Set<Integer> userIDs) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			List<Integer> filteredIDs=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("user_id")
+					.whereIn("user_id", userIDs)
+					.groupBy("user_id HAVING MAX(hints_rank)>500000")
+					.executeAndGetIntList();
+			for(int id:filteredIDs){
+				new SQLQueryBuilder(conn)
+						.update("group_memberships")
+						.where("user_id=? AND mutual=1", id)
+						.valueExpr("hints_rank", "FLOOR(hints_rank/2)")
+						.executeNoResult();
+			}
 		}
 	}
 }

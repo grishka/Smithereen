@@ -46,7 +46,11 @@
 {% if movedTo is not null %}
 <div class="card padded">
 	{{ L('profile_moved', {'name': user | name('first')}) }}<br/>
+	{% if movedTo.domain is empty %}
+	<a href="{{ movedTo.profileURL }}"><b>{{ movedTo | name }}</b></a>
+	{% else %}
 	<a href="{{ movedTo.profileURL }}">{{ L('profile_moved_link', {'domain': movedTo.domain, 'name': movedTo | name}) }}</a>
+	{% endif %}
 </div>
 {% elseif user.domain is not null %}
 <div class="card padded">
@@ -72,6 +76,16 @@
 		</div>
 		<div class="profileNameW" id="profileHeaderNameW">
 			<div class="profileName">{{ user | name('complete') }}</div>
+			{% if presence is not null %}
+			<div class="profilePresence">
+			{%- if presence.online %}
+			{{- L('user_online') }}
+			{%- else %}
+			{{- L('user_last_seen', {'gender': user.gender, 'date': LD(presence.lastUpdated)}) }}
+			{%- endif %}
+			{% if presence.mobile %}<span class="mobileOnlineIcon"></span>{% endif %}
+			</div>
+			{% endif %}
 		</div>
 	</div>
 	{% if currentUser is not null and currentUser.id!=user.id and not isSelfBlocked and movedTo is null %}
@@ -96,9 +110,15 @@
 				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button ellipsize" data-ajax>{{L("follow")}}</a>
 			{%endif%}
 			{% else %}
-				<a href="/users/{{ user.id }}/confirmRemoveFriend" class="button secondary" onclick="return showOptions(this)" data-options="{{ json([
-					{'label': L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'href': "/users/#{user.id}/confirmRemoveFriend", 'type': 'confirm', 'title':  L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'msg': L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}).toString(), 'url': "/users/#{user.id}/doRemoveFriend"}
-				]) }}"><span class="ellipsize">
+				{% block friendButton %}
+				{% set buttonOptions=[{'label': L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'href': "/users/#{user.id}/confirmRemoveFriend", 'type': 'confirm', 'title':  L(isFriend ? 'remove_friend' : 'unfollow').toString(), 'msg': L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}).toString(), 'url': "/users/#{user.id}/doRemoveFriend"}] %}
+				{% if canMute %}
+				{% set _=buttonOptions.add({'label' : L(isMuted ? 'profile_unmute' : 'profile_mute', {'name': user.firstAndGender}).toString(), 'href': "/users/#{user.id}/#{isMuted ? 'unmute' : 'mute'}?csrf=#{csrf}", 'type': 'link', 'ajax': 'box'}) %}
+				{% endif %}
+				{% if isFriend %}
+				{% set _=buttonOptions.add({'label': L('friend_set_lists').toString(), 'href': "/users/#{user.id}/setListsMobileBox", 'type': 'link', 'ajax': 'box'}) %}
+				{% endif %}
+				<a href="/users/{{ user.id }}/confirmRemoveFriend" class="button secondary" id="profileFriendButton" onclick="return showOptions(this)" data-options="{{ json(buttonOptions) }}"><span class="ellipsize">
 					{% if isFriend %}
 					{{ L('profile_user_is_friend') }}
 					{% elseif friendRequestSent %}
@@ -107,14 +127,26 @@
 					{{ L('profile_user_you_follow') }}
 					{% endif %}
 				</span><span class="arrowIcon"></span></a>
+				{% endblock %}
 			{%endif%}
 		</div>
 	{%endif%}
 	<ul class="profileInfoRows">
-		{% if friendCount>0 %}
+		{% if currentUser is not null and user.id==currentUser.id %}
+		<li><a href="/settings/mobileStatusForm" class="multiline" data-ajax-box>
+			<span class="icon iconStatus"></span>
+			<span class="text">{{ user.statusText | default(L('update_status')) }}</span>
+		</a></li>
+		{% elseif user.statusText is not empty %}
+		<li><div class="item multiline">
+			<span class="icon iconStatus"></span>
+			<span class="text">{{ user.statusText }}</span>
+		</div></li>
+		{% endif %}
+		{% if user.friendsCount>0 %}
 		<li><a href="/users/{{ user.id }}/friends">
 			<span class="icon iconFriends"></span>
-			<span class="text ellipsize">{{ L('X_friends_bold', {'count': friendCount}) }}{%- if mutualFriendCount>0 %} · {{ L('X_mutual_friends_short_bold', {'count': mutualFriendCount}) }}{% endif %}</span>
+			<span class="text ellipsize">{{ L('X_friends_bold', {'count': user.friendsCount}) }}{%- if mutualFriendCount>0 %} · {{ L('X_mutual_friends_short_bold', {'count': mutualFriendCount}) }}{% endif %}</span>
 			<span class="accessory avatarPile">
 			{% if mutualFriends is not empty %}
 			{% for friend in mutualFriends | slice(0, min(mutualFriends | length, 3)) %}
@@ -129,10 +161,10 @@
 			</span>
 		</a></li>
 		{% endif %}
-		{% if followers.total>0 %}
+		{% if user.followersCount>0 %}
 		<li><a href="/users/{{ user.id }}/followers">
 			<span class="icon iconFollowers"></span>
-			<span class="text ellipsize">{{ L('X_followers_bold', {'count': followers.total}) }}</span>
+			<span class="text ellipsize">{{ L('X_followers_bold', {'count': user.followersCount}) }}</span>
 		</a></li>
 		{% endif %}
 		{% if user.location is not empty %}

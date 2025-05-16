@@ -1,0 +1,21 @@
+{% extends "page" %}
+{% block content %}
+	<div class="heavyBoxWrap">
+		<div class="heavyBox">
+			<h2>{{ L('email_unsubscribe_title') }}</h2>
+			{% if unsubscribedFromAll %}
+			<div class="marginBefore">{{ L('email_unsubscribe_all_done') }}</div>
+			{% else %}
+			<div class="marginBefore">{{ L('email_unsubscribe_type_done', {'type': L(notificationType.langKey)}) }}</div>
+			<form class="marginBefore buttonBar" action="/settings/notifications/emailUnsubscribe/{{ unsubKey }}" method="post">
+				<button name="all" class="flL">{{ L('email_unsubscribe_all') }}</button>
+				<div class="clear"></div>
+			</form>
+			{% endif %}
+		</div>
+	</div>
+	<div class="bottomSummaryWrap">
+		<div class="bottomSummary"><a href="/settings/notifications">{{ L(currentUser is null ? 'email_unsubscribe_settings_anon' : 'email_unsubscribe_settings') }}</a></div>
+	</div>
+{% endblock %}
+

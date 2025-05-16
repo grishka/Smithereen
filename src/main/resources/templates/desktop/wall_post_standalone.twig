@@ -2,6 +2,7 @@
 {%extends "page"%}
 {%block content%}
 {% include 'wall_tabbar' with {'tab': 'single', 'owner': post.post.ownerID>0 ? users[post.post.ownerID] : groups[-post.post.ownerID]} %}
+{% set randomID=randomString() %}
 {% if privacyOverridden %}
 <div class="settingsMessage">
 	<b>{{ L('private_post_warning_title') }}</b><br/>
@@ -12,7 +13,7 @@
 {%if post.post.replyLevel>0%}
 	<a href="/posts/{{ post.post.replyKey[0] }}">Top-level</a><br/>
 {%endif%}
-{% include "wall_post" with {'standalone': true} %}
+{% include "wall_post" with {'standalone': true, 'randomID': randomID} %}
 </div>
 <div class="summaryWrap noPadTop">
 	<div class="summary">
@@ -21,22 +22,25 @@
 	</div>
 	{% include "pagination" %}
 </div>
-<div id="postReplies{{post.post.id}}" class="singleColumn">
+<div id="postReplies{{post.post.id}}_{{ randomID }}" class="singleColumn">
 	{%- for reply in items %}
-	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.post.id}", 'first': loop.first, 'topLevel': post} %}
+	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.post.id}_#{randomID}", 'first': loop.first, 'topLevel': post, 'randomID': randomID} %}
 	{% endfor -%}
 </div>
 {% set interactions=postInteractions[post.post.id] %}
 {% if currentUser is not null and interactions.canComment %}
-{% include "wall_post_form" with {'id': "commentReplyPost#{post.post.id}", 'replyTo': post.post, 'hidden': true} %}
-{% include "wall_post_form" with {'id': "commentPost#{post.post.id}", 'replyTo': post.post} %}
+{% include "wall_post_form" with {'id': "commentReplyPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'hidden': true, 'randomID': randomID} %}
+{% include "wall_post_form" with {'id': "commentPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'randomID': randomID} %}
 {% endif %}
-<script>
+{% script %}
 	if(window.location.hash && window.location.hash.indexOf("comment")==1){
-		var el=document.getElementById(window.location.hash.replace("#comment", "post"));
-		if(el) el.classList.add("highlight");
+		var el=document.getElementById(window.location.hash.replace("#comment", "post")+"_{{ randomID }}");
+		if(el){
+			el.classList.add("highlight");
+			el.scrollIntoView();
+		}
 	}
-</script>
+{% endscript %}
 {%endblock%}
 {% block additionalLinks %}
 {% if post.post.local and post.post.privacy=='PUBLIC' %}

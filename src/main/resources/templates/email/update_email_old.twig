@@ -1,5 +1,6 @@
 {% extends "page" %}
 {% block content %}
-	{{ L('email_change_old_body', {'name': name, 'serverName': domain, 'address': address}) }}
+	<h1>{{ L('email_change_header') }}</h1>
+	{{ L('email_change_old_body', {'name': name, 'serverName': serverName, 'address': address, 'domain': domain}) }}
 {% endblock %}
 

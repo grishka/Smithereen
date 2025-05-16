@@ -15,9 +15,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import smithereen.ApplicationContext;
@@ -26,7 +29,13 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.activities.Join;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
+import smithereen.model.ActorStatus;
 import smithereen.model.EventReminder;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -39,30 +48,31 @@ import smithereen.model.User;
 import smithereen.model.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.exceptions.UserErrorException;
+import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.FederationStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NotificationsStorage;
+import smithereen.storage.utils.IntPair;
+import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.MaintenanceScheduler;
 import spark.utils.StringUtils;
-
-import static smithereen.Utils.wrapError;
 
 public class GroupsController{
 	private static final Logger LOG=LoggerFactory.getLogger(GroupsController.class);
 
 	private final ApplicationContext context;
 	private final LruCache<Integer, EventReminder> eventRemindersCache=new LruCache<>(500);
+	private ArrayList<PendingHintsRankIncrement> pendingHintsRankIncrements=new ArrayList<>();
+
 
 	private final Object groupMembershipLock=new Object();
 
 	public GroupsController(ApplicationContext context){
 		this.context=context;
+		MaintenanceScheduler.runPeriodically(this::doPendingHintsUpdates, 10, TimeUnit.MINUTES);
 	}
 
 	public Group createGroup(@NotNull User admin, @NotNull String name, @Nullable String description){
@@ -162,7 +172,7 @@ public class GroupsController{
 		}
 	}
 
-	public PaginatedList<User> getMembers(@NotNull Group group, int offset, int count, boolean tentative){
+	public PaginatedList<Integer> getMembers(@NotNull Group group, int offset, int count, boolean tentative){
 		try{
 			return GroupStorage.getMembers(group.id, offset, count, tentative);
 		}catch(SQLException x){
@@ -170,7 +180,7 @@ public class GroupsController{
 		}
 	}
 
-	public PaginatedList<User> getAllMembers(@NotNull Group group, int offset, int count){
+	public PaginatedList<Integer> getAllMembers(@NotNull Group group, int offset, int count){
 		try{
 			return GroupStorage.getMembers(group.id, offset, count, null);
 		}catch(SQLException x){
@@ -308,6 +318,7 @@ public class GroupsController{
 
 				GroupStorage.joinGroup(group, user.id, tentative, forceAccepted || (!(group instanceof ForeignGroup) && autoAccepted));
 			}
+			context.getNotificationsController().sendRealtimeCountersUpdates(user);
 
 			if(!forceAccepted){
 				if(group instanceof ForeignGroup fg){
@@ -431,6 +442,8 @@ public class GroupsController{
 
 	public void inviteUserToGroup(@NotNull User self, @NotNull User who, @NotNull Group group){
 		try{
+			if(who instanceof ForeignUser && who.getGroupsURL()==null)
+				throw new UserErrorException("group_invite_unsupported");
 			// This also takes care of checking whether anyone has blocked anyone
 			// Two users can't be friends if one blocked the other
 			if(context.getFriendsController().getFriendshipStatus(self, who)!=FriendshipStatus.FRIENDS)
@@ -464,6 +477,7 @@ public class GroupsController{
 					else
 						notifications.incNewGroupInvitationsCount(1);
 				}
+				context.getNotificationsController().sendRealtimeNotifications(who, "groupInvite"+group.id+"_"+self.id, group.isEvent() ? RealtimeNotification.Type.EVENT_INVITE : RealtimeNotification.Type.GROUP_INVITE, group, null, self);
 			}
 			if(group instanceof ForeignGroup || who instanceof ForeignUser){
 				context.getActivityPubWorker().sendGroupInvite(inviteID, self, group, who);
@@ -475,7 +489,7 @@ public class GroupsController{
 
 	public PaginatedList<GroupInvitation> getUserInvitations(@NotNull Account account, boolean isEvent, int offset, int count){
 		try{
-			UserNotifications ntf=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
+			UserNotifications ntf=context.getNotificationsController().getUserCounters(account);
 			int total=isEvent ? ntf.getNewEventInvitationsCount() : ntf.getNewGroupInvitationsCount();
 			return new PaginatedList<>(GroupStorage.getUserInvitations(account.user.id, isEvent, offset, count), total, offset, count);
 		}catch(SQLException x){
@@ -485,11 +499,12 @@ public class GroupsController{
 
 	public void declineInvitation(@NotNull User self, @NotNull Group group){
 		try{
-			URI apID=GroupStorage.getInvitationApID(self.id, group.id);
+			Pair<Integer, URI> apID=GroupStorage.getInvitationInviterAndApID(self.id, group.id);
 			int localID=GroupStorage.deleteInvitation(self.id, group.id, group.isEvent());
-			if(localID>0 && group instanceof ForeignGroup fg && apID!=null){
-				context.getActivityPubWorker().sendRejectGroupInvite(self, fg, localID, apID);
+			if(localID>0 && group instanceof ForeignGroup fg && apID.second()!=null){
+				context.getActivityPubWorker().sendRejectGroupInvite(self, fg, localID, context.getUsersController().getUserOrThrow(apID.first()), apID.second());
 			}
+			context.getNotificationsController().sendRealtimeCountersUpdates(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -559,6 +574,8 @@ public class GroupsController{
 				join.actor=new LinkOrObject(user.activityPubID);
 				join.to=List.of(new LinkOrObject(group.activityPubID));
 				context.getActivityPubWorker().sendAcceptFollowActivity(fu, group, join);
+			}else{
+				context.getNotificationsController().sendRealtimeNotifications(user, "groupJoinAccept"+group.id, RealtimeNotification.Type.GROUP_REQUEST_ACCEPTED, null, null, group);
 			}
 			if(!(group instanceof ForeignGroup)){
 				context.getActivityPubWorker().sendAddUserToGroupActivity(user, group, false);
@@ -580,15 +597,18 @@ public class GroupsController{
 	public void cancelInvitation(@NotNull User self, @NotNull Group group, @NotNull User user){
 		enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
 		try{
-			URI apID=GroupStorage.getInvitationApID(user.id, group.id);
+			Pair<Integer, URI> inviterAndID=GroupStorage.getInvitationInviterAndApID(user.id, group.id);
 			int id=GroupStorage.deleteInvitation(user.id, group.id, group.isEvent());
 			if(id<0)
 				throw new BadRequestException("This user was not invited to this group");
 			if(user instanceof ForeignUser fu){
+				URI apID=inviterAndID.second();
 				if(apID==null){
 					apID=Config.localURI("/activitypub/objects/groupInvites/"+id);
 				}
-				context.getActivityPubWorker().sendUndoGroupInvite(fu, group, id, apID);
+				context.getActivityPubWorker().sendUndoGroupInvite(fu, group, id, context.getUsersController().getUserOrThrow(inviterAndID.first()), apID);
+			}else{
+				context.getNotificationsController().sendRealtimeCountersUpdates(user);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -694,9 +714,82 @@ public class GroupsController{
 		}
 	}
 
+	public void incrementHintsRank(User self, Group group, int amount){
+		if(group.isEvent())
+			return;
+		pendingHintsRankIncrements.add(new PendingHintsRankIncrement(self.id, group.id, amount));
+	}
+
+	public void doPendingHintsUpdates(){
+		if(pendingHintsRankIncrements.isEmpty())
+			return;
+		ArrayList<PendingHintsRankIncrement> increments=pendingHintsRankIncrements;
+		pendingHintsRankIncrements=new ArrayList<>();
+		try{
+			HashMap<IntPair, Integer> totals=new HashMap<>();
+			for(PendingHintsRankIncrement i:increments){
+				IntPair key=new IntPair(i.userID, i.groupID);
+				totals.put(key, totals.getOrDefault(key, 0)+i.amount);
+			}
+			HashSet<Integer> usersToNormalize=new HashSet<>();
+			for(Map.Entry<IntPair, Integer> i:totals.entrySet()){
+				IntPair key=i.getKey();
+				if(GroupStorage.incrementGroupHintsRank(key.first(), key.second(), i.getValue()))
+					usersToNormalize.add(key.first());
+			}
+			if(!usersToNormalize.isEmpty())
+				GroupStorage.normalizeGroupHintsRanksIfNeeded(usersToNormalize);
+		}catch(SQLException x){
+			LOG.error("Failed to update hint ranks", x);
+		}
+	}
+
+	public String updateStatus(User self, Group group, String status){
+		enforceUserAdminLevel(group, self, Group.AdminLevel.ADMIN);
+		ActorStatus result=updateStatus(group, new ActorStatus(status, Instant.now(), null, null));
+		return result==null ? null : result.text();
+	}
+
+	public ActorStatus updateStatus(Group group, ActorStatus status){
+		ActorStatus prev=group.status;
+		if(status!=null && StringUtils.isNotEmpty(status.text()) && !status.isExpired()){
+			if(status.text().length()>100)
+				status=status.withText(TextProcessor.truncateOnWordBoundary(status.text(), 100)+"...");
+			if(group.status!=null && group.status.text().equals(status.text()))
+				return status;
+			group.status=status;
+		}else{
+			if(group.status==null)
+				return status;
+			group.status=null;
+		}
+		try{
+			GroupStorage.updateProfileFields(group);
+			if(group instanceof ForeignGroup){
+				if(prev!=null)
+					FederationStorage.deleteFromApIdIndex(ObjectLinkResolver.ObjectType.GROUP_STATUS, group.id);
+				if(status!=null && status.apId()!=null)
+					FederationStorage.addToApIdIndex(status.apId(), ObjectLinkResolver.ObjectType.GROUP_STATUS, group.id);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+
+		if(!(group instanceof ForeignGroup)){
+			if(group.status!=null)
+				context.getActivityPubWorker().sendCreateStatusActivity(group, group.status);
+			else
+				context.getActivityPubWorker().sendClearStatusActivity(group, prev);
+		}
+
+		return status;
+	}
+
 	public enum EventsType{
 		FUTURE,
 		PAST,
 		ALL
 	}
+
+	private record PendingHintsRankIncrement(int userID, int groupID, int amount){}
 }

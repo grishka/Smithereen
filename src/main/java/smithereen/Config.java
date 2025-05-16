@@ -101,6 +101,7 @@ public class Config{
 	public static PublicKey serviceActorPublicKey;
 	public static byte[] objectIdObfuscationKey;
 	public static int[][] objectIdObfuscationKeysByType=new int[ObfuscatedObjectIDType.values().length][];
+	public static byte[] emailUnsubscribeKey;
 
 	public static Map<Integer, UserRole> userRoles=new HashMap<>();
 
@@ -241,6 +242,16 @@ public class Config{
 					objectIdObfuscationKeysByType[type.ordinal()]=key;
 				}
 			}catch(NoSuchAlgorithmException|IOException ignore){}
+
+			String unsubKey=dbValues.get("EmailUnsubscribeKey");
+			if(unsubKey==null){
+				byte[] key=new byte[16];
+				new SecureRandom().nextBytes(key);
+				updateInDatabase("EmailUnsubscribeKey", Base64.getEncoder().encodeToString(key));
+				emailUnsubscribeKey=key;
+			}else{
+				emailUnsubscribeKey=Base64.getDecoder().decode(unsubKey);
+			}
 
 			TopLevelDomainList.lastUpdatedTime=Long.parseLong(dbValues.getOrDefault("TLDList_LastUpdated", "0"));
 			if(TopLevelDomainList.lastUpdatedTime>0){

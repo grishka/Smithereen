@@ -53,54 +53,56 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 	@Override
 	public Post call() throws Exception{
 		LOG.debug("Started fetching full reply tree for post {}", post.getActivityPubID());
-		if(post.activityPubReplies==null){
-			if(!post.isLocal()){
-				return post;
-			}
-		}else{
-			Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
-
-			ActivityPubCollection collection;
-			collection=context.getObjectLinkResolver().resolve(post.activityPubReplies, ActivityPubCollection.class, true, false, false, owner, true);
-			collection.validate(post.getActivityPubID(), "replies");
-			LOG.trace("collection: {}", collection);
-			if(collection.first==null){
-				LOG.warn("Post {} doesn't have replies.first", post.getActivityPubID());
-				return post;
-			}
-			CollectionPage page;
-			if(collection.first.link!=null){
-				page=context.getObjectLinkResolver().resolve(collection.first.link, CollectionPage.class, true, false, false, owner, false);
-				page.validate(post.getActivityPubID(), "replies.first");
-			}else if(collection.first.object instanceof CollectionPage){
-				page=(CollectionPage) collection.first.object;
-			}else{
-				LOG.warn("Post {} doesn't have a correct CollectionPage in replies.first", post.getActivityPubID());
-				return post;
-			}
-			LOG.trace("first page: {}", page);
-			if(page.items!=null && !page.items.isEmpty()){
-				doOneCollectionPage(page.items);
-			}
-			while(page.next!=null){
-				LOG.trace("getting next page: {}", page.next);
-				try{
-					page=context.getObjectLinkResolver().resolve(page.next, CollectionPage.class, true, false, false, owner, false);
-					if(page.items==null){ // you're supposed to not return the "next" field when there are no more pages, but mastodon still does...
-						LOG.debug("done fetching replies because page.items is empty");
-						break;
-					}
-					doOneCollectionPage(page.items);
-				}catch(ObjectNotFoundException x){
-					LOG.warn("Failed to get replies collection page for post {}", post.getActivityPubID());
+		try{
+			if(post.activityPubReplies==null){
+				if(!post.isLocal()){
 					return post;
 				}
+			}else{
+				Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
+
+				ActivityPubCollection collection;
+				collection=context.getObjectLinkResolver().resolve(post.activityPubReplies, ActivityPubCollection.class, true, false, false, owner, true);
+				collection.validate(post.getActivityPubID(), "replies");
+				LOG.trace("collection: {}", collection);
+				if(collection.first==null){
+					LOG.warn("Post {} doesn't have replies.first", post.getActivityPubID());
+					return post;
+				}
+				CollectionPage page;
+				if(collection.first.link!=null){
+					page=context.getObjectLinkResolver().resolve(collection.first.link, CollectionPage.class, true, false, false, owner, false);
+					page.validate(post.getActivityPubID(), "replies.first");
+				}else if(collection.first.object instanceof CollectionPage){
+					page=(CollectionPage) collection.first.object;
+				}else{
+					LOG.warn("Post {} doesn't have a correct CollectionPage in replies.first", post.getActivityPubID());
+					return post;
+				}
+				LOG.trace("first page: {}", page);
+				if(page.items!=null && !page.items.isEmpty()){
+					doOneCollectionPage(page.items);
+				}
+				while(page.next!=null){
+					LOG.trace("getting next page: {}", page.next);
+					try{
+						page=context.getObjectLinkResolver().resolve(page.next, CollectionPage.class, true, false, false, owner, false);
+						if(page.items==null){ // you're supposed to not return the "next" field when there are no more pages, but mastodon still does...
+							LOG.debug("done fetching replies because page.items is empty");
+							break;
+						}
+						doOneCollectionPage(page.items);
+					}catch(ObjectNotFoundException x){
+						LOG.warn("Failed to get replies collection page for post {}", post.getActivityPubID());
+						return post;
+					}
+				}
 			}
-		}
-		if(post.getReplyLevel()==0){
-			synchronized(apw){
-				fetchingAllReplies.remove(post.getActivityPubID());
-				return post;
+		}finally{
+			if(post.getReplyLevel()==0){
+				synchronized(apw){
+					fetchingAllReplies.remove(post.getActivityPubID());
+				}
 			}
 		}
 		return post;

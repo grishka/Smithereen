@@ -10,6 +10,7 @@
   "err_group_username_taken": "Ya existe la dirección.",
   "err_group_reserved_username": "Esta dirección está reservada para el sistema. No puedes usarla.",
   "X_members": "{count, plural, one {# miembro} other {# miembros}}",
+  "X_members_bold": "{count, plural, one {<b>#</b> miembro} other {<b>#</b> miembros}}",
   "members": "Miembros",
   "leave_group": "Dejar el grupo",
   "join_group": "Unirse al grupo",
@@ -57,7 +58,7 @@
   "events": "Eventos",
   "summary_X_upcoming_events": "Tú {count, select, 0 {no tienes ningún evento próximo} other {vas a tener que atender {count, plural, one {# evento} other {# eventos}}}}",
   "summary_X_past_events": "Tienes {count, plural, =0 {0 eventos pasados} one {# evento pasado} other {# eventos pasados}}",
-  "write_on_event_wall": "Escribir en el muro de evento...",
+  "write_on_event_wall": "Escribir en el muro de evento…",
   "leave_event": "Abandonar evento",
   "event_organizers": "Organizadores",
   "event_X_organizers": "{count, plural, one {# organizador} other {# organizadores}}",
@@ -131,6 +132,7 @@
   "summary_event_X_invites": "{count, plural, =0 {Ninguna persona está} one {# persona está} other {# personas están}} invitada/s a unirse a este evento",
   "cancel_invitation": "Cancelar invitación",
   "invitation_canceled": "Invitación cancelada",
+  "confirm_leave_group": "Este es un grupo <b>{type, select, closed {cerrado} private {privado} other {}}</b>. Si lo abandonas, podría ser difícil volver a entrar.\n\n¿Estás seguro de que quieres abandonar este grupo?",
   "confirm_leave_event": "Esto es un evento <b>privado</b>. Si te sales, podría ser difícil volver a entrar.\n\n¿Estás seguro de que quieres salirte de este evento?",
   "groups_search_placeholder": "Buscar grupos",
   "events_search_placeholder": "Buscar eventos",
@@ -138,5 +140,10 @@
   "summary_found_X_events": "{count, plural, =0 {0 eventos} one {# evento} other {# eventos}} encontrados",
   "group_access_level": "Nivel de acceso",
   "group_access_admin": "Administrador",
-  "group_access_moderator": "Moderador"
+  "group_access_moderator": "Moderador",
+  "group_you_are_member": "Te has unido",
+  "group_join_request_sent": "Solicitud enviada",
+  "event_you_are_member": "Vas a asistir",
+  "event_you_are_tentative_member": "No estás seguro",
+  "group_invite_unsupported": "No puedes invitar a este usuario a grupos o eventos porque su servidor no soporta esto."
 }

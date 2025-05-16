@@ -22,7 +22,7 @@ public abstract class ForwardPaginatingCollectionTask extends NoResultCallable{
 	protected final URI collectionID;
 	protected final ApplicationContext context;
 	protected ActivityPubCollection collection;
-	protected int totalItems, processedItems;
+	protected long totalItems, processedItems;
 	protected int maxItems=Integer.MAX_VALUE;
 
 	public ForwardPaginatingCollectionTask(ApplicationContext context, URI collectionID){

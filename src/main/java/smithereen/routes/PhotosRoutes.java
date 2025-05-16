@@ -124,6 +124,8 @@ public class PhotosRoutes{
 					default -> throw new IllegalStateException("Unexpected value: " + owner);
 				});
 		if(!isMobile(req)){
+			if(self!=null)
+				addFriendLists(self.user, l, ctx, model);
 			PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(owner, self==null ? null : self.user, 0, 100);
 			model.paginate(photos, owner.getTypeAndIdForURL()+"/allPhotos?offset=", owner.getTypeAndIdForURL()+"/albums");
 			Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
@@ -149,12 +151,12 @@ public class PhotosRoutes{
 		}
 		Map<String, Object> args=Map.of("owner", owner, "defaultPrivacy", PrivacySetting.DEFAULT);
 		if(isMobile(req)){
-			if(isMobile(req)){
-				Templates.addJsLangForPrivacySettings(req);
-			}
-			return new RenderedTemplateResponse("photo_album_create_form", req)
+			Templates.addJsLangForPrivacySettings(req);
+			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_album_create_form", req)
 					.pageTitle(lang(req).get("create_photo_album"))
 					.withAll(args);
+			addFriendLists(self.user, lang(req), ctx, model);
+			return model;
 		}
 		return wrapForm(req, resp, "photo_album_create_form", "/my/albums/create", lang(req).get("create_photo_album"), "create", "createAlbum",
 				List.of(), null, null, args);
@@ -273,6 +275,7 @@ public class PhotosRoutes{
 		if(album.coverID!=0){
 			model.with("cover", ctx.getPhotosController().getPhotoIgnoringPrivacy(album.coverID));
 		}
+		addFriendLists(info.account.user, lang(req), ctx, model);
 		Templates.addJsLangForPrivacySettings(req);
 		jsLangKey(req, "photo_description", "photo_description_saved");
 
@@ -462,7 +465,7 @@ public class PhotosRoutes{
 			origURL=null;
 			if(self!=null){
 				for(PhotoTag tag:tags){
-					if(tag.userID()==self.id && !tag.approved()){
+					if(tag.userID()==self.user.id && !tag.approved()){
 						topHTML=new RenderedTemplateResponse("photo_new_tag_confirm", req)
 								.with("placer", users.get(tag.placerID()))
 								.with("photo", photo)

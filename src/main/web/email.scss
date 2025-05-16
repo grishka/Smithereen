@@ -1,0 +1,144 @@
+/* Styles for emails sent by the server */
+
+@import "palette.scss";
+
+*{
+	box-sizing: border-box;
+	overflow-wrap: break-word;
+	min-width: 0;
+	min-height: 0;
+}
+
+body{
+	font-family: Tahoma, Arial, sans-serif;
+	font-size: 12px;
+	padding: 0;
+}
+
+a, .link{
+	color: $normalLink;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+a:hover, a:visited:hover, .link:hover{
+	text-decoration: underline;
+}
+
+.button{
+	background: linear-gradient(to top, $buttonGradientBottom, $buttonGradientTop) repeat-x 0 -16px;
+	background-size: 1px 42px;
+	text-shadow: 0 1px 0 $headerBorderTop;
+	border: solid 1px $headerBorderTop;
+	border-radius: 2px;
+	color: $textOnAccent;
+	box-shadow: 0 1px 0 $buttonBorderTop inset, 0 0 0 1px $buttonBorder inset;
+	padding: 0 14px;
+	height: 25px;
+	line-height: 23px;
+	display: inline-block;
+	&:hover{
+		text-decoration: none;
+		background-position: 0 -8px;
+	}
+	&:active{
+		text-decoration: none;
+		background: $buttonGradientBottom;
+		box-shadow: none;
+	}
+}
+
+h1{
+	margin: 2px 0 15px;
+	padding: 0 0 4px;
+	border-bottom: 1px solid $mainHeaderSeparator;
+	color: $boldHeaders;
+	font-size: 100%;
+}
+
+#emailOuterTable{
+	background-color: $emailBackground;
+	width: 100%;
+	border-spacing: 0;
+	& > tbody > tr > td{
+		padding: 0;
+		&#emailOuterTableContentColumn{
+			width: 90%;
+			padding: 15px 0;
+		}
+	}
+	.emailOuterTableSide{
+		width: 5%;
+	}
+}
+
+#emailInnerTable{
+	border-spacing: 0;
+	width: 100%;
+	border-radius: 5px;
+	overflow: hidden;
+	& > tbody > tr > td{
+		padding: 0;
+	}
+	.headerBG{
+		background: linear-gradient(to bottom, $headerGradientBottom, $headerGradientTop);
+	}
+}
+
+#emailInnerTableContentRow{
+	background-color: $bg;
+	border: 1px solid $blockBorderBottom;
+}
+
+#logo{
+	color: $textOnAccent;
+	font-size: 14px;
+	font-weight: bold;
+	height: 43px;
+	line-height: 43px;
+	max-height: 43px;
+	text-decoration: none;
+	text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+	img{
+		border: none;
+		vertical-align: middle;
+		margin: 0 8px 0 8px;
+	}
+}
+
+#emailContent{
+	padding: 18px 18px 13px 18px;
+	color: black;
+	border: 1px solid $wallPostSeparator;
+	border-top: 0;
+	border-bottom-left-radius: 5px;
+	border-bottom-right-radius: 5px;
+}
+
+.centeredMainBlock{
+	padding: 20px 0;
+	text-align: center;
+}
+
+#confirmationCode{
+	background: $gray;
+	border: solid 1px $sectionHeaderBorder;
+	border-radius: 4px;
+	font-size: 20px;
+	padding: 10px;
+	display: inline-block;
+}
+
+.grayText, a.grayText{
+	color: $auxiliaryGrey;
+}
+
+td.grayText{
+	white-space: nowrap;
+	padding-right: 5px;
+}
+
+.sep{
+	border-bottom: solid 1px #ededed;
+	margin: 10px 0;
+}

@@ -45,6 +45,10 @@ class TokenInput{
 		this.placeholder=placeholder;
 		this.edit.placeholder=placeholder;
 		this.edit.addEventListener("input", this.onTextChanded.bind(this));
+		this.edit.addEventListener("focus", ev=>{
+			if(!this.edit.value.length)
+				this.updateCompletions();
+		});
 		
 		el.appendChild(this.completionList.completionsWrap);
 		this.valueField=valueField;

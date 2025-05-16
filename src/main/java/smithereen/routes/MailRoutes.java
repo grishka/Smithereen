@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -18,6 +19,7 @@ import smithereen.model.MailMessage;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.User;
+import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.WebDeltaResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -75,7 +77,7 @@ public class MailRoutes{
 		boolean isOutgoing=msg.senderID==self.user.id;
 		User peer=users.get(isOutgoing ? msg.to.iterator().next() : msg.senderID);
 		model.with("peer", peer);
-		model.pageTitle(lang(req).get(isOutgoing ? "mail_message_title_outgoing" : "mail_message_title_incoming", Map.of("name", peer.getFirstLastAndGender())));
+		model.pageTitle(lang(req).get(isOutgoing ? "mail_message_title_outgoing" : "mail_message_title_incoming", Map.of("name", peer==null ? "DELETED" : peer.getFirstLastAndGender())));
 		if(StringUtils.isNotEmpty(msg.subject)){
 			String subject=msg.subject;
 			if(!subject.toLowerCase().startsWith("re:"))
@@ -104,6 +106,22 @@ public class MailRoutes{
 				}
 			}
 		}
+
+		Set<Integer> toUserIDs=new HashSet<>();
+		if(msg.senderID==self.user.id){
+			toUserIDs.addAll(msg.to);
+		}else{
+			toUserIDs.add(msg.senderID);
+			toUserIDs.addAll(msg.to);
+			toUserIDs.addAll(msg.cc);
+			toUserIDs.remove(self.user.id);
+		}
+		boolean canReply=!toUserIDs.stream()
+				.map(users::get)
+				.filter(u->u!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, u, UserPrivacySettingKey.PRIVATE_MESSAGES))
+				.collect(Collectors.toSet())
+				.isEmpty();
+		model.with("canReply", canReply);
 		return model;
 	}
 
@@ -131,7 +149,7 @@ public class MailRoutes{
 					.filter(i->i>0 && i!=self.user.id)
 					.collect(Collectors.toSet());
 		}
-		Set<User> toUsers=new HashSet<>(ctx.getUsersController().getUsers(toUserIDs).values());
+		Set<User> toUsers=ctx.getUsersController().getUsers(toUserIDs).values().stream().filter(Objects::nonNull).collect(Collectors.toSet());
 		if(toUsers.isEmpty())
 			throw new BadRequestException();
 		List<String> attachments;

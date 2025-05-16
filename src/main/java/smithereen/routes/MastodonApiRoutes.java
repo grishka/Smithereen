@@ -10,7 +10,7 @@ import smithereen.storage.UserStorage;
 import spark.Request;
 import spark.Response;
 
-public class ApiRoutes{
+public class MastodonApiRoutes{
 	public static Object instance(Request req, Response resp) throws SQLException{
 		ApiInstance inst=new ApiInstance();
 		inst.uri=Config.domain;

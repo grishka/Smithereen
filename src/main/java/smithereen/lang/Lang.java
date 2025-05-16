@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -40,6 +41,8 @@ public class Lang{
 	public static List<Lang> list;
 
 	public static Lang get(Locale locale){
+		if(locale==null)
+			return langsByLocale.get("en");
 		Lang l=langsByLocale.get(locale.toLanguageTag());
 		if(l!=null)
 			return l;
@@ -244,11 +247,11 @@ public class Lang{
 		return get("date_time_format", Map.of("date", new SafeString(day), "time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())));
 	}
 
-	public String formatDateFullyAbsolute(Instant date, ZoneId timeZone){
+	public String formatDateFullyAbsolute(Instant date, ZoneId timeZone, boolean includeSeconds){
 		ZonedDateTime dt=date.atZone(timeZone);
 		return get("date_time_format", Map.of(
 				"date", get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_short", Map.of("month", dt.getMonthValue())), "year", dt.getYear())),
-				"time", String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())
+				"time", includeSeconds ? String.format(locale, "%d:%02d:%02d", dt.getHour(), dt.getMinute(), dt.getSecond()) : String.format(locale, "%d:%02d", dt.getHour(), dt.getMinute())
 		));
 	}
 
@@ -310,6 +313,27 @@ public class Lang{
 
 	public PluralCategory getPluralCategory(int quantity){
 		return pluralRules.getCategoryForQuantity(quantity);
+	}
+
+	public String formatDuration(Duration duration){
+		if(duration==null) return "-:--";
+		String res="";
+		if(duration.isNegative()){
+			res+="-";
+			duration=duration.negated();
+		}
+		long t=duration.getSeconds();
+		long seconds=t%60;
+		t/=60;
+		long minutes=t%60;
+		t/=60;
+		long hours=t;
+		if(hours>0){
+			res+=String.format(locale, "%d:%02d:%02d", hours, minutes, seconds);
+		}else{
+			res+=String.format(locale, "%d:%02d", minutes, seconds);
+		}
+		return res;
 	}
 
 	private record IndexLanguage(String locale, String name, String fallback){}

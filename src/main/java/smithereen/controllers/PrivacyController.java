@@ -10,16 +10,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPub;
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.InaccessibleProfileException;
 import smithereen.exceptions.UserErrorException;
@@ -41,11 +47,13 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
+import smithereen.model.friends.FriendList;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
+import smithereen.storage.PhotoStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
 import spark.Request;
@@ -126,7 +134,21 @@ public class PrivacyController{
 				ps.exceptUsers.removeIf(Predicate.not(friendIDs::contains));
 			}
 
-			// TODO check if settings actually changed
+			boolean friendListsUsed=false;
+			for(PrivacySetting ps:settings.values()){
+				if(!ps.allowLists.isEmpty() || !ps.exceptLists.isEmpty()){
+					friendListsUsed=true;
+					break;
+				}
+			}
+
+			if(friendListsUsed){
+				populatePrivacySettingsFriendListUsers(self, settings.values());
+			}
+
+			if(self.privacySettings.equals(settings) && Objects.equals(feedTypes, self.newsTypesToShow))
+				return;
+
 			UserStorage.setPrivacySettings(self, settings);
 			self.privacySettings=settings;
 			if(feedTypes!=null && feedTypes.equals(EnumSet.complementOf(EnumSet.of(FriendsNewsfeedTypeFilter.POSTS)))){
@@ -166,14 +188,14 @@ public class PrivacyController{
 		if(self.id==owner.id)
 			return true;
 		// Denied users are always denied regardless of the base rule
-		if(setting.exceptUsers.contains(self.id))
+		if(setting.exceptUsers.contains(self.id) || setting.exceptListUsers.contains(self.id))
 			return false;
 
 		if(isUserBlocked(self, owner) && setting.baseRule!=PrivacySetting.Rule.EVERYONE)
 			return false;
 
 		// Allowed users are always allowed
-		if(setting.allowUsers.contains(self.id))
+		if(setting.allowUsers.contains(self.id) || setting.allowListUsers.contains(self.id))
 			return true;
 
 		return switch(setting.baseRule){
@@ -365,6 +387,87 @@ public class PrivacyController{
 					throw new InaccessibleProfileException(target);
 			}
 			case SELF_DEACTIVATED -> throw new UserErrorException("profile_deactivated");
+		}
+	}
+
+	void populatePrivacySettingsFriendListUsers(User self, Collection<PrivacySetting> settings){
+		try{
+			Map<Integer, BitSet> friendsWithLists=UserStorage.getAllFriendsWithLists(self.id);
+			Map<Integer, Set<Integer>> friendsInLists=new HashMap<>();
+			Set<Integer> validListIDs=context.getFriendsController().getFriendLists(self).stream().map(FriendList::id).collect(Collectors.toSet());
+
+			friendsWithLists.forEach((id, lists)->{
+				lists.stream().forEach(lid->friendsInLists.computeIfAbsent(lid+1, _k->new HashSet<>()).add(id));
+			});
+
+			for(PrivacySetting ps:settings){
+				ps.allowLists.removeIf(lid->!validListIDs.contains(lid) && lid<FriendList.FIRST_PUBLIC_LIST_ID);
+				ps.exceptLists.removeIf(lid->!validListIDs.contains(lid) && lid<FriendList.FIRST_PUBLIC_LIST_ID);
+				if(!ps.allowLists.isEmpty()){
+					ps.allowListUsers=ps.allowLists.stream().map(friendsInLists::get).filter(Objects::nonNull).flatMap(Set::stream).collect(Collectors.toSet());
+				}
+				if(!ps.exceptLists.isEmpty()){
+					ps.exceptListUsers=ps.exceptLists.stream().map(friendsInLists::get).filter(Objects::nonNull).flatMap(Set::stream).collect(Collectors.toSet());
+				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	void updatePrivacySettingsAffectedByFriendListChanges(User owner, Set<Integer> listIDs){
+		try{
+			HashSet<UserPrivacySettingKey> affectedUserSettings=new HashSet<>();
+			ArrayList<PhotoAlbum> affectedPhotoAlbums=new ArrayList<>();
+
+			owner.privacySettings.forEach((key, setting)->{
+				for(int listID:listIDs){
+					if(setting.allowLists.contains(listID) || setting.exceptLists.contains(listID)){
+						affectedUserSettings.add(key);
+						break;
+					}
+				}
+			});
+
+			List<PhotoAlbum> albums=PhotoStorage.getAllAlbums(owner.id);
+			for(PhotoAlbum album:albums){
+				for(int listID:listIDs){
+					if(album.viewPrivacy.allowLists.contains(listID) || album.viewPrivacy.exceptLists.contains(listID)
+							|| album.commentPrivacy.allowLists.contains(listID) || album.commentPrivacy.exceptLists.contains(listID)){
+						affectedPhotoAlbums.add(album);
+						break;
+					}
+				}
+			}
+
+			if(affectedUserSettings.isEmpty() && affectedPhotoAlbums.isEmpty())
+				return;
+
+			ArrayList<PrivacySetting> settingsToBeUpdated=new ArrayList<>();
+			for(UserPrivacySettingKey key:affectedUserSettings){
+				settingsToBeUpdated.add(owner.privacySettings.get(key));
+			}
+			for(PhotoAlbum album:affectedPhotoAlbums){
+				settingsToBeUpdated.add(album.viewPrivacy);
+				settingsToBeUpdated.add(album.commentPrivacy);
+			}
+			for(PrivacySetting ps:settingsToBeUpdated){
+				ps.allowListUsers=Set.of();
+				ps.exceptListUsers=Set.of();
+			}
+
+			populatePrivacySettingsFriendListUsers(owner, settingsToBeUpdated);
+
+			if(!affectedUserSettings.isEmpty()){
+				UserStorage.setPrivacySettings(owner, owner.privacySettings);
+				context.getActivityPubWorker().sendUpdateUserActivity(owner);
+			}
+			for(PhotoAlbum album:affectedPhotoAlbums){
+				PhotoStorage.updateUserAlbumPrivacy(album.id, album.viewPrivacy, album.commentPrivacy);
+				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 }

@@ -22,8 +22,11 @@ class LayerManager{
 	private stack:BaseLayer[]=[];
 	private escapeKeyListener=(ev:KeyboardEvent)=>{
 		if(ev.keyCode==27 && !this.hiddenTemporarily){
-			this.lastEscKeyEvent=ev;
-			this.maybeDismissTopLayer();
+			var focusedEl=document.activeElement;
+			if(!focusedEl || (focusedEl.tagName!="INPUT" && focusedEl.tagName!="TEXTAREA")){
+				this.lastEscKeyEvent=ev;
+				this.maybeDismissTopLayer();
+			}
 		}
 	};
 	private boxLoader:HTMLDivElement;
@@ -31,8 +34,10 @@ class LayerManager{
 	private hideAnimCanceled:boolean=false;
 	private hiddenTemporarily:boolean=false;
 	private lastEscKeyEvent:KeyboardEvent;
+	private baseZIndex:number;
 
 	private constructor(baseZIndex:number, isDefaultInstance:boolean){
+		this.baseZIndex=baseZIndex;
 		this.scrim=ce("div", {className: "layerScrim"});
 		this.scrim.style.zIndex=baseZIndex.toString();
 		this.scrim.hide();
@@ -65,23 +70,24 @@ class LayerManager{
 		}
 		var layerContent:HTMLElement=layer.getContent();
 		this.layerContainer.appendChild(layerContent);
+		layer.onBeforeShow();
+		this.lockPageScroll();
 		if(this.stack.length==0){
 			if(layer.wantsScrim())
 				this.scrim.showAnimated();
 			this.layerContainer.show();
-			layerContent.addEventListener("click", (ev:MouseEvent)=>{
-				if(ev.target==layerContent){
-					this.maybeDismissTopLayer();
-				}
-			});
 			layerContent.showAnimated(layer.getCustomAppearAnimation());
 			document.body.addEventListener("keydown", this.escapeKeyListener);
-			this.lockPageScroll();
 		}else{
 			var prevLayer:BaseLayer=this.stack[this.stack.length-1];
 			prevLayer.getContent().hide();
 			prevLayer.onHidden();
 		}
+		layerContent.addEventListener("click", (ev:MouseEvent)=>{
+			if(ev.target==layerContent){
+				this.maybeDismissTopLayer();
+			}
+		});
 		if(layer.wantsDarkerScrim()){
 			this.scrim.classList.add("darker")
 		}else{
@@ -137,7 +143,6 @@ class LayerManager{
 					}else{
 						this.layerContainer.removeChild(layerContent);
 						this.layerContainer.hide();
-						this.unlockPageScroll();
 					}
 					this.scrim.classList.remove("darker");
 					this.animatingHide=false;
@@ -146,7 +151,6 @@ class LayerManager{
 				this.layerContainer.removeChild(layerContent);
 				this.layerContainer.hide();
 
-				this.unlockPageScroll();
 			}
 			this.scrim.hideAnimated({keyframes: [{opacity: 1}, {opacity: 0}], options: {duration: duration, easing: "ease"}});
 			if(this==LayerManager.mediaInstance && LayerManager.instance && LayerManager.instance.stack.length){
@@ -156,6 +160,7 @@ class LayerManager{
 		}else{
 			this.layerContainer.removeChild(layerContent);
 		}
+		this.unlockPageScroll();
 		if(layer.hideContainerAfterDismiss){
 			this.hideTemporarily();
 		}
@@ -197,6 +202,7 @@ class LayerManager{
 			document.body.style.top = `-${window.scrollY}px`;
 			document.body.style.position="fixed";
 			document.body.style.paddingRight=scrollbarW+"px";
+			ge("wrap").classList.add("scrollLocked");
 		}
 	}
 
@@ -206,12 +212,16 @@ class LayerManager{
 			document.body.style.position="";
 			document.body.style.top="";
 			document.body.style.paddingRight="";
+			ge("wrap").classList.remove("scrollLocked");
 			window.scrollTo(0, parseInt(scrollY || '0') * -1);
 		}
 	}
 
 	public showBoxLoader(){
 		this.updateTopOffset(this.boxLoader);
+		if(this.boxLoader.style.display!="none")
+			return;
+		this.boxLoader.style.zIndex=(this.stack.length ? (this.baseZIndex+2) : this.baseZIndex).toString();
 		this.boxLoader.showAnimated();
 	}
 
@@ -258,11 +268,17 @@ class LayerManager{
 	public dismissByID(id:string){
 		for(var layer of this.stack){
 			if(layer.id==id){
-				this.dismiss(layer);
+				layer.dismiss();
 				return true;
 			}
 		}
 		return false;
+	}
+
+	public dismissEverything(){
+		for(var i=this.stack.length-1;i>=0;i--){
+			this.dismiss(this.stack[i]);
+		}
 	}
 }
 
@@ -298,6 +314,7 @@ abstract class BaseLayer{
 		this.getLayerManager().updateTopOffset(this.content);
 	}
 
+	public onBeforeShow():void{}
 	public onShown():void{}
 	public onHidden():void{}
 	public onWindowResize():void{}
@@ -332,6 +349,11 @@ abstract class BaseMediaViewerLayer extends BaseLayer{
 		return LayerManager.getMediaInstance();
 	}
 
+	public onBeforeShow(){
+		if(!this.historyEntryAdded) // Needed for scroll restoration to work correctly
+			this.updateHistory({}, location.href);
+	}
+
 	protected updateHistory(state:any, url:string){
 		if(this.historyEntryAdded){
 			window.history.replaceState(state, "", url);
@@ -361,6 +383,7 @@ abstract class BaseMediaViewerLayer extends BaseLayer{
 	public dismiss(){
 		super.dismiss();
 		if(this.historyEntryAdded){
+			ignoreNextPopState=true;
 			window.history.back();
 		}
 	}

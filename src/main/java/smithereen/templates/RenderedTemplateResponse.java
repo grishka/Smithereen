@@ -43,6 +43,20 @@ public class RenderedTemplateResponse{
 		req.attribute("isTemplate", Boolean.TRUE);
 	}
 
+	public static RenderedTemplateResponse ofAjaxLayer(String templateName, Request req){
+		RenderedTemplateResponse model;
+		if(Utils.isAjax(req)){
+			if(Utils.isMobile(req)){
+				model=new RenderedTemplateResponse(templateName, req);
+			}else{
+				model=new RenderedTemplateResponse("layer_with_title", req).with("contentTemplate", templateName);
+			}
+		}else{
+			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", templateName);
+		}
+		return model;
+	}
+
 	public RenderedTemplateResponse with(String key, Object value){
 		model.put(key, value);
 		return this;
@@ -134,7 +148,7 @@ public class RenderedTemplateResponse{
 		try{
 			template=getAndPrepareTemplate(req);
 			template.evaluate(writer, model, locale);
-		}catch(PebbleException x){
+		}catch(Throwable x){
 			writer.write("<pre>");
 			x.printStackTrace(new PrintWriter(writer));
 			writer.write("</pre>");
@@ -171,5 +185,9 @@ public class RenderedTemplateResponse{
 			template.evaluateBlock(name, writer, model, locale);
 		}catch(IOException ignore){}
 		return writer.toString();
+	}
+
+	public Object get(String key){
+		return model.get(key);
 	}
 }

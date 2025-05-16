@@ -17,10 +17,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import io.pebbletemplates.pebble.template.PebbleTemplate;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpSessionEvent;
 import jakarta.servlet.http.HttpSessionListener;
@@ -29,10 +33,13 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.controllers.MailController;
 import smithereen.controllers.UsersController;
+import smithereen.debug.DebugLog;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.InaccessibleProfileException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UnauthorizedRequestException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.UserErrorException;
@@ -43,11 +50,15 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
+import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
+import smithereen.model.UserPresence;
 import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.fasp.FASPCapability;
 import smithereen.routes.ActivityPubRoutes;
-import smithereen.routes.ApiRoutes;
+import smithereen.routes.FaspApiRoutes;
+import smithereen.routes.MastodonApiRoutes;
 import smithereen.routes.BookmarksRoutes;
 import smithereen.routes.CommentsRoutes;
 import smithereen.routes.FriendsRoutes;
@@ -55,10 +66,12 @@ import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
 import smithereen.routes.NewsfeedRoutes;
 import smithereen.routes.NotificationsRoutes;
+import smithereen.routes.NotifierWebSocket;
 import smithereen.routes.PhotosRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
+import smithereen.routes.SettingsAdminFaspRoutes;
 import smithereen.routes.SettingsAdminRoutes;
 import smithereen.routes.SettingsRoutes;
 import smithereen.routes.SystemRoutes;
@@ -73,8 +86,10 @@ import smithereen.storage.UserStorage;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
+import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.MaintenanceScheduler;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.TopLevelDomainList;
@@ -93,6 +108,8 @@ public class SmithereenApplication{
 	private static final ApplicationContext context;
 	private static HashMap<String, Integer> accountIdsBySession=new HashMap<>();
 	private static HashMap<Integer, Set<HttpSession>> sessionsByAccount=new HashMap<>();
+	private static HashMap<String, String> notFoundPages=new HashMap<>();
+	private static HashMap<String, String> serverErrorPages=new HashMap<>();
 
 	static{
 		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
@@ -103,6 +120,8 @@ public class SmithereenApplication{
 			// Gets rid of "The requested route ... has not been mapped in Spark"
 			System.setProperty("org.slf4j.simpleLogger.log.spark.http.matching", "warn");
 		}
+		// Gets rid of "Missing chars table for block: ..."
+		System.setProperty("org.slf4j.simpleLogger.log.cz.jirutka.unidecode", "warn");
 		String addProperties=System.getenv("SMITHEREEN_SET_PROPS");
 		if(addProperties!=null){
 			Arrays.stream(addProperties.split("&")).forEach(s->{
@@ -143,6 +162,7 @@ public class SmithereenApplication{
 		}
 
 		ActivityPubRoutes.registerActivityHandlers();
+		prerenderErrorPages();
 
 		ipAddress(Config.serverIP);
 		port(Config.serverPort);
@@ -152,12 +172,20 @@ public class SmithereenApplication{
 		else
 			staticFileLocation("/public");
 		staticFiles.expireTime(7*24*60*60);
+
+		webSocket("/system/ws/notifier", NotifierWebSocket.class);
+
+		if(Config.DEBUG){
+			before((req, resp)->{
+				DebugLog.get().start();
+			});
+		}
+
 		before((request, response) -> {
 			request.attribute("context", context);
 
 			if(request.pathInfo().startsWith("/api/"))
 				return;
-			request.attribute("start_time", System.currentTimeMillis());
 			Session session=request.session(false);
 			if(session==null || session.attribute("info")==null){
 				String psid=request.cookie("psid");
@@ -217,6 +245,15 @@ public class SmithereenApplication{
 			if(StringUtils.isNotEmpty(ua) && isMobileUserAgent(ua)){
 				request.attribute("mobile", Boolean.TRUE);
 			}
+		});
+		before("/system/ws/*", (req, resp)->{
+			// Websockets don't have access to the real request object, so let's put the session info somewhere where it can be accessed
+			SessionInfo info=sessionInfo(req);
+			if(info==null){
+				throw new UserActionNotAllowedException();
+			}
+			req.attribute("sessionInfo", info);
+			req.attribute("lang", lang(req));
 		});
 		before(SmithereenApplication::enforceAccountLimitationsIfAny);
 
@@ -303,6 +340,33 @@ public class SmithereenApplication{
 			postWithCSRF("/updateProfileInterests", SettingsRoutes::updateProfileInterests);
 			postWithCSRF("/updateProfilePersonal", SettingsRoutes::updateProfilePersonal);
 			postWithCSRF("/updateProfileContacts", SettingsRoutes::updateProfileContacts);
+			getLoggedIn("/notifications", SettingsRoutes::notificationsSettings);
+			postWithCSRF("/updateNotifier", SettingsRoutes::updateNotifierSettings);
+			path("/filters", ()->{
+				getLoggedIn("", SettingsRoutes::filters);
+				getLoggedIn("/create", SettingsRoutes::createFilterForm);
+				postWithCSRF("/create", SettingsRoutes::createFilter);
+				path("/:id", ()->{
+					getLoggedIn("/edit", SettingsRoutes::editFilterForm);
+					postWithCSRF("/edit", SettingsRoutes::editFilter);
+					getLoggedIn("/confirmDelete", SettingsRoutes::confirmDeleteFilter);
+					postWithCSRF("/delete", SettingsRoutes::deleteFilter);
+				});
+			});
+			getLoggedIn("/moveAccountOptions", SettingsRoutes::moveAccountOptions);
+			getLoggedIn("/alsoKnownAsLinks", SettingsRoutes::moveAccountLinks);
+			postWithCSRF("/addAlsoKnownAs", SettingsRoutes::addAlsoKnownAs);
+			getLoggedIn("/confirmDeleteAkaLink", SettingsRoutes::confirmDeleteAlsoKnownAs);
+			postWithCSRF("/deleteAkaLink", SettingsRoutes::deleteAlsoKnownAs);
+			getLoggedIn("/transferFollowersForm", SettingsRoutes::transferFollowersForm);
+			postWithCSRF("/transferFollowers", SettingsRoutes::transferFollowers);
+			getLoggedIn("/confirmRemoveMoveRedirect", SettingsRoutes::confirmRemoveMoveRedirect);
+			postWithCSRF("/removeMoveRedirect", SettingsRoutes::removeMoveRedirect);
+			postWithCSRF("/updateEmailNotifications", SettingsRoutes::updateEmailNotificationSettings);
+			get("/notifications/emailUnsubscribe/:key", SettingsRoutes::emailUnsubscribe);
+			post("/notifications/emailUnsubscribe/:key", SettingsRoutes::doEmailUnsubscribe);
+			postWithCSRF("/updateStatus", SettingsRoutes::updateSelfStatus);
+			getLoggedIn("/mobileStatusForm", SettingsRoutes::mobileStatusForm);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
@@ -382,6 +446,23 @@ public class SmithereenApplication{
 						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_INVITES, SettingsAdminRoutes::deleteInvite);
 					});
 				});
+				path("/fasp", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::activeFasps);
+					getRequiringPermission("/requests", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::faspRequests);
+					path("/:id", ()->{
+						getRequiringPermission("/confirm", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::confirmFaspRegistration);
+						postRequiringPermissionWithCSRF("/confirm", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::doConfirmFaspRegistration);
+						getRequiringPermissionWithCSRF("/reject", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::rejectFaspRegistration);
+						getRequiringPermission("/capabilities", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::faspCapabilities);
+						postRequiringPermissionWithCSRF("/setCapabilities", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::setFaspCapabilities);
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::confirmDeleteFasp);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::deleteFasp);
+						path("/capabilities", ()->{
+							getRequiringPermission("/callback", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::faspDebugCallbackLog);
+							postRequiringPermissionWithCSRF("/callback/send", UserRole.Permission.MANAGE_FASPS, SettingsAdminFaspRoutes::faspDebugCallback);
+						});
+					});
+				});
 			});
 		});
 
@@ -431,6 +512,8 @@ public class SmithereenApplication{
 			post("/redirectForRemoteInteraction", SystemRoutes::redirectForRemoteInteraction);
 			getLoggedIn("/mentionCompletions", SystemRoutes::mentionCompletions);
 			getLoggedIn("/simpleUserCompletions", SystemRoutes::simpleUserCompletions);
+			get("/privacyPolicy", SystemRoutes::privacyPolicy);
+			get("/languageChooser", SystemRoutes::languageChooser);
 
 			if(Config.DEBUG){
 				path("/debug", ()->{
@@ -462,6 +545,7 @@ public class SmithereenApplication{
 			getActivityPubCollection("/followers", 100, ActivityPubRoutes::userFollowers);
 			getActivityPubCollection("/following", 100, ActivityPubRoutes::userFollowing);
 			getActivityPubCollection("/wall", 100, ActivityPubRoutes::userWall);
+			getActivityPubCollection("/wallComments", 50, ActivityPubRoutes::userWallComments);
 			getActivityPubCollection("/friends", 100, ActivityPubRoutes::userFriends);
 			getActivityPubCollection("/groups", 100, ActivityPubRoutes::userGroups);
 			post("/collectionQuery", ActivityPubRoutes::userCollectionQuery);
@@ -475,6 +559,7 @@ public class SmithereenApplication{
 			get("/groups", GroupsRoutes::userGroups);
 			path("/friends", ()->{
 				get("", FriendsRoutes::friends);
+				get("/online", FriendsRoutes::friendsOnline);
 				getLoggedIn("/mutual", FriendsRoutes::mutualFriends);
 			});
 			path("/wall", ()->{
@@ -517,6 +602,13 @@ public class SmithereenApplication{
 			get("/allPhotos", PhotosRoutes::allUserPhotos);
 			getActivityPubCollection("/tagged", 100, ActivityPubRoutes::userTaggedPhotos);
 			get("/tagged", PhotosRoutes::userTaggedPhotos);
+
+			getWithCSRF("/mute", ProfileRoutes::muteUser);
+			getWithCSRF("/unmute", ProfileRoutes::unmuteUser);
+
+			postWithCSRF("/setFriendLists", FriendsRoutes::setUserFriendLists);
+			getLoggedIn("/setListsMobileBox", FriendsRoutes::setUserListsMobileBox);
+			get("/statuses/:statusID", ActivityPubRoutes::userStatus);
 		});
 
 		path("/groups/:id", ()->{
@@ -545,6 +637,7 @@ public class SmithereenApplication{
 			getActivityPubCollection("/members", 50, ActivityPubRoutes::groupMembers);
 			getActivityPubCollection("/tentativeMembers", 50, ActivityPubRoutes::groupTentativeMembers);
 			getActivityPubCollection("/wall", 50, ActivityPubRoutes::groupWall);
+			getActivityPubCollection("/wallComments", 50, ActivityPubRoutes::groupWallComments);
 			get("/actorToken", ActivityPubRoutes::groupActorToken);
 			post("/collectionQuery", ActivityPubRoutes::groupCollectionQuery);
 
@@ -594,12 +687,15 @@ public class SmithereenApplication{
 			getActivityPubCollection("/albums", 100, ActivityPubRoutes::groupAlbums);
 			get("/albums", PhotosRoutes::groupAlbums);
 			get("/allPhotos", PhotosRoutes::allGroupPhotos);
+			get("/statuses/:statusID", ActivityPubRoutes::groupStatus);
+			postWithCSRF("/updateStatus", GroupsRoutes::updateGroupStatus);
 		});
 
 		path("/posts/:postID", ()->{
 			get("", PostRoutes::standalonePost);
 			getActivityPub("", ActivityPubRoutes::post);
 			get("/activityCreate", ActivityPubRoutes::postCreateActivity);
+			get("/quoteAuth/:quoteID", ActivityPubRoutes::postQuoteAuthorization);
 
 			getLoggedIn("/confirmDelete", PostRoutes::confirmDelete);
 			postWithCSRF("/delete", PostRoutes::delete);
@@ -626,6 +722,7 @@ public class SmithereenApplication{
 			options("/embedURL", SmithereenApplication::allowCorsPreflight);
 			get("/embed", PostRoutes::postEmbed);
 			get("/hoverCard", PostRoutes::commentHoverCard);
+			get("/layerPrevComments", PostRoutes::ajaxLayerPrevComments);
 		});
 
 		path("/albums/:id", ()->{
@@ -660,6 +757,7 @@ public class SmithereenApplication{
 				get("/likePopover", PhotosRoutes::likePopover);
 				getWithCSRF("/setAsAlbumCover", PhotosRoutes::setPhotoAsAlbumCover);
 				getActivityPubCollection("/replies", 50, ActivityPubRoutes::photoComments);
+				getActivityPubCollection("/likes", 100, ActivityPubRoutes::photoLikes);
 				getLoggedIn("/ajaxEditDescription", PhotosRoutes::ajaxEditDescription);
 				getWithCSRF("/saveToAlbum", PhotosRoutes::saveToAlbum);
 				getWithCSRF("/rotate", PhotosRoutes::rotatePhoto);
@@ -678,6 +776,7 @@ public class SmithereenApplication{
 				get("", CommentsRoutes::comment);
 				getActivityPub("", ActivityPubRoutes::comment);
 				getActivityPubCollection("/replies", 50, ActivityPubRoutes::commentReplies);
+				getActivityPubCollection("/likes", 100, ActivityPubRoutes::commentLikes);
 				get("/ajaxCommentBranch", CommentsRoutes::ajaxCommentBranch);
 				getLoggedIn("/confirmDelete", CommentsRoutes::confirmDeleteComment);
 				postWithCSRF("/delete", CommentsRoutes::deleteComment);
@@ -691,17 +790,20 @@ public class SmithereenApplication{
 			});
 		});
 
-		get("/robots.txt", (req, resp)->{
-			resp.type("text/plain");
-			return "";
-		});
-
 		path("/my", ()->{
 			getLoggedIn("/incomingFriendRequests", FriendsRoutes::incomingFriendRequests);
-			getLoggedIn("/friends", FriendsRoutes::ownFriends);
+			path("/friends", ()->{
+				getLoggedIn("", FriendsRoutes::ownFriends);
+				postWithCSRF("/createList", FriendsRoutes::createFriendList);
+				getLoggedIn("/confirmDeleteList", FriendsRoutes::confirmDeleteFriendList);
+				postWithCSRF("/deleteList", FriendsRoutes::deleteFriendList);
+				getLoggedIn("/ajaxListUserIDs", FriendsRoutes::ajaxFriendListMemberIDs);
+				postWithCSRF("/updateList", FriendsRoutes::updateFriendList);
+			});
 			get("/followers", FriendsRoutes::followers);
 			get("/following", FriendsRoutes::following);
 			getLoggedIn("/notifications", NotificationsRoutes::notifications);
+			postWithCSRF("/notifications/ajaxReadLast", NotificationsRoutes::ajaxReadLastNotifications);
 			path("/groups", ()->{
 				getLoggedIn("", GroupsRoutes::myGroups);
 				getLoggedIn("/managed", GroupsRoutes::myManagedGroups);
@@ -750,12 +852,16 @@ public class SmithereenApplication{
 			postWithCSRF("/albums/create", PhotosRoutes::createAlbum);
 		});
 
-		path("/api/v1", ()->{
-			getApi("/instance", ApiRoutes::instance);
-			getApi("/instance/peers", ApiRoutes::instancePeers);
+		path("/api", ()->{
+			path("/v1", ()->{ // Mastodon API compatibility for crawlers
+				getApi("/instance", MastodonApiRoutes::instance);
+				getApi("/instance/peers", MastodonApiRoutes::instancePeers);
 
-			before("/*", (req, resp)->{
-				resp.type("application/json");
+				before("/*", (req, resp)->resp.type("application/json"));
+			});
+			path("/fasp", ()->{
+				post("/registration", FaspApiRoutes::registration);
+				postFaspAPI("/debug/v0/callback/responses", FASPCapability.DEBUG, FaspApiRoutes::debugCallback);
 			});
 		});
 
@@ -801,12 +907,18 @@ public class SmithereenApplication{
 			resp.body(wrapErrorString(req, resp, Objects.requireNonNullElse(x.getMessage(), "err_flood_control")));
 		});
 		exception(UserErrorException.class, (x, req, resp)->{
-			resp.body(wrapErrorString(req, resp, x.getMessage()));
+			resp.body(wrapErrorString(req, resp, x.getMessage(), x.langArgs, x.includeCauseMessage && x.getCause()!=null ? x.getCause().getMessage() : null));
 		});
 		exception(InaccessibleProfileException.class, (x, req, resp)->{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("hidden_profile", req);
 			model.with("user", x.user);
 			resp.body(model.renderToString());
+		});
+		exception(UnauthorizedRequestException.class, (x, req, resp)->{
+			if(Config.DEBUG)
+				LOG.warn("401: {}", req.pathInfo(), x);
+			resp.status(401);
+			resp.body(x.getMessage()==null ? "Unauthorized" : x.getMessage());
 		});
 		exception(Exception.class, (exception, req, res) -> {
 			String path=req.raw().getPathInfo();
@@ -821,12 +933,7 @@ public class SmithereenApplication{
 		});
 
 		after((req, resp)->{
-			Long l=req.attribute("start_time");
-			if(l!=null){
-				long t=(long)l;
-				resp.header("X-Generated-In", (System.currentTimeMillis()-t)+"");
-			}
-			if(req.attribute("isTemplate")!=null && req.attribute("noPreload")==null && !isAjax(req)){
+			if(req.attribute("isTemplate")!=null && req.attribute("noPreload")==null && !isAjax(req) && !isAjaxLayout(req)){
 				String cssName=req.attribute("mobile")!=null ? "mobile.css" : "desktop.css";
 				resp.header("Link", "</res/"+cssName+"?"+Templates.getStaticFileVersion(cssName)+">; rel=preload; as=style, </res/common.js?"+Templates.getStaticFileVersion("common.js")+">; rel=preload; as=script");
 				resp.header("Vary", "User-Agent, Accept-Language");
@@ -837,8 +944,13 @@ public class SmithereenApplication{
 				try{
 					if(req.session().attribute("info")==null)
 						req.session().attribute("info", new SessionInfo());
+
+					SessionInfo info=req.session().attribute("info");
+					if(info.account!=null){
+						context(req).getUsersController().setOnline(info.account.user, isMobile(req) ? UserPresence.PresenceType.MOBILE_WEB : UserPresence.PresenceType.WEB, req.cookie("psid").hashCode());
+					}
+
 					if(req.requestMethod().equalsIgnoreCase("get") && req.attribute("noHistory")==null){
-						SessionInfo info=req.session().attribute("info");
 						String path=req.pathInfo();
 						String query=req.raw().getQueryString();
 						if(StringUtils.isNotEmpty(query)){
@@ -848,6 +960,24 @@ public class SmithereenApplication{
 					}
 				}catch(Throwable ignore){}
 			}
+		});
+
+		if(Config.DEBUG){
+			afterAfter((req, resp)->{
+				DebugLog dl=DebugLog.get();
+				LOG.info("{}: total {}ms, route match {}ms, {} DB queries {}ms", req.pathInfo(), dl.getDuration()/1000_000.0, (dl.routeMatchTime-dl.startTime)/1000_000.0, dl.numDatabaseQueries, dl.totalDatabaseQueryDuration/1000_000.0);
+			});
+		}
+
+		notFound((req, resp)->{
+			if(isAjax(req))
+				return lang(req).get("page_not_found");
+			return notFoundPages.get(lang(req).getLocale().toLanguageTag());
+		});
+		internalServerError((req, resp)->{
+			if(isAjax(req))
+				return lang(req).get("server_error");
+			return serverErrorPages.get(lang(req).getLocale().toLanguageTag());
 		});
 
 		awaitInitialization();
@@ -876,7 +1006,45 @@ public class SmithereenApplication{
 
 		responseTypeSerializer(RenderedTemplateResponse.class, (out, obj, req, resp) -> {
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
-			obj.renderToWriter(writer);
+			if(req.queryParams("_al")!=null && !isMobile(req)){
+				// TODO figure out how to stream these
+				String js=obj.renderBlock("bottomScripts");
+				Set<String> k=req.attribute("jsLang");
+				if(k!=null){
+					Lang l=lang(req);
+					js="addLang({"+k.stream().map(key->"\""+key+"\":"+l.getAsJS(key)).collect(Collectors.joining(","))+"});\n"+js;
+				}
+				if(obj.get("headerBackHref") instanceof String headerBackHref && !headerBackHref.isEmpty()){
+					js+="\nshowHeaderBack(\""+TextProcessor.escapeJS(headerBackHref)+"\", \""+TextProcessor.escapeJS((String) obj.get("headerBackTitle"))+"\");";
+				}else{
+					js+="\nhideHeaderBack();";
+				}
+
+				JsonObjectBuilder alResp=new JsonObjectBuilder()
+						.add("h", obj.renderBlock("outerContent"))
+						.add("s", js)
+						.add("t", (String) obj.get("title"));
+				String redirURL=req.attribute("alFinalURL");
+				if(StringUtils.isNotEmpty(redirURL)){
+					alResp.add("url", redirURL);
+				}
+				SessionInfo info=sessionInfo(req);
+				if(info!=null && info.account!=null){
+					alResp.add("c", context(req).getNotificationsController().getUserCountersJson(info.account));
+				}
+				Set<String> extraScriptFiles=req.attribute("extraScriptFiles");
+				if(extraScriptFiles!=null){
+					JsonObjectBuilder scripts=new JsonObjectBuilder();
+					for(String name:extraScriptFiles){
+						scripts.add(name, Templates.staticHashes.get(name));
+					}
+					alResp.add("sc", scripts);
+				}
+				resp.header("Content-Type", "application/json");
+				gson.toJson(alResp.build(), writer);
+			}else{
+				obj.renderToWriter(writer);
+			}
 			writer.flush();
 		});
 
@@ -916,8 +1084,11 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(MediaStorageUtils::deleteAbandonedFiles, 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(()->UsersController.doPendingAccountDeletions(context), 1, TimeUnit.DAYS);
+		context.getUsersController().loadPresenceFromDatabase();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
+			context.getFriendsController().doPendingHintsUpdates();
+			context.getGroupsController().doPendingHintsUpdates();
 			LOG.info("Stopping Spark");
 			awaitStop();
 			LOG.info("Stopped Spark");
@@ -982,7 +1153,21 @@ public class SmithereenApplication{
 				"/account/unfreeze",
 				"/account/unfreezeChangePassword",
 				"/account/reactivateBox",
-				"/account/reactivate"
+				"/account/reactivate",
+				"/system/languageChooser",
+				"/settings/setLanguage",
+				"/system/privacyPolicy",
+				"/system/about"
+		).contains(path);
+	}
+
+	private static boolean isAllowedForMovedAccounts(Request req){
+		String path=req.pathInfo();
+		return Set.of(
+				"/settings/deactivateAccountForm",
+				"/settings/deactivateAccount",
+				"/settings/confirmRemoveMoveRedirect",
+				"/settings/removeMoveRedirect"
 		).contains(path);
 	}
 
@@ -1000,26 +1185,43 @@ public class SmithereenApplication{
 			}
 			// Account ban or self-deactivation
 			UserBanStatus status=info.account.user.banStatus;
-			if(status==UserBanStatus.NONE || status==UserBanStatus.HIDDEN)
-				return;
-			Lang l=lang(req);
-			RenderedTemplateResponse model=new RenderedTemplateResponse("account_banned", req);
-			model.pageTitle(l.get(switch(status){
-				case FROZEN -> "account_frozen";
-				case SUSPENDED -> "account_suspended";
-				case SELF_DEACTIVATED -> "account_deactivated";
-				default -> throw new IllegalStateException("Unexpected value: " + status);
-			}));
-			model.with("status", status).with("banInfo", acc.user.banInfo).with("contactEmail", Config.serverAdminEmail);
-			switch(status){
-				case FROZEN -> {
-					if(acc.user.banInfo.expiresAt().isAfter(Instant.now())){
-						model.with("unfreezeTime", acc.user.banInfo.expiresAt());
+			if(status!=UserBanStatus.NONE && status!=UserBanStatus.HIDDEN){
+				Lang l=lang(req);
+				RenderedTemplateResponse model=new RenderedTemplateResponse("account_banned", req)
+						.with("noLeftMenu", true);
+				model.pageTitle(l.get(switch(status){
+					case FROZEN -> "account_frozen";
+					case SUSPENDED -> "account_suspended";
+					case SELF_DEACTIVATED -> "account_deactivated";
+					default -> throw new IllegalStateException("Unexpected value: "+status);
+				}));
+				model.with("status", status).with("banInfo", acc.user.banInfo).with("contactEmail", Config.serverAdminEmail);
+				switch(status){
+					case FROZEN -> {
+						if(acc.user.banInfo.expiresAt()!=null && acc.user.banInfo.expiresAt().isAfter(Instant.now())){
+							model.with("unfreezeTime", acc.user.banInfo.expiresAt());
+						}
 					}
+					case SUSPENDED, SELF_DEACTIVATED -> model.with("deletionTime", acc.user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
 				}
-				case SUSPENDED, SELF_DEACTIVATED -> model.with("deletionTime", acc.user.banInfo.bannedAt().plus(30, ChronoUnit.DAYS));
+				halt(model.renderToString());
+				return;
 			}
-			halt(model.renderToString());
+			// Account moved
+			if(acc.user.movedTo>0){
+				if(isAllowedForMovedAccounts(req))
+					return;
+				boolean isSuperuser=acc.roleID>0 && Config.userRoles.get(acc.roleID).permissions().contains(UserRole.Permission.SUPERUSER);
+				if(isSuperuser && !req.pathInfo().equals("/"+acc.user.username))
+					return;
+				Lang l=lang(req);
+				RenderedTemplateResponse model=new RenderedTemplateResponse("account_moved", req)
+						.with("noLeftMenu", !isSuperuser)
+						.with("pageTitle", l.get("account_deactivated_redirect_title"))
+						.with("movedTo", context(req).getUsersController().getUserOrThrow(acc.user.movedTo));
+				halt(model.renderToString());
+				return;
+			}
 		}
 	}
 
@@ -1035,5 +1237,35 @@ public class SmithereenApplication{
 	public static synchronized void addAccountSession(int accountID, Request req){
 		accountIdsBySession.put(req.session().id(), accountID);
 		sessionsByAccount.computeIfAbsent(accountID, HashSet::new).add(req.session().raw());
+	}
+
+	private static void prerenderErrorPages(){
+		LOG.debug("Pre-rendering error pages");
+		try{
+			PebbleTemplate template=Templates.getTemplate("error_page");
+			for(Lang lang:Lang.list){
+				Locale locale=lang.getLocale();
+
+				StringWriter writer=new StringWriter();
+				template.evaluate(writer, Map.of(
+						"serverName", Config.serverDisplayName==null ? Config.domain : Config.serverDisplayName,
+						"errorCode", 404,
+						"errorLangKey", "page_not_found",
+						"locale", locale
+				), locale);
+				notFoundPages.put(locale.toLanguageTag(), writer.toString());
+
+				writer=new StringWriter();
+				template.evaluate(writer, Map.of(
+						"serverName", Config.serverDisplayName==null ? Config.domain : Config.serverDisplayName,
+						"errorCode", 500,
+						"errorLangKey", "internal_server_error",
+						"locale", locale
+				), locale);
+				serverErrorPages.put(locale.toLanguageTag(), writer.toString());
+			}
+		}catch(IOException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }

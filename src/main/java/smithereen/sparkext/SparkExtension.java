@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import smithereen.model.UserRole;
+import smithereen.model.fasp.FASPCapability;
 import spark.Route;
 
 import static spark.Spark.*;
@@ -80,6 +81,18 @@ public class SparkExtension{
 
 	public static void getApi(String path, Route route){
 		get(path, route, model->gson.toJson(model));
+	}
+
+	public static void getFaspAPI(String path, FASPCapability cap, FaspApiRoute route){
+		get(path, new FaspApiRouteAdapter(route, cap));
+	}
+
+	public static void postFaspAPI(String path, FASPCapability cap, FaspApiRoute route){
+		post(path, new FaspApiRouteAdapter(route, cap));
+	}
+
+	public static void deleteFaspAPI(String path, FASPCapability cap, FaspApiRoute route){
+		delete(path, new FaspApiRouteAdapter(route, cap));
 	}
 
 	public static <T> void responseTypeSerializer(Class<T> type, ResponseSerializer<T> serializer){

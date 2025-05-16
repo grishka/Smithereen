@@ -1,4 +1,5 @@
 {# @pebvariable name="friend" type="smithereen.model.User" #}
+{# @pebvariable name="userLists" type="Map<Integer, int[]>" #}
 <table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
 	<tr valign="top">
 		<td width="100">
@@ -17,7 +18,15 @@
 				<div><a href="{{ friend.profileURL }}"{{ profileRel(friend) }}>{{ friend | name('complete') }}</a></div>
 				{% if friend.domain is not empty %}
 					<div class="grayText">{{ L('server') }}:</div>
-					<div>{{ friend.domain }}</div>
+					<div><a href="{{ friend.url }}" target="_blank">{{ friend.domain }}</a></div>
+				{% endif %}
+				{% if userLists is not null and userLists contains friend.id and userLists[friend.id] is not empty %}
+				<div></div>
+				<div id="frowLists{{ friend.id }}" class="lists">
+				{% for listID in userLists[friend.id] %}
+				    <span class="friendListLabel l{{ (listID-1)%8 }}">{{ allLists[listID].name | default("List #{listID}") }}</span>
+				{% endfor %}
+				</div>
 				{% endif %}
 			</div>
 		</td>
@@ -28,14 +37,15 @@
 				<li><a href="{{ action.href }}{{ friend.id }}"{{ action.ajax ? ' data-ajax' : '' }}>{{ action.title }}</a></li>
 				{% endfor %}
 				{% else %}
+				{% if currentUser is not null and friend.id!=currentUser.id %}
+				<li><a href="/my/mail/compose?to={{ friend.id }}" onclick="showMailFormBox(this); return false;">{{ L('profile_write_message') }}</a></li>
+				{% endif %}
 				<li><a href="/users/{{ friend.id }}/friends">{{L('view_friends_of')}}</a></li>
 				{% if(currentUser is not null and currentUser.id==owner.id and not followers) %}
 					<li>
 						<a href="/users/{{ friend.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following%}'unfollow'{%else%}'remove_friend'{%endif%},this.getAttribute('data-confirm'),'/users/{{ friend.id }}/doRemoveFriend?from=list')" data-confirm="{{ L((following ? 'confirm_unfollow_X' : 'confirm_unfriend_X'), {'name': friend.firstLastAndGender}) | forceEscape }}">{%if following%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a>
 					</li>
-				{% endif %}
-				{% if friend.domain is not null %}
-					<li><a href="{{ friend.url }}" target="_blank">{{ L('open_on_server_X', {'domain': friend.domain}) }}</a></li>
+					<li class="popupMenuW" id="friendListsButton{{ friend.id }}" data-lists="{% for listID in userLists[friend.id] %}{{ listID }}{% if not loop.last %},{% endif %}{% endfor %}"><a href="javascript:void(0)" onclick="showFriendListsMenu('{{ friend.id }}')" class="opener">{{ L('friend_set_lists') }}</a></li>
 				{% endif %}
 				{% endif %}
 			</ul>

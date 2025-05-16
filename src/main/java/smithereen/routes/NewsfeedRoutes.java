@@ -17,6 +17,7 @@ import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
+import smithereen.model.UserPresence;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentableObjectType;
@@ -25,6 +26,7 @@ import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.filtering.FilterContext;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
@@ -36,8 +38,8 @@ import spark.Response;
 import static smithereen.Utils.*;
 
 public class NewsfeedRoutes{
-	private static void prepareFeed(ApplicationContext ctx, Request req, Account self, List<NewsfeedEntry> feed, RenderedTemplateResponse model, boolean needNonPostInteractions){
-		Set<Integer> needPosts=new HashSet<>(), needUsers=new HashSet<>(), needGroups=new HashSet<>();
+	private static void prepareFeed(ApplicationContext ctx, Request req, Account self, List<NewsfeedEntry> feed, RenderedTemplateResponse model, boolean needNonPostInteractions, FilterContext filterContext){
+		Set<Integer> needPosts=new HashSet<>(), needUsers=new HashSet<>(), needGroups=new HashSet<>(), needUserOnlines=new HashSet<>();
 		for(NewsfeedEntry e:feed){
 			if(e.authorID>0)
 				needUsers.add(e.authorID);
@@ -60,7 +62,10 @@ public class NewsfeedRoutes{
 						case null, default -> {}
 					}
 				}
-				case POST, RETOOT -> needPosts.add((int) e.objectID);
+				case POST, RETOOT -> {
+					needUserOnlines.add(e.authorID);
+					needPosts.add((int) e.objectID);
+				}
 				case ADD_FRIEND -> needUsers.add((int) e.objectID);
 				case JOIN_GROUP, JOIN_EVENT, CREATE_GROUP, CREATE_EVENT -> needGroups.add((int) e.objectID);
 				case RELATIONSHIP_STATUS -> {
@@ -78,6 +83,10 @@ public class NewsfeedRoutes{
 		ctx.getWallController().populateReposts(self.user, feedPosts, 2);
 		if(req.attribute("mobile")==null && !feedPosts.isEmpty()){
 			ctx.getWallController().populateCommentPreviews(self.user, feedPosts, self.prefs.commentViewType);
+		}
+
+		if(filterContext!=null){
+			ctx.getNewsfeedController().applyFiltersToPosts(self.user, filterContext, feedPosts);
 		}
 
 		PostViewModel.collectActorIDs(feedPosts, needUsers, needGroups);
@@ -126,6 +135,14 @@ public class NewsfeedRoutes{
 		model.with("posts", feedPosts.stream().collect(Collectors.toMap(pvm->pvm.post.id, Function.identity())))
 				.with("users", users).with("groups", groups).with("postInteractions", interactions);
 		model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", self.prefs.commentViewType);
+
+		Map<Integer, UserPresence> onlines;
+		if(!needUserOnlines.isEmpty()){
+			onlines=ctx.getUsersController().getUserPresencesOnlineOnly(needUserOnlines);
+		}else{
+			onlines=Map.of();
+		}
+		model.with("onlines", onlines);
 	}
 
 	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -145,7 +162,7 @@ public class NewsfeedRoutes{
 				.with("draftAttachments", Utils.sessionInfo(req).postDraftAttachments)
 				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()));
 
-		prepareFeed(ctx, req, self, feed.list, model, false);
+		prepareFeed(ctx, req, self, feed.list, model, false, FilterContext.FRIENDS_FEED);
 
 		return model;
 	}
@@ -184,7 +201,7 @@ public class NewsfeedRoutes{
 				.with("paginationPerPage", 25)
 				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()));
 
-		prepareFeed(ctx, req, self, feed.list, model, true);
+		prepareFeed(ctx, req, self, feed.list, model, true, null);
 
 		return model;
 	}
@@ -225,7 +242,7 @@ public class NewsfeedRoutes{
 				.with("photosList", "groupsFeed")
 				.with("groupedPhotosList", "groupsFeedGrouped");
 
-		prepareFeed(ctx, req, self, feed.list, model, false);
+		prepareFeed(ctx, req, self, feed.list, model, false, FilterContext.GROUPS_FEED);
 
 		return model;
 	}

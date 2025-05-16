@@ -43,50 +43,53 @@ public class FetchWallReplyThreadRunnable implements Callable<List<Post>>{
 
 	@Override
 	public List<Post> call() throws Exception{
-		LOG.debug("Started fetching parent thread for post {}", initialPost.activityPubID);
-		seenPosts.add(initialPost.activityPubID);
-		while(thread.getFirst().inReplyTo!=null){
-			NoteOrQuestion post=context.getObjectLinkResolver().resolve(thread.getFirst().inReplyTo, NoteOrQuestion.class, true, false, false, (JsonObject) null, true);
-			if(seenPosts.contains(post.activityPubID)){
-				LOG.warn("Already seen post {} while fetching parent thread for {}", post.activityPubID, initialPost.activityPubID);
-				throw new IllegalStateException("Reply thread contains a loop of links");
-			}
-			seenPosts.add(post.activityPubID);
-			thread.addFirst(post);
-		}
-		NoteOrQuestion topLevel=thread.getFirst();
 		final ArrayList<Post> realThread=new ArrayList<>();
-		Post parent=null;
-		for(NoteOrQuestion noq: thread){
-			Post p=noq.asNativePost(context);
+		try{
+			LOG.debug("Started fetching parent thread for post {}", initialPost.activityPubID);
+			seenPosts.add(initialPost.activityPubID);
+			while(thread.getFirst().inReplyTo!=null){
+				NoteOrQuestion post=context.getObjectLinkResolver().resolve(thread.getFirst().inReplyTo, NoteOrQuestion.class, true, false, false, (JsonObject) null, true);
+				if(seenPosts.contains(post.activityPubID)){
+					LOG.warn("Already seen post {} while fetching parent thread for {}", post.activityPubID, initialPost.activityPubID);
+					throw new IllegalStateException("Reply thread contains a loop of links");
+				}
+				seenPosts.add(post.activityPubID);
+				thread.addFirst(post);
+			}
+			NoteOrQuestion topLevel=thread.getFirst();
+			Post parent=null;
+			for(NoteOrQuestion noq: thread){
+				Post p=noq.asNativePost(context);
 
-			if(p.id!=0){
+				if(p.id!=0){
+					realThread.add(p);
+					parent=p;
+					continue;
+				}
+				if(noq.inReplyTo==null && noq.getQuoteRepostID()!=null){
+					List<Post> repostChain=context.getActivityPubWorker().fetchRepostChain(noq).get();
+					if(!repostChain.isEmpty()){
+						p.setRepostedPost(repostChain.getFirst());
+					}
+				}
+				context.getWallController().loadAndPreprocessRemotePostMentions(p, noq);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(p, noq);
+				context.getNotificationsController().createNotificationsForObject(p);
 				realThread.add(p);
 				parent=p;
-				continue;
 			}
-			if(noq.inReplyTo==null && noq.getQuoteRepostID()!=null){
-				List<Post> repostChain=context.getActivityPubWorker().fetchRepostChain(noq).get();
-				if(!repostChain.isEmpty()){
-					p.setRepostedPost(repostChain.getFirst());
-				}
-			}
-			context.getWallController().loadAndPreprocessRemotePostMentions(p, noq);
-			context.getObjectLinkResolver().storeOrUpdateRemoteObject(p, noq);
-			context.getNotificationsController().createNotificationsForObject(p);
-			realThread.add(p);
-			parent=p;
-		}
-		LOG.debug("Done fetching parent thread for post {}", topLevel.activityPubID);
-		synchronized(apw){
-			fetchingReplyThreads.remove(initialPost.activityPubID);
-			List<Consumer<List<Post>>> actions=afterFetchReplyThreadActions.remove(initialPost.activityPubID);
-			if(actions!=null){
-				for(Consumer<List<Post>> action: actions){
-					apw.submitTask(()->action.accept(realThread));
-				}
-			}
+			LOG.debug("Done fetching parent thread for post {}", topLevel.activityPubID);
 			return realThread;
+		}finally{
+			synchronized(apw){
+				fetchingReplyThreads.remove(initialPost.activityPubID);
+				List<Consumer<List<Post>>> actions=afterFetchReplyThreadActions.remove(initialPost.activityPubID);
+				if(actions!=null){
+					for(Consumer<List<Post>> action:actions){
+						apw.submitTask(()->action.accept(realThread));
+					}
+				}
+			}
 		}
 	}
 }

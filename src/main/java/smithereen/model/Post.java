@@ -255,7 +255,15 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	}
 
 	public enum Flag{
+		/**
+		 * This is an `Announce{Note}` repost that doesn't have its own comment thread and can't be interacted with.
+		 * All comments and interactions are delegated to the reposted post.
+		 */
 		MASTODON_STYLE_REPOST,
+		/**
+		 * This is a comment (reply key not empty) on a wall-to-wall (owner id != author id) post.
+		 */
+		TOP_IS_WALL_TO_WALL,
 	}
 
 	public enum Action{

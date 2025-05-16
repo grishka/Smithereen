@@ -10,4 +10,6 @@ public class JLD{
 	public static final String LITEPUB="http://litepub.social/ns#";
 	public static final String VCARD="http://www.w3.org/2006/vcard/ns#";
 	public static final String MISSKEY="https://misskey-hub.net/ns#";
+	public static final String MASTODON_QUOTES_FEP="https://w3id.org/fep/044f#";
+	public static final String GOTOSOCIAL="https://gotosocial.org/ns#";
 }

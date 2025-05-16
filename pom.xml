@@ -205,12 +205,12 @@
 		<dependency>
 			<groupId>me.grishka.sparkjava</groupId>
 			<artifactId>spark-core</artifactId>
-			<version>2.9.4+patch.3</version>
+			<version>2.9.4+patch.4</version>
 		</dependency>
 		<dependency>
 			<groupId>io.pebbletemplates</groupId>
 			<artifactId>pebble</artifactId>
-			<version>3.2.2</version>
+			<version>3.2.4</version>
 		</dependency>
 		<dependency>
 			<groupId>com.mysql</groupId>
@@ -273,6 +273,12 @@
 			<groupId>org.commonmark</groupId>
 			<artifactId>commonmark-ext-ins</artifactId>
 			<version>0.22.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.palantir.javapoet</groupId>
+			<artifactId>javapoet</artifactId>
+			<version>0.6.0</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 

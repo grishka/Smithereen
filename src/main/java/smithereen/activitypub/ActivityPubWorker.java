@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -18,6 +19,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -30,6 +32,7 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
+import smithereen.activitypub.objects.ActivityPubActorStatus;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
@@ -50,7 +53,9 @@ import smithereen.activitypub.objects.activities.Invite;
 import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
+import smithereen.activitypub.objects.activities.Move;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
@@ -68,7 +73,9 @@ import smithereen.activitypub.tasks.RetryActivityRunnable;
 import smithereen.activitypub.tasks.SendActivitySequenceRunnable;
 import smithereen.activitypub.tasks.SendOneActivityRunnable;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.ActorStatus;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -92,6 +99,7 @@ import smithereen.model.photos.PhotoTag;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
@@ -111,6 +119,10 @@ public class ActivityPubWorker{
 	private final ExecutorService executor=Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("ActivityPubWorker-", 0).factory());
 	private final ScheduledExecutorService retryExecutor=Executors.newSingleThreadScheduledExecutor();
 	private final Random rand=new Random();
+	private final NamedMutexCollection mutex=new NamedMutexCollection();
+
+	private final HashSet<Integer> scheduledActorUpdates=new HashSet<>();
+	private final ConcurrentHashMap<Integer, Instant> lastActorUpdates=new ConcurrentHashMap<>();
 
 	// These must be accessed from synchronized(this)
 	private final HashMap<URI, Future<List<Post>>> fetchingWallReplyThreads=new HashMap<>();
@@ -216,6 +228,8 @@ public class ActivityPubWorker{
 					if(oaa.owner() instanceof User user){
 						getInboxesWithPrivacy(inboxes, user, album.viewPrivacy);
 						for(User mentionedUser:mentionedUsers){
+							if(!(mentionedUser instanceof ForeignUser))
+								continue;
 							URI inbox=actorInbox(mentionedUser);
 							if(inboxes.contains(inbox))
 								continue;
@@ -299,7 +313,7 @@ public class ActivityPubWorker{
 				add.to=List.of(new LinkOrObject(ActivityPub.AS_PUBLIC), new LinkOrObject(oaa.owner().getFollowersURL()), new LinkOrObject(oaa.author().activityPubID));
 				add.cc=note.cc;
 				ActivityPubCollection target=new ActivityPubCollection(false);
-				target.activityPubID=oaa.owner().getWallURL();
+				target.activityPubID=post.getReplyLevel()>0 ? oaa.owner().getWallCommentsURL() : oaa.owner().getWallURL();
 				target.attributedTo=oaa.owner().activityPubID;
 				add.target=new LinkOrObject(target);
 
@@ -456,11 +470,45 @@ public class ActivityPubWorker{
 	}
 
 	public void sendUpdateUserActivity(User user){
-		Update update=new Update()
-				.withActorLinkAndObject(user, user)
-				.withActorFragmentID("updateProfile"+System.currentTimeMillis());
-		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
-		submitActivityForFollowers(update, user);
+		Runnable action=()->{
+			scheduledActorUpdates.remove(user.id);
+			User upToDateUser;
+			try{
+				// Make sure that any updates to this user made between when this was scheduled and now are incorporated
+				upToDateUser=context.getUsersController().getUserOrThrow(user.id);
+			}catch(ObjectNotFoundException x){
+				LOG.warn("Failed to send a delayed Update{Person} for user {} because the user somehow no longer exists", user.id);
+				return;
+			}
+			Update update=new Update()
+					.withActorLinkAndObject(upToDateUser, upToDateUser)
+					.withActorFragmentID("updateProfile"+System.currentTimeMillis());
+			update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+			submitActivityForFollowers(update, upToDateUser);
+		};
+		String mutexName="updatePerson"+user.id;
+		try{
+			mutex.acquire(mutexName);
+			if(scheduledActorUpdates.contains(user.id)){
+				LOG.trace("Update{Person} for user {} is already scheduled", user.id);
+				return;
+			}
+			Instant removeBefore=Instant.now().minus(5, ChronoUnit.MINUTES);
+			lastActorUpdates.values().removeIf(removeBefore::isAfter);
+			Instant lastUpdate=lastActorUpdates.get(user.id);
+			if(lastUpdate==null){
+				LOG.trace("Sending Update{Person} for user {} immediately", user.id);
+				lastActorUpdates.put(user.id, Instant.now());
+				action.run();
+			}else{
+				long delay=lastUpdate.plus(5, ChronoUnit.MINUTES).toEpochMilli()-System.currentTimeMillis();
+				LOG.trace("Delaying Update{Person} for user {} by {}s", user.id, delay/1000.0);
+				scheduledActorUpdates.add(user.id);
+				retryExecutor.schedule(action, delay, TimeUnit.MILLISECONDS);
+			}
+		}finally{
+			mutex.release(mutexName);
+		}
 	}
 
 	public void sendUpdateGroupActivity(Group group){
@@ -469,6 +517,19 @@ public class ActivityPubWorker{
 				.withActorFragmentID("updateProfile"+System.currentTimeMillis());
 		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
 		submitActivityForMembers(update, group);
+	}
+
+	public void sendCreateStatusActivity(Actor actor, ActorStatus status){
+		Create create=new Create()
+				.withActorLinkAndObject(actor, ActivityPubActorStatus.fromNativeStatus(status, actor))
+				.withObjectFragmentID("create");
+		submitActivityForFollowersOrMembers(create, actor);
+	}
+
+	public void sendClearStatusActivity(Actor actor, ActorStatus formerStatus){
+		Delete delete=new Delete()
+				.withActorAndObjectLinks(actor, ActivityPubActorStatus.fromNativeStatus(formerStatus, actor));
+		submitActivityForFollowersOrMembers(delete, actor);
 	}
 
 	public void sendLikeActivity(LikeableContentObject object, User user, int likeID) throws SQLException{
@@ -564,12 +625,12 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void sendRejectGroupInvite(User self, ForeignGroup group, int invitationLocalID, URI invitationID){
-		Invite invite=new Invite();
+	public void sendRejectGroupInvite(User self, ForeignGroup group, int invitationLocalID, User inviter, URI invitationID){
+		Invite invite=new Invite()
+				.withActorAndObjectLinks(inviter, group);
 		invite.activityPubID=invitationID;
 		invite.to=List.of(new LinkOrObject(self.activityPubID));
 		invite.cc=List.of(new LinkOrObject(group.activityPubID));
-		invite.object=new LinkOrObject(group.activityPubID);
 
 		Reject reject=new Reject()
 				.withActorLinkAndObject(self, invite)
@@ -588,12 +649,12 @@ public class ActivityPubWorker{
 		submitActivity(reject, group, user.inbox);
 	}
 
-	public void sendUndoGroupInvite(ForeignUser user, Group group, int invitationLocalID, URI invitationID){
-		Invite invite=new Invite();
+	public void sendUndoGroupInvite(ForeignUser user, Group group, int invitationLocalID, User inviter, URI invitationID){
+		Invite invite=new Invite()
+				.withActorAndObjectLinks(inviter, group);
 		invite.activityPubID=invitationID;
 		invite.to=List.of(new LinkOrObject(user.activityPubID));
 		invite.cc=List.of(new LinkOrObject(group.activityPubID));
-		invite.object=new LinkOrObject(group.activityPubID);
 
 		Undo undo=new Undo()
 				.withActorLinkAndObject(group, invite)
@@ -703,6 +764,26 @@ public class ActivityPubWorker{
 				.withActorAndObjectLinks(self, self)
 				.withActorFragmentID("deleteSelf");
 		submitActivityForFollowers(del, self);
+	}
+
+	public void sendUserMoveSelf(User self, User destination){
+		Move move=new Move()
+				.withActorAndObjectLinks(self, self)
+				.withActorFragmentID("move"+destination.id+"_"+System.currentTimeMillis())
+				.withTarget(destination.activityPubID);
+		submitActivityForFollowers(move, self, Set.of(actorInbox(destination)));
+	}
+
+	public void sendAcceptQuoteRequest(User self, Post repost, Post repostedPost, ForeignUser repostAuthor, URI quoteRequestID){
+		QuoteRequest qreq=new QuoteRequest()
+				.withActorAndObjectLinks(repostAuthor, repostedPost);
+		qreq.activityPubID=quoteRequestID;
+		qreq.instrument=new LinkOrObject(repost.getActivityPubID());
+		Accept accept=new Accept()
+				.withActorLinkAndObject(self, qreq)
+				.withActorFragmentID("acceptPostQuote"+repost.id);
+		accept.result=List.of(new LinkOrObject(UriBuilder.local().path("posts", String.valueOf(repost.repostOf), "quoteAuth", String.valueOf(repost.id)).build()));
+		submitActivity(accept, self, actorInbox(repostAuthor));
 	}
 
 	// region Photo albums
@@ -1026,17 +1107,11 @@ public class ActivityPubWorker{
 		return fetchingPhotoAlbums.computeIfAbsent(album.activityPubID, uri->executor.submit(new FetchPhotoAlbumPhotosTask(context, album, nativeAlbum, this, fetchingPhotoAlbums)));
 	}
 
-	public <T extends Callable<?>> void invokeAll(Collection<T> tasks){
-		ArrayList<Future<?>> futures=new ArrayList<>();
-		for(Callable<?> task:tasks){
-			futures.add(executor.submit(task));
-		}
-		for(Future<?> future:futures){
-			try{
-				future.get();
-			}catch(Exception x){
-				LOG.warn("Task execution failed", x);
-			}
+	public <R, T extends Callable<R>> List<Future<R>> invokeAll(Collection<T> tasks){
+		try{
+			return executor.invokeAll(tasks);
+		}catch(InterruptedException x){
+			throw new RuntimeException(x);
 		}
 	}
 
@@ -1057,6 +1132,17 @@ public class ActivityPubWorker{
 	public void submitActivityForFollowers(Activity activity, User actor){
 		try{
 			submitActivity(activity, actor, UserStorage.getFollowerInboxes(actor.id));
+		}catch(SQLException x){
+			LOG.error("Error getting follower inboxes for sending {} on behalf of user {}", activity.getType(), actor.id, x);
+		}
+	}
+
+	public void submitActivityForFollowers(Activity activity, User actor, Set<URI> extraInboxes){
+		try{
+			HashSet<URI> inboxes=new HashSet<>();
+			inboxes.addAll(UserStorage.getFollowerInboxes(actor.id));
+			inboxes.addAll(extraInboxes);
+			submitActivity(activity, actor, inboxes);
 		}catch(SQLException x){
 			LOG.error("Error getting follower inboxes for sending {} on behalf of user {}", activity.getType(), actor.id, x);
 		}
@@ -1086,6 +1172,14 @@ public class ActivityPubWorker{
 			submitActivity(activity, group, GroupStorage.getGroupMemberInboxes(group.id), requiredFeature);
 		}catch(SQLException x){
 			LOG.error("Error getting member inboxes for sending {} on behalf of group {}", activity.getType(), group.id, x);
+		}
+	}
+
+	public void submitActivityForFollowersOrMembers(Activity activity, Actor actor){
+		switch(actor){
+			case User user -> submitActivityForFollowers(activity, user);
+			case Group group -> submitActivityForMembers(activity, group);
+			default -> throw new IllegalStateException("Unexpected value: "+actor);
 		}
 	}
 

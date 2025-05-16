@@ -45,14 +45,23 @@ public class UserInteractionsController{
 		this.context=context;
 	}
 
-	public PaginatedList<User> getLikesForObject(LikeableContentObject object, User self, int offset, int count){
+	public PaginatedList<Integer> getLikesForObject(LikeableContentObject object, User self, int offset, int count){
 		try{
 			long id=object.getObjectID();
 			if(object instanceof Post post)
 				id=post.getIDForInteractions();
-			PaginatedList<Integer> likeIDs=LikeStorage.getLikes(id, object.getLikeObjectType(), self!=null ? self.id : 0, offset, count);
-			List<User> users=UserStorage.getByIdAsList(likeIDs.list);
-			return new PaginatedList<>(likeIDs, users);
+			return LikeStorage.getLikes(id, object.getLikeObjectType(), self!=null ? self.id : 0, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Like> getLikeObjectsForObject(LikeableContentObject object, int offset, int count){
+		try{
+			long id=object.getObjectID();
+			if(object instanceof Post post)
+				id=post.getIDForInteractions();
+			return LikeStorage.getLikes(id, object.getActivityPubID(), object.getLikeObjectType(), offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -95,12 +104,16 @@ public class UserInteractionsController{
 
 			if(liked){
 				int id=LikeStorage.setObjectLiked(self.id, object.getObjectID(), object.getLikeObjectType(), true, apID);
-				if(id==0) // Already liked
+				if(id==-1) // Already liked
 					return;
 				if(!(oaa.author() instanceof ForeignUser) && object.getAuthorID()!=self.id){
 					OwnedContentObject related=null;
 					if(object instanceof Comment comment){
 						related=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+					}else if(object instanceof Post post && post.getReplyLevel()>0){
+						try{
+							related=context.getWallController().getPostOrThrow(post.replyKey.getFirst());
+						}catch(ObjectNotFoundException ignore){}
 					}
 					context.getNotificationsController().createNotification(oaa.author(), Notification.Type.LIKE, object, related, self);
 				}
@@ -108,9 +121,14 @@ public class UserInteractionsController{
 					context.getActivityPubWorker().sendLikeActivity(object, self, id);
 				if(syncedObject!=null)
 					LikeStorage.setObjectLiked(self.id, syncedObject.getObjectID(), syncedObject.getLikeObjectType(), true, null);
+				context.getFriendsController().incrementHintsRank(self, oaa.author(), 2);
+				if(oaa.owner() instanceof User u && u.id!=oaa.author().id)
+					context.getFriendsController().incrementHintsRank(self, u, 1);
+				else if(oaa.owner() instanceof Group g)
+					context.getGroupsController().incrementHintsRank(self, g, 2);
 			}else{
 				int id=LikeStorage.setObjectLiked(self.id, object.getObjectID(), object.getLikeObjectType(), false, apID);
-				if(id==0)
+				if(id==-1)
 					return;
 				if(syncedObject!=null)
 					LikeStorage.setObjectLiked(self.id, syncedObject.getObjectID(), syncedObject.getLikeObjectType(), false, null);
@@ -127,12 +145,12 @@ public class UserInteractionsController{
 		}
 	}
 
-	public List<User> getRepostedUsers(Post object, int count){
+	public List<Integer> getRepostedUsers(Post object, int count){
 		try{
 			if(object.isMastodonStyleRepost()){
 				object=context.getWallController().getPostOrThrow(object.repostOf);
 			}
-			return UserStorage.getByIdAsList(PostStorage.getRepostedUsers(object.id, count));
+			return PostStorage.getRepostedUsers(object.id, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -1,5 +1,7 @@
 var submittingForm:HTMLFormElement=null;
 var numberFormatter=window.Intl && Intl.NumberFormat ? new Intl.NumberFormat(userConfig.locale) : null;
+var currentAlXHR:XMLHttpRequest;
+var loadedExtraScripts:any={};
 
 function ge<E extends HTMLElement>(id:string):E{
 	return document.getElementById(id) as E;
@@ -21,6 +23,7 @@ function ce<K extends keyof HTMLElementTagNameMap>(tag:K, attrs:Partial<HTMLElem
 
 interface String{
 	escapeHTML():string;
+	startsWith(substr:string):boolean;
 }
 
 String.prototype.escapeHTML=function(){
@@ -28,6 +31,10 @@ String.prototype.escapeHTML=function(){
 	el.innerText=this;
 	return el.innerHTML;
 }
+
+String.prototype.startsWith=function(substr:string){
+	return this.length>=substr.length && this.substr(0, substr.length)==substr;
+};
 
 interface Array<T>{
 	remove(item:T):void;
@@ -270,7 +277,7 @@ function ajaxPost(uri:string, params:any, onDone:Function, onError:Function, res
 	return xhr;
 }
 
-function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, onError:{():void}=null){
+function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, onError:{():void}=null, showDefaultErrorBox:boolean=false){
 	params.csrf=userConfig.csrf;
 	ajaxPost(uri, params, (resp:any)=>{
 		if(resp instanceof Array){
@@ -278,10 +285,12 @@ function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, 
 				applyServerCommand(resp[i]);
 			}
 		}
+		if(onDone)
+			onDone();
 	}, ()=>{
 		if(onError)
 			onError();
-		else
+		if(!onError || showDefaultErrorBox)
 			new MessageBox(lang("error"), lang("network_error"), lang("close")).show();
 	});
 }
@@ -289,7 +298,7 @@ function ajaxPostAndApplyActions(uri:string, params:any, onDone:{():void}=null, 
 function ajaxGet(uri:string, onDone:{(r:any):void}, onError:{(msg:string):void}, responseType:XMLHttpRequestResponseType="json"):XMLHttpRequest{
 	if(!onError){
 		onError=(msg)=>{
-			new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 		};
 	}
 	var xhr:XMLHttpRequest=new XMLHttpRequest();
@@ -454,7 +463,7 @@ function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, 
 		}, function(msg:string){
 			setGlobalLoading(false);
 			box.dismiss();
-			new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 		});
 	});
 	box.show();
@@ -529,13 +538,23 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 		if(submitter)
 			submitter.classList.remove("loading");
 		setGlobalLoading(false);
-		new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+		if(msg && msg[0]=='['){
+			var resp=JSON.parse(msg) as Array<any>;
+			for(var i=0;i<resp.length;i++){
+				applyServerCommand(resp[i]);
+			}
+		}else{
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
+		}
 		if(onDone) onDone(false);
 	});
 	return false;
 }
 
 function ajaxFollowLink(link:HTMLAnchorElement):boolean{
+	var ev=window.event;
+	if(ev && (ev instanceof MouseEvent || ev instanceof KeyboardEvent) && (ev.altKey || ev.ctrlKey || ev.shiftKey || ev.metaKey))
+		return false;
 	if(link.dataset.ajax!=undefined){
 		var elToHide:HTMLElement;
 		var elToShow:HTMLElement;
@@ -569,6 +588,16 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage, link.dataset.confirmAction);
 		return true;
 	}
+
+	var href=link.href;
+	var currentHref=location.href;
+	if(currentHref.lastIndexOf('#')!=0){
+		currentHref=currentHref.substring(0, currentHref.lastIndexOf('#'));
+	}
+	if(!mobile && href && !link.target && !/^javascript:/.test(href) && !(href.length>currentHref.length && href.substring(0, currentHref.length)==currentHref && href[currentHref.length]=='#') && !link.onclick && new URL(href, location.href).origin==location.origin && !link.dataset.noAl){
+		ajaxNavigate(href, true);
+		return true;
+	}
 	return false;
 }
 
@@ -591,7 +620,7 @@ function ajaxGetAndApplyActions(url:string, onDone:{():void}=null, onError:{():v
 		if(onDone) onDone();
 	}, function(msg:string){
 		setGlobalLoading(false);
-		new MessageBox(lang("error"), msg || lang("network_error"), lang("ok")).show();
+		new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 		if(onError) onError();
 	});
 }
@@ -750,14 +779,15 @@ function applyServerCommand(cmd:any){
 	}
 }
 
-function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true, containerPostID:number=0):boolean{
+function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true, containerPostID:number=0, randomID:string=null):boolean{
 	var form=ge(formID);
 	form.show();
 	if(moveForm){
-		var replies=ge("postReplies"+(containerPostID || id));
-		replies.insertAdjacentElement("afterbegin", form);
+		var suffix=randomID ? "_"+randomID : "";
+		var replies=ge("postReplies"+(containerPostID || id)+suffix);
+		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
 	}
-	form.customData.postFormObj.setupForReplyTo(id);
+	form.customData.postFormObj.setupForReplyTo(id, "post", randomID);
 	return false;
 }
 
@@ -766,15 +796,16 @@ function showCommentReplyForm(id:string, formID:string, moveForm:boolean=true, c
 	form.show();
 	if(moveForm){
 		var replies=ge("commentReplies"+(containerPostID || id));
-		replies.insertAdjacentElement("afterbegin", form);
+		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
 	}
 	form.customData.postFormObj.setupForReplyTo(id, "comment");
 	return false;
 }
 
-function showPostCommentForm(id:number):boolean{
-	var form=ge("wallPostForm_commentPost"+id);
-	var link=ge("postCommentLinkWrap"+id);
+function showPostCommentForm(id:string, randomID:string=null):boolean{
+	var suffix=randomID ? "_"+randomID : "";
+	var form=ge("wallPostForm_commentPost"+id+suffix);
+	var link=ge("postCommentLinkWrap"+id+suffix);
 	link.hide();
 	form.show();
 	form.customData.postFormObj.focus();
@@ -848,7 +879,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			}
 		}, function(){
 			btn.removeAttribute("in_progress");
-			new MessageBox(lang("error"), lang("network_error"), lang("ok")).show();
+			new MessageBox(lang("error"), lang("network_error"), lang("close")).show();
 			if(liked){
 				counter.innerText=(count+1).toString();
 				btn.classList.add("liked");
@@ -865,7 +896,7 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 function likeOnMouseChange(wrap:HTMLElement, entered:boolean):void{
 	var btn=wrap.querySelector(".popoverButton") as HTMLElement;
 
-	var ev:MouseEvent=event as MouseEvent;
+	var ev:MouseEvent=window.event as MouseEvent;
 	var popover=btn._popover;
 	if(entered){
 		if(!btn.customData) btn.customData={};
@@ -937,8 +968,11 @@ function addSendOnCtrlEnter(el:(HTMLTextAreaElement|HTMLInputElement)){
 	});
 }
 
-function loadOlderComments(id:(number|string), type:string="wall"){
+function loadOlderComments(id:(number|string), type:string="wall", randomID:string=null){
 	var elId=type=="wall" ? id : "_"+type+"_"+id;
+	if(randomID){
+		elId+="_"+randomID;
+	}
 	var btn=ge("loadPrevBtn"+elId);
 	var loader=ge("prevLoader"+elId);
 	btn.hide();
@@ -952,6 +986,9 @@ function loadOlderComments(id:(number|string), type:string="wall"){
 	}else{
 		url=`/comments/ajaxCommentPreview?firstID=${firstID}&parentType=${type}&parentID=${id}`;
 	}
+	if(randomID){
+		url+="&rid="+randomID;
+	}
 	ajaxGetAndApplyActions(url, ()=>{
 		scrollableEl.scrollTop+=scrollableEl.scrollHeight-heightBefore;
 	}, ()=>{
@@ -961,9 +998,10 @@ function loadOlderComments(id:(number|string), type:string="wall"){
 	return false;
 }
 
-function loadCommentBranch(el:HTMLElement, id:(number|string), topLevelRepostID:number, type:string="wall", parentID:string=null){
-	var btn=ge("loadRepliesLink"+id);
-	var loader=ge("repliesLoader"+id);
+function loadCommentBranch(el:HTMLElement, id:(number|string), topLevelRepostID:number, type:string="wall", parentID:string=null, randomID:string=null){
+	var elIdSuffix=randomID ? `_${randomID}` : "";
+	var btn=ge("loadRepliesLink"+id+elIdSuffix);
+	var loader=ge("repliesLoader"+id+elIdSuffix);
 	var offset=parseInt(el.dataset.offset);
 	btn.hide();
 	loader.show();
@@ -973,6 +1011,8 @@ function loadCommentBranch(el:HTMLElement, id:(number|string), topLevelRepostID:
 	}else{
 		url=`/comments/${id}/ajaxCommentBranch?parentType=${type}&parentID=${parentID}`;
 	}
+	if(randomID)
+		url=addParamsToURL(url, {rid: randomID});
 	url=addParamsToURL(url, {offset: (offset || 0).toString()});
 	if(topLevelRepostID)
 		url=addParamsToURL(url, {topLevel: topLevelRepostID.toString()});
@@ -1003,19 +1043,21 @@ function onPollInputChange(el:HTMLInputElement){
 	}
 }
 
-function doneEditingPost(id:number){
-	var fid="wallPostForm_edit"+id;
+function doneEditingPost(id:string, randomID:string=null){
+	var suffix=randomID ? "_"+randomID : "";
+	var fid="wallPostForm_edit"+id+suffix;
 	ge(fid).remove();
-	ge("postEditingLabel"+id).remove();
+	ge("postEditingLabel"+id+suffix).remove();
 }
 
-function cancelEditingPost(id:number){
-	doneEditingPost(id);
-	ge("postInner"+id).show();
-	var actions=ge("postFloatingActions"+id);
+function cancelEditingPost(id:string, randomID:string=null){
+	doneEditingPost(id, randomID);
+	var suffix=randomID ? "_"+randomID : "";
+	ge("postInner"+id+suffix).show();
+	var actions=ge("postFloatingActions"+id+suffix);
 	if(actions)
 		actions.show();
-	var inReply=ge("inReplyTo"+id);
+	var inReply=ge("inReplyTo"+id+suffix);
 	if(inReply)
 		inReply.show();
 }
@@ -1133,6 +1175,7 @@ function initAjaxSearch(fieldID:string){
 		}
 		var params=new URLSearchParams(qstr);
 		params.set("q", q);
+		params.delete("_al");
 		var extraFields=input.dataset.extraFields;
 		if(extraFields){
 			for(var fid of extraFields.split(',')){
@@ -1584,3 +1627,239 @@ function initProfileTitleHideOnScroll(){
 	observer.observe(profileHeader);
 }
 
+function ajaxNavigate(url:string, addToHistory:boolean){
+	if(currentAlXHR)
+		currentAlXHR.abort();
+
+	var xhr=new XMLHttpRequest();
+	xhr.open("GET", addParamsToURL(url, {_al: ""}));
+	setGlobalLoading(true);
+	xhr.onload=(ev)=>{
+		currentAlXHR=null;
+		if(!xhr.response){
+			setGlobalLoading(false);
+			window.location.href=url;
+			return;
+		}
+		var done=()=>{
+			setGlobalLoading(false);
+			LayerManager.getInstance().dismissEverything();
+			LayerManager.getMediaInstance().dismissEverything();
+			cur={};
+			if(addToHistory){
+				window.history.pushState({type: "al"}, "", xhr.response.url || url);
+				document.documentElement.scrollTop=0;
+			}
+			ge("pageContent").innerHTML=xhr.response.h;
+			document.title=xhr.response.t;
+			if(xhr.response.c){
+				setMenuCounters(xhr.response.c);
+			}
+			eval(xhr.response.s);
+			initDynamicControls();
+		};
+		var extraScripts=xhr.response.sc;
+		if(extraScripts){
+			var needLoad=[];
+			for(var name in extraScripts){
+				if(!loadedExtraScripts[name]){
+					needLoad.push({name: name, hash: extraScripts[name]});
+				}else if(loadedExtraScripts[name]!=extraScripts[name]){ // Hashes differ. Force a full page reload.
+					setGlobalLoading(false);
+					window.location.href=url;
+					return;
+				}
+			}
+			if(needLoad.length){
+				var scriptsRemain=needLoad.length;
+				for(var script of needLoad){
+					var scriptEl=ce("script", {src: `/res/${script.name}?${script.hash}`, onload: ()=>{
+						loadedExtraScripts[script.name]=script.hash;
+						scriptsRemain--;
+						if(scriptsRemain==0)
+							done();
+					}, onerror: ()=>{
+						setGlobalLoading(false);
+						window.location.href=url;
+					}});
+					document.body.appendChild(scriptEl);
+				}
+			}else{
+				done();
+			}
+		}else{
+			done();
+		}
+	};
+	xhr.onerror=(ev)=>{
+		currentAlXHR=null;
+		setGlobalLoading(false);
+		window.location.href=url;
+	};
+	xhr.responseType="json";
+	currentAlXHR=xhr;
+	xhr.send();
+}
+
+function addLang(newKeys:{[key:string]:any}){
+	for(var key in newKeys){
+		langKeys[key]=newKeys[key];
+	}
+}
+
+function setMenuCounters(counters:{[key:string]:number}){
+	for(var key in counters){
+		var counter=ge("menuCounter_"+key);
+		if(!counter)
+			continue;
+		if(counters[key]){
+			ge("menuCounterValue_"+key).innerText=formatNumber(counters[key]);
+			counter.show();
+		}else{
+			counter.hide();
+		}
+	}
+}
+
+function activateNotificationsPostForm(id:string, postID:string, type:string, randomID:string){
+	var ev=window.event;
+	var target=ev.target as HTMLElement;
+	if(target.tagName=='A' || target.tagName=='LABEL' || target.tagName=='INPUT')
+		return true;
+	var formEl=ge("wallPostForm_"+id);
+	if(!formEl)
+		return true;
+	formEl.classList.remove("collapsed");
+	var text=ge("postFormText_"+id) as HTMLTextAreaElement;
+	text.focus();
+	var form:PostForm=formEl.customData.postFormObj;
+	form.setupForReplyTo(postID, type, randomID);
+	return false;
+}
+
+function setLanguage(locale:string){
+	var loader=ge("langChooserLoader");
+	if(loader)
+		loader.show();
+	ajaxPost("/settings/setLanguage", {csrf: userConfig.csrf, lang: locale}, ()=>location.reload(), ()=>location.reload());
+}
+
+function showHeaderBack(href:string, title:string){
+	var back=ge("headerBack") as HTMLAnchorElement;
+	var search=ge("qsearchWrap");
+	back.href=href;
+	back.innerText=title;
+
+	if(back.style.display=="none"){
+		if(search)
+			search.hideAnimated();
+		back.showAnimated();
+	}
+}
+
+function hideHeaderBack(){
+	var back=ge("headerBack");
+	var search=ge("qsearchWrap");
+	if(back.style.display=="none")
+		return;
+	back.hideAnimated();
+	if(search)
+		search.showAnimated();
+}
+
+function getXY(obj:HTMLElement, forFixedElement?:boolean):[number, number]{
+	if(!obj) return [0, 0];
+	let left=0, top=0;
+	const body=document.body;
+	const htmlNode=document.documentElement;
+	if(obj.offsetParent){
+		do{
+			left+=obj.offsetLeft;
+			top+=obj.offsetTop;
+			const pos=obj.style.position || getComputedStyle(obj).position;
+			if(pos=='fixed' || pos=='absolute' || pos=='relative'){
+				left-=obj.scrollLeft;
+				top-=obj.scrollTop;
+				if(pos=='fixed' && !forFixedElement){
+					left+=(obj.offsetParent || {}).scrollLeft || body.scrollLeft || htmlNode.scrollLeft;
+					top+=(obj.offsetParent || {}).scrollTop || body.scrollTop || htmlNode.scrollTop;
+				}
+			}
+			obj=obj.offsetParent as HTMLElement;
+		}while(obj);
+	}
+	return [left, top];
+}
+
+function showFriendListsMenu(userID:string){
+	var el=ge("friendListsButton"+userID);
+	var menu;
+	if(!el.customData)
+		el.customData={};
+	if(!el.customData.menu){
+		menu=new FriendListsPopupMenu(el, userID);
+		el.customData.menu=menu;
+	}else{
+		menu=el.customData.menu as FriendListsPopupMenu;
+	}
+	menu.setSelectedLists(el.dataset.lists.split(','));
+	menu.show();
+}
+
+function showCreateFriendListBox(){
+	LayerManager.getInstance().showBoxLoader();
+	chooseMultipleFriends(lang("select_friends_title"), [], {extraField: {placeholder: lang("friends_list_name"), required: true, value: ""}}, (ids, box)=>{
+		box.getButton(0).classList.add("loading");
+		var name:HTMLInputElement=box.getContent().qs("input.extraField");
+		ajaxPostAndApplyActions("/my/friends/createList", {name: name.value, members: ids.join(",")}, ()=>box.dismiss());
+	});
+	if(mobile){
+		(ge("headerDropdownToggler") as HTMLInputElement).checked=false;
+	}
+}
+
+function showEditFriendListBox(id:string, name:string){
+	LayerManager.getInstance().showBoxLoader();
+	ajaxGet("/my/friends/ajaxListUserIDs?id="+id, (resp)=>{
+		var isPublic=parseInt(id)>=57;
+		var opts=isPublic ? {extraContent: `<div class="singleColumn borderBottom"><div class="marginAfter"><b>${lang('friends_public_list')}</b></div>${lang('friends_public_list_explanation')}</div>`} : {extraField: {placeholder: lang("friends_list_name"), required: true, value: name}};
+		chooseMultipleFriends(lang("select_friends_title"), resp as number[], opts, (ids, box)=>{
+			box.getButton(0).classList.add("loading");
+			var reqParams:any={members: ids.join(","), id: id};
+			if(!isPublic){
+				var name:HTMLInputElement=box.getContent().qs("input.extraField");
+				reqParams.name=name.value;
+			}
+			ajaxPostAndApplyActions("/my/friends/updateList", reqParams, ()=>box.dismiss(), ()=>box.getButton(0).classList.remove("loading"), true);
+		});
+	}, null);
+}
+
+function showProfileStatusBox(){
+	var box=ge("profileStatusBox");
+	box.showAnimated();
+	box.qs("input[type=text]").focus();
+	box.customData={
+		mouseListener: (ev:MouseEvent)=>{
+			if((ev.target as HTMLElement).closest("#profileStatusBox"))
+				return;
+			ev.preventDefault();
+			ev.stopPropagation();
+			box.customData.dismiss();
+		},
+		escListener: (ev:KeyboardEvent)=>{
+			if(ev.keyCode!=27) // esc
+				return;
+			ev.preventDefault();
+			ev.stopPropagation();
+			box.customData.dismiss();
+		},
+		dismiss: ()=>{
+			window.removeEventListener("mousedown", box.customData.mouseListener);
+			window.removeEventListener("keydown", box.customData.escListener);
+			box.hideAnimated();
+		},
+	};
+	window.addEventListener("mousedown", box.customData.mouseListener);
+	window.addEventListener("keydown", box.customData.escListener);
+}

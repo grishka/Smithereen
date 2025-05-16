@@ -1,6 +1,6 @@
 {% extends "profile_module" %}
 {% block moduleContent %}
-	{% if canPostOnWall %}
+	{% if canPostOnWall and wallOwner.hasWall %}
 	{% include "wall_post_form" with {'id': 'profile'} %}
 	{% endif %}
 	<div class="narrowWall" id="postList">

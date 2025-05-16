@@ -12,7 +12,7 @@ import smithereen.activitypub.ParserContext;
 
 public class ActivityPubCollection extends ActivityPubObject{
 
-	public int totalItems=-1;
+	public long totalItems=-1;
 	public URI current;
 	public LinkOrObject first;
 	public URI last;
@@ -62,7 +62,7 @@ public class ActivityPubCollection extends ActivityPubObject{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
-		totalItems=optInt(obj, "totalItems");
+		totalItems=optLong(obj, "totalItems");
 		current=tryParseURL(optString(obj, "current"));
 		first=tryParseLinkOrObject(obj.get("first"), parserContext);
 		last=tryParseURL(optString(obj, "last"));

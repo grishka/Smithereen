@@ -56,6 +56,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import smithereen.activitypub.objects.Actor;
@@ -65,6 +66,8 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
+import smithereen.model.friends.FriendList;
+import smithereen.model.friends.PublicFriendList;
 import smithereen.text.TextProcessor;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.UriBuilder;
@@ -194,12 +197,14 @@ public class Utils{
 	}
 
 	public static String wrapErrorString(Request req, Response resp, String errorKey){
-		return wrapErrorString(req, resp, errorKey, null);
+		return wrapErrorString(req, resp, errorKey, null, null);
 	}
 
-	public static String wrapErrorString(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
+	public static String wrapErrorString(Request req, Response resp, String errorKey, Map<String, Object> formatArgs, String msgExtra){
 		Lang l=lang(req);
 		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		if(msgExtra!=null)
+			msg+="<br/><br/>"+TextProcessor.escapeHTML(msgExtra);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("close")).json();
 		}else if(isActivityPub(req)){
@@ -478,6 +483,10 @@ public class Utils{
 		return req.queryParams("_ajax")!=null;
 	}
 
+	public static boolean isAjaxLayout(Request req){
+		return req.queryParams("_al")!=null;
+	}
+
 	public static boolean isMobile(Request req){
 		return req.attribute("mobile")!=null;
 	}
@@ -664,6 +673,12 @@ public class Utils{
 		BitSet.valueOf(serialized).stream().mapToObj(i->consts[i]).forEach(set::add);
 	}
 
+	public static <E extends Enum<E>> EnumSet<E> deserializeEnumSet(Class<E> cls, long serialized){
+		EnumSet<E> set=EnumSet.noneOf(cls);
+		deserializeEnumSet(set, cls, serialized);
+		return set;
+	}
+
 	/**
 	 * Convert a string to an enum value
 	 * @param val
@@ -717,13 +732,7 @@ public class Utils{
 	}
 
 	public static InetAddress getRequestIP(Request req){
-		String forwardedFor=req.headers("X-Forwarded-For");
-		String ip;
-		if(StringUtils.isNotEmpty(forwardedFor)){
-			ip=forwardedFor.split(",")[0].trim();
-		}else{
-			ip=req.ip();
-		}
+		String ip=req.ip();
 		try{
 			return InetAddress.getByName(ip);
 		}catch(UnknownHostException e){
@@ -922,6 +931,16 @@ public class Utils{
 
 	public static boolean uriHostMatches(URI a, URI b){
 		return a.getHost().equalsIgnoreCase(b.getHost()) || PublicSuffixList.isSameRegisteredDomain(a.getHost(), b.getHost());
+	}
+
+	public static void addFriendLists(User self, Lang l, ApplicationContext ctx, RenderedTemplateResponse model){
+		List<FriendList> lists=ctx.getFriendsController().getFriendLists(self);
+		model.with("lists", lists);
+		List<FriendList> publicLists=Arrays.stream(PublicFriendList.values())
+				.map(lt->new FriendList(FriendList.FIRST_PUBLIC_LIST_ID+lt.ordinal(), l.get(lt.getLangKey())))
+				.toList();
+		model.with("publicLists", publicLists)
+				.with("allLists", Stream.of(lists, publicLists).flatMap(List::stream).collect(Collectors.toMap(FriendList::id, Function.identity())));
 	}
 
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}

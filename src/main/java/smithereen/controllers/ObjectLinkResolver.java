@@ -11,11 +11,14 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,12 +36,16 @@ import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.ServiceActor;
+import smithereen.activitypub.tasks.FetchCollectionTotalTask;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
+import smithereen.model.ActorStatus;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.GroupAdmin;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.Post;
@@ -55,6 +62,7 @@ import smithereen.storage.MailStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.text.TextProcessor;
 import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
@@ -165,7 +173,7 @@ public class ObjectLinkResolver{
 		}else{
 			link=_link;
 		}
-		if(!forceRefetch){
+		if(!forceRefetch || Config.isLocal(link)){
 			if(allowFetching){
 				try{
 					return resolveLocally(link, expectedType);
@@ -178,14 +186,6 @@ public class ObjectLinkResolver{
 			if(allowFetching){
 				try{
 					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context);
-					if(obj instanceof ForeignGroup fg){
-						fg.resolveDependencies(context, allowFetching, allowStorage);
-					}
-					if(obj instanceof ForeignUser fu){
-						if(allowStorage && fu.movedToURL!=null){
-							handleNewlyFetchedMovedUser(fu);
-						}
-					}
 					if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
 						User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
 						if(author.banStatus==UserBanStatus.SUSPENDED)
@@ -314,6 +314,16 @@ public class ObjectLinkResolver{
 						if(id!=-1)
 							return ensureTypeAndCast(context.getCommentsController().getCommentIgnoringPrivacy(id), expectedType);
 					}
+					if(tid.type==ObjectType.USER_STATUS && expectedType.isAssignableFrom(ActorStatus.class)){
+						User user=context.getUsersController().getUserOrThrow(tid.idInt());
+						if(user.status!=null && link.equals(user.status.apId()))
+							return ensureTypeAndCast(user.status, expectedType);
+					}
+					if(tid.type==ObjectType.GROUP_STATUS && expectedType.isAssignableFrom(ActorStatus.class)){
+						Group group=context.getGroupsController().getGroupOrThrow(tid.idInt());
+						if(group.status!=null && link.equals(group.status.apId()))
+							return ensureTypeAndCast(group.status, expectedType);
+					}
 				}else{
 					if(expectedType.isAssignableFrom(ForeignUser.class)){
 						User user=serviceActorCache.get(link);
@@ -339,6 +349,43 @@ public class ObjectLinkResolver{
 						if(fu.id!=0){
 							existing=UserStorage.getById(fu.id);
 						}
+						if(fu.movedToURL!=null){
+							User movedTo=null;
+							if(fu.movedTo>0){
+								try{
+									movedTo=context.getUsersController().getUserOrThrow(fu.movedTo);
+								}catch(ObjectNotFoundException ignore){}
+							}
+							if(movedTo==null || !Objects.equals(movedTo.activityPubID, fu.movedToURL))
+								handleNewlyFetchedMovedUser(fu);
+						}
+						if(fu.following!=null && fu.followers!=null){
+							ArrayList<FetchCollectionTotalTask> collections=new ArrayList<>();
+							collections.add(new FetchCollectionTotalTask(context, fu.following));
+							collections.add(new FetchCollectionTotalTask(context, fu.followers));
+							if(fu.getFriendsURL() instanceof URI friends){
+								collections.add(new FetchCollectionTotalTask(context, friends));
+							}
+							List<Future<Long>> totals=context.getActivityPubWorker().invokeAll(collections);
+							long followingCount=-1, followersCount=-1, friendsCount=-1;
+							try{
+								followingCount=totals.get(0).get();
+							}catch(ExecutionException ignored){}
+							try{
+								followersCount=totals.get(1).get();
+							}catch(ExecutionException ignored){}
+							if(collections.size()>2){
+								try{
+									friendsCount=totals.get(2).get();
+								}catch(ExecutionException ignored){}
+							}
+							if(followingCount!=-1)
+								fu.setFollowingCount(followingCount);
+							if(followersCount!=-1)
+								fu.setFollowersCount(followersCount);
+							if(friendsCount!=-1)
+								fu.setFriendsCount(friendsCount);
+						}
 						UserStorage.putOrUpdateForeignUser(fu);
 						maybeUpdateServerFeaturesFromActor(fu);
 						User partner=null;
@@ -355,7 +402,15 @@ public class ObjectLinkResolver{
 					}
 				}
 				case ForeignGroup fg -> {
-					fg.storeDependencies(context);
+					for(GroupAdmin adm:fg.adminsForActivityPub){
+						try{
+							adm.user=resolve(adm.activityPubUserID, User.class, true, false, false);
+						}catch(ObjectNotFoundException ignore){}
+					}
+					fg.adminsForActivityPub.removeIf(adm->adm.user==null);
+					for(GroupAdmin adm:fg.adminsForActivityPub){
+						storeOrUpdateRemoteObject(adm.user, adm.user);
+					}
 					GroupStorage.putOrUpdateForeignGroup(fg);
 					maybeUpdateServerFeaturesFromActor(fg);
 				}
@@ -365,7 +420,7 @@ public class ObjectLinkResolver{
 				case Comment c -> context.getCommentsController().putOrUpdateForeignComment(c);
 				case null, default -> {}
 			}
-		}catch(SQLException x){
+		}catch(SQLException|InterruptedException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
@@ -386,7 +441,7 @@ public class ObjectLinkResolver{
 	private static <T> T ensureTypeAndCast(Object obj, Class<T> type){
 		if(type.isInstance(obj))
 			return type.cast(obj);
-		throw new IllegalStateException("Expected object of type "+type.getName()+", but got "+obj.getClass().getName()+" instead");
+		throw new UnsupportedRemoteObjectTypeException("Expected object of type "+type.getName()+", but got "+obj.getClass().getName()+" instead");
 	}
 
 	public <T extends ActivityPubObject> T convertToActivityPubObject(Object o, Class<T> type){
@@ -405,7 +460,7 @@ public class ObjectLinkResolver{
 		}else if(type.isAssignableFrom(ActivityPubPhoto.class) && o instanceof Photo p){
 			return type.cast(ActivityPubPhoto.fromNativePhoto(p, context.getPhotosController().getAlbumIgnoringPrivacy(p.albumID), context));
 		}
-		throw new IllegalStateException("Native type "+o.getClass().getName()+" does not have an ActivityPub representation");
+		throw new UnsupportedRemoteObjectTypeException("Native type "+o.getClass().getName()+" does not have an ActivityPub representation");
 	}
 
 	public <T> T convertToNativeObject(ActivityPubObject o, Class<T> type){
@@ -420,7 +475,7 @@ public class ObjectLinkResolver{
 		}else if(type.isAssignableFrom(o.getClass())){
 			return type.cast(o);
 		}
-		throw new IllegalStateException("Can't convert ActivityPub "+o.getClass().getName()+" to a native object of type "+type.getName());
+		throw new UnsupportedRemoteObjectTypeException("Can't convert ActivityPub "+o.getClass().getName()+" to a native object of type "+type.getName());
 	}
 
 	public void ensureObjectIsInCollection(@NotNull Actor collectionOwner, @NotNull URI collectionID, @NotNull URI objectID){
@@ -450,8 +505,21 @@ public class ObjectLinkResolver{
 		if(allowedTypes.isEmpty())
 			throw new IllegalArgumentException("allowedTypes can't be empty");
 
-		if(allowFetching)
-			throw new UnsupportedOperationException(); // TODO
+		String name, domain;
+		if(username.contains("@")){
+			Matcher matcher=TextProcessor.USERNAME_DOMAIN_PATTERN.matcher(username);
+			if(!matcher.find())
+				throw new ObjectNotFoundException();
+			name=matcher.group(1);
+			domain=matcher.group(2);
+			if(domain.equalsIgnoreCase(Config.domain))
+				domain=null;
+		}else{
+			name=username;
+			domain=null;
+		}
+
+		username=name+(domain==null ? "" : ("@"+domain));
 
 		if(allowedTypes.contains(UsernameOwnerType.USER)){
 			int user=context.getUsersController().tryGetUserIdByUsername(username);
@@ -463,6 +531,25 @@ public class ObjectLinkResolver{
 			int group=context.getGroupsController().tryGetGroupIdForUsername(username);
 			if(group>0)
 				return new UsernameResolutionResult(UsernameOwnerType.GROUP, group);
+		}
+
+		if(allowFetching && domain!=null){
+			URI id;
+			try{
+				id=ActivityPub.resolveUsername(name, domain);
+			}catch(IOException x){
+				throw new ObjectNotFoundException("Can't resolve username: "+username, x);
+			}
+			Actor actor=resolve(id, Actor.class, true, false, false);
+			if(actor instanceof Group g && allowedTypes.contains(UsernameOwnerType.GROUP)){
+				storeOrUpdateRemoteObject(g, g);
+				return new UsernameResolutionResult(UsernameOwnerType.GROUP, g.id);
+			}else if(actor instanceof User u && allowedTypes.contains(UsernameOwnerType.USER)){
+				storeOrUpdateRemoteObject(u, u);
+				return new UsernameResolutionResult(UsernameOwnerType.GROUP, u.id);
+			}else{
+				throw new ObjectNotFoundException();
+			}
 		}
 
 		throw new ObjectNotFoundException();
@@ -553,7 +640,9 @@ public class ObjectLinkResolver{
 		MESSAGE('D', 'M', 'S', 'G'),
 		PHOTO_ALBUM('P', 'A', 'L', 'B'),
 		PHOTO('P', 'H', 'T', 'O'),
-		COMMENT('C', 'M', 'N', 'T');
+		COMMENT('C', 'M', 'N', 'T'),
+		USER_STATUS('U', 'S', 'T', 'A'),
+		GROUP_STATUS('G', 'S', 'T', 'A');
 
 		public final int id;
 

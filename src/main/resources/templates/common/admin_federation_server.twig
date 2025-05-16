@@ -33,9 +33,5 @@
 		{% endif %}
 	</div>
 </div>
-{% endblock %}
-{% block extraScripts %}
-{%- if not mobile %}
-<script src="/res/graph.js?{{ staticHashes['graph.js'] }}"></script>
-{% endif -%}
+{% if not mobile %}{{ addScriptFile('graph.js') }}{% endif %}
 {% endblock %}

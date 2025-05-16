@@ -9,7 +9,7 @@
 {% endif %}
 {% endblock %}
 {% block content %}
-<div class="notMuchContent">
+<div class="notMuchContent textByItself">
 	{% if status=='FROZEN' %}
 	<h2 class="marginAfter">{{ L('account_frozen') }}</h2>
 	<p>{{ L('account_frozen_info', {'name': currentUser | name('first')}) }}</p>

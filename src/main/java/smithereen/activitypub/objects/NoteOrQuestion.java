@@ -8,6 +8,7 @@ import com.google.gson.JsonPrimitive;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.TextNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +45,7 @@ import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
@@ -54,9 +56,10 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public LinkOrObject replies;
 	public Boolean sensitive;
 	public ActivityPubCollection target;
-	public URI likes;
+	public LinkOrObject likes;
 	public URI quoteRepostID;
 	public String action;
+	public boolean canBeReposted;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -72,6 +75,8 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			Post parent=context.getWallController().getPostOrThrow(inReplyTo);
 			post.replyKey=parent.getReplyKeyForReplies();
 			post.ownerID=parent.ownerID;
+			if(parent.flags.contains(Post.Flag.TOP_IS_WALL_TO_WALL) || (parent.replyKey.isEmpty() && parent.ownerID!=parent.authorID))
+				post.flags.add(Post.Flag.TOP_IS_WALL_TO_WALL);
 		}else if(target!=null && target.attributedTo!=null){
 			Actor owner=context.getObjectLinkResolver().resolve(target.attributedTo, Actor.class, true, true, false);
 			if(!Objects.equals(target.activityPubID, owner.getWallURL()))
@@ -82,7 +87,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		}
 
 		// fix for Lemmy (and possibly something else)
-		boolean hasBogusURL=url!=null && !url.getHost().equalsIgnoreCase(activityPubID.getHost()) && !url.getHost().equalsIgnoreCase("www."+activityPubID.getHost());
+		boolean hasBogusURL=url!=null && !Utils.uriHostMatches(url, activityPubID);
 
 		String text=content==null ? "" : content;
 		if(hasBogusURL)
@@ -249,7 +254,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			to.add(owner.activityPubID);
 		}
 		if(post.ownerID==post.authorID && post.replyKey.isEmpty()){
-			to.add(author.getFollowersURL());
+			URI followers=author.getFollowersURL();
+			if(followers!=null)
+				to.add(followers);
 		}
 
 		noq.tag=new ArrayList<>();
@@ -269,6 +276,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 				cc.add(context.getUsersController().getUserOrThrow(repost.authorID).activityPubID);
 
 				Document doc=Jsoup.parseBodyFragment(noq.content);
+				doc.outputSettings().prettyPrint(false).indentAmount(0);
 				Element root=doc.body();
 				Element parentP;
 				if(root.childrenSize()==0){
@@ -282,13 +290,12 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 								.addClass("quote-inline")
 								.appendChildren(List.of(
 										doc.createElement("br"),
-										doc.createElement("br")
+										doc.createElement("br"),
+										new TextNode("RE: "),
+										doc.createElement("a")
+												.attr("href", repost.getActivityPubURL().toString())
+												.text(repost.getActivityPubURL().toString())
 								))
-								.appendText("RE: ")
-								.appendChild(doc.createElement("a")
-										.attr("href", repost.getActivityPubURL().toString())
-										.text(repost.getActivityPubURL().toString())
-								)
 				);
 				noq.content=root.html();
 			}catch(ObjectNotFoundException ignore){}
@@ -307,7 +314,18 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		noq.cc=cc.stream().map(LinkOrObject::new).toList();
 
 		noq.attachment=resolveLocalPhotoIDsInAttachments(context, post.attachments);
-		noq.likes=new UriBuilder(noq.activityPubID).appendPath("likes").build();
+		if(post.isLocal()){
+			ActivityPubCollection likes=new ActivityPubCollection(false);
+			likes.activityPubID=Config.localURI("/posts/"+post.id+"/likes");
+			CollectionPage likesPage=new CollectionPage(false);
+			likesPage.next=Config.localURI("/posts/"+post.id+"/likes?page=1");
+			likesPage.partOf=likes.activityPubID;
+			likesPage.items=Collections.emptyList();
+			likes.first=new LinkOrObject(likesPage);
+			noq.likes=new LinkOrObject(likes);
+		}
+
+		noq.canBeReposted=post.isLocal() && post.privacy==Post.Privacy.PUBLIC && (!post.replyKey.isEmpty() || post.ownerID==post.authorID);
 
 		return noq;
 	}
@@ -444,7 +462,16 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			}
 		}
 		n.attachment=resolveLocalPhotoIDsInAttachments(context, comment.attachments);
-		n.likes=new UriBuilder(n.activityPubID).appendPath("likes").build();
+		if(comment.isLocal()){
+			ActivityPubCollection likes=new ActivityPubCollection(false);
+			likes.activityPubID=new UriBuilder(comment.getActivityPubID()).appendPath("likes").build();
+			CollectionPage likesPage=new CollectionPage(false);
+			likesPage.next=new UriBuilder(likes.activityPubID).queryParam("page", "1").build();
+			likesPage.partOf=likes.activityPubID;
+			likesPage.items=Collections.emptyList();
+			likes.first=new LinkOrObject(likesPage);
+			n.likes=new LinkOrObject(likes);
+		}
 
 		return n;
 	}
@@ -530,7 +557,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			return true;
 
 		Actor owner=context.getObjectLinkResolver().resolveLocally(target.attributedTo, Actor.class);
-		return Objects.equals(owner.getWallURL(), target.activityPubID); // TODO change this when I make wall comments go into their own collection
+		return Objects.equals(owner.getWallURL(), target.activityPubID) || Objects.equals(owner.getWallCommentsURL(), target.activityPubID);
 	}
 
 	@Override
@@ -586,7 +613,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		if(target!=null)
 			obj.add("target", target.asActivityPubObject(new JsonObject(), serializerContext));
 		if(likes!=null)
-			obj.addProperty("likes", likes.toString());
+			obj.add("likes", likes.serialize(serializerContext));
 		if(quoteRepostID!=null){
 			serializerContext.addType("_misskey_quote", JLD.MISSKEY+"_misskey_quote", "@id");
 			obj.addProperty("_misskey_quote", quoteRepostID.toString());
@@ -597,6 +624,13 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			serializerContext.addSmIdType("action");
 			serializerContext.addSmAlias(action);
 			obj.addProperty("action", action);
+		}
+		if(canBeReposted){
+			serializerContext.addAlias("gts", JLD.GOTOSOCIAL);
+			serializerContext.addType("interactionPolicy", "gts:interactionPolicy", "@id");
+			serializerContext.addType("canQuote", "gts:canQuote", "@id");
+			serializerContext.addType("automaticApproval", "gts:automaticApproval", "@id");
+			obj.add("interactionPolicy",new JsonObjectBuilder().add("canQuote", new JsonObjectBuilder().add("automaticApproval", ActivityPub.AS_PUBLIC.toString())).build());
 		}
 
 		return obj;

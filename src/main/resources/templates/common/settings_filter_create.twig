@@ -1,0 +1,122 @@
+{# @pebvariable name="filter" type="smithereen.model.filtering.WordFilter" #}
+{% import "forms" as form %}
+{% extends "page" %}
+{% block content %}
+<div class="gray singleColumn">
+	<form action="{% if filter is null %}/settings/filters/create{% else %}/settings/filters/{{ filter.id }}/edit{% endif %}?csrf={{ csrf }}" method="post" id="createFilterForm" data-ajax>
+	{{ form.start("createFilter", createFilterMessage) }}
+		{{ form.textInput('name', L('settings_filter_name'), filter is null ? "" : filter.name, {'required': true, 'maxlength': 300}) }}
+		{% set expirationOptions=[
+			{'value': 0, 'label': L('settings_filter_no_expiration')},
+			{'value': 1800, 'label': L('X_minutes', {'count': 30})},
+			{'value': 3600, 'label': L('X_hours', {'count': 1})},
+			{'value': 21600, 'label': L('X_hours', {'count': 6})},
+			{'value': 43200, 'label': L('X_hours', {'count': 12})},
+			{'value': 86400, 'label': L('X_days', {'count': 1})},
+			{'value': 604800, 'label': L('X_days', {'count': 7})}
+		] %}
+		{% if filter is not null and filter.expiresAt is not null %}
+		{% set _=expirationOptions.add({'value': 'unchanged', 'label': LD(filter.expiresAt), 'selected': true}) %}
+		{% endif %}
+		{{ form.select('expire', L('settings_filter_expiration'), expirationOptions) }}
+		{{ form.customControlStart('contexts') }}
+			{{ L('settings_filter_contexts') }}:
+		{{ form.customControlAfterLabel() }}
+			<div class="radioButtonWrap">
+				<label>
+					<input type="checkbox" name="contexts_FRIENDS_FEED" onchange="this.setCustomValidity('')" {% if contexts is null or contexts contains 'FRIENDS_FEED' %} checked{% endif %}/>
+					{{ L('settings_filter_friends_feed') }}
+				</label>
+			</div>
+			<div class="radioButtonWrap">
+				<label>
+					<input type="checkbox" name="contexts_GROUPS_FEED" onchange="this.setCustomValidity('')" {% if contexts is null or contexts contains 'GROUPS_FEED' %} checked{% endif %}/>
+					{{ L('settings_filter_groups_feed') }}
+				</label>
+			</div>
+		{{ form.customControlEnd() }}
+		{{ form.customControlStart('words') }}
+			{{ L('settings_filter_words') }}:
+		{{ form.customControlAfterLabel() }}
+			<div id="wordFilterWords">
+				{% if filter is not null %}
+				{% for word in filter.words %}
+				<div class="wordFilterWord">
+					<input type="text" class="control" name="word" value="{{ word }}"/>
+					<a href="javascript:void(0)" class="deleteButton" onclick="this.parentNode.remove()" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}"></a>
+				</div>
+				{% endfor %}
+				{% endif %}
+				<div class="wordFilterWord" data-is-add-new="1">
+					<input type="text" class="control" name="word" placeholder="{{ L('settings_filter_add_word') }}"/>
+					<a href="javascript:void(0)" class="deleteButton" onclick="this.parentNode.remove()" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}" style="visibility: hidden"></a>
+				</div>
+			</div>
+		{{ form.customControlEnd() }}
+		{{ form.footer(L(filter is null ? 'create' : 'save')) }}
+	{{ form.end() }}
+	</form>
+</div>
+{% script %}
+{
+	var filters=ge("wordFilterWords");
+	filters.addEventListener("input", function(ev){
+		var parent=ev.target.parentNode;
+		ev.target.setCustomValidity("");
+		if(parent.dataset.isAddNew){
+			var del=parent.qs(".deleteButton");
+			var field=ev.target;
+			del.style.visibility="";
+			delete parent.dataset.isAddNew;
+			field.placeholder="";
+
+			var newDel;
+			var newRow=ce("div", {className: "wordFilterWord"}, [
+				ce("input", {type: "text", className: "control", name: "word", placeholder: "{{ L('settings_filter_add_word') }}"}),
+				newDel=ce("a", {href: "javascript:void(0)", className: "deleteButton", onclick: function(){this.parentNode.remove();}, ariaLabel: "{{ L('delete') }}"})
+			]);
+			newDel.style.visibility="hidden";
+			newDel.dataset.tooltip="{{ L('delete') }}";
+			newRow.dataset.isAddNew="1";
+			filters.appendChild(newRow);
+		}
+	});
+	filters.addEventListener("focusout", function(ev){
+		var parent=ev.target.parentNode;
+		if(ev.target.tagName=="INPUT" && !ev.target.value.length && !parent.dataset.isAddNew){
+			parent.remove();
+		}
+	});
+	ge("createFilterForm").addEventListener("submit", function(ev){
+		var foundAnyWords=false;
+		for(var field of filters.querySelectorAll("input").unfuck()){
+			if(field.value.length){
+				foundAnyWords=true;
+				break;
+			}
+		}
+		if(!foundAnyWords){
+			var input=filters.qs("input");
+			input.setCustomValidity("{{ L('settings_filter_enter_word') }}");
+			input.reportValidity();
+			ev.preventDefault();
+			return;
+		}
+		var checkboxes=document.querySelectorAll("#createFilterForm input[type=checkbox]").unfuck();
+		var anyChecked=false;
+		for(var cb of checkboxes){
+			if(cb.checked){
+				anyChecked=true;
+				break;
+			}
+		}
+		if(!anyChecked){
+			checkboxes[0].setCustomValidity("{{ L('settings_filter_select_contexts') }}");
+			checkboxes[0].reportValidity();
+			ev.preventDefault();
+		}
+	});
+}
+{% endscript %}
+{% endblock %}
+

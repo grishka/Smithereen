@@ -39,9 +39,11 @@ import smithereen.activitypub.handlers.AddGroupHandler;
 import smithereen.activitypub.handlers.AddNoteHandler;
 import smithereen.activitypub.handlers.AddPhotoHandler;
 import smithereen.activitypub.handlers.AnnounceNoteHandler;
+import smithereen.activitypub.handlers.CreateActorStatusHandler;
 import smithereen.activitypub.handlers.CreateNoteHandler;
 import smithereen.activitypub.handlers.CreatePhotoAlbumHandler;
 import smithereen.activitypub.handlers.CreatePhotoHandler;
+import smithereen.activitypub.handlers.DeleteActorStatusHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
 import smithereen.activitypub.handlers.DeletePhotoAlbumHandler;
@@ -62,6 +64,7 @@ import smithereen.activitypub.handlers.PersonBlockPersonHandler;
 import smithereen.activitypub.handlers.PersonMovePersonHandler;
 import smithereen.activitypub.handlers.PersonRemovePersonHandler;
 import smithereen.activitypub.handlers.PersonUndoBlockPersonHandler;
+import smithereen.activitypub.handlers.QuoteRequestNoteHandler;
 import smithereen.activitypub.handlers.ReadNoteHandler;
 import smithereen.activitypub.handlers.RejectAddNoteHandler;
 import smithereen.activitypub.handlers.RejectFollowGroupHandler;
@@ -69,6 +72,7 @@ import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectPhotoHandler;
+import smithereen.activitypub.handlers.RemoveActorStatusHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
 import smithereen.activitypub.handlers.RemoveNoteHandler;
 import smithereen.activitypub.handlers.GroupRemovePhotoHandler;
@@ -86,6 +90,7 @@ import smithereen.activitypub.handlers.UpdatePhotoAlbumHandler;
 import smithereen.activitypub.handlers.UpdatePhotoHandler;
 import smithereen.activitypub.handlers.UserRemovePhotoHandler;
 import smithereen.activitypub.objects.Activity;
+import smithereen.activitypub.objects.ActivityPubActorStatus;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
@@ -96,6 +101,7 @@ import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.activitypub.objects.QuoteAuthorization;
 import smithereen.activitypub.objects.ServiceActor;
 import smithereen.activitypub.objects.Tombstone;
 import smithereen.activitypub.objects.activities.Accept;
@@ -111,12 +117,14 @@ import smithereen.activitypub.objects.activities.Leave;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Move;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.RemoteObjectFetchException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
@@ -185,6 +193,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Delete.class, NoteOrQuestion.class, new DeleteNoteHandler());
 		registerActivityHandler(Actor.class, Reject.class, Add.class, NoteOrQuestion.class, new RejectAddNoteHandler());
 		registerActivityHandler(ForeignUser.class, Read.class, NoteOrQuestion.class, new ReadNoteHandler());
+		registerActivityHandler(ForeignUser.class, QuoteRequest.class, NoteOrQuestion.class, new QuoteRequestNoteHandler());
 
 		registerActivityHandler(ForeignUser.class, Follow.class, User.class, new FollowPersonHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Follow.class, User.class, new UndoFollowPersonHandler());
@@ -220,6 +229,10 @@ public class ActivityPubRoutes{
 
 		registerActivityHandler(Actor.class, Add.class, NoteOrQuestion.class, new AddNoteHandler());
 		registerActivityHandler(Actor.class, Remove.class, NoteOrQuestion.class, new RemoveNoteHandler());
+
+		registerActivityHandler(Actor.class, Create.class, ActivityPubActorStatus.class, new CreateActorStatusHandler());
+		registerActivityHandler(Actor.class, Delete.class, ActivityPubActorStatus.class, new DeleteActorStatusHandler());
+		registerActivityHandler(Actor.class, Remove.class, ActivityPubActorStatus.class, new RemoveActorStatusHandler());
 
 		registerActivityHandler(Flag.class, new FlagHandler());
 
@@ -357,11 +370,11 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinks(ids, _total[0]);
 	}
 
-	public static ActivityPubCollectionPageResponse postLikes(Request req, Response resp, int offset, int count) throws SQLException{
+	public static ActivityPubCollectionPageResponse postLikes(Request req, Response resp, int offset, int count){
 		ApplicationContext ctx=context(req);
-		Post post=PostStorage.getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
+		Post post=ctx.getWallController().getPostOrThrow(parseIntOrDefault(req.params(":postID"), 0), true);
 		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, post);
-		PaginatedList<Like> likes=LikeStorage.getLikes(post.id, post.getActivityPubID(), Like.ObjectType.POST, offset, count);
+		PaginatedList<Like> likes=ctx.getUserInteractionsController().getLikeObjectsForObject(post, offset, count);
 		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
 	}
 
@@ -468,27 +481,54 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinks(Collections.emptyList(), 0);
 	}
 
-	public static ActivityPubCollectionPageResponse userWall(Request req, Response resp, int offset, int count) throws SQLException{
-		int id=parseIntOrDefault(req.params(":id"), 0);
-		User user=UserStorage.getById(id);
-		if(user==null || user instanceof ForeignUser)
-			throw new ObjectNotFoundException();
-		return actorWall(req, resp, offset, count, user);
+	public static ActivityPubCollectionPageResponse userWall(Request req, Response resp, int offset, int count){
+		return actorWall(req, resp, offset, count, context(req).getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id"))));
 	}
 
-	public static ActivityPubCollectionPageResponse groupWall(Request req, Response resp, int offset, int count) throws SQLException{
-		int id=parseIntOrDefault(req.params(":id"), 0);
-		Group group=GroupStorage.getById(id);
-		if(group==null || group instanceof ForeignGroup)
-			throw new ObjectNotFoundException();
-		context(req).getPrivacyController().enforceGroupContentAccess(req, group);
+	public static ActivityPubCollectionPageResponse groupWall(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
+		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
 		return actorWall(req, resp, offset, count, group);
 	}
 
-	private static ActivityPubCollectionPageResponse actorWall(Request req, Response resp, int offset, int count, Actor actor) throws SQLException{
-		int[] total={0};
-		List<URI> posts=PostStorage.getWallPostActivityPubIDs(actor.getLocalID(), actor instanceof Group, offset, count, total);
-		return ActivityPubCollectionPageResponse.forLinks(posts, total[0]);
+	private static ActivityPubCollectionPageResponse actorWall(Request req, Response resp, int offset, int count, Actor actor){
+		boolean canSeeAll;
+		if(actor instanceof User user)
+			canSeeAll=context(req).getPrivacyController().checkUserPrivacyForRemoteServer(ActivityPub.getRequesterDomain(req), user, user.getPrivacySetting(UserPrivacySettingKey.WALL_OTHERS_POSTS));
+		else
+			canSeeAll=true;
+		try{
+			PaginatedList<URI> posts=PostStorage.getWallPostActivityPubIDs(actor.getLocalID(), actor instanceof Group, offset, count, canSeeAll);
+			return ActivityPubCollectionPageResponse.forLinks(posts);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public static ActivityPubCollectionPageResponse userWallComments(Request req, Response resp, int offset, int count){
+		return actorWallComments(req, resp, offset, count, context(req).getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id"))));
+	}
+
+	public static ActivityPubCollectionPageResponse groupWallComments(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
+		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		return actorWallComments(req, resp, offset, count, group);
+	}
+
+	private static ActivityPubCollectionPageResponse actorWallComments(Request req, Response resp, int offset, int count, Actor actor){
+		boolean canSeeAll;
+		if(actor instanceof User user)
+			canSeeAll=context(req).getPrivacyController().checkUserPrivacyForRemoteServer(ActivityPub.getRequesterDomain(req), user, user.getPrivacySetting(UserPrivacySettingKey.WALL_OTHERS_POSTS));
+		else
+			canSeeAll=true;
+		try{
+			PaginatedList<URI> posts=PostStorage.getWallCommentActivityPubIDs(actor.getLocalID(), actor instanceof Group, offset, count, canSeeAll);
+			return ActivityPubCollectionPageResponse.forLinks(posts);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	public static ActivityPubCollectionPageResponse userFriends(Request req, Response resp, int offset, int count) throws SQLException{
@@ -554,11 +594,27 @@ public class ActivityPubRoutes{
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
 	}
 
+	public static ActivityPubCollectionPageResponse commentLikes(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, comment);
+		PaginatedList<Like> likes=ctx.getUserInteractionsController().getLikeObjectsForObject(comment, offset, count);
+		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
+	}
+
 	public static ActivityPubCollectionPageResponse photoComments(Request req, Response resp, int offset, int count){
 		ApplicationContext ctx=context(req);
 		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.PHOTO));
 		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, photo);
 		return objectComments(req, resp, photo, offset, count);
+	}
+
+	public static ActivityPubCollectionPageResponse photoLikes(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.PHOTO));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, photo);
+		PaginatedList<Like> likes=ctx.getUserInteractionsController().getLikeObjectsForObject(photo, offset, count);
+		return ActivityPubCollectionPageResponse.forObjects(likes).ordered();
 	}
 
 	private static ActivityPubCollectionPageResponse objectComments(Request req, Response resp, CommentableContentObject obj, int offset, int count){
@@ -572,6 +628,25 @@ public class ActivityPubRoutes{
 		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
 		PaginatedList<Comment> comments=ctx.getCommentsController().getPhotoAlbumComments(album, offset, count);
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
+	}
+
+	public static Object userStatus(Request req, Response resp){
+		User user=context(req).getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		return actorStatus(req, resp, user);
+	}
+
+	public static Object groupStatus(Request req, Response resp){
+		Group group=context(req).getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
+		return actorStatus(req, resp, group);
+	}
+
+	private static Object actorStatus(Request req, Response resp, Actor actor){
+		if(actor.status==null || actor.status.isExpired())
+			throw new ObjectNotFoundException();
+		long ts=safeParseLong(req.params(":statusID"));
+		if(actor.status.updatedAt().getEpochSecond()!=ts)
+			throw new ObjectNotFoundException();
+		return ActivityPubActorStatus.fromNativeStatus(actor.status, actor);
 	}
 
 	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -666,7 +741,8 @@ public class ActivityPubRoutes{
 		nodeInfo.usage.users.activeHalfyear=UserStorage.getActiveLocalUserCount(180*24*60*60*1000L);
 		nodeInfo.metadata=Map.of(
 				"nodeName", Objects.requireNonNullElse(Config.serverDisplayName, Config.domain),
-				"nodeDescription", TextProcessor.stripHTML(Objects.requireNonNull(Config.serverShortDescription, ""), true)
+				"nodeDescription", TextProcessor.stripHTML(Objects.requireNonNull(Config.serverShortDescription, ""), true),
+				"faspBaseUrl", Config.localURI("/api/fasp").toString()
 		);
 
 		return gson.toJson(nodeInfo);
@@ -748,7 +824,7 @@ public class ActivityPubRoutes{
 		Actor actor;
 		boolean canUpdate=true;
 		// special case: when users delete themselves but are not in local database, ignore that
-		if(activity instanceof Delete && activity.actor.link.equals(activity.object.link)){
+		if(activity instanceof Delete && (activity.actor.link.equals(activity.object.link) || (activity.object.object!=null && activity.actor.link.equals(activity.object.object.activityPubID)))){
 			try{
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, false, false, false);
 			}catch(ObjectNotFoundException x){
@@ -768,7 +844,7 @@ public class ActivityPubRoutes{
 			try{
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
 			}catch(ObjectNotFoundException x){
-				LOG.warn("Exception while refreshing remote actor {}", activity.actor.link, x);
+				LOG.debug("Exception while refreshing remote actor {}", activity.actor.link, x);
 			}
 		}
 
@@ -776,7 +852,9 @@ public class ActivityPubRoutes{
 		try{
 			httpSigOwner=ActivityPub.verifyHttpSignature(req, actor);
 		}catch(Exception x){
-			LOG.debug("Exception while verifying HTTP signature", x);
+			LOG.warn("Exception while verifying HTTP signature on {} from {}: {}", getActivityType(activity), actor.activityPubID, x.toString());
+			if(Config.DEBUG)
+				LOG.debug("", x);
 			throw new UserActionNotAllowedException(x);
 		}
 
@@ -797,11 +875,16 @@ public class ActivityPubRoutes{
 				LOG.debug("verified LD signature by {}", userID);
 				hasValidLDSignature=true;
 			}catch(Exception x){
-				LOG.debug("Exception while verifying LD-signature", x);
+				LOG.warn("Exception while verifying LD-signature on {} from {}: {}", getActivityType(activity), actor.activityPubID, x.toString());
+				if(Config.DEBUG){
+					LOG.warn("Activity: {}", rawActivity);
+					LOG.debug("", x);
+				}
 			}
 		}
 		if(!hasValidLDSignature){
 			if(!actor.equals(httpSigOwner)){
+				LOG.warn("No valid signature. HTTP {}, actor {}", httpSigOwner.activityPubID, actor.activityPubID);
 				throw new BadRequestException("In the absence of a valid LD-signature, HTTP signature must be made by the activity actor");
 			}
 			LOG.debug("verified HTTP signature by {}", httpSigOwner.activityPubID);
@@ -1053,7 +1136,8 @@ public class ActivityPubRoutes{
 		if(path.startsWith(actorPrefix)){
 			String collectionPath=path.substring(actorPrefix.length());
 			filteredItems=switch(collectionPath){
-				case "/wall" -> queryWallCollection(req, owner, items);
+				case "/wall" -> queryWallCollection(req, owner, items, false);
+				case "/wallComments" -> queryWallCollection(req, owner, items, true);
 				case "/friends" -> {
 					if(owner instanceof User u){
 						yield queryUserFriendsCollection(req, u, items);
@@ -1129,8 +1213,8 @@ public class ActivityPubRoutes{
 		return res;
 	}
 
-	private static Collection<URI> queryWallCollection(Request req, Actor owner, List<URI> query){
-		return context(req).getWallController().getPostLocalIDsByActivityPubIDs(query, owner).keySet();
+	private static Collection<URI> queryWallCollection(Request req, Actor owner, List<URI> query, boolean comments){
+		return context(req).getWallController().getPostLocalIDsByActivityPubIDs(query, owner, comments).keySet();
 	}
 
 	private static Collection<URI> queryUserFriendsCollection(Request req, User owner, List<URI> query){
@@ -1168,6 +1252,21 @@ public class ActivityPubRoutes{
 			}
 		}
 		return true;
+	}
+	
+	public static Object postQuoteAuthorization(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":quoteID")));
+		int expectedQuotedPostID=safeParseInt(req.params(":postID"));
+		if(post.repostOf!=expectedQuotedPostID || expectedQuotedPostID==0)
+			throw new ObjectNotFoundException();
+		Post quotedPost=ctx.getWallController().getLocalPostOrThrow(expectedQuotedPostID);
+		QuoteAuthorization qa=new QuoteAuthorization();
+		qa.activityPubID=UriBuilder.local().path("posts", String.valueOf(quotedPost.id), "quoteAuth", String.valueOf(post.id)).build();
+		qa.interactingObject=post.getActivityPubID();
+		qa.interactionTarget=quotedPost.getActivityPubID();
+		qa.attributedTo=ctx.getUsersController().getUserOrThrow(quotedPost.authorID).activityPubID;
+		return qa;
 	}
 
 	private record ActivityTypeHandlerRecord<A extends Actor, T extends Activity, N extends Activity, NN extends Activity, O extends ActivityPubObject>

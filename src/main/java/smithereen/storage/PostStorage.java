@@ -31,6 +31,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.FederationState;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -40,20 +41,19 @@ import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
-import smithereen.model.feed.CommentsNewsfeedObjectType;
-import smithereen.storage.utils.Pair;
-import smithereen.text.FormattedTextFormat;
-import smithereen.util.NamedMutexCollection;
-import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
+import smithereen.model.feed.CommentsNewsfeedObjectType;
 import smithereen.model.feed.NewsfeedEntry;
-import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.Pair;
+import smithereen.text.FormattedTextFormat;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.NamedMutexCollection;
+import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
 public class PostStorage{
@@ -63,7 +63,7 @@ public class PostStorage{
 	private static final NamedMutexCollection pollVoteLocks=new NamedMutexCollection();
 
 	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey,
-									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action) throws SQLException{
+									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action, EnumSet<Post.Flag> flags) throws SQLException{
 		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
 
@@ -83,6 +83,7 @@ public class PostStorage{
 					.value("source_format", sourceFormat)
 					.value("repost_of", repostOf!=0 ? repostOf : null)
 					.value("action", action)
+					.value("flags", Utils.serializeEnumSet(flags))
 					.executeAndGetID();
 
 			if(replyKey!=null && !replyKey.isEmpty()){
@@ -317,19 +318,24 @@ public class PostStorage{
 		}
 	}
 
-	public static List<URI> getWallPostActivityPubIDs(int ownerID, boolean isGroup, int offset, int count, int[] total) throws SQLException{
+	public static PaginatedList<URI> getWallPostActivityPubIDs(int ownerID, boolean isGroup, int offset, int count, boolean includeAll) throws SQLException{
 		String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
+		String extraWhere=includeAll ? "" : " AND owner_user_id=author_id";
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			total[0]=new SQLQueryBuilder(conn)
+
+			int total=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.count()
-					.where(ownerField+"=? AND reply_key IS NULL", ownerID)
+					.where(ownerField+"=? AND reply_key IS NULL"+extraWhere, ownerID)
 					.executeAndGetInt();
 
-			return new SQLQueryBuilder(conn)
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<URI> ids=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
 					.columns("id", "ap_id")
-					.where(ownerField+"=? AND reply_key IS NULL", ownerID)
+					.where(ownerField+"=? AND reply_key IS NULL"+extraWhere, ownerID)
 					.orderBy("id ASC")
 					.limit(count, offset)
 					.executeAsStream(res->{
@@ -341,6 +347,40 @@ public class PostStorage{
 						}
 					})
 					.toList();
+			return new PaginatedList<>(ids, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<URI> getWallCommentActivityPubIDs(int ownerID, boolean isGroup, int offset, int count, boolean includeAll) throws SQLException{
+		String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
+		String extraWhere=includeAll ? "" : " AND top_parent_is_wall_to_wall=0";
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where(ownerField+"=? AND reply_key IS NOT NULL"+extraWhere, ownerID)
+					.executeAndGetInt();
+
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<URI> ids=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.columns("id", "ap_id")
+					.where(ownerField+"=? AND reply_key IS NOT NULL"+extraWhere, ownerID)
+					.orderBy("id ASC")
+					.limit(count, offset)
+					.executeAsStream(res->{
+						String apID=res.getString(2);
+						if(StringUtils.isNotEmpty(apID)){
+							return URI.create(apID);
+						}else{
+							return UriBuilder.local().path("posts", String.valueOf(res.getInt(1))).build();
+						}
+					})
+					.toList();
+			return new PaginatedList<>(ids, total, offset, count);
 		}
 	}
 
@@ -544,7 +584,7 @@ public class PostStorage{
 		}
 	}
 
-	public static ThreadedReplies getRepliesThreaded(List<Integer> prefix, int topLevelOffset, int topLevelLimit, int secondaryLimit, boolean twoLevel) throws SQLException{
+	public static ThreadedReplies getRepliesThreaded(List<Integer> prefix, int topLevelOffset, int topLevelLimit, int secondaryLimit, boolean twoLevel, boolean reversed) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 
 			byte[] serializedPrefix=Utils.serializeIntList(prefix);
@@ -563,7 +603,7 @@ public class PostStorage{
 					.allColumns()
 					.where("reply_key=?", (Object) serializedPrefix)
 					.limit(topLevelLimit, topLevelOffset)
-					.orderBy("created_at ASC")
+					.orderBy("created_at "+(reversed ? "DESC" : "ASC"))
 					.executeAsStream(Post::fromResultSet)
 					.collect(Collectors.toList());
 			postprocessPosts(posts);
@@ -592,7 +632,7 @@ public class PostStorage{
 		}
 	}
 
-	public static PaginatedList<Post> getRepliesFlat(List<Integer> prefix, int offset, int limit) throws SQLException{
+	public static PaginatedList<Post> getRepliesFlat(List<Integer> prefix, int offset, int limit, boolean reversed) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			byte[] serializedPrefix=Utils.serializeIntList(prefix);
 
@@ -609,7 +649,7 @@ public class PostStorage{
 					.allColumns()
 					.where("reply_key LIKE BINARY bin_prefix(?) AND author_id IS NOT NULL", (Object) serializedPrefix)
 					.limit(limit, offset)
-					.orderBy("created_at ASC")
+					.orderBy("created_at "+(reversed ? "DESC" : "ASC"))
 					.executeAsStream(Post::fromResultSet)
 					.toList();
 			postprocessPosts(list);
@@ -1061,9 +1101,11 @@ public class PostStorage{
 		}
 	}
 
-	public static Map<URI, Integer> getPostLocalIDsByActivityPubIDs(Collection<URI> ids, int ownerUserID, int ownerGroupID) throws SQLException{
+	public static Map<URI, Integer> getPostLocalIDsByActivityPubIDs(Collection<URI> ids, int ownerUserID, int ownerGroupID, boolean comments) throws SQLException{
 		if(ids.isEmpty())
 			return Map.of();
+
+		String replyKeyCondition=comments ? "reply_key IS NOT NULL" : "reply_key IS NULL";
 
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 
@@ -1085,7 +1127,7 @@ public class PostStorage{
 						.selectFrom("wall_posts")
 						.columns("id", "ap_id")
 						.whereIn("ap_id", remoteIDs)
-						.andWhere("reply_key IS NULL");
+						.andWhere(replyKeyCondition);
 
 				if(ownerUserID>0 && ownerGroupID==0){
 					builder.andWhere("owner_user_id=?", ownerUserID).andWhere("owner_group_id IS NULL");
@@ -1101,7 +1143,7 @@ public class PostStorage{
 						.selectFrom("wall_posts")
 						.columns("id")
 						.whereIn("id", localIDs)
-						.andWhere("reply_key IS NULL");
+						.andWhere(replyKeyCondition);
 
 				if(ownerUserID>0 && ownerGroupID==0){
 					builder.andWhere("owner_user_id=?", ownerUserID).andWhere("owner_group_id IS NULL");
@@ -1210,6 +1252,18 @@ public class PostStorage{
 				.whereIn("id", ids)
 				.executeAsStream(res->new Pair<Integer, Integer>(res.getInt("id"), res.getInt("author_id")))
 				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
+	public static List<Post> getUserReplies(int userID, Collection<List<Integer>> replyKeys) throws SQLException{
+		List<Post> posts=new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.allColumns()
+				.whereIn("reply_key", replyKeys.stream().map(Utils::serializeIntList).toList())
+				.andWhere("author_id=?", userID)
+				.executeAsStream(Post::fromResultSet)
+				.toList();
+		postprocessPosts(posts);
+		return posts;
 	}
 
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{

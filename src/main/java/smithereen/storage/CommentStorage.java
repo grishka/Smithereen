@@ -503,6 +503,18 @@ public class CommentStorage{
 				.executeNoResult();
 	}
 
+	public static List<Comment> getUserReplies(int userID, Collection<List<Long>> replyKeys) throws SQLException{
+		List<Comment> comments=new SQLQueryBuilder()
+				.selectFrom("comments")
+				.allColumns()
+				.whereIn("reply_key", replyKeys.stream().map(Utils::serializeLongCollection).toList())
+				.andWhere("author_id=?", userID)
+				.executeAsStream(Comment::fromResultSet)
+				.toList();
+		postprocessComments(comments);
+		return comments;
+	}
+
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{
 		Set<Long> needFileIDs=posts.stream()
 				.filter(p->p.attachments!=null && !p.attachments.isEmpty())

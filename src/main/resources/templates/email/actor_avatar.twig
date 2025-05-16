@@ -1,0 +1,15 @@
+{# @pebvariable name="actor" type="smithereen.activitypub.objects.Actor" #}
+{% if actor.hasAvatar() %}
+{{ actor | pictureForAvatar(size) }}
+{% else %}
+{% if size=='a' %}
+{% set pxs=50 %}
+{% elseif size=='b' %}
+{% set pxs=100 %}
+{% elseif size=='c' %}
+{% set pxs=200 %}
+{% else %}
+{% set pxs=400 %}
+{% endif %}
+<img src="https://{{ domain }}/res/question_{{ size }}.png" width="{{ pxs }}" height="{{ pxs }}"/>
+{% endif %}

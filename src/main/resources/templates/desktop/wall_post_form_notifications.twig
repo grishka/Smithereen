@@ -1,0 +1,6 @@
+{% extends "wall_post_form" %}
+{% block wallPostForm %}
+	<div class="tipW"><div class="tip"></div></div>
+	<div class="ownAvaW">{{ currentUser | pictureForAvatar('a', 39) }}</div>
+{{ parent() }}
+{% endblock %}

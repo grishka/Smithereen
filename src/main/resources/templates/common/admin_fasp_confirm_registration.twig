@@ -1,0 +1,5 @@
+{# @pebvariable name="provider" type="smithereen.model.fasp.FASPProvider" #}
+{{ L('admin_fasp_key_warning', {'host': provider.baseUrl.host}, {'red': {'_': 'span', 'class': 'red', 'style': 'font-weight: bold'} }) }}
+<pre style="margin: 1.5em 0"><code class="standaloneCodeBlock">{{ provider.publicKeyFingerprint }}</code></pre>
+<p>{{ L('admin_fasp_registration_capabilities_explanation') }}</p>
+{% include "admin_fasp_capabilities_inner" with {'selectAll': true} %}

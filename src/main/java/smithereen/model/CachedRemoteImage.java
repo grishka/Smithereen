@@ -35,10 +35,20 @@ public final class CachedRemoteImage extends RemoteImage{
 				.resize(size.getMaxWidth(), size.getMaxHeight())
 				.format(format)
 				.quality(90);
-		if(cropRegion!=null && size.getResizingType()==ImgProxy.ResizingType.FILL){
-			int x=Math.round(cropRegion[0]*dimensions.width);
-			int y=Math.round(cropRegion[1]*dimensions.height);
-			builder.crop(x, y, Math.round(cropRegion[2]*dimensions.width-x), Math.round(cropRegion[3]*dimensions.height-y));
+		if(size.getResizingType()==ImgProxy.ResizingType.FILL){
+			if(cropRegion!=null){
+				int x=Math.round(cropRegion[0]*dimensions.width);
+				int y=Math.round(cropRegion[1]*dimensions.height);
+				builder.crop(x, y, Math.round(cropRegion[2]*dimensions.width-x), Math.round(cropRegion[3]*dimensions.height-y));
+			}else if(dimensions.width!=dimensions.height){
+				if(dimensions.width>dimensions.height){
+					int s=dimensions.height;
+					builder.crop((dimensions.width-s)/2, 0, s, s);
+				}else{
+					int s=dimensions.width;
+					builder.crop(0, 0, s, s);
+				}
+			}
 		}
 		return builder.build();
 	}

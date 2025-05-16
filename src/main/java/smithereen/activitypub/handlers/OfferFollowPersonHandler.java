@@ -12,6 +12,7 @@ import smithereen.activitypub.objects.activities.Offer;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
 import smithereen.model.User;
+import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.UserStorage;
 
 public class OfferFollowPersonHandler extends NestedActivityTypeHandler<ForeignUser, Offer, Follow, User>{
@@ -25,6 +26,7 @@ public class OfferFollowPersonHandler extends NestedActivityTypeHandler<ForeignU
 		FriendshipStatus status=UserStorage.getFriendshipStatus(actor.id, user.id);
 		if(status==FriendshipStatus.NONE || status==FriendshipStatus.FOLLOWING){
 			UserStorage.putFriendRequest(actor.id, user.id, activity.content, true);
+			context.appContext.getNotificationsController().sendRealtimeNotifications(user, "friendReq"+actor.id+"_"+Utils.randomAlphanumericString(5), RealtimeNotification.Type.FRIEND_REQUEST, null, null, actor);
 		}else if(status==FriendshipStatus.FRIENDS){
 			throw new BadRequestException("Already friends");
 		}else if(status==FriendshipStatus.REQUEST_RECVD){

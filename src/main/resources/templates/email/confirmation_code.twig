@@ -1,7 +1,10 @@
 {% extends "page" %}
 {% block content %}
+	<h1>{{ L('email_confirmation_code_header') }}</h1>
 	{{ L('email_confirmation_code', {'name': name, 'action': action}) }}
-	<div style="margin: 20px auto; background: #f7f7f7; border: solid 1px #ccc; border-radius: 4px; font-size: 20px; padding: 10px;">{{ code }}</div>
+	<div class="centeredMainBlock">
+		<div id="confirmationCode">{{ code }}</div>
+	</div>
 	{{ L('email_confirmation_code_info') }}
 {% endblock %}
 

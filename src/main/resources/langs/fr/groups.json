@@ -57,7 +57,7 @@
   "events": "Événements",
   "summary_X_upcoming_events": "Vous {count, select, 0 {n'avez pas d'événements à venir} other {allez y participer {count, plural, one {# événement} other {# événements}}}}",
   "summary_X_past_events": "Vous avez {count, plural, =0 {aucun événement passé} one {# événement passé} other {# événements passés}}",
-  "write_on_event_wall": "Écrivez sur le mur d'événement...",
+  "write_on_event_wall": "Écrivez sur le mur d'événement…",
   "leave_event": "Quitter l'événement",
   "event_organizers": "Les organisateurs",
   "event_X_organizers": "{count, plural, one {# organisateur} other {# organisateurs}}",

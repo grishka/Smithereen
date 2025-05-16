@@ -20,6 +20,7 @@
 	{% if noindex %}
 		<meta name="robots" content="noindex, nofollow"/>
 	{% endif %}
+	<meta name="theme-color" content="#4C6E00"/>
 	<script>
 		var userConfig={{jsConfig | raw}};
 		var langKeys={{jsLangKeys | raw}};
@@ -32,34 +33,32 @@
 </head>
 <body class="{{ wideOnDesktop ? "widePage" : "narrowPage" }}">
 <script>document.body.classList.add("hasJS");{%if jsRedirect is not null%} window.location="{{jsRedirect}}";{%endif%}</script>
-<div class="wrap">
+<div class="wrap" id="wrap">
 	<div class="headerWrap">
 		<div class="headerBG"><div class="shadow"></div></div>
 		<div class="header">
 			<div class="logo">
 				<a href="/"><img src="/res/desktop_logo_v1.svg" height="28" width="27" border="0" alt="Smithereen"/>{{serverName}}</a>
 			</div>
-			{% if headerBackHref is not empty %}
-			<a href="{{ headerBackHref }}" class="nav back ellipsize">{{ headerBackTitle }}</a>
-			{% elseif currentUser is not null %}
-			{% if currentUser.banStatus=='NONE' or currentUser.banStatus=='HIDDEN' %}
-			<div id="qsearchWrap">
-				<input type="text" id="qsearchField" placeholder="{{ L('search') }}" autocomplete="off" autocapitalize="off"/>
-				<div id="qsearchResults" style="display: none"></div>
+			<div id="headerLeftNavWrap">
+				<a href="{{ headerBackHref }}" id="headerBack" class="nav back ellipsize" style="{% if headerBackHref is empty %}display: none{% endif %}">{{ headerBackTitle }}</a>
+				{% if currentUser is not null and not noLeftMenu %}
+				<div id="qsearchWrap" style="{% if headerBackHref is not empty %}display: none{% endif %}">
+					<input type="text" id="qsearchField" placeholder="{{ L('search') }}" autocomplete="off" autocapitalize="off"/>
+					<div id="qsearchResults" style="display: none"></div>
+				</div>
+				{% endif %}
 			</div>
-			{% endif %}
-			{% endif %}
 			<div id="headerNav">
 				{% if currentUser is not null %}
 				{% if userPermissions.canInviteNewUsers %}<a href="/settings/invites" class="nav">{{ L('invite_users') }}</a>{% endif %}
-				<a href="/account/logout?csrf={{ csrf }}" class="nav">{{ L("log_out") }}</a>
+				<a href="/account/logout?csrf={{ csrf }}" class="nav" data-no-al="1">{{ L("log_out") }}</a>
 				{% endif %}
 			</div>
 		</div>
 	</div>
-<table width="100%" class="contentWrap" cellpadding="0" cellspacing="0">
-	<tr>
-		<td width="158" class="leftMenu" valign="top">
+<div class="contentWrap{{ noLeftMenu ? ' noLeftMenu' : '' }}">
+		<div class="leftMenu">
 {%block leftMenu%}
 			{%if currentUser is not null%}
 			{% include "left_menu" %}
@@ -74,9 +73,10 @@
 			</form>
 			{%endif%}
 {%endblock%}
-		</td>
-		<td valign="top">
-			<div class="pageContent">
+		</div>
+		<div class="pageContentW">
+			<div class="pageContent" id="pageContent">
+{% block outerContent %}
 				{% if navBarItems is not empty %}
 					<div class="navbar">
 					{%- for item in navBarItems -%}
@@ -96,13 +96,15 @@
 						{%- endif -%}
 						{%- if not loop.last %} &raquo; {% endif -%}
 					{%- endfor -%}
+					{% block navBarExtra %}{% endblock %}
 					</div>
 				{% endif %}
 {%block content%}{%endblock%}
+{% endblock %}
 			</div>
-		</td>
-	</tr>
-</table>
+			{% include "footer" %}
+		</div>
+</div>
 </div>
 <a id="elevator">
 	<div class="bg">
@@ -110,10 +112,19 @@
 	</div>
 </a>
 <script src="/res/common.js?{{ staticHashes['common.js'] }}"></script>
-{% block extraScripts %}{% endblock %}
+{% if _extraScriptFiles is not empty %}
+{% for script in _extraScriptFiles %}
+<script src="/res/{{ script.key }}?{{ script.value }}"></script>
+{% endfor %}
+{% endif %}
 {% if _bottomScripts is not empty %}
 <script>
-{{ _bottomScripts | raw }}
+{% if _extraScriptFiles is not empty %}
+{% for script in _extraScriptFiles %}
+loadedExtraScripts["{{ script.key }}"]="{{ script.value }}";
+{% endfor %}
+{% endif %}
+{% block bottomScripts %}{{ _bottomScripts | raw }}{% endblock %}
 </script>
 {% endif %}
 </body>

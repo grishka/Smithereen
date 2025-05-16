@@ -1,0 +1,11 @@
+{% script %}
+{% set allFriendLists=[] %}
+{% set _=allFriendLists.addAll(publicLists) %}
+{% set _=allFriendLists.addAll(lists) %}
+cur.friendLists={
+	{% for list in allFriendLists %}
+	"{{ list.id }}": "{{ list.name }}"{% if not loop.last %},{% endif %}
+
+	{% endfor %}
+};
+{% endscript %}

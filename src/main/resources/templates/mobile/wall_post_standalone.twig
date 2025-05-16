@@ -21,8 +21,8 @@
 		{% if currentUser is not null %}
 			<span class="currentUserLikeAva" style="{{ interactions.isLiked ? '' : 'display: none' }}">{{ currentUser | pictureForAvatar('a', 34) }}</span>
 		{% endif %}
-		{% for user in likedBy %}
-			{{ user | pictureForAvatar('a', 34) }}
+		{% for userID in likedBy %}
+			{{ users[userID] | pictureForAvatar('a', 34) }}
 		{% endfor %}
 	</a>
 	{% if interactions.canRepost %}
@@ -35,32 +35,37 @@
 	{% endif %}
 </div>
 <ul class="actionList">
-			{%if currentUser is not null and userPermissions is not null and userPermissions.canDeletePost(realPost)%}
-				<li><a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{realPost.internalURL}}/delete')">{{ L('delete') }}</a></li>
-			{%endif%}
-			{%if currentUser is not null and userPermissions is not null and userPermissions.canEditPost(realPost)%}
-				<li><a href="{{ realPost.internalURL }}/edit">{{ L('edit') }}</a></li>
-			{%endif%}
-			{%if not(realPost.local)%}
-				<li><a href="{{ realPost.activityPubURL }}" target="_blank">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a></li>
-			{%endif%}
-			{%if realPost.replyLevel>0%}
-				<li><a href="/posts/{{ realPost.replyKey[0] }}">Top-level</a></li>
-			{%endif%}
-			{% if realPost.ownerID!=realPost.authorID %}
-				<li><a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}">{{ L('wall_to_wall') }}</a></li>
-			{% endif %}
-			{% if userPermissions is not null and userPermissions.canReport(realPost) %}
-				<li><a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box>{{ L('report') }}</a></li>
-			{% endif %}
-		</ul>
+	{%if currentUser is not null and userPermissions is not null and userPermissions.canDeletePost(realPost)%}
+		<li><a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_post', 'delete_post_confirm', '{{realPost.internalURL}}/delete')">{{ L('delete') }}</a></li>
+	{%endif%}
+	{%if currentUser is not null and userPermissions is not null and userPermissions.canEditPost(realPost)%}
+		<li><a href="{{ realPost.internalURL }}/edit">{{ L('edit') }}</a></li>
+	{%endif%}
+	{%if not(realPost.local)%}
+		<li><a href="{{ realPost.activityPubURL }}" target="_blank">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a></li>
+	{%endif%}
+	{%if realPost.replyLevel>0%}
+		<li><a href="/posts/{{ realPost.replyKey[0] }}">Top-level</a></li>
+	{%endif%}
+	{% if realPost.ownerID!=realPost.authorID %}
+		<li><a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}">{{ L('wall_to_wall') }}</a></li>
+	{% endif %}
+	{% if userPermissions is not null and userPermissions.canReport(realPost) %}
+		<li><a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box>{{ L('report') }}</a></li>
+	{% endif %}
+</ul>
+{% if items | length<totalItems %}
+<div class="loadMoreComments" id="loadPrevWrap{{ post.post.id }}">
+	<a href="/posts/{{ post.post.id }}/layerPrevComments?offset={{ items | length }}" id="loadPrevBtn{{ post.post.id }}" data-ajax data-ajax-hide="loadPrevBtn{{ post.post.id }}" data-ajax-show="loadPrevLoader{{ post.post.id }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': totalItems-(items | length)}) : L('show_previous_comments') }}</a>
+	<span class="loader inlineLoader" style="display: none" id="loadPrevLoader{{ post.post.id }}"></span>
+</div>
+{% endif %}
 <div id="postReplies{{realPost.id}}">
 	{% for reply in items %}
 		{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentPost#{realPost.id}", 'topLevel': post} %}
 		{% set realPost=post.post %}
 	{% endfor %}
 </div>
-{% include "pagination" %}
 {% if currentUser is not null and postInteractions[realPost.id].canComment %}
 	{% include "comment_form" with {'id': "commentPost#{realPost.id}", 'replyTo': realPost} %}
 {% endif %}

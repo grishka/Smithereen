@@ -48,34 +48,33 @@ public class FetchCommentReplyThreadRunnable implements Callable<List<CommentRep
 
 	@Override
 	public List<CommentReplyParent> call() throws Exception{
-		LOG.debug("Started fetching parent thread for comment {}", initialPost.activityPubID);
-		seenPosts.add(initialPost.activityPubID);
-		while(thread.getFirst().inReplyTo!=null){
-			ActivityPubObject post=context.getObjectLinkResolver().resolve(thread.getFirst().inReplyTo, ActivityPubObject.class, true, false, false, (JsonObject) null, true);
-			if(seenPosts.contains(post.activityPubID)){
-				LOG.warn("Already seen comment {} while fetching parent thread for {}", post.activityPubID, initialPost.activityPubID);
-				throw new IllegalStateException("Reply thread contains a loop of links");
+		try{
+			LOG.debug("Started fetching parent thread for comment {}", initialPost.activityPubID);
+			seenPosts.add(initialPost.activityPubID);
+			while(thread.getFirst().inReplyTo!=null){
+				ActivityPubObject post=context.getObjectLinkResolver().resolve(thread.getFirst().inReplyTo, ActivityPubObject.class, true, false, false, (JsonObject) null, true);
+				if(seenPosts.contains(post.activityPubID)){
+					LOG.warn("Already seen comment {} while fetching parent thread for {}", post.activityPubID, initialPost.activityPubID);
+					throw new IllegalStateException("Reply thread contains a loop of links");
+				}
+				seenPosts.add(post.activityPubID);
+				thread.addFirst(post);
 			}
-			seenPosts.add(post.activityPubID);
-			thread.addFirst(post);
-		}
-		ActivityPubObject topLevel=thread.getFirst();
-		final ArrayList<CommentReplyParent> realThread=new ArrayList<>();
-		for(ActivityPubObject obj:thread){
-			CommentReplyParent p=context.getObjectLinkResolver().convertToNativeObject(obj, CommentReplyParent.class);
+			ActivityPubObject topLevel=thread.getFirst();
+			final ArrayList<CommentReplyParent> realThread=new ArrayList<>();
+			for(ActivityPubObject obj: thread){
+				CommentReplyParent p=context.getObjectLinkResolver().convertToNativeObject(obj, CommentReplyParent.class);
 
-			if((p instanceof Comment c && c.id!=0) || (p instanceof CommentableContentObject cco && cco.getObjectID()!=0)){
+				if((p instanceof Comment c && c.id!=0) || (p instanceof CommentableContentObject cco && cco.getObjectID()!=0)){
+					realThread.add(p);
+					continue;
+				}
+				if(p instanceof Comment comment)
+					context.getWallController().loadAndPreprocessRemotePostMentions(comment, (NoteOrQuestion) obj);
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(p, obj);
 				realThread.add(p);
-				continue;
 			}
-			if(p instanceof Comment comment)
-				context.getWallController().loadAndPreprocessRemotePostMentions(comment, (NoteOrQuestion) obj);
-			context.getObjectLinkResolver().storeOrUpdateRemoteObject(p, obj);
-			realThread.add(p);
-		}
-		LOG.debug("Done fetching parent thread for object {}", topLevel.activityPubID);
-		synchronized(apw){
-			fetchingReplyThreads.remove(initialPost.activityPubID);
+			LOG.debug("Done fetching parent thread for object {}", topLevel.activityPubID);
 			List<Consumer<List<CommentReplyParent>>> actions=afterFetchReplyThreadActions.remove(initialPost.activityPubID);
 			if(actions!=null){
 				for(Consumer<List<CommentReplyParent>> action: actions){
@@ -83,6 +82,10 @@ public class FetchCommentReplyThreadRunnable implements Callable<List<CommentRep
 				}
 			}
 			return realThread;
+		}finally{
+			synchronized(apw){
+				fetchingReplyThreads.remove(initialPost.activityPubID);
+			}
 		}
 	}
 }

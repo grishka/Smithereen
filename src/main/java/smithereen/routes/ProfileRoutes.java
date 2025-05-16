@@ -6,24 +6,26 @@ import org.jsoup.Jsoup;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
-
-import static smithereen.Utils.*;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.Utils;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
@@ -40,8 +42,6 @@ import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
@@ -50,6 +50,8 @@ import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.*;
 
 public class ProfileRoutes{
 	public static Object profile(Request req, Response resp){
@@ -108,6 +110,11 @@ public class ProfileRoutes{
 
 		PaginatedList<User> friends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM);
 		model.with("friendCount", friends.total).with("friends", friends.list);
+
+		if(!isMobile(req)){
+			PaginatedList<User> onlineFriends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM, true, 0);
+			model.with("onlineFriendCount", onlineFriends.total).with("onlineFriends", onlineFriends.list);
+		}
 
 		if(self!=null && user.id!=self.user.id){
 			PaginatedList<User> mutualFriends=ctx.getFriendsController().getMutualFriends(user, self.user, 0, 3, FriendsController.SortOrder.RANDOM);
@@ -246,6 +253,7 @@ public class ProfileRoutes{
 			}else{
 				FriendshipStatus status=ctx.getFriendsController().getFriendshipStatus(self.user, user);
 				if(status==FriendshipStatus.FRIENDS){
+					ctx.getFriendsController().incrementHintsRank(self.user, user, 1);
 					model.with("isFriend", true);
 					model.with("friendshipStatusText", lang(req).get("X_is_your_friend", Map.of("name", user.firstName)));
 				}else if(status==FriendshipStatus.REQUEST_SENT){
@@ -267,7 +275,21 @@ public class ProfileRoutes{
 				model.with("isBlocked", ctx.getUsersController().isUserBlocked(self.user, user));
 				model.with("isSelfBlocked", ctx.getUsersController().isUserBlocked(user, self.user));
 				model.with("isBookmarked", ctx.getBookmarksController().isUserBookmarked(self.user, user));
+				if(status==FriendshipStatus.FRIENDS || status==FriendshipStatus.FOLLOWING){
+					model.with("isMuted", ctx.getFriendsController().isUserMuted(self.user, user))
+							.with("canMute", true);
+				}
 				jsLangKey(req, "block", "unblock", "unfollow", "remove_friend");
+				if(status==FriendshipStatus.FRIENDS && !isMobile(req)){
+					addFriendLists(self.user, l, ctx, model);
+					Set<Integer> lists=ctx.getFriendsController().getFriendListsForUsers(self.user, self.user, List.of(user.id))
+							.getOrDefault(user.id, new BitSet())
+							.stream()
+							.map(i->i+1)
+							.boxed()
+							.collect(Collectors.toSet());
+					model.with("userLists", lists);
+				}
 			}
 		}else{
 			HashMap<String, String> meta=new LinkedHashMap<>();
@@ -351,6 +373,8 @@ public class ProfileRoutes{
 			}catch(UserActionNotAllowedException ignore){}
 		}
 
+		model.with("presence", ctx.getUsersController().getUserPresence(user));
+
 		return model;
 	}
 
@@ -430,5 +454,32 @@ public class ProfileRoutes{
 			}
 		}
 		return model;
+	}
+
+	public static Object muteUser(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		return setUserMuted(req, resp, info, ctx, true);
+	}
+
+	public static Object unmuteUser(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
+		return setUserMuted(req, resp, info, ctx, false);
+	}
+
+	private static Object setUserMuted(Request req, Response resp, SessionInfo info, ApplicationContext ctx, boolean muted){
+		User user=getUserOrThrow(req);
+		ctx.getFriendsController().setUserMuted(info.account.user, user, muted);
+		if(isAjax(req)){
+			if(isMobile(req)){
+				RenderedTemplateResponse profile=ProfileRoutes.userProfile(req, resp, user);
+				return new WebDeltaResponse(resp)
+						.setOuterHTML("profileFriendButton", profile.renderBlock("friendButton"))
+						.showSnackbar(lang(req).get(muted ? "profile_user_muted" : "profile_user_unmuted", Map.of("name", user.getFirstAndGender())));
+			}else{
+				return new WebDeltaResponse(resp)
+						.setContent("profileMuteButtonText", lang(req).get(muted ? "profile_unmute" : "profile_mute", Map.of("name", user.getFirstAndGender())))
+						.setAttribute("profileMuteButton", "href", "/users/"+user.id+"/"+(muted ? "unmute" : "mute")+"?csrf="+info.csrfToken);
+			}
+		}
+		resp.redirect(back(req));
+		return "";
 	}
 }

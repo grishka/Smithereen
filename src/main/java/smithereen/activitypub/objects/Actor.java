@@ -28,6 +28,7 @@ import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.exceptions.FederationException;
+import smithereen.model.ActorStatus;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.SizedImage;
@@ -51,6 +52,7 @@ public abstract class Actor extends ActivityPubObject{
 	public URI following;
 	public URI collectionQueryEndpoint;
 	public Instant lastUpdated;
+	public ActorStatus status;
 
 	public String aboutSource;
 
@@ -60,6 +62,10 @@ public abstract class Actor extends ActivityPubObject{
 
 	public String getProfileURL(){
 		return "/"+getFullUsername();
+	}
+
+	public String getAbsoluteProfileURL(){
+		return Config.localURI(getProfileURL()).toString();
 	}
 
 	public boolean hasAvatar(){
@@ -151,16 +157,25 @@ public abstract class Actor extends ActivityPubObject{
 		JsonObject pubkey=new JsonObject();
 		pubkey.addProperty("id", userURL+"#main-key");
 		pubkey.addProperty("owner", userURL);
-		String pkey="-----BEGIN PUBLIC KEY-----\n";
-		pkey+=Base64.getEncoder().encodeToString(publicKey.getEncoded());
-		pkey+="\n-----END PUBLIC KEY-----\n";
-		pubkey.addProperty("publicKeyPem", pkey);
+		StringBuilder pkey=new StringBuilder("-----BEGIN PUBLIC KEY-----\n");
+		String encodedKey=Base64.getEncoder().encodeToString(publicKey.getEncoded());
+		for(int i=0;i<encodedKey.length();i+=64){
+			pkey.append(encodedKey, i, Math.min(encodedKey.length(), i+64));
+			pkey.append('\n');
+		}
+		pkey.append("-----END PUBLIC KEY-----\n");
+		pubkey.addProperty("publicKeyPem", pkey.toString());
 		obj.add("publicKey", pubkey);
 
 		URI wallUrl=getWallURL();
 		if(wallUrl!=null){
 			obj.addProperty("wall", wallUrl.toString());
 			serializerContext.addType("wall", "sm:wall", "@id");
+		}
+		URI wallCommentsUrl=getWallCommentsURL();
+		if(wallCommentsUrl!=null){
+			obj.addProperty("wallComments", wallCommentsUrl.toString());
+			serializerContext.addType("wallComments", "sm:wallComments", "@id");
 		}
 		serializerContext.addAlias("collectionSimpleQuery", "sm:collectionSimpleQuery");
 		serializerContext.addAlias("sm", JLD.SMITHEREEN);
@@ -169,6 +184,11 @@ public abstract class Actor extends ActivityPubObject{
 		obj.addProperty("discoverable", true);
 
 		serializerContext.addSchema(JLD.W3_SECURITY);
+
+		if(status!=null){
+			serializerContext.addSmIdType("status");
+			obj.add("status", ActivityPubActorStatus.fromNativeStatus(status, this).asActivityPubObject(new JsonObject(), serializerContext));
+		}
 
 		return obj;
 	}
@@ -185,6 +205,10 @@ public abstract class Actor extends ActivityPubObject{
 		}
 		if(StringUtils.isEmpty(username)){
 			throw new FederationException("Unable to determine actor username: preferredUsername not present and last path segment of ID is blank");
+		}
+		if(!Utils.isValidUsername(username)){
+			username="_"+username.replaceAll("[^a-zA-Z0-9\\u0080-\\uffff._-]", "_"); // First, replace all disallowed ASCII characters with '_'
+			username=TextProcessor.transliterate(username); // Then, transliterate non-ASCII characters, if any
 		}
 		if(username.length()>USERNAME_MAX_LENGTH)
 			username=username.substring(0, USERNAME_MAX_LENGTH);
@@ -237,14 +261,23 @@ public abstract class Actor extends ActivityPubObject{
 		if(summary!=null)
 			summary=TextProcessor.sanitizeHTML(summary);
 
+		if(obj.get("status") instanceof JsonObject jstatus){
+			ActivityPubObject rawStatus=ActivityPubObject.parse(jstatus, parserContext);
+			if(rawStatus instanceof ActivityPubActorStatus as){
+				status=as.asNativeStatus();
+			}
+		}
+
 		return this;
 	}
 
 	public abstract int getLocalID();
 	public abstract URI getWallURL();
+	public abstract URI getWallCommentsURL();
 	public abstract URI getPhotoAlbumsURL();
 	public abstract String getTypeAndIdForURL();
 	public abstract String getName();
+	public abstract String serializeProfileFields();
 
 	private static RSAPublicKeySpec decodeSimpleRSAKey(byte[] key) throws IOException{
 		ByteArrayInputStream in=new ByteArrayInputStream(key);
@@ -352,6 +385,9 @@ public abstract class Actor extends ActivityPubObject{
 		URI wall=getWallURL();
 		if(wall!=null)
 			ep.wall=wall.toString();
+		URI wallComments=getWallCommentsURL();
+		if(wallComments!=null)
+			ep.wallComments=wallComments.toString();
 		if(collectionQueryEndpoint!=null)
 			ep.collectionQuery=collectionQueryEndpoint.toString();
 		URI photoAlbums=getPhotoAlbumsURL();
@@ -367,6 +403,10 @@ public abstract class Actor extends ActivityPubObject{
 
 	public int getOwnerID(){
 		throw new UnsupportedOperationException();
+	}
+
+	public String getStatusText(){
+		return status!=null && !status.isExpired() ? status.text() : null;
 	}
 
 	public static class EndpointsStorageWrapper{
@@ -394,5 +434,7 @@ public abstract class Actor extends ActivityPubObject{
 		public String photoAlbums;
 		@SerializedName("tp")
 		public String taggedPhotos;
+		@SerializedName("wc")
+		public String wallComments;
 	}
 }

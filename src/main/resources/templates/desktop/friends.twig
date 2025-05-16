@@ -23,44 +23,102 @@
 		{{ L('you_and_X_mutual', {'name': owner.firstAndGender, 'numFriends': totalItems}) }}
 	{% elseif tab=='followers' %}
 		{% if isSelf %}
-			{{ L("summary_own_X_followers", {'count': totalItems}) }}
+			{{ L("summary_own_X_followers", {'count': owner.followersCount}) }}
 		{% else %}
-			{{ L("summary_user_X_followers", {'name': owner.firstAndGender, 'count': totalItems}) }}
+			{{ L("summary_user_X_followers", {'name': owner.firstAndGender, 'count': owner.followersCount}) }}
 		{% endif %}
 	{% elseif tab=='following' %}
 		{% if isSelf %}
-			{{ L("summary_own_X_follows", {'count': totalItems}) }}
+			{{ L("summary_own_X_follows", {'count': owner.followingCount}) }}
 		{% else %}
-			{{ L("summary_user_X_follows", {'name': owner.firstAndGender, 'count': totalItems}) }}
+			{{ L("summary_user_X_follows", {'name': owner.firstAndGender, 'count': owner.followingCount}) }}
+		{% endif %}
+	{% elseif tab=='online' %}
+		{% if isSelf %}
+			{{ L("summary_own_X_friends_online", {'count': totalItems}) }}
+		{% else %}
+			{{ L("summary_user_X_friends_online", {'name': owner.firstAndGender, 'count': totalItems}) }}
 		{% endif %}
 	{% else %}
 		{% if query is not empty %}
 			{{ L("summary_X_friends_found", {'count': totalItems}) }}
+		{% elseif section=='recent' %}
+			{{ L('new_friends_summary') }}
+		{% elseif section=='list' %}
+			{{ L('X_friends_in_list_summary', {'count': totalItems}) }}
+			{% if currentUser is not null and currentUser.id==owner.id %}
+			<span class="auxText">
+				| <a href="javascript:void(0)" onclick="showEditFriendListBox('{{ listID }}', this.dataset.listName)" data-list-name="{{ allLists[listID].name }}">{{ L('friends_edit_list') }}</a>
+				{% if listID<57 %}| <a href="/my/friends/confirmDeleteList?id={{ listID }}" data-confirm-title="{{ L('friends_delete_list_title') }}" data-confirm-message="{{ L('friends_delete_list_confirm') }}" data-confirm-action="/my/friends/deleteList?id={{ listID }}">{{ L('friends_delete_list') }}</a>{% endif %}
+			</span>
+			{% endif %}
 		{% elseif isSelf %}
-			{{ L("summary_own_X_friends", {'numFriends': totalItems}) }}
+			{{ L("summary_own_X_friends", {'numFriends': owner.friendsCount}) }}
 		{% else %}
-			{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': totalItems}) }}
+			{{ L("summary_user_X_friends", {'name': owner.firstAndGender, 'numFriends': owner.friendsCount}) }}
 		{% endif %}
 	{% endif %}
 	</div>
-	{% include "pagination" %}
 </div>
-<div class="singleColumn">
-{% for friend in items %}
-	{% include "friends_row" with {'friend': friend} %}
-{% else %}
-<div class="emptyState">
-	{% if tab=='followers' %}
-	{{ L('no_followers') }}
-	{% elseif tab=='following' %}
-	{{ L('no_follows') }}
+<div class="withRightColumnFilters">
+	<div class="leftColumn">
+	{% block friendsInner %}
+	{% for friend in items %}
+		{% include "friends_row" with {'friend': friend} %}
 	{% else %}
-	{{ query is empty ? L('no_friends') : L('nothing_found') }}
-	{% endif %}
+	<div class="emptyState">
+		{% if tab=='followers' %}
+		{{ L('no_followers') }}
+		{% elseif tab=='following' %}
+		{{ L('no_follows') }}
+		{% elseif tab=='online' %}
+		{% if currentUser is not null and currentUser.id==owner.id %}
+		{{ L('no_friends_online_own') }}
+		{% else %}
+		{{ L('no_friends_online', {'name': owner.firstAndGender}) }}
+		{% endif %}
+		{% else %}
+		{{ query is empty ? L('no_friends') : L('nothing_found') }}
+		{% endif %}
+	</div>
+	{% endfor %}
+	{% endblock %}
+	{% include "pagination_endless" %}
+	</div>
+	<div class="filters">
+		<a href="/users/{{ owner.id }}/friends" class="filterItem{{ tab=='friends' and section is empty ? ' selected' : '' }}">{{ L('all_friends') }}</a>
+		{% if isSelf %}<a href="/users/{{ owner.id }}/friends?section=recent" class="filterItem{{ tab=='friends' and section=='recent' ? ' selected' : '' }}">{{ L('new_friends') }}</a>{% endif %}
+		{% if publicLists is not empty %}
+		<hr/>
+		{% for list in publicLists %}
+		<a href="/users/{{ owner.id }}/friends?section=list&list={{ list.id }}" class="filterItem{{ tab=='friends' and section=='list' and listID==list.id ? ' selected' : '' }}">{{ list.name }}</a>
+		{% endfor %}
+		{% endif %}
+		{% if isSelf %}
+		<hr/>
+		{% for list in lists %}
+		<a href="/users/{{ owner.id }}/friends?section=list&list={{ list.id }}" class="filterItem{{ tab=='friends' and section=='list' and listID==list.id ? ' selected' : '' }}">{{ list.name }}</a>
+		{% endfor %}
+		<a href="javascript:void(0)" onclick="showCreateFriendListBox()" class="filterItem">{{ L('friends_create_list') }}</a>
+		{% endif %}
+	</div>
 </div>
-{% endfor %}
-</div>
-<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% if owner.domain is not empty and tab!='online' and query is empty %}
+{% if tab=='friends' %}
+{% set realTotal=owner.friendsCount %}
+{% set key='remote_friends_incomplete' %}
+{% elseif tab=='followers' %}
+{% set realTotal=owner.followersCount %}
+{% set key='remote_followers_incomplete' %}
+{% elseif tab=='following' %}
+{% set realTotal=owner.followingCount %}
+{% set key='remote_following_incomplete' %}
+{% endif %}
+{% if totalItems<realTotal %}
+<div class="bottomSummaryWrap"><div class="bottomSummary">{{ L(key, {'name': owner.firstAndGender, 'gender': owner.gender, 'server': owner.domain}, {'link': {'href': owner.url, 'target': '_blank', 'rel': 'nofollow'} }) }}</div></div>
+{% endif %}
+{% endif %}
 {% endblock %}
 </div>
+{% if isSelf and (tab=='friends' or tab=='online') %}{% include "friend_lists_script" %}{% endif %}
 {%endblock%}

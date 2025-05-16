@@ -33,7 +33,7 @@ public class FetchActorRelationshipCollectionsTask extends NoResultCallable{
 
 	@Override
 	protected void compute(){
-		List<Callable<?>> tasks=new ArrayList<>();
+		List<Callable<Void>> tasks=new ArrayList<>();
 		// TODO also sync removed items
 		if(actor instanceof ForeignUser user){
 			if(user.getFriendsURL()!=null){

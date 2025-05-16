@@ -35,5 +35,6 @@
   "profile_write_message": "Отправить сообщение",
   "profile_write_message_short": "Сообщение",
   "messages_title": "Сообщения",
-  "mail_conversation_history": "История сообщений"
+  "mail_conversation_history": "История сообщений",
+  "mail_privacy_forbidden": "Вы не можете написать этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения"
 }

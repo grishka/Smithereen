@@ -19,7 +19,7 @@
   "photo_album_restrict_uploads": "Foto's können nur von Moderatoren und Verwaltern hinzugefügt werden",
   "photo_album_disable_commenting": "Schalte die Kommentarfunktion für dieses Album ab",
   "summary_album_X_photos": "{count, plural, =0 {Keine Foto's} one {# Foto} other {# Foto's}} in diesem Album",
-  "uploading_photo_X_of_Y": "Lade <b>{current}</b> von <b>{total}</b> Foto's hoch...",
+  "uploading_photo_X_of_Y": "Lade <b>{current}</b> von <b>{total}</b> Foto's hoch…",
   "photo_description": "Beschreibung",
   "photo_description_saved": "Beschreibung gespeichert",
   "edit_photo_album": "Bearbeite Album",

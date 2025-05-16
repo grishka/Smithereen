@@ -1,0 +1,126 @@
+@import "palette.scss";
+
+*{
+	box-sizing: border-box;
+	overflow-wrap: break-word;
+	min-width: 0;
+	min-height: 0;
+}
+
+.flR{
+	float: right;
+}
+
+.flL{
+	float: left;
+}
+
+.ellipsize{
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+a, .link{
+	color: $normalLink;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.avaImage{
+	border-radius: 2px;
+	vertical-align: top;
+}
+
+.avaHasImage{
+	position: relative;
+}
+
+.avaHasImage::after{
+	content: "";
+	display: inline-block;
+	border: solid 1px rgba(0,0,0,0.05);
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+	border-radius: 2px;
+}
+
+.avaPlaceholder{
+	vertical-align: top;
+	margin: 0;
+	background-color: #fff;
+	background-image: svg-load("img/ava_question.svg", fill: #809528);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+	border: solid 1px #ece5d1;
+	box-sizing: border-box;
+	border-radius: 2px;
+}
+
+.grayText, a.grayText{
+	color: $auxiliaryGrey;
+}
+
+.expandableText>.full{
+	display: none;
+}
+
+.textExpander:checked+.expandableText{
+	>.full{
+		display: block;
+	}
+	>.truncated, >label{
+		display: none;
+	}
+}
+
+.textExpander{
+	display: none;
+}
+
+.expandableText>label{
+	cursor: pointer;
+	color: $normalLink;
+}
+
+.poll{
+	.pollResultRow{
+		margin: 10px 0;
+		.pollResultBarW{
+			display: flex;
+			margin-top: 2px;
+		}
+		.pollResultPercent{
+			font-weight: bold;
+			text-align: right;
+		}
+		.pollResultBarBG{
+			background-color: $bgGrey;
+			position: relative;
+			flex-grow: 1;
+		}
+		.pollResultNumVotes{
+			position: absolute;
+			text-align: center;
+			color: $auxiliaryBlockHeader;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+		}
+		.pollResultBarFG{
+			background-color: $blockBackground;
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			transform-origin: 0;
+		}
+	}
+}

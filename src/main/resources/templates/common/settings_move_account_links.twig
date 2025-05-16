@@ -1,0 +1,28 @@
+<div class="simpleLayerContent">
+	<p>{{ L('settings_transfer_in_explanation') }}</p>
+	<div class="settingsMessage" id="akaLinksMessage" style="display: none; margin: 0 0 1em"></div>
+	<form action="/settings/addAlsoKnownAs?csrf={{ csrf }}" method="post" data-ajax>
+		<div class="oneLineForm">
+			<input type="text" name="link" id="akaLinkInput" placeholder="{{ L('settings_transfer_username_placeholder') }}" required/>
+			<input type="submit" value="{{ L('settings_transfer_add_link') }}"/>
+		</div>
+	</form>
+	<div id="akaLinks" class="marginBefore">
+	{% block links %}
+	{% if currentUser.alsoKnownAs is empty %}
+		<div class="emptyState">{{ L('settings_transfer_no_links') }}</div>
+	{% else %}
+		<p>{{ L('settings_transfer_your_links') }}</p>
+		<ul class="actualList">
+	{% for link in currentUser.alsoKnownAs %}
+		<li><span>
+			{{ link }}
+			<a href="/settings/confirmDeleteAkaLink?link={{ link.toString() | urlencode }}" class="pvTagDelete"{% if not isMobile %} data-tooltip="{{ L('delete') }}"{% endif %} aria-label="{{ L('delete') }}"
+			data-confirm-title="{{ L('settings_transfer_delete_link_title') }}" data-confirm-message="{{ L('settings_transfer_delete_link') }}" data-confirm-action="/settings/deleteAkaLink?link={{ link.toString() | urlencode }}"></a>
+		</span></li>
+	{% endfor %}
+		</ul>
+	{% endif %}
+	{% endblock %}
+	</div>
+</div>

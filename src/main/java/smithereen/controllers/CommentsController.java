@@ -139,6 +139,16 @@ public class CommentsController{
 
 			context.getNotificationsController().createNotificationsForObject(comment);
 
+			if(inReplyTo!=null){
+				User parentAuthor=context.getUsersController().getUserOrThrow(inReplyTo.authorID);
+				context.getFriendsController().incrementHintsRank(self, parentAuthor, 5);
+			}
+			if(oaa.owner() instanceof User u && (inReplyTo==null || inReplyTo.authorID!=u.id)){
+				context.getFriendsController().incrementHintsRank(self, u, 3);
+			}else if(oaa.owner() instanceof Group g){
+				context.getGroupsController().incrementHintsRank(self, g, 3);
+			}
+
 			if(oaa.owner() instanceof ForeignActor){
 				context.getActivityPubWorker().sendCreateComment(self, comment, parent);
 			}else{
@@ -467,6 +477,17 @@ public class CommentsController{
 		try{
 			long lid=CommentStorage.getCommentIdByActivityPubId(id);
 			return Math.max(lid, 0);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Long, CommentViewModel> getUserReplies(User self, Collection<List<Long>> replyKeys){
+		if(replyKeys.isEmpty())
+			return Map.of();
+		try{
+			List<Comment> comments=CommentStorage.getUserReplies(self.id, replyKeys);
+			return comments.stream().collect(Collectors.toMap(p->p.replyKey.getLast(), CommentViewModel::new, (p1, p2)->p1.post.id>p2.post.id ? p1 : p2));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

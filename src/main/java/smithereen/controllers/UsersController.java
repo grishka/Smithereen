@@ -3,6 +3,8 @@ package smithereen.controllers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -11,21 +13,32 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.TimeUnit;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.Utils;
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.ActorStatus;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -37,26 +50,41 @@ import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
+import smithereen.model.UserPresence;
 import smithereen.model.UserRole;
+import smithereen.model.admin.UserActionLogAction;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FollowRelationship;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.FederationStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
+import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
+import smithereen.util.MaintenanceScheduler;
+import smithereen.util.NamedMutexCollection;
 import spark.Request;
 import spark.utils.StringUtils;
 
 public class UsersController{
+	private static final int ONLINE_TIMEOUT_MINUTES=5;
+	public static final int FOLLOWERS_TRANSFER_COOLDOWN_DAYS=30;
 	private static final Logger LOG=LoggerFactory.getLogger(UsersController.class);
 	private final ApplicationContext context;
+	private final ConcurrentSkipListSet<CachedUserPresence> onlineLocalUsers=new ConcurrentSkipListSet<>(Comparator.comparing(p->p.presence.lastUpdated()));
+	private final ConcurrentHashMap<Integer, CachedUserPresence> onlineLocalUsersByID=new ConcurrentHashMap<>();
+	private final NamedMutexCollection onlineMutexes=new NamedMutexCollection();
+	private Map<Integer, UserPresence> pendingUserPresenceUpdates=Collections.synchronizedMap(new HashMap<>());
+	private final HashSet<Integer> movingUsers=new HashSet<>();
 
 	public UsersController(ApplicationContext context){
 		this.context=context;
+		MaintenanceScheduler.runPeriodically(this::doPendingPresenceUpdates, 1, TimeUnit.MINUTES);
 	}
 
 	public User getUserOrThrow(int id){
@@ -399,9 +427,12 @@ public class UsersController{
 		try{
 			if(newPassword.length()<4){
 				throw new UserErrorException("err_password_short");
-			}else if(!SessionStorage.updatePassword(self.id, oldPassword, newPassword)){
+			}
+			FloodControl.PASSWORD_CHECK.incrementOrThrow(self);
+			if(!SessionStorage.updatePassword(self.id, oldPassword, newPassword)){
 				throw new UserErrorException("err_old_password_incorrect");
 			}
+			FloodControl.PASSWORD_CHECK.reset(self);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -409,7 +440,11 @@ public class UsersController{
 
 	public boolean checkPassword(Account self, String password){
 		try{
-			return SessionStorage.checkPassword(self.id, password);
+			FloodControl.PASSWORD_CHECK.incrementOrThrow(self);
+			boolean valid=SessionStorage.checkPassword(self.id, password);
+			if(valid)
+				FloodControl.PASSWORD_CHECK.reset(self);
+			return valid;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -453,7 +488,7 @@ public class UsersController{
 				LOG.trace("No users to delete");
 				return;
 			}
-			Instant deleteBannedBefore=Instant.now().minus(30, ChronoUnit.DAYS);
+			Instant deleteBannedBefore=Instant.now().minus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS);
 			for(User user:users){
 				if(user.banStatus!=UserBanStatus.SUSPENDED && user.banStatus!=UserBanStatus.SELF_DEACTIVATED){
 					LOG.warn("Ineligible user {} in pending account deletions - bug likely (banStatus {}, banInfo {})", user.id, user.banStatus, user.banInfo);
@@ -598,6 +633,8 @@ public class UsersController{
 	}
 
 	public void maybeCreateRelationshipStatusNewsfeedEntry(User self, User.RelationshipStatus newStatus, User newPartner){
+		if(newStatus==null)
+			return;
 		int partnerID=newPartner==null || !newStatus.canHavePartner() ? 0 : newPartner.id;
 		if(self.relationship==newStatus && self.relationshipPartnerID==partnerID)
 			return;
@@ -615,4 +652,358 @@ public class UsersController{
 		long id=((long)newStatus.ordinal()) << 56 | (((System.currentTimeMillis()/1000L) & 0xFFFFFFL) << 32) | partnerID;
 		context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.RELATIONSHIP_STATUS);
 	}
+
+	public void updateUserPreferences(Account self){
+		try{
+			SessionStorage.updatePreferences(self.id, self.prefs);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setOnline(User user, UserPresence.PresenceType type, long sessionID){
+		user.ensureLocal();
+		UserPresence presence=new UserPresence(true, Instant.now(), type);
+		LOG.trace("Setting user {} presence to online, type {}", user.id, type);
+		String mutexName=String.valueOf(user.id);
+
+		onlineMutexes.acquire(mutexName);
+		CachedUserPresence prevPresence=onlineLocalUsersByID.get(user.id);
+		if(prevPresence!=null){
+			onlineLocalUsers.remove(prevPresence);
+		}
+		CachedUserPresence newPresence=new CachedUserPresence(user.id, sessionID, presence);
+		onlineLocalUsersByID.put(user.id, newPresence);
+		onlineLocalUsers.add(newPresence);
+		pendingUserPresenceUpdates.put(user.id, presence);
+		onlineMutexes.release(mutexName);
+	}
+
+	public void setOffline(User user, long sessionID){
+		user.ensureLocal();
+		setOfflineInternal(user.id, sessionID);
+	}
+
+	private void setOfflineInternal(int userID, long sessionID){
+		String mutexName=String.valueOf(userID);
+
+		onlineMutexes.acquire(mutexName);
+		CachedUserPresence prevPresence=onlineLocalUsersByID.get(userID);
+		if(prevPresence!=null && prevPresence.sessionID==sessionID){
+			onlineLocalUsers.remove(prevPresence);
+			onlineLocalUsersByID.remove(userID);
+			pendingUserPresenceUpdates.put(userID, new UserPresence(false, prevPresence.presence.lastUpdated(), prevPresence.presence.type()));
+		}
+		onlineMutexes.release(mutexName);
+	}
+
+	public void doPendingPresenceUpdates(){
+		try{
+			Instant onlineThreshold=Instant.now().minus(ONLINE_TIMEOUT_MINUTES, ChronoUnit.MINUTES);
+			for(CachedUserPresence p:onlineLocalUsers.reversed()){
+				if(p.presence.lastUpdated().isBefore(onlineThreshold)){
+					LOG.trace("Setting user {} presence to offline by timeout", p.userID);
+					setOfflineInternal(p.userID, p.sessionID);
+				}else{
+					break;
+				}
+			}
+
+			if(!pendingUserPresenceUpdates.isEmpty()){
+				Map<Integer, UserPresence> updates=pendingUserPresenceUpdates;
+				pendingUserPresenceUpdates=Collections.synchronizedMap(new HashMap<>());
+				UserStorage.updateUserPresences(updates);
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to do pending user presence updates", x);
+		}
+	}
+
+	public void loadPresenceFromDatabase(){
+		try{
+			Set<Integer> onlineUsers=UserStorage.getOnlineLocalUserIDs();
+			if(!onlineUsers.isEmpty()){
+				Map<Integer, UserPresence> presences=UserStorage.getUserPresences(onlineUsers);
+				presences.forEach((id, presence)->{
+					CachedUserPresence p=new CachedUserPresence(id, 0, presence);
+					onlineLocalUsers.add(p);
+					onlineLocalUsersByID.put(id, p);
+				});
+				doPendingPresenceUpdates();
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, UserPresence> getUserPresences(Collection<Integer> userIDs){
+		if(userIDs.isEmpty())
+			return Map.of();
+		Set<Integer> remainingIDs=new HashSet<>(userIDs);
+		HashMap<Integer, UserPresence> result=new HashMap<>();
+		for(int id:remainingIDs){
+			CachedUserPresence presence=onlineLocalUsersByID.get(id);
+			if(presence!=null)
+				result.put(id, presence.presence);
+		}
+		remainingIDs.removeAll(result.keySet());
+		if(!remainingIDs.isEmpty()){
+			for(int id:remainingIDs){
+				UserPresence presence=pendingUserPresenceUpdates.get(id);
+				if(presence!=null)
+					result.put(id, presence);
+			}
+		}
+		remainingIDs.removeAll(result.keySet());
+		if(!remainingIDs.isEmpty()){
+			try{
+				result.putAll(UserStorage.getUserPresences(remainingIDs));
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+		return result;
+	}
+
+	public UserPresence getUserPresence(User user){
+		return getUserPresences(Set.of(user.id)).get(user.id);
+	}
+
+	public Map<Integer, UserPresence> getUserPresencesOnlineOnly(Collection<Integer> userIDs){
+		HashMap<Integer, UserPresence> result=new HashMap<>();
+		for(int id:userIDs){
+			CachedUserPresence presence=onlineLocalUsersByID.get(id);
+			if(presence!=null)
+				result.put(id, presence.presence);
+		}
+		return result;
+	}
+
+	public URI addAlsoKnownAs(User self, String link){
+		User target;
+		try{
+			if(Utils.isUsernameAndDomain(link)){
+				ObjectLinkResolver.UsernameResolutionResult res=context.getObjectLinkResolver().resolveUsername(link, true, EnumSet.of(ObjectLinkResolver.UsernameOwnerType.USER));
+				target=context.getUsersController().getUserOrThrow(res.localID());
+			}else if(Utils.isURL(link)){
+				if(!link.startsWith("https://") && !link.startsWith("http://"))
+					link="https://"+link;
+				ActivityPubObject obj=context.getObjectLinkResolver().resolve(URI.create(link), ActivityPubObject.class, true, false, false);
+				if(!(obj instanceof User user)){
+					throw new UserErrorException("settings_transfer_link_unsupported");
+				}
+				target=user;
+			}else{
+				throw new UserErrorException("settings_transfer_link_not_found");
+			}
+		}catch(ObjectNotFoundException x){
+			throw new UserErrorException("settings_transfer_link_not_found");
+		}
+		if(!(target instanceof ForeignUser)){
+			throw new UserErrorException("settings_transfer_link_this_server", Map.of("domain", Config.domain));
+		}
+		URI id=target.activityPubID;
+		if(self.alsoKnownAs.contains(id))
+			return id;
+		self.alsoKnownAs.add(id);
+		try{
+			UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		context.getActivityPubWorker().sendUpdateUserActivity(self);
+		return id;
+	}
+
+	public void deleteAlsoKnownAs(User self, String link){
+		List<String> links=self.alsoKnownAs.stream().map(Object::toString).toList();
+		int index=links.indexOf(link);
+		if(index==-1)
+			return;
+		self.alsoKnownAs.remove(index);
+		try{
+			UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		context.getActivityPubWorker().sendUpdateUserActivity(self);
+	}
+
+	public void transferUserFollowers(User oldUser, User newUser){
+		synchronized(movingUsers){
+			if(movingUsers.contains(oldUser.id)){
+				LOG.debug("Not moving {} to {} because its previous Move activity is already being processed", oldUser.activityPubID, newUser.activityPubID);
+				return;
+			}
+			movingUsers.add(oldUser.id);
+		}
+
+		boolean success=false;
+		try{
+			oldUser.movedTo=newUser.id;
+			oldUser.movedToApID=newUser.activityPubID;
+			oldUser.movedAt=Instant.now();
+			newUser.movedFrom=oldUser.id;
+			if(oldUser instanceof ForeignUser)
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(oldUser, oldUser);
+			else
+				UserStorage.updateExtendedFields(oldUser, oldUser.serializeProfileFields());
+
+			if(newUser instanceof ForeignUser)
+				context.getObjectLinkResolver().storeOrUpdateRemoteObject(newUser, newUser);
+			else
+				UserStorage.updateExtendedFields(newUser, newUser.serializeProfileFields());
+
+			success=true;
+			BackgroundTaskRunner.getInstance().submit(()->performMove(oldUser, newUser));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}finally{
+			if(!success){
+				synchronized(movingUsers){
+					movingUsers.remove(oldUser.id);
+				}
+			}
+		}
+	}
+
+	public Instant getUserLastFollowersTransferTime(User self){
+		try{
+			return UserStorage.getUserLastFollowersTransferTime(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void transferLocalUserFollowers(Account self, String link, String password){
+		Instant lastTransfer=getUserLastFollowersTransferTime(self.user);
+		if(lastTransfer!=null && lastTransfer.isAfter(Instant.now().minus(FOLLOWERS_TRANSFER_COOLDOWN_DAYS, ChronoUnit.DAYS))){
+			Lang l=Lang.get(self.prefs.locale);
+			throw new UserErrorException("settings_transfer_out_too_often", Map.of("lastTransferDate", l.formatDate(lastTransfer, self.prefs.timeZone, false),
+					"days", FOLLOWERS_TRANSFER_COOLDOWN_DAYS,
+					"nextTransferDate", l.formatDate(lastTransfer.plus(FOLLOWERS_TRANSFER_COOLDOWN_DAYS, ChronoUnit.DAYS), self.prefs.timeZone, false)));
+		}
+		if(!checkPassword(self, password))
+			throw new UserErrorException("err_old_password_incorrect");
+
+		User target;
+		try{
+			if(Utils.isUsernameAndDomain(link)){
+				ObjectLinkResolver.UsernameResolutionResult res=context.getObjectLinkResolver().resolveUsername(link, true, EnumSet.of(ObjectLinkResolver.UsernameOwnerType.USER));
+				target=context.getUsersController().getUserOrThrow(res.localID());
+				if(target instanceof ForeignUser && target.lastUpdated.isBefore(Instant.now().minus(10, ChronoUnit.SECONDS)))
+					target=context.getObjectLinkResolver().resolve(target.activityPubID, User.class, true, true, true);
+			}else if(Utils.isURL(link)){
+				if(!link.startsWith("https://") && !link.startsWith("http://"))
+					link="https://"+link;
+				ActivityPubObject obj=context.getObjectLinkResolver().resolve(URI.create(link), ActivityPubObject.class, true, true, true);
+				if(!(obj instanceof User user)){
+					throw new UserErrorException("settings_transfer_link_unsupported");
+				}
+				target=user;
+			}else{
+				throw new UserErrorException("settings_transfer_out_link_not_found");
+			}
+		}catch(ObjectNotFoundException x){
+			throw new UserErrorException("settings_transfer_out_link_not_found");
+		}
+		if(!(target instanceof ForeignUser)){
+			throw new UserErrorException("settings_transfer_link_this_server", Map.of("domain", Config.domain));
+		}
+		if(!target.alsoKnownAs.contains(self.user.activityPubID))
+			throw new UserErrorException("settings_transfer_out_no_link", Map.of("thisAccountUsername", self.user.username+"@"+Config.domain, "newAccountServer", target.activityPubID.getHost()));
+
+		transferUserFollowers(self.user, target);
+		context.getActivityPubWorker().sendUserMoveSelf(self.user, target);
+		SmithereenApplication.invalidateAllSessionsForAccount(self.id);
+	}
+
+	public void clearMovedTo(Account self){
+		try{
+			self.user.movedTo=0;
+			self.user.movedToApID=null;
+			self.user.movedAt=null;
+			UserStorage.updateExtendedFields(self.user, self.user.serializeProfileFields());
+			context.getActivityPubWorker().sendUpdateUserActivity(self.user);
+			SmithereenApplication.invalidateAllSessionsForAccount(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	private void performMove(User oldUser, User newUser){
+		try{
+			ModerationStorage.addUserActionLogEntry(oldUser.id, UserActionLogAction.TRANSFER_FOLLOWERS, Map.of("to", newUser.id, "toApID", newUser.activityPubID.toString()));
+			List<FollowRelationship> localFollowers=UserStorage.getUserLocalFollowers(oldUser.id);
+			LOG.debug("Started moving {} followers for {} -> {}", localFollowers.size(), oldUser.activityPubID, newUser.activityPubID);
+			for(FollowRelationship fr:localFollowers){
+				try{
+					User follower=context.getUsersController().getUserOrThrow(fr.followerID());
+					context.getFriendsController().removeFriend(follower, oldUser);
+					context.getFriendsController().followUser(follower, newUser);
+					if(fr.muted())
+						context.getFriendsController().setUserMuted(newUser, follower, true);
+					// TODO carry lists over as well
+				}catch(UserErrorException|ObjectNotFoundException ignore){}
+			}
+			LOG.debug("Done moving followers for {} -> {}", oldUser.activityPubID, newUser.activityPubID);
+
+			List<User> blockingUsers=UserStorage.getBlockingUsers(oldUser.id);
+			LOG.debug("Started moving {} blocks for {} -> {}", blockingUsers.size(), oldUser.activityPubID, newUser.activityPubID);
+			for(User user:blockingUsers){
+				if(newUser instanceof ForeignUser && user instanceof ForeignUser)
+					continue;
+				context.getFriendsController().blockUser(user, newUser);
+			}
+			LOG.debug("Done moving blocks for {} -> {}", oldUser.activityPubID, newUser.activityPubID);
+		}catch(Exception x){
+			LOG.error("Failed to move {} to {}", oldUser.activityPubID, newUser.activityPubID, x);
+		}finally{
+			synchronized(movingUsers){
+				movingUsers.remove(oldUser.id);
+			}
+		}
+	}
+
+	public String updateStatus(User self, String status){
+		ActorStatus result=updateStatus(self, new ActorStatus(status, Instant.now(), null, null));
+		return result==null ? null : result.text();
+	}
+
+	public ActorStatus updateStatus(User self, ActorStatus status){
+		ActorStatus prev=self.status;
+		if(status!=null && StringUtils.isNotEmpty(status.text()) && !status.isExpired()){
+			if(status.text().length()>100)
+				status=status.withText(TextProcessor.truncateOnWordBoundary(status.text(), 100)+"...");
+			if(self.status!=null && self.status.text().equals(status.text()))
+				return status;
+			self.status=status;
+		}else{
+			if(self.status==null)
+				return status;
+			self.status=null;
+		}
+		try{
+			UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+			if(self instanceof ForeignUser){
+				if(prev!=null)
+					FederationStorage.deleteFromApIdIndex(ObjectLinkResolver.ObjectType.USER_STATUS, self.id);
+				if(status!=null && status.apId()!=null)
+					FederationStorage.addToApIdIndex(status.apId(), ObjectLinkResolver.ObjectType.USER_STATUS, self.id);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+
+		if(!(self instanceof ForeignUser)){
+			if(self.status!=null)
+				context.getActivityPubWorker().sendCreateStatusActivity(self, self.status);
+			else
+				context.getActivityPubWorker().sendClearStatusActivity(self, prev);
+		}
+
+		return status;
+	}
+
+	private record CachedUserPresence(int userID, long sessionID, UserPresence presence){}
 }

@@ -1,0 +1,27 @@
+<div class="simpleLayerContent">
+	<p>{{ L('settings_transfer_out_intro') }}</p>
+	<p>
+		<ul class="actualList">
+			<li><span>{{ L('settings_transfer_out_note1') }}</span></li>
+			<li><span>{{ L('settings_transfer_out_note2') }}</span></li>
+			<li><span>{{ L('settings_transfer_out_note3') }}</span></li>
+			<li><span>{{ L('settings_transfer_out_note4') }}</span></li>
+			<li><span>{{ L('settings_transfer_out_note5') }}</span></li>
+			<li><span>{{ L('settings_transfer_out_note6') }}</span></li>
+		</ul>
+	</p>
+	<div class="settingsMessage" id="transferFollowersMessage" style="display: none; margin: 0 0 1em"></div>
+	<form action="/settings/transferFollowers?csrf={{ csrf }}" method="post" data-ajax>
+		<div class="twoColumnForm">
+			<label>
+				<div class="grayText">{{ L('settings_transfer_out_link') }}</div>
+				<input type="text" name="link" placeholder="{{ L('settings_transfer_username_placeholder') }}" required/>
+			</label>
+			<label>
+				<div class="grayText">{{ L('settings_transfer_out_password') }}</div>
+				<input type="password" name="password" required/>
+			</label>
+		</div>
+		<p style="text-align: center"><input type="submit" value="{{ L('settings_transfer_out_do_transfer') }}"/></p>
+	</form>
+</div>

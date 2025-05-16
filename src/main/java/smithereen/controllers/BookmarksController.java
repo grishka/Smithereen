@@ -20,19 +20,17 @@ public class BookmarksController{
 		this.context=context;
 	}
 
-	public PaginatedList<User> getBookmarkedUsers(User self, int offset, int count){
+	public PaginatedList<Integer> getBookmarkedUsers(User self, int offset, int count){
 		try{
-			PaginatedList<Integer> ids=BookmarksStorage.getUsers(self.id, offset, count);
-			return new PaginatedList<>(ids, UserStorage.getByIdAsList(ids.list));
+			return BookmarksStorage.getUsers(self.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public PaginatedList<User> searchBookmarkedUsers(User self, String query, int offset, int count){
+	public PaginatedList<Integer> searchBookmarkedUsers(User self, String query, int offset, int count){
 		try{
-			PaginatedList<Integer> ids=SearchStorage.searchBookmarkedUsers(query, self.id, offset, count);
-			return new PaginatedList<>(ids, UserStorage.getByIdAsList(ids.list));
+			return SearchStorage.searchBookmarkedUsers(query, self.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -66,19 +64,17 @@ public class BookmarksController{
 
 
 
-	public PaginatedList<Group> getBookmarkedGroups(User self, int offset, int count){
+	public PaginatedList<Integer> getBookmarkedGroups(User self, int offset, int count){
 		try{
-			PaginatedList<Integer> ids=BookmarksStorage.getGroups(self.id, offset, count);
-			return new PaginatedList<>(ids, GroupStorage.getByIdAsList(ids.list));
+			return BookmarksStorage.getGroups(self.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public PaginatedList<Group> searchBookmarkedGroups(User self, String query, int offset, int count){
+	public PaginatedList<Integer> searchBookmarkedGroups(User self, String query, int offset, int count){
 		try{
-			PaginatedList<Integer> ids=SearchStorage.searchBookmarkedGroups(query, self.id, offset, count);
-			return new PaginatedList<>(ids, GroupStorage.getByIdAsList(ids.list));
+			return SearchStorage.searchBookmarkedGroups(query, self.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -1,12 +1,13 @@
 <div class="singleColumn">
-	{% for user in items %}
+	{% for id in items %}
+		{% set actor=id>0 ? users[id] : groups[-id] %}
 		<table width="100%" class="friendsRow noBorderSpacing">
 			<tr valign="top">
 				<td width="50">
-					<a href="{{user.profileURL}}"{{ profileRel(user) }}>{{user | pictureForAvatar('a')}}</a>
+					<a href="{{ profileURL(id) }}"{{ profileRel(actor) }}>{{ actor | pictureForAvatar('a') }}</a>
 				</td>
 				<td class="info" valign="middle">
-					<b><a href="{{user.profileURL}}"{{ profileRel(user) }}>{{ user | name }}</a></b>
+					<b><a href="{{ profileURL(id) }}"{{ profileRel(actor) }}>{{ actor | name }}</a></b>
 				</td>
 			</tr>
 		</table>

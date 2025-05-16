@@ -32,11 +32,14 @@ public class BookmarksRoutes{
 				.with("urlPath", req.raw().getPathInfo());
 		String query=req.queryParams("q");
 		model.with("query", query);
+		PaginatedList<Integer> ids;
 		if(StringUtils.isNotEmpty(query)){
-			model.paginate(ctx.getBookmarksController().searchBookmarkedUsers(self.user, query, offset(req), 100));
+			ids=ctx.getBookmarksController().searchBookmarkedUsers(self.user, query, offset(req), 100);
 		}else{
-			model.paginate(ctx.getBookmarksController().getBookmarkedUsers(self.user, offset(req), 100));
+			ids=ctx.getBookmarksController().getBookmarkedUsers(self.user, offset(req), 100);
 		}
+		model.paginate(ids)
+				.with("users", ctx.getUsersController().getUsers(ids.list));
 		if(isAjax(req)){
 			String newURL="/my/bookmarks";
 			if(StringUtils.isNotEmpty(query))
@@ -94,11 +97,14 @@ public class BookmarksRoutes{
 				.with("urlPath", req.raw().getPathInfo());
 		String query=req.queryParams("q");
 		model.with("query", query);
+		PaginatedList<Integer> ids;
 		if(StringUtils.isNotEmpty(query)){
-			model.paginate(ctx.getBookmarksController().searchBookmarkedGroups(self.user, query, offset(req), 100));
+			ids=ctx.getBookmarksController().searchBookmarkedGroups(self.user, query, offset(req), 100);
 		}else{
-			model.paginate(ctx.getBookmarksController().getBookmarkedGroups(self.user, offset(req), 100));
+			ids=ctx.getBookmarksController().getBookmarkedGroups(self.user, offset(req), 100);
 		}
+		model.paginate(new PaginatedList<>(ids, ids.list.stream().map(id->-id).toList()))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(ids.list));
 		if(isAjax(req)){
 			String newURL="/my/bookmarks/groups";
 			if(StringUtils.isNotEmpty(query))

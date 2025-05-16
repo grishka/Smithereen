@@ -11,8 +11,8 @@
 	{% endif %}
 	<a href="{{back}}" class="button" id="button">{{L("go_back")}}</a>
 	<script>
+		var btn=document.getElementById("button");
 		if(window.opener){
-			var btn=document.getElementById("button");
 			btn.innerHTML="{{L('close_this_window')}}";
 		}
 		btn.onclick=function(ev){

@@ -1,0 +1,11 @@
+<ul class="actualList languageChooserList">
+{% for langOption in languages %}
+    <li>
+    {% if langOption==currentLang %}
+    <span><b data-tooltip="{{ langOption.englishName }}">{{ langOption.name }}</b></span>
+    {% else %}
+    <a data-tooltip="{{ langOption.englishName }}" href="javascript:void(0)" onclick="setLanguage('{{ langOption.locale.toLanguageTag() }}')">{{ langOption.name }}</a>
+    {% endif %}
+	</li>
+{% endfor %}
+</ul>

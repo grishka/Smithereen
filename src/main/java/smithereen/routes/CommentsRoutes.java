@@ -14,7 +14,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+
+import static smithereen.Utils.*;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
@@ -35,9 +36,9 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.media.PhotoViewerInlineData;
+import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
-import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.FormattedTextFormat;
@@ -45,8 +46,6 @@ import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
-
-import static smithereen.Utils.*;
 
 public class CommentsRoutes{
 	private static CommentableContentObject getParentObject(Request req, ApplicationContext ctx){
@@ -94,13 +93,28 @@ public class CommentsRoutes{
 		Comment comment=ctx.getCommentsController().createComment(self.user, parent, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts);
 
 		if(isAjax(req)){
+			String rid=req.queryParams("rid");
+			String ridSuffix="";
+			if(StringUtils.isNotEmpty(rid))
+				ridSuffix="_"+rid;
+			boolean fromNotifications="notifications".equals(req.queryParams("from"));
 			String formID=req.queryParams("formID");
 			CommentViewModel pvm=new CommentViewModel(comment);
 			ArrayList<CommentViewModel> needInteractions=new ArrayList<>();
 			needInteractions.add(pvm);
 			if(inReplyTo!=null)
 				pvm.parentAuthorID=inReplyTo.authorID;
-			RenderedTemplateResponse model=new RenderedTemplateResponse("comment", req).with("post", pvm);
+			RenderedTemplateResponse model;
+			if(fromNotifications){
+				model=new RenderedTemplateResponse("wall_reply_notifications", req)
+						.with("post", pvm)
+						.with("parentType", switch(parent.getCommentParentID().type()){
+							case PHOTO -> Notification.ObjectType.PHOTO;
+						})
+						.with("postType", Notification.ObjectType.COMMENT);
+			}else{
+				model=new RenderedTemplateResponse("comment", req).with("post", pvm);
+			}
 
 			model.with("replyFormID", "wallPostForm_commentReply_"+parent.getCommentParentID().getHtmlElementID());
 			Map<Integer, User> users=new HashMap<>();
@@ -116,12 +130,17 @@ public class CommentsRoutes{
 			model.with("canComment", true).with("parentObject", parent);
 			String postHTML=model.renderToString();
 			WebDeltaResponse rb;
-			if(replyTo==0 || self.prefs.commentViewType==CommentViewType.FLAT){
+			if(fromNotifications){
+				rb=new WebDeltaResponse(resp)
+						.remove("notificationsOwnReply"+ridSuffix)
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "wallPostForm_"+formID, postHTML)
+						.addClass("wallPostForm_"+formID, "collapsed");
+			}else if(replyTo==0 || self.prefs.commentViewType==CommentViewType.FLAT){
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "comments_"+parent.getCommentParentID().getHtmlElementID(), postHTML);
 			}else{
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "commentReplies"+switch(self.prefs.commentViewType){
 					case THREADED -> XTEA.encodeObjectID(replyTo, ObfuscatedObjectIDType.COMMENT);
-					case TWO_LEVEL -> XTEA.encodeObjectID(comment.replyKey.get(Math.min(comment.getReplyLevel()-1, 1)), ObfuscatedObjectIDType.COMMENT);
+					case TWO_LEVEL -> XTEA.encodeObjectID(comment.replyKey.get(Math.min(comment.getReplyLevel()-1, 0)), ObfuscatedObjectIDType.COMMENT);
 					case FLAT -> throw new IllegalStateException();
 				}, postHTML).show("commentReplies"+replyTo);
 			}
@@ -238,6 +257,9 @@ public class CommentsRoutes{
 		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
 		ctx.getCommentsController().deleteComment(self.user, comment);
 		if(isAjax(req)){
+			if(req.queryParams("elid")!=null){
+				return new WebDeltaResponse(resp).remove(req.queryParams("elid"));
+			}
 			return new WebDeltaResponse(resp).remove("comment"+comment.getIDString());
 		}
 		resp.redirect(back(req));

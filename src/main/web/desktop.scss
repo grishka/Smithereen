@@ -8,7 +8,9 @@ $headerHeight: 40px;
 $smallPadding: 5px;
 $mediumPadding: 10px;
 
+@import "desktop_basics.scss";
 @import "common.scss";
+@import "audioplayer_desktop.scss";
 
 @svg-load popoverArrowTopWithHeader url(img/popover_arrow_top.svg) {
 	polygon[fill=red]{
@@ -37,20 +39,6 @@ $mediumPadding: 10px;
 	}
 }
 
-body, p, textarea, input, select, button{
-	font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
-	font-size: 11px;
-}
-
-body{
-	background: $bg;
-	margin: 0;
-}
-
-a:hover, a:visited:hover, .link:hover{
-	text-decoration: underline;
-}
-
 h2{
 	color: $boldHeaders;
 	font-weight: bold;
@@ -59,15 +47,6 @@ h2{
 	padding-bottom: 2px;
 	border-bottom: solid 1px $mainHeaderSeparator;
 	line-height: 1.27em;
-}
-
-h3{
-	color: $boldHeaders;
-	font-weight: bold;
-	margin: 0;
-	padding-bottom: 2px;
-	font-size: 11px;
-	border-bottom: solid 1px $mainHeaderSeparator;
 }
 
 h4{
@@ -94,11 +73,9 @@ small{
 	left: 0;
 	right: 0;
 	height: $headerHeight;
-	display: flex;
 	padding: 0 8px 0 4px;
 	.logo{
 		width: 142px;
-		flex: none;
 		img{
 			margin: 0 8px 1px 4px;
 			vertical-align: middle;
@@ -119,12 +96,6 @@ small{
 			}
 		}
 	}
-	#headerNav{
-		flex-grow: 1;
-		flex-shrink: 0;
-		display: flex;
-		justify-content: flex-end;
-	}
 	a.nav{
 		color: $textOnAccent;
 		font-weight: bold;
@@ -137,43 +108,59 @@ small{
 		text-transform: lowercase;
 		&.back{
 			text-transform: none;
-			float: left;
 			padding-left: 25px;
 			background: svg-load('img/backlink.svg', fill: $textOnAccent) no-repeat left center;
+			position: absolute;
+			left: 0;
+			top: 0;
 		}
 	}
 	a.nav:hover, a.nav:visited:hover{
 		text-decoration: none;
 		background-color: rgba(0, 0, 0, .2);
 	}
-	#qsearchWrap{
-		width: 172px;
-		float: left;
-		margin-top: 8px;
-		display: none;
-		position: relative;
-	}
-	#qsearchField{
-		width: 100%;
-		height: 23px;
-		border-radius: 3px;
-		border: solid 1px $headerBorderTop;
-		box-shadow: 0 1px 0 $headerBorderBottomLight, 0 1px 4px #c0c0c0 inset;
-		background: svg-load('img/search_icon.svg', fill: color($iconColor alpha(65%))) no-repeat 6px 5px, linear-gradient(to bottom, #efefef 0%, #ffffff 100%);
-		padding: 3px 3px 3px 21px;
-	}
-	#qsearchResults{
-		position: absolute;
-		top: 42px;
-		background: #FFF;
-		width: 211px;
-		border-radius: 3px;
-		box-shadow: 0 0 6px #999;
-		color: $text;
-		text-align: left;
-		z-index: 1;
-		padding: 4px 0;
-	}
+}
+
+#qsearchWrap{
+	width: 172px;
+	float: left;
+	margin-top: 8px;
+	display: none;
+	position: relative;
+}
+
+#qsearchField{
+	width: 100%;
+	height: 23px;
+	border-radius: 3px;
+	border: solid 1px $headerBorderTop;
+	box-shadow: 0 1px 0 $headerBorderBottomLight, 0 1px 4px #c0c0c0 inset;
+	background: svg-load('img/search_icon.svg', fill: color($iconColor alpha(65%))) no-repeat 6px 5px, linear-gradient(to bottom, #efefef 0%, #ffffff 100%);
+	padding: 3px 3px 3px 21px;
+}
+
+#qsearchResults{
+	position: absolute;
+	top: 42px;
+	background: #FFF;
+	width: 211px;
+	border-radius: 3px;
+	box-shadow: 0 0 6px #999;
+	color: $text;
+	text-align: left;
+	z-index: 1;
+	padding: 4px 0;
+}
+
+#headerNav{
+	flex-grow: 1;
+	flex-shrink: 0;
+	display: flex;
+	justify-content: flex-end;
+}
+
+#headerLeftNavWrap{
+	position: relative;
 }
 
 .hasJS #qsearchWrap{
@@ -287,6 +274,7 @@ small{
 	padding: 5px 8px 0 5px;
 	box-sizing: border-box;
 	width: $leftMenuWidth;
+	flex: none;
 	input{
 		width: 100%;
 		box-sizing: border-box;
@@ -346,7 +334,6 @@ small{
 	}
 	.postContent{
 		padding-top: 2px;
-		line-height: 130%;
 		pre{
 			overflow-x: auto;
 		}
@@ -411,15 +398,6 @@ small{
 	}
 	.floatingPostActions{
 		margin: 0 3px 0 5px;
-	}
-	.repostIcon, .postOwnerArrowIcon{
-		display: inline-block;
-		width: 9px;
-		height: 11px;
-		margin: 0 3px 0 1px;
-		position: relative;
-		top: 2px;
-		background: svg-load('img/repost_icons.svg') no-repeat;
 	}
 	.repostIcon.mastodonStyle{
 		background-position: 0 -11px;
@@ -568,14 +546,24 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 .contentWrap{
 	margin-left: auto;
 	margin-right: auto;
+	display: flex;
+	&.noLeftMenu{
+		.leftMenu{
+			display: none;
+		}
+		.pageContent{
+			margin-left: 17px;
+		}
+	}
+}
+
+.pageContentW{
+	flex-grow: 1;
 }
 
 .pageContent{
 	box-shadow: 0 0 0 1px $wallPostSeparator, 0 0 0 2px #f3f3f3;
 	margin-right: 17px;
-}
-
-.wrap{
 }
 
 .wallPostForm{
@@ -793,6 +781,10 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	border: solid 1px;
 	border-color: #e0e0e0 none #fff;
 	margin: 15px -10px;
+}
+
+.singleColumnLargerPadding hr{
+	margin: 15px -15px;
 }
 
 .singleColumn .form+hr, .singleColumn.gray .form+hr{
@@ -1065,21 +1057,7 @@ input[type=date], input[type=time]{
 	outline: none;
 }
 
-input[type=submit], input[type=button], button, .button, .button:link, .button:visited{
-	background: linear-gradient(to top, $buttonGradientBottom, $buttonGradientTop) repeat-x top;
-	background-size: 1px 42px;
-	background-position: 0 -16px;
-	text-shadow: 0 1px 0 $headerBorderTop;
-	border: solid 1px $headerBorderTop;
-	border-radius: 2px;
-	color: $textOnAccent;
-	box-shadow: 0 1px 0 $buttonBorderTop inset, 0 0 0 1px $buttonBorder inset;
-	cursor: pointer;
-	padding: 0 14px;
-	height: 25px;
-	line-height: 23px;
-	display: inline-block;
-	box-sizing: border-box;
+input[type=submit], input[type=button], button, .button{
 	&.loading{
 		color: transparent;
 		text-shadow: none;
@@ -1089,19 +1067,6 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	}
 	&:disabled{
 		opacity: .5;
-	}
-
-	&:hover, &:visited:hover{
-		text-decoration: none;
-		background-position: 0 -8px;
-		&.loading{
-			background-position: center, 0 -8px;
-		}
-	}
-	&:active{
-		text-decoration: none;
-		background: $buttonGradientBottom;
-		box-shadow: none;
 	}
 	&.secondary{
 		background: linear-gradient(to top, $buttonGrayGradientBottom, $buttonGrayGradientTop) repeat-x top;
@@ -1125,6 +1090,7 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 		color: $normalLink;
 		box-shadow: none;
 		border: none;
+		line-height: 25px;
 		&:hover:not(.loading){
 			background: $blockBackground;
 		}
@@ -1177,6 +1143,11 @@ select, .comboBoxW input{
 	border-bottom: solid 1px $wallPostSeparator;
 	margin-bottom: 10px;
 	border-spacing: 0;
+	&:last-child{
+		margin-bottom: 0;
+		padding-bottom: 0;
+		border-bottom: none;
+	}
 	.info{
 		padding: 1px 0 0 10px;
 		.infoInner{
@@ -1209,6 +1180,9 @@ select, .comboBoxW input{
 			float: left;
 			margin-right: 4px;
 		}
+	}
+	.lists{
+		padding-top: 8px;
 	}
 }
 
@@ -1637,8 +1611,10 @@ select, .comboBoxW input{
 	}
 }
 
-.comment .postActions .action:hover{
-	background: none;
+.comment, .notificationsRow .post{
+	.postActions .action:hover{
+		background: none;
+	}
 }
 
 .popoverPlace{
@@ -1657,6 +1633,7 @@ select, .comboBoxW input{
 .popover{
 	position: fixed;
 	font-size: 11px;
+	line-height: 13px;
 	z-index: 5;
 	.popoverHeader{
 		background: $simpleButton;
@@ -1837,23 +1814,11 @@ select, .comboBoxW input{
 
 .postAttachments{
 	.aspectBox{
-		display: grid;
-		grid-gap: 2px;
 		max-height: 510px;
 	}
 	.aspectBoxW{
 		overflow: hidden;
 		max-width: 510px;
-	}
-	.aspectBox img{
-		object-fit: cover;
-		width: 100%;
-		height: 100%;
-		display: block;
-	}
-	.aspectBox>div{
-		min-width: 0;
-		min-height: 0;
 	}
 	video{
 		max-width: min(100%, 510px);
@@ -2075,7 +2040,7 @@ select, .comboBoxW input{
 			.submenu li{
 				margin: 0;
 			}
-			>ul{
+			&:not(.checkboxes)>ul{
 				>li:not(.hasSubmenu):hover:not(.forceUnselected), >li.hasSubmenu:hover:not(.forceUnselected) .itemContent,
 					>li:not(.hasSubmenu).selected, >li.hasSubmenu.selected .itemContent{
 					background-color: $buttonBorder;
@@ -2085,7 +2050,12 @@ select, .comboBoxW input{
 					color: $textOnAccent;
 				}
 			}
-			&.hasDdIcons{
+			&.checkboxes{
+				ul, li{
+					margin: 0;
+				}
+			}
+			&.hasDdIcons:not(.checkboxes)>ul{
 				li:not(.hasSubmenu), li.hasSubmenu .itemContent{
 					padding-right: 21px;
 				}
@@ -2141,6 +2111,20 @@ select, .comboBoxW input{
 	}
 }
 
+.actionList>.popupMenuW{
+	display: block;
+	.popupMenu{
+		left: 0;
+		min-width: 100%;
+		&.popupDown{
+			top: 0;
+		}
+		&.popupUp{
+			bottom: 0;
+		}
+	}
+}
+
 .attachMenu li span{
 	background-image: svg-load('img/attach_icons.svg', fill: $iconColor);
 	background-repeat: no-repeat;
@@ -2166,28 +2150,6 @@ select, .comboBoxW input{
 
 .postCWWrap{
 	padding-top: 4px;
-	.postCWButton{
-		display: block;
-		color: $boldHeaders;
-		font-weight: bold;
-		cursor: pointer;
-		height: 24px;
-		line-height: 24px;
-		padding-left: 23px;
-		background: color($blockBackground alpha(50%)) svg-load('img/flex_arrow_shut.svg', fill: color($iconColor alpha(70%))) no-repeat left center;
-	}
-	>.postContent, >.postAttachments, >.poll, >.repost{
-		display: none;
-	}
-}
-
-input:checked+.postCWWrap{
-	>.postCWButton{
-		background-image: svg-load('img/flex_arrow_open.svg', fill: color($iconColor alpha(70%)));
-	}
-	>.postContent, >.postAttachments, >.poll, >.repost{
-		display: block;
-	}
 }
 
 .summaryWrap, .realSummaryWrap{
@@ -2301,41 +2263,6 @@ textarea{
 		margin: 5px 0;
 	}
 	.pollResultRow{
-		margin: 10px 0;
-		.pollResultBarW{
-			display: flex;
-			margin-top: 2px;
-			line-height: 15px;
-		}
-		.pollResultPercent{
-			width: 45px;
-			font-weight: bold;
-			text-align: right;
-		}
-		.pollResultBarBG{
-			background-color: $bgGrey;
-			height: 15px;
-			position: relative;
-			flex-grow: 1;
-		}
-		.pollResultNumVotes{
-			position: absolute;
-			text-align: center;
-			color: $auxiliaryBlockHeader;
-			left: 0;
-			top: 0;
-			width: 100%;
-			height: 100%;
-		}
-		.pollResultBarFG{
-			background-color: $blockBackground;
-			position: absolute;
-			left: 0;
-			top: 0;
-			width: 100%;
-			height: 100%;
-			transform-origin: 0;
-		}
 		&.userChoice .pollResultNumVotes{
 			background: svg-load('img/poll_check.svg', fill: $auxiliaryBlockHeader) no-repeat;
 			background-position: right 3px top 2px;
@@ -2357,7 +2284,7 @@ textarea{
 	padding: 0 10px;
 }
 
-.boxContent .emptyState, .mediaGridW .emptyState{
+.boxContent .emptyState, .mediaGridW .emptyState, .layerWithTitle .emptyState, .dataTable .emptyState{
 	height: auto;
 	padding: 50px 0;
 	border: none;
@@ -2387,15 +2314,6 @@ textarea{
 		font-size: 12px;
 		margin-bottom: 3px;
 		padding-bottom: 3px;
-	}
-}
-
-.expandableText>label{
-	font-weight: bold;
-	opacity: .8;
-	transition: opacity .15s ease;
-	&:hover{
-		opacity: 1;
 	}
 }
 
@@ -2696,8 +2614,9 @@ label.pretendLink{
 }
 
 .buttonBar{
+	margin-bottom: -10px;
 	>.button, >button, >input{
-		margin-right: 10px;
+		margin: 0 10px 10px 0;
 	}
 }
 
@@ -2976,6 +2895,17 @@ label.pretendLink{
 		padding-left: 21px;
 		height: 25px;
 	}
+	&.hasExtraField{
+		display: flex;
+		>input{
+			flex-basis: 50%;
+		}
+	}
+	.extraField{
+		width: 100%;
+		margin-left: 14px;
+		padding: 3px 6px;
+	}
 }
 
 .withRightColumnFilters{
@@ -3032,6 +2962,7 @@ label.pretendLink{
 }
 
 .layerContent{
+	position: relative;
 	overflow-y: auto;
 	max-height: 100%;
 	height: 100%;
@@ -3065,6 +2996,9 @@ label.pretendLink{
 		color: #FFF;
 		backdrop-filter: saturate(180%) blur(3px);
 		pointer-events: all;
+		a{
+			color: $iconColor;
+		}
 	}
 }
 
@@ -3096,6 +3030,13 @@ label.pretendLink{
 	}
 	.settingValue{
 		position: relative;
+		.friendListLabel{
+			/*display: inline-block;*/
+			height: 15px;
+			line-height: 15px;
+			margin: -5px 0;
+			padding: 1px 4px;
+		}
 	}
 }
 
@@ -3395,7 +3336,10 @@ h2, h3, h4{
 			color: $auxiliaryGrey;
 		}
 	}
-	.mailMessageForm, .subject{
+	.mailMessageForm{
+		padding-top: 10px;
+	}
+	.subject {
 		margin-top: 10px;
 	}
 	.postAttachments{
@@ -3525,17 +3469,18 @@ h2, h3, h4{
 	}
 }
 
-a.clickableListItem{
+.clickableListItem{
 	border-bottom: solid 1px $wallPostSeparator;
 	padding: 10px;
 	color: $text;
-	&:hover{
-		text-decoration: none;
-		background-color: color($blockBackground a(30%));
-	}
 	&:last-child{
 		border-bottom: none;
 	}
+}
+
+a.clickableListItem:hover{
+	text-decoration: none;
+	background-color: color($blockBackground a(30%));
 }
 
 .aBunchOfButtons{
@@ -3645,12 +3590,25 @@ a.clickableListItem{
 			margin-right: 5px;
 		}
 	}
+	.multiLineSummary{
+		line-height: 13px;
+		max-height: 39px;
+		text-overflow: ellipsis;
+		overflow-y: hidden;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
+	}
 }
 
 .simpleLayer{
 	background: $bg;
 	border-radius: 2px;
 	@include layer-shadow;
+}
+
+.simpleLayerContent{
+	padding: 0 20px 20px;
 }
 
 .layerWithTitle{
@@ -4436,3 +4394,560 @@ label.largeAccented{
 	}
 }
 
+#notifier{
+	position: fixed;
+	left: 0;
+	bottom: 0;
+	width: 340px;
+	z-index: 300;
+}
+
+.popupNotification{
+	margin: 10px;
+	background: rgba(0,0,0,.75);
+	border-radius: 5px;
+	backdrop-filter: saturate(180%) blur(3px);
+	box-shadow: 0 2px 15px #000;
+	padding: 10px;
+	text-shadow: 0px 1px 0px #262626;
+	color: #FFF;
+	position: relative;
+	.underlayLink{
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+	}
+	.titleBar{
+		padding-bottom: 11px;
+		display: flex;
+		.title{
+			font-size: 12px;
+			font-weight: bold;
+			flex-grow: 1;
+		}
+		.closeBtn{
+			background: #000 svg-load('img/notifier_close.svg', fill: rgba(255,255,255,0.6)) no-repeat center;
+			border-radius: 3px;
+			box-shadow: 0 0 2px #111;
+			width: 17px;
+			height: 17px;
+			position: relative;
+			opacity: 0;
+			transition: opacity 0.2s ease;
+			&:hover{
+				opacity: 1;
+			}
+		}
+	}
+	.notificationContent{
+		display: flex;
+		line-height: 13px;
+		.text{
+			padding: 0 10px;
+			flex-grow: 1;
+			a{
+				font-weight: bold;
+				position: relative;
+			}
+		}
+		.ava, .image{
+			border-radius: 3px;
+			box-shadow: 0 1px 2px #111;
+			width: 50px;
+			max-height: 50px;
+			flex: none;
+		}
+		.ava{
+			height: 50px;
+		}
+		.avaHasImage:after{
+			content: none;
+		}
+		.avaPlaceholder{
+			border: none;
+		}
+		picture{
+			flex: none;
+		}
+	}
+	a{
+		color: $iconColor;
+	}
+	&:hover .closeBtn{
+		opacity: 0.6;
+	}
+}
+
+.feedRow>.filtered{
+	display: none;
+}
+
+.postFilteredToggler{
+	display: none;
+	&:checked{
+		&+.filteredPostNotice{
+			display: none;
+		}
+		&+.filteredPostNotice+.post, &+.filteredPostNotice+.post+.commentsPreviewWrap{
+			display: block;
+		}
+	}
+}
+
+.postLayer{
+	margin: 10px 0 50px;
+	width: 653px;
+	flex: none;
+}
+
+.postLayerHeader{
+	background-color: #EEE;
+	padding: 12px 23px 12px;
+	border-radius: 2px 2px 0 0;
+	.postAuthorAva{
+		margin-right: 15px;
+	}
+	.postAuthor{
+		padding: 6px 0 5px;
+		a{
+			font-size: 15.4px;
+			font-weight: bold;
+			line-height: 18px;
+			color: $text;
+		}
+	}
+	.time{
+		color: #777;
+		font-size: 12px;
+	}
+	.closeBtn{
+		margin: 5px -3px 0 0;
+	}
+}
+
+.postLayerPost{
+	padding: 10px 23px 10px;
+	display: block;
+	border: none;
+	margin: 0;
+	.postContent{
+		padding: 6px 0 3px;
+	}
+	.postContent{
+		font-family: Georgia, "Times New Roman", Times, serif;
+		font-size: 16px;
+		line-height: 150%;
+		.popover{
+			font-family: Tahoma, Helvetica, Arial, Roboto, sans-serif;
+			font-size: 11px;
+		}
+	}
+	p:first-child{
+		margin-top: 0;
+	}
+	p:last-child{
+		margin-bottom: 0;
+	}
+	.postAttachments .aspectBoxW{
+		max-width: 100%;
+	}
+	.postAttachments .aspectBox{
+		max-height: min(1000px, 100vh);
+		margin: auto;
+	}
+}
+
+.postLayer .wallPostForm.editing{
+	padding: 10px 23px 10px;
+}
+
+.postLayerCommentForm{
+	position: sticky;
+	bottom: 0;
+	border-bottom: none;
+	padding: 15px 23px;
+	border-radius: 0 0 2px 2px;
+	background-color: $menuItemsSeparator;
+	transition: border-top-color 0.3s ease, box-shadow 0.3s ease;
+	textarea{
+		line-height: 14px;
+		padding: 6px;
+	}
+	&.floating{
+		border-top: solid 1px #d2d4cd;
+		border-radius: 0;
+		box-shadow: 0 -2px 0 rgba(0,0,0,0.08);
+	}
+	&.commentsRestricted{
+		position: static;
+		color: #7e8d31;
+		font-weight: bold;
+	}
+}
+
+.hasJS .postLayerCommentForm.collapsed textarea{
+	height: 26px;
+}
+
+.postLayerActions{
+	padding: 10px 23px;
+	display: flex;
+	flex-wrap: wrap;
+	.like{
+		margin-right: 10px;
+		.counter{
+			font-weight: bold;
+			margin-left: 3px;
+		}
+		.icon{
+			display: inline-block;
+			width: 10px;
+			height: 9px;
+			background: svg-load(img/like.svg, fill: #fff) no-repeat;
+			position: relative;
+			top: 8px;
+			margin-left: 3px;
+			opacity: 0.4;
+			transition: opacity 0.3s ease;
+		}
+		&.liked .icon{
+			opacity: 1;
+		}
+	}
+	.tertiary{
+		padding: 0 10px;
+	}
+}
+
+.postLayerCommentsHeader{
+	background: $mainHeaderSeparator;
+	padding: 0 23px;
+	height: 40px;
+	display: flex;
+	color: $normalLink;
+	font-weight: bold;
+	align-items: center;
+	margin-top: 6px;
+	.total, .loadMore{
+		flex-grow: 1;
+	}
+	.loadMore{
+		text-align: center;
+	}
+}
+
+.postLayerComments{
+	padding: 5px 23px;
+	>.post.comment>.postAvaWrap{
+		width: 50px;
+		.ava{
+			margin-bottom: 4px;
+			width: 50px;
+			height: 50px;
+			img{
+				width: 50px;
+				height: 50px;
+			}
+		}
+	}
+	>.post.comment>.postContentWrap{
+		padding-left: 10px;
+		padding-top: 14px;
+	}
+	>.comment>div{
+		padding-top: 12px;
+	}
+	>.comment{
+		padding-bottom: 7px;
+	}
+	>.post.comment>.postContentWrap .postContent{
+		padding-top: 5px;
+	}
+	>.comment>.postInfo{
+		padding-top: 6px;
+	}
+	.loadRepliesLink{
+		margin-left: 35px;
+	}
+	>.comment:first-child>div{
+		border-top: none;
+	}
+	.comment.twoLevelIndented{
+		margin-left: 60px;
+	}
+}
+
+.mobileOnlineIcon{
+	display: inline-block;
+	width: 11px;
+	height: 13px;
+	vertical-align: text-top;
+	background: svg-load('img/online_mobile.svg', fill: #aaa);
+	margin-left: 2px;
+}
+
+.navbar .mobileOnlineIcon{
+	background: svg-load('img/online_mobile.svg', fill: $auxiliaryBlockHeader);
+}
+
+.onlineText{
+	color: #aaa;
+}
+
+.postAvaWrap .onlineText{
+	text-align: center;
+	margin: 7px -10px 0;
+}
+
+.singleColumnLargerPadding{
+	padding: 15px;
+}
+
+.notificationsRow{
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	border-bottom: solid 1px $wallPostSeparator;
+	.post{
+		padding-bottom: 0;
+		margin-bottom: 0;
+		border-bottom: none;
+		.postInfo, .postLink{
+			font-size: 11px;
+		}
+		&.mainPost{
+			cursor: pointer;
+		}
+	}
+	.notificationExtraImage{
+		display: block;
+		float: right;
+		margin-left: 15px;
+		max-height: 50px;
+		overflow: hidden;
+		img{
+			display: block;
+			max-width: 50px;
+			object-fit: contain;
+			object-position: top right;
+		}
+	}
+}
+
+.notificationWithAvatars{
+	padding-bottom: 12px;
+	display: flex;
+	.iconW{
+		width: 53px;
+		margin-right: 7px;
+		padding-top: 2px;
+		flex: none;
+		.icon{
+			width: 15px;
+			height: 16px;
+			float: right;
+			background: svg-load('img/feedback_iconset.svg', fill: $auxiliaryBlockHeader);
+		}
+	}
+	&.notificationLike .iconW .icon{
+		background-position: 0 -16px;
+	}
+	&.notificationRepost .iconW .icon, &.notificationRetoot .iconW .icon{
+		background-position: 0 -32px;
+	}
+	&.notificationInviteSignup .iconW .icon{
+		background-position: 0 -48px;
+	}
+	.notificationContent{
+		flex-grow: 1;
+	}
+	.names{
+		padding-top: 2px;
+		line-height: 13px;
+		a{
+			font-weight: bold;
+		}
+	}
+	.avatars{
+		margin: 9px 0 7px;
+		display: flex;
+		>*{
+			flex: none;
+			margin-right: 6px;
+		}
+	}
+}
+
+.notificationsSeen{
+	background: $blockUnderboxBackground;
+	text-align: center;
+	line-height: 30px;
+	margin: -11px -15px 10px;
+	color: $auxiliaryGrey;
+	.icon{
+		display: inline-block;
+		vertical-align: top;
+		height: 30px;
+		width: 7px;
+		margin-left: 3px;
+		background: svg-load('img/feedback_old_arrow.svg', fill: #bfbfbf) center no-repeat;
+	}
+}
+
+.notificationOwnReply{
+	border: solid 1px #e2debe;
+	background: #f3f1e3;
+	margin-top: 10px;
+	padding: 10px;
+	position: relative;
+	.tipW{
+		height: 7px;
+		overflow: hidden;
+		position: absolute;
+		top: -7px;
+		left: -1px;
+	}
+	.tip{
+		width: 15px;
+		height: 15px;
+		border: solid 1px #e2debe;
+		background: #f3f1e3;
+		transform-origin: 0 0;
+		transform: rotate(45deg);
+		margin-left: 25px;
+	}
+	.post .postAvaWrap{
+		width: 39px;
+	}
+	.post .postInfo .postLink{
+		font-size: 10px;
+	}
+	&.wallPostForm{
+		display: flex;
+		border: solid 1px #dad7b7;
+		background: #eae7d2;
+		.tip{
+			border: solid 1px #dad7b7;
+			background: #eae7d2;
+		}
+		.ownAvaW{
+			width: 39px;
+			margin-right: 10px;
+		}
+		&.collapsed{
+			display: none;
+		}
+	}
+}
+
+.pageFooter{
+	text-align: center;
+	padding: 9px 0 10px;
+}
+
+.footerNav{
+	margin-bottom: 10px;
+	a{
+		text-transform: lowercase;
+		padding: 2px 5px;
+		display: inline-block;
+		&:hover{
+			text-decoration: none;
+			background: $blockBackground;
+		}
+	}
+}
+
+.oneLineForm{
+	display: flex;
+	input[type=text]{
+		flex-grow: 1;
+		height: 25px;
+		margin-right: 15px;
+	}
+	input[type=submit], input[type=button]{
+		flex: none;
+	}
+}
+
+.twoColumnForm{
+	display: flex;
+	width: 100%;
+	>*{
+		width: 100%;
+		flex: 1;
+		&:first-child{
+			margin-right: 15px;
+		}
+		input{
+			width: 100%;
+			margin-top: 10px;
+		}
+	}
+}
+
+.profileCenteredTextModule{
+	text-align: center;
+	padding: 25px 10px;
+}
+
+.profileNameW{
+	border-bottom: solid 1px $mainHeaderSeparator;
+	padding-left: 6px;
+	h2{
+		border-bottom: none;
+		font-size: 12px;
+		padding-bottom: 1px;
+	}
+}
+
+.profileStatusW{
+	padding: 1px 0 6px;
+	position: relative;
+}
+
+.profileStatus.editable{
+	cursor: pointer;
+	padding: 5px;
+	margin: -5px;
+	border-radius: 3px;
+	&:hover{
+		background: $blockBackground;
+	}
+}
+
+#profileStatusLink{
+	color: #adadad;
+}
+
+#profileStatusBox{
+	display: block;
+	position: absolute;
+	left: -3px;
+	top: -10px;
+	background: $bgGrey;
+	border: solid 1px $sectionHeaderBorder;
+	width: 398px;
+	height: 63px;
+	padding: 6px;
+	@include popup-shadow;
+	>input{
+		width: 100%;
+	}
+	.buttonW{
+		display: flex;
+		margin-top: 6px;
+		align-items: center;
+		div{
+			flex-grow: 1;
+			color: $auxiliaryGrey;
+			font-size: 10px;
+		}
+		input{
+			flex: none;
+			height: 22px;
+			line-height: 20px;
+		}
+	}
+}

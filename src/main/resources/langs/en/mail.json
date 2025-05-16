@@ -35,5 +35,6 @@
   "profile_write_message": "Send a message",
   "profile_write_message_short": "Message",
   "messages_title": "Messages",
-  "mail_conversation_history": "Conversation history"
+  "mail_conversation_history": "Conversation history",
+  "mail_privacy_forbidden": "You can't write to this user due to their privacy settings"
 }

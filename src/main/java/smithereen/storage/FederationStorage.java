@@ -26,6 +26,29 @@ public class FederationStorage{
 				.executeAndGetSingleObject(ObjectLinkResolver.ObjectTypeAndID::fromResultSet);
 	}
 
+	public static void deleteFromApIdIndex(URI apID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("ap_id_index")
+				.where("ap_id=?", apID.toString())
+				.executeNoResult();
+	}
+
+	public static void deleteFromApIdIndex(ObjectLinkResolver.ObjectType type, long id) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("ap_id_index")
+				.where("object_type=? AND object_id=?", type, id)
+				.executeNoResult();
+	}
+
+	public static void addToApIdIndex(URI apID, ObjectLinkResolver.ObjectType type, long id) throws SQLException{
+		new SQLQueryBuilder()
+				.insertIgnoreInto("ap_id_index")
+				.value("ap_id", apID.toString())
+				.value("object_type", type)
+				.value("object_id", id)
+				.executeNoResult();
+	}
+
 	public static PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean restrictedOnly, String query) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String where="";

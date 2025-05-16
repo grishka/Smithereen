@@ -1,0 +1,52 @@
+{# @pebvariable name="group" type="smithereen.model.Group" #}
+{% extends "page" %}
+{% block content %}
+	<h1>{{ L(group.event ? 'notification_title_event_invite' : 'notification_title_group_invite') }}</h1>
+	<table width="100%" cellpadding="0" cellspacing="0" border="0">
+		<tr>
+			<td valign="top" width="100">{% include 'actor_avatar' with {'actor': group, 'size': 'b'} %}</td>
+			<td valign="top" style="padding-left: 10px">
+				<table width="100%" cellpadding="0" cellspacing="5" border="0">
+					<tr>
+						<td class="grayText">{{ L('group_name') }}:</td>
+						<td width="99%"><a href="{{ group.absoluteProfileURL }}">{{ group.name }}</a></td>
+					</tr>
+					<tr>
+						<td class="grayText">{{ L('group_size') }}:</td>
+						<td>{{ L('X_members', {'count': group.memberCount}) }}</td>
+					</tr>
+					{% if group.summary is not empty %}
+					<tr>
+						<td class="grayText">{{ L(group.event ? 'about_event' : 'about_group') }}:</td>
+						<td><div style="margin: -1em 0">{{ group.summary | postprocessHTML }}</div></td>
+					</tr>
+					{% endif %}
+					{% if group.event %}
+					{% if group.eventStartTime is not null %}
+					<tr>
+						<td class="grayText">{{ L('event_start_time') }}:</td>
+						<td>{{ LD(group.eventStartTime, format='fullyAbsolute') }}</td>
+					</tr>
+					{% endif %}
+					{% if group.eventEndTime is not null %}
+					<tr>
+						<td class="grayText">{{ L('event_end_time') }}:</td>
+						<td>{{ LD(group.eventEndTime, format='fullyAbsolute') }}</td>
+					</tr>
+					{% endif %}
+					{% endif %}
+					{% if group.domain is not empty %}
+					<tr>
+						<td class="grayText">{{ L('server') }}:</td>
+						<td>{{ group.domain }}</td>
+					</tr>
+					{% endif %}
+					<tr>
+						<td></td>
+						<td style="padding-top: 10px"><a class="button" href="https://{{ domain }}/my/{{ group.event ? 'events' : 'groups' }}/invites">{{ L(group.event ? 'email_go_to_event_invites' : 'email_go_to_group_invites') }}</a></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	</table>
+{% endblock %}

@@ -1,0 +1,4 @@
+<div class="secondaryTabBar">
+	<a href="/settings/admin/fasp" class="{{ secondaryTab=='active' ? 'selected' : '' }}">{{ L('admin_fasp_tab_active') }}</a>
+	<a href="/settings/admin/fasp/requests" class="{{ secondaryTab=='requests' ? 'selected' : '' }}">{{ L('admin_fasp_tab_requests') }}{% if unconfirmedFaspRequests>0 %} ({{ unconfirmedFaspRequests | numberformat }}){% endif %}</a>
+</div>

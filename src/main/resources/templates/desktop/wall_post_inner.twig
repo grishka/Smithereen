@@ -2,22 +2,23 @@
 {# @pebvariable name="repostParent" type="smithereen.model.viewmodel.PostViewModel" #}
 {# @pebvariable name="realPost" type="smithereen.model.Post" #}
 {# @pebvariable name="repostDepth" type="int" #}
+{# @pebvariable name="randomID" type="String" #}
 {% set realPost=post.post %}
 {% if realPost.hasContentWarning %}
-<input type="checkbox" id="postCW_{{ repostParent.post.id }}_{{ realPost.id }}" style="display: none"/>
+<input type="checkbox" id="postCW_{{ repostParent.post.id }}_{{ randomID }}" style="display: none"/>
 <div class="postCWWrap">
-	<label for="postCW_{{ repostParent.post.id }}_{{ realPost.id }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
+	<label for="postCW_{{ repostParent.post.id }}_{{ randomID }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
 {% endif %}
 {% if standalone %}
 <div class="postContent">{{ realPost.text | postprocessHTML }}</div>
 {% else %}
 <div class="postContent">{{ realPost.text | postprocessHTML | truncateText }}</div>
 {% endif %}
-{% if realPost.poll is not null %}
-{% include "poll" with {'poll': realPost.poll, 'interactions': interactions} %}
-{% endif %}
 {% if realPost.attachments is not empty %}
 	{{ renderAttachments(realPost, realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) }}
+{% endif %}
+{% if realPost.poll is not null %}
+{% include "poll" with {'poll': realPost.poll, 'interactions': interactions} %}
 {% endif %}
 {% if post.repost is not null %}
 <div class="repost">
@@ -30,12 +31,12 @@
 		<div class="ellipsize grayText">
 			{%- if post.repost.post.post.replyLevel>0 -%}
 			{%- if post.repost.topLevel is not null %}
-			{{ L('comment_repost_title', {'time': LD(post.repost.post.post.createdAt), 'postSnippet': post.repost.topLevel.post.shortTitle | default(LD(post.repost.topLevel.post.createdAt))}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText'}, 'topLevelPost': {'href': post.repost.topLevel.post.internalURL} }) }}
+			{{ L('comment_repost_title', {'time': LD(post.repost.post.post.createdAt), 'postSnippet': post.repost.topLevel.post.shortTitle | default(LD(post.repost.topLevel.post.createdAt))}, {'originalComment': {'href': post.repost.post.post.internalURL, 'onclick': "return openPostLayer('#{post.repost.topLevel.post.id}', '#{post.repost.post.post.id}')", 'class': 'grayText'}, 'topLevelPost': {'href': post.repost.topLevel.post.internalURL, 'onclick': "return openPostLayer('#{post.repost.topLevel.post.id}')"} }) }}
 			{%- else -%}
 			{{ L('comment_deleted_repost_title', {'time': LD(post.repost.post.post.createdAt)}, {'originalComment': {'href': post.repost.post.post.internalURL, 'class': 'grayText'} }) }}
 			{%- endif -%}
 			{%- else -%}
-			<a href="{{ post.repost.post.post.internalURL }}" class="grayText">{{ LD(post.repost.post.post.createdAt) }}</a>
+			<a href="{{ post.repost.post.post.internalURL }}" onclick="return openPostLayer('{{ post.repost.post.post.id }}')" class="grayText">{{ LD(post.repost.post.post.createdAt) }}</a>
 			{%- endif -%}
 		</div>
 	</div>

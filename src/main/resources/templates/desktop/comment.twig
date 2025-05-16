@@ -57,10 +57,10 @@
 					</span>
 				</span>
 				{%- endif -%}
-				<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.idString}})" class="postLink">{{LD(realPost.createdAt)}}</a>
+				<a href="{{realPost.internalURL}}" onclick="return highlightComment('{{ realPost.idString }}')" class="postLink">{{LD(realPost.createdAt)}}</a>
 				{%- if not hideActions %}
 				{% if not hideReplyLink and canComment and currentUser is not null %}
-					| <a href="{{realPost.internalURL}}" onclick="return showCommentReplyForm('{{realPost.idString}}', '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', {{ commentViewType!='FLAT' }}, {{ commentViewType=='TWO_LEVEL' and replyLevel>1 ? realPost.replyKey[1] : 0 }})">{{L('add_reply')}}</a>
+					| <a href="{{realPost.internalURL}}" onclick="return showCommentReplyForm('{{realPost.idString}}', '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', {{ commentViewType!='FLAT' }}, '{{ commentViewType=='TWO_LEVEL' and replyLevel>0 ? realPost.replyKeyAsStrings[0] : '' }}')">{{ L('add_reply') }}</a>
 				{% endif %}
 				{% if not realPost.local %}
 					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>

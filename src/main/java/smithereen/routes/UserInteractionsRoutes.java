@@ -31,6 +31,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
+import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
 
@@ -52,6 +53,12 @@ public class UserInteractionsRoutes{
 				case Photo photo -> photo.getURL();
 				case Comment comment -> comment.getInternalURL().toString();
 			};
+
+			String rid=req.queryParams("rid");
+			if(StringUtils.isNotEmpty(rid)){
+				elementID+="_"+rid;
+			}
+
 			String urlPath=liked ? "unlike" : "like";
 			WebDeltaResponse b=new WebDeltaResponse(resp)
 					.setContent("likeCounter"+elementID, String.valueOf(interactions.likeCount))
@@ -72,8 +79,8 @@ public class UserInteractionsRoutes{
 		User self=info!=null && info.account!=null ? info.account.user : null;
 
 		context(req).getPrivacyController().enforceObjectPrivacy(self, obj);
-		List<User> users=ctx.getUserInteractionsController().getLikesForObject(obj, self, 0, 6).list;
-		String _content=new RenderedTemplateResponse("like_popover", req).with("users", users).renderToString();
+		List<Integer> users=ctx.getUserInteractionsController().getLikesForObject(obj, self, 0, 6).list;
+		String _content=new RenderedTemplateResponse("like_popover", req).with("ids", users).with("users", ctx.getUsersController().getUsers(users)).renderToString();
 		UserInteractions interactions=obj instanceof Post post ?
 				ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self).get(post.getIDForInteractions())
 				: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self).get(obj.getObjectID());
@@ -87,6 +94,11 @@ public class UserInteractionsRoutes{
 			case Photo photo -> photo.getURL();
 			case Comment comment -> comment.getInternalURL().toString();
 		};
+
+		String rid=req.queryParams("rid");
+		if(StringUtils.isNotEmpty(rid)){
+			elementID+="_"+rid;
+		}
 
 		WebDeltaResponse b=new WebDeltaResponse(resp)
 				.setContent("likeCounter"+elementID, String.valueOf(interactions.likeCount));
@@ -117,7 +129,8 @@ public class UserInteractionsRoutes{
 				ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self!=null ? self.user : null).get(post.getIDForInteractions())
 				: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self!=null ? self.user : null).get(obj.getObjectID());
 		int offset=offset(req);
-		PaginatedList<User> likes=ctx.getUserInteractionsController().getLikesForObject(obj, null, offset, 100);
+		PaginatedList<Integer> likes=ctx.getUserInteractionsController().getLikesForObject(obj, null, offset, 100);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(likes.list);
 		RenderedTemplateResponse model;
 		if(isMobile(req)){
 			model=new RenderedTemplateResponse("content_interactions_likes", req);
@@ -137,6 +150,7 @@ public class UserInteractionsRoutes{
 		};
 
 		model.paginate(likes)
+				.with("users", users)
 				.with("emptyMessage", lang(req).get("likes_empty"))
 				.with("interactions", interactions)
 				.with("object", obj)
@@ -145,7 +159,7 @@ public class UserInteractionsRoutes{
 				.with("elementID", elementID);
 
 		if(!isMobile(req)){
-			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(likes.list);
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(users.values());
 			model.with("avatarPhotos", userPhotos)
 					.with("avatarPvInfos", userPhotos.values()
 							.stream()
@@ -199,16 +213,7 @@ public class UserInteractionsRoutes{
 	}
 
 	static Object remoteInteraction(Request req, Response resp, String url, String title, Post postToEmbed, boolean hideWorksWith){
-		RenderedTemplateResponse model;
-		if(isAjax(req)){
-			if(isMobile(req)){
-				model=new RenderedTemplateResponse("remote_interaction", req);
-			}else{
-				model=new RenderedTemplateResponse("layer_with_title", req).with("contentTemplate", "remote_interaction");
-			}
-		}else{
-			model=new RenderedTemplateResponse("content_wrap", req).with("contentTemplate", "remote_interaction");
-		}
+		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("remote_interaction", req);
 		model.with("contentURL", url).with("serverSignupMode", Config.signupMode).with("hideWorksWith", hideWorksWith);
 		model.pageTitle(title);
 		if(!isMobile(req) && postToEmbed!=null && postToEmbed.isLocal())

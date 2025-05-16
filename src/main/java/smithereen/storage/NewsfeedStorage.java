@@ -5,8 +5,11 @@ import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
 
+import smithereen.Utils;
 import smithereen.model.PaginatedList;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.filtering.FilterContext;
+import smithereen.model.filtering.WordFilter;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -21,13 +24,13 @@ public class NewsfeedStorage{
 					.selectFrom("newsfeed")
 					.count()
 					.whereIn("type", types)
-					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY))", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
+					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1 AND muted=0) OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY))", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
 					.executeAndGetInt();
 			List<NewsfeedEntry> feed=new SQLQueryBuilder(conn)
 					.selectFrom("newsfeed")
 					.columns("type", "object_id", "author_id", "id", "time")
 					.whereIn("type", types)
-					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=?) OR (type=0 AND author_id=?)) AND `id`<=?)", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
+					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1 AND muted=0) OR (type=0 AND author_id=?)) AND `id`<=?)", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
 					.orderBy("time DESC")
 					.limit(count, offset)
 					.executeAsStream(NewsfeedEntry::fromResultSet)
@@ -106,6 +109,54 @@ public class NewsfeedStorage{
 		new SQLQueryBuilder()
 				.deleteFrom("newsfeed_groups")
 				.where("type=? AND object_id=?", type.ordinal(), objectID)
+				.executeNoResult();
+	}
+
+	public static List<WordFilter> getUserWordFilters(int userID, boolean includeExpired) throws SQLException{
+		SQLQueryBuilder b=new SQLQueryBuilder()
+				.selectFrom("word_filters")
+				.where("owner_id=?", userID);
+		if(!includeExpired){
+			b.andWhere("(expires_at IS NULL OR expires_at>CURRENT_TIMESTAMP())");
+		}
+		return b.executeAsStream(WordFilter::fromResultSet).toList();
+	}
+
+	public static WordFilter getWordFilter(int userID, int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("word_filters")
+				.where("id=? AND owner_id=?", id, userID)
+				.executeAndGetSingleObject(WordFilter::fromResultSet);
+	}
+
+	public static int createWordFilter(int userID, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("word_filters")
+				.value("owner_id", userID)
+				.value("name", name)
+				.value("words", Utils.gson.toJson(words))
+				.value("contexts", (int)Utils.serializeEnumSet(contexts))
+				.value("expires_at", expiresAt)
+				.value("action", 0)
+				.executeAndGetID();
+	}
+
+	public static void updateWordFilter(int userID, int id, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt) throws SQLException{
+		new SQLQueryBuilder()
+				.update("word_filters")
+				.where("id=? AND owner_id=?", id, userID)
+				.value("name", name)
+				.value("words", Utils.gson.toJson(words))
+				.value("contexts", (int)Utils.serializeEnumSet(contexts))
+				.value("expires_at", expiresAt)
+				.value("action", 0)
+				.executeAndGetID();
+	}
+
+	public static void deleteWordFilter(int userID, int id) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("word_filters")
+				.where("id=? AND owner_id=?", id, userID)
 				.executeNoResult();
 	}
 }

@@ -40,20 +40,23 @@ public class FetchPhotoAlbumPhotosTask extends ForwardPaginatingCollectionTask{
 
 	@Override
 	protected void compute(){
-		super.compute();
-		if(album.preview!=null && album.preview.link!=null){
-			long newCoverID=context.getPhotosController().getPhotoIdByActivityPubId(album.preview.link);
-			if(newCoverID!=0 && newCoverID!=nativeAlbum.coverID){
-				nativeAlbum.coverID=newCoverID;
-				context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativeAlbum, album);
+		try{
+			super.compute();
+			if(album.preview!=null && album.preview.link!=null){
+				long newCoverID=context.getPhotosController().getPhotoIdByActivityPubId(album.preview.link);
+				if(newCoverID!=0 && newCoverID!=nativeAlbum.coverID){
+					nativeAlbum.coverID=newCoverID;
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativeAlbum, album);
+				}
 			}
-		}
-		PhotoAlbum finalAlbum=context.getPhotosController().getAlbumIgnoringPrivacy(nativeAlbum.id);
-		if(finalAlbum.numPhotos>seenPhotos.size()){
-			context.getPhotosController().deleteRemotePhotosNotInSet(finalAlbum, seenPhotos);
-		}
-		synchronized(apw){
-			fetchingPhotoAlbums.remove(collectionID);
+			PhotoAlbum finalAlbum=context.getPhotosController().getAlbumIgnoringPrivacy(nativeAlbum.id);
+			if(finalAlbum.numPhotos>seenPhotos.size()){
+				context.getPhotosController().deleteRemotePhotosNotInSet(finalAlbum, seenPhotos);
+			}
+		}finally{
+			synchronized(apw){
+				fetchingPhotoAlbums.remove(collectionID);
+			}
 		}
 	}
 

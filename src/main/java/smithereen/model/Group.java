@@ -2,6 +2,7 @@ package smithereen.model;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.net.URI;
 import java.sql.ResultSet;
@@ -10,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 
 import smithereen.Config;
+import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Event;
@@ -58,6 +60,11 @@ public class Group extends Actor{
 	}
 
 	@Override
+	public URI getWallCommentsURL(){
+		return Config.localURI("/groups/"+id+"/wallComments");
+	}
+
+	@Override
 	public URI getPhotoAlbumsURL(){
 		return Config.localURI("/groups/"+id+"/albums");
 	}
@@ -70,6 +77,14 @@ public class Group extends Actor{
 	@Override
 	public String getName(){
 		return name;
+	}
+
+	@Override
+	public String serializeProfileFields(){
+		JsonObject o=new JsonObject();
+		if(status!=null)
+			o.add("status", Utils.gson.toJsonTree(status));
+		return o.toString();
 	}
 
 	@Override
@@ -97,6 +112,14 @@ public class Group extends Actor{
 			event.startTime=eventStartTime;
 			event.endTime=eventEndTime;
 			attachment=List.of(event);
+		}
+
+		String fields=res.getString("profile_fields");
+		if(fields!=null){
+			JsonObject o=JsonParser.parseString(fields).getAsJsonObject();
+			if(o.has("status")){
+				status=Utils.gson.fromJson(o.get("status"), ActorStatus.class);
+			}
 		}
 	}
 

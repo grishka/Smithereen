@@ -1,5 +1,5 @@
 {
-  "write_on_X_wall": "Написать на стене {name, inflect, genitive}...",
+  "write_on_X_wall": "Написать на стене {name, inflect, genitive}…",
   "birthday": "День рождения",
   "write_on_own_wall": "Что у ваc нового?",
   "profile_about": "О себе",
@@ -105,5 +105,14 @@
   "profile_user_is_friend": "У вас в друзьях",
   "profile_user_you_follow": "Вы подписаны",
   "profile_user_friend_request_sent": "Заявка отправлена",
-  "profile_user_friend_request_received": "Ответить на заявку"
+  "profile_user_friend_request_received": "Ответить на заявку",
+  "profile_mute": "Скрывать новости {name, inflect, genitive}",
+  "profile_unmute": "Показывать новости {name, inflect, genitive}",
+  "profile_user_muted": "Новости {name, inflect, genitive} больше не будут показываться в вашей ленте",
+  "profile_user_unmuted": "Новости {name, inflect, genitive} будут показываться в вашей ленте",
+  "user_online": "Онлайн",
+  "user_last_seen": "{gender, select, female {Заходила} other {Заходил}} {date}",
+  "profile_update_status": "изменить статус",
+  "profile_status_hint": "Введите здесь текст вашего статуса.",
+  "update_status": "Изменить статус"
 }

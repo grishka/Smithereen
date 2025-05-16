@@ -1,11 +1,15 @@
 ///<reference path="./PostForm.ts"/>
+///<reference path="./Notifier.ts"/>
 
 declare var userConfig:any;
 declare var langKeys:{[key:string]:string|string[]};
 declare var mobile:boolean;
+var cur:any={};
 
 // Use Cmd instead of Ctrl on Apple devices.
 var isApple:boolean=navigator.platform.indexOf("Mac")==0 || navigator.platform=="iPhone" || navigator.platform=="iPad" || navigator.platform=="iPod touch";
+
+var ignoreNextPopState:boolean=false;
 
 // window.onerror=function(message, source, lineno, colno, error){
 // 	alert("JS error:\n\n"+message);
@@ -172,6 +176,11 @@ document.addEventListener("mouseover", (ev)=>{
 		var tooltip=target.dataset.tooltip;
 		showTooltip(target, tooltip);
 	}else if(!mobile){
+		if(target.tagName!='A'){
+			target=target.closest("a");
+			if(!target)
+				return;
+		}
 		if(target.classList.contains("hoverCardTrigger")){
 			if(target.classList.contains("mention")){
 				showMentionHoverCard(target, ev);
@@ -200,10 +209,26 @@ window.addEventListener("beforeunload", (ev)=>{
 });
 
 window.addEventListener("popstate", (ev)=>{
-	if(ev.state && ev.state.layer){
-		if(ev.state.layer=="PhotoViewer"){
-			doOpenPhotoViewer(ev.state.pvInline, ev.state.pvListURL, true);
+	if(ignoreNextPopState){
+		ignoreNextPopState=false;
+		return;
+	}
+	if(ev.state){
+		if(ev.state.layer){
+			if(ev.state.layer=="PhotoViewer"){
+				doOpenPhotoViewer(ev.state.pvInline, ev.state.pvListURL, true);
+			}else if(ev.state.layer=="Post"){
+				openPostLayer(ev.state.id, ev.state.commentID, true);
+			}
+		}else if(ev.state.type=="al"){
+			ajaxNavigate(window.location.href, false);
 		}
+	}else{
+		ajaxNavigate(window.location.href, false);
 	}
 }, false);
+
+if(!mobile && userConfig.notifier && userConfig.notifier.enabled){
+	Notifier.start();
+}
 

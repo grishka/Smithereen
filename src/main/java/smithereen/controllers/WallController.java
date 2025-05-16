@@ -25,6 +25,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static smithereen.Utils.ensureUserNotBlocked;
+
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -33,6 +35,10 @@ import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
@@ -54,10 +60,6 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.viewmodel.PostViewModel;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
@@ -67,8 +69,6 @@ import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
-
-import static smithereen.Utils.*;
 
 public class WallController{
 	private static final Logger LOG=LoggerFactory.getLogger(WallController.class);
@@ -166,9 +166,11 @@ public class WallController{
 				// Reposted post must be public
 				context.getPrivacyController().enforcePostPrivacy(null, repost);
 				// Author must not be blocked by reposted post author or OP
-				ensureUserNotBlocked(author, context.getUsersController().getUserOrThrow(repost.authorID));
+				User repostAuthor=context.getUsersController().getUserOrThrow(repost.authorID);
+				ensureUserNotBlocked(author, repostAuthor);
 				if(repost.authorID!=repost.ownerID)
 					ensureUserNotBlocked(author, context.getUsersController().getUserOrThrow(repost.ownerID));
+				context.getFriendsController().incrementHintsRank(author, repostAuthor, 5);
 			}
 
 			final HashSet<User> mentionedUsers=new HashSet<>();
@@ -213,6 +215,8 @@ public class WallController{
 			if(text.isEmpty() && StringUtils.isEmpty(attachments) && pollID==0 && repost==null)
 				throw new BadRequestException("Empty post");
 
+			EnumSet<Post.Flag> flags=EnumSet.noneOf(Post.Flag.class);
+
 			int ownerUserID=wallOwner instanceof User u ? u.id : 0;
 			int ownerGroupID=wallOwner instanceof Group g ? g.id : 0;
 			boolean isTopLevelPostOwn=true;
@@ -225,6 +229,7 @@ public class WallController{
 				}else{
 					topLevel=inReplyTo;
 				}
+				context.getPrivacyController().enforcePostPrivacy(author, topLevel);
 
 				OwnerAndAuthor topLevelOwnership=getContentAuthorAndOwner(topLevel);
 				Actor topLevelOwner=topLevelOwnership.owner();
@@ -234,24 +239,39 @@ public class WallController{
 				if(topLevel.isGroupOwner()){
 					ownerGroupID=-topLevel.ownerID;
 					ownerUserID=0;
-					ensureUserNotBlocked(author, (Group)topLevelOwner);
+					ensureUserNotBlocked(author, topLevelOwner);
 					isTopLevelPostOwn=false;
 				}else{
 					ownerGroupID=0;
 					ownerUserID=topLevel.ownerID;
-					ensureUserNotBlocked(author, (User)topLevelOwner);
+					ensureUserNotBlocked(author, topLevelOwner);
 					isTopLevelPostOwn=ownerUserID==topLevel.authorID;
 					context.getPrivacyController().enforceUserPrivacy(author, (User)topLevelOwner, UserPrivacySettingKey.WALL_COMMENTING);
 				}
+				if(inReplyTo!=topLevel){
+					User parentAuthor=context.getUsersController().getUserOrThrow(inReplyTo.authorID);
+					context.getFriendsController().incrementHintsRank(author, parentAuthor, 3);
+					context.getPrivacyController().enforcePostPrivacy(author, inReplyTo);
+				}
+				if(topLevelAuthor.id!=inReplyTo.authorID)
+					context.getFriendsController().incrementHintsRank(author, topLevelAuthor, 5);
+
+				if(topLevel.ownerID!=topLevel.authorID)
+					flags.add(Post.Flag.TOP_IS_WALL_TO_WALL);
 			}else{
 				replyKey=null;
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action);
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action, flags);
 			if(ownerUserID==userID && replyKey==null){
 				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
 			}else if(wallOwner instanceof Group g && replyKey==null){
 				context.getNewsfeedController().putGroupsFeedEntry(g, postID, NewsfeedEntry.Type.POST);
 			}
+
+			if(wallOwner instanceof User u && u.id!=author.id && (inReplyTo==null || inReplyTo.authorID!=u.id))
+				context.getFriendsController().incrementHintsRank(author, u, 3);
+			else if(wallOwner instanceof Group g)
+				context.getGroupsController().incrementHintsRank(author, g, 5);
 
 			Post post=PostStorage.getPostByID(postID, false);
 			if(post==null)
@@ -654,9 +674,9 @@ public class WallController{
 		}
 	}
 
-	public Map<URI, Integer> getPostLocalIDsByActivityPubIDs(@NotNull Collection<URI> ids, Actor owner){
+	public Map<URI, Integer> getPostLocalIDsByActivityPubIDs(@NotNull Collection<URI> ids, Actor owner, boolean comments){
 		try{
-			return PostStorage.getPostLocalIDsByActivityPubIDs(ids, owner instanceof User u ? u.id : 0, owner instanceof Group g ? g.id : 0);
+			return PostStorage.getPostLocalIDsByActivityPubIDs(ids, owner instanceof User u ? u.id : 0, owner instanceof Group g ? g.id : 0, comments);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -680,7 +700,7 @@ public class WallController{
 		}
 	}
 
-	public PaginatedList<PostViewModel> getReplies(@Nullable User self, List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount, CommentViewType type){
+	public PaginatedList<PostViewModel> getReplies(@Nullable User self, List<Integer> key, int primaryOffset, int primaryCount, int secondaryCount, CommentViewType type, boolean reversed){
 		try{
 			LOG.trace("Getting post replies: priOffset={}, priCount={}, secCount={}, key={}, type={}", primaryOffset, primaryCount, secondaryCount, key, type);
 			Post threadParent=PostStorage.getPostByID(key.getLast(), true);
@@ -689,12 +709,12 @@ public class WallController{
 
 			// For two-level and flat, if we're getting replies to a comment, always treat them as a flat list
 			if((type==CommentViewType.TWO_LEVEL && threadParent.getReplyLevel()>0) || type==CommentViewType.FLAT){
-				PaginatedList<PostViewModel> posts=PostViewModel.wrap(PostStorage.getRepliesFlat(key, primaryOffset, primaryCount));
+				PaginatedList<PostViewModel> posts=PostViewModel.wrap(PostStorage.getRepliesFlat(key, primaryOffset, primaryCount, reversed));
 				context.getPrivacyController().filterPostViewModels(self, posts.list);
 				fillInParentAuthors(posts.list, threadParent);
 				return posts;
 			}
-			PostStorage.ThreadedReplies tr=PostStorage.getRepliesThreaded(key, primaryOffset, primaryCount, secondaryCount, type==CommentViewType.TWO_LEVEL);
+			PostStorage.ThreadedReplies tr=PostStorage.getRepliesThreaded(key, primaryOffset, primaryCount, secondaryCount, type==CommentViewType.TWO_LEVEL, reversed);
 
 			List<PostViewModel> posts=tr.posts().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();
 			List<PostViewModel> replies=tr.replies().stream().filter(p->context.getPrivacyController().checkPostPrivacy(self, p)).map(PostViewModel::new).toList();
@@ -814,9 +834,9 @@ public class WallController{
 		}
 	}
 
-	public List<User> getPollOptionVoters(PollOption option, int offset, int count){
+	public List<Integer> getPollOptionVoters(PollOption option, int offset, int count){
 		try{
-			return UserStorage.getByIdAsList(PostStorage.getPollOptionVoters(option.id, offset, count));
+			return PostStorage.getPollOptionVoters(option.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -867,7 +887,7 @@ public class WallController{
 		}
 	}
 
-	public void populateReposts(User self, List<PostViewModel> posts, int maxDepth){
+	public void populateReposts(User self, Collection<PostViewModel> posts, int maxDepth){
 		HashMap<Integer, PostViewModel> knownPosts=posts.stream().collect(Collectors.toMap(p->p.post.id, Function.identity(), (a, b)->b, HashMap::new));
 		HashSet<Integer> needPosts=new HashSet<>();
 		HashSet<PostViewModel> reposts=new HashSet<>(), nextReposts=new HashSet<>();
@@ -917,6 +937,17 @@ public class WallController{
 	public PaginatedList<Post> getPostReposts(Post post, int offset, int count){
 		try{
 			return PostStorage.getPostReposts(post.getIDForInteractions(), offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, PostViewModel> getUserReplies(User self, Collection<List<Integer>> replyKeys){
+		if(replyKeys.isEmpty())
+			return Map.of();
+		try{
+			List<Post> posts=PostStorage.getUserReplies(self.id, replyKeys);
+			return posts.stream().collect(Collectors.toMap(p->p.replyKey.getLast(), PostViewModel::new, (p1, p2)->p1.post.id>p2.post.id ? p1 : p2));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

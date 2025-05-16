@@ -249,6 +249,45 @@ CREATE TABLE `email_codes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `fasp_debug_callbacks`
+--
+
+CREATE TABLE `fasp_debug_callbacks` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `provider_id` bigint unsigned NOT NULL,
+  `ip` binary(16) NOT NULL,
+  `body` text NOT NULL,
+  `received_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `provider_id` (`provider_id`),
+  CONSTRAINT `fasp_debug_callbacks_ibfk_1` FOREIGN KEY (`provider_id`) REFERENCES `fasp_providers` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `fasp_providers`
+--
+
+CREATE TABLE `fasp_providers` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `confirmed` tinyint(1) NOT NULL DEFAULT '0',
+  `name` varchar(300) NOT NULL,
+  `base_url` varchar(300) NOT NULL,
+  `sign_in_url` varchar(300) DEFAULT NULL,
+  `remote_id` varchar(64) NOT NULL,
+  `public_key` blob NOT NULL,
+  `private_key` blob NOT NULL,
+  `capabilities` json NOT NULL,
+  `enabled_capabilities` json NOT NULL,
+  `privacy_policy` json DEFAULT NULL,
+  `contact_email` varchar(300) DEFAULT NULL,
+  `actor_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `base_url` (`base_url`),
+  KEY `confirmed` (`confirmed`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `followings`
 --
 
@@ -257,12 +296,33 @@ CREATE TABLE `followings` (
   `followee_id` int unsigned NOT NULL,
   `mutual` tinyint(1) NOT NULL DEFAULT '0',
   `accepted` tinyint(1) NOT NULL DEFAULT '1',
+  `muted` tinyint(1) NOT NULL DEFAULT '0',
+  `hints_rank` int unsigned NOT NULL DEFAULT '0',
+  `lists` bit(64) NOT NULL DEFAULT b'0',
+  `added_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY `follower_id` (`follower_id`),
   KEY `followee_id` (`followee_id`),
   KEY `mutual` (`mutual`),
   KEY `accepted` (`accepted`),
+  KEY `muted` (`muted`),
+  KEY `hints_rank` (`hints_rank`),
+  KEY `added_at` (`added_at`),
   CONSTRAINT `followings_ibfk_1` FOREIGN KEY (`follower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `followings_ibfk_2` FOREIGN KEY (`followee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `friend_lists`
+--
+
+CREATE TABLE `friend_lists` (
+  `id` tinyint unsigned NOT NULL,
+  `owner_id` int unsigned NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`,`owner_id`),
+  KEY `owner_id` (`owner_id`),
+  CONSTRAINT `friend_lists_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -331,8 +391,10 @@ CREATE TABLE `group_memberships` (
   `tentative` tinyint(1) NOT NULL DEFAULT '0',
   `accepted` tinyint(1) NOT NULL DEFAULT '1',
   `time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `hints_rank` int unsigned NOT NULL DEFAULT '0',
   UNIQUE KEY `user_id` (`user_id`,`group_id`),
   KEY `group_id` (`group_id`),
+  KEY `hints_rank` (`hints_rank`),
   CONSTRAINT `group_memberships_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `group_memberships_ibfk_2` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -839,6 +901,22 @@ CREATE TABLE `stats_daily` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `user_action_log`
+--
+
+CREATE TABLE `user_action_log` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `action` int unsigned NOT NULL,
+  `user_id` int unsigned NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `info` json NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `action` (`action`),
+  CONSTRAINT `user_action_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `user_agents`
 --
 
@@ -904,10 +982,16 @@ CREATE TABLE `users` (
   `privacy` json DEFAULT NULL,
   `ban_status` tinyint unsigned NOT NULL DEFAULT '0',
   `ban_info` json DEFAULT NULL,
+  `presence` json DEFAULT NULL,
+  `is_online` tinyint(1) GENERATED ALWAYS AS (ifnull(cast(json_extract(`presence`,_utf8mb4'$.isOnline') as unsigned),0)) VIRTUAL NOT NULL,
+  `num_followers` bigint NOT NULL DEFAULT '0',
+  `num_following` bigint NOT NULL DEFAULT '0',
+  `num_friends` bigint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`),
-  KEY `ban_status` (`ban_status`)
+  KEY `ban_status` (`ban_status`),
+  KEY `num_followers` (`num_followers`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -936,8 +1020,9 @@ CREATE TABLE `wall_posts` (
   `source` text,
   `source_format` tinyint unsigned DEFAULT NULL,
   `privacy` tinyint unsigned NOT NULL DEFAULT '0',
-  `flags` bigint unsigned NOT NULL DEFAULT '0',
+  `flags` bit(64) NOT NULL DEFAULT b'0',
   `action` tinyint unsigned DEFAULT NULL,
+  `top_parent_is_wall_to_wall` tinyint(1) GENERATED ALWAYS AS (((`flags` & 2) = 2)) VIRTUAL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -946,10 +1031,29 @@ CREATE TABLE `wall_posts` (
   KEY `reply_key` (`reply_key`),
   KEY `owner_group_id` (`owner_group_id`),
   KEY `poll_id` (`poll_id`),
+  KEY `top_parent_is_wall_to_wall` (`top_parent_is_wall_to_wall`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+--
+-- Table structure for table `word_filters`
+--
+
+CREATE TABLE `word_filters` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int unsigned NOT NULL,
+  `name` varchar(300) NOT NULL,
+  `words` json NOT NULL,
+  `contexts` bit(32) NOT NULL,
+  `expires_at` timestamp NULL DEFAULT NULL,
+  `action` tinyint unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `owner_id` (`owner_id`),
+  KEY `expires_at` (`expires_at`),
+  CONSTRAINT `word_filters_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-01-17  6:58:44
+-- Dump completed on 2025-04-27  4:28:05

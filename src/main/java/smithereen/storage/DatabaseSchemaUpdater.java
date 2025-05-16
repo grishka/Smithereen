@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=60;
+	public static final int SCHEMA_VERSION=71;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -852,6 +852,109 @@ public class DatabaseSchemaUpdater{
 						  KEY `group_id` (`group_id`)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
+			case 61 -> conn.createStatement().execute("ALTER TABLE followings ADD `muted` tinyint(1) NOT NULL DEFAULT '0', ADD `hints_rank` int unsigned NOT NULL DEFAULT '0'," +
+					" ADD `lists` bit(64) NOT NULL DEFAULT b'0', ADD KEY `muted` (`muted`), ADD KEY `hints_rank` (`hints_rank`)");
+			case 62 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `word_filters` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `owner_id` int unsigned NOT NULL,
+						  `name` varchar(300) COLLATE utf8mb4_general_ci NOT NULL,
+						  `words` json NOT NULL,
+						  `contexts` bit(32) NOT NULL,
+						  `expires_at` timestamp NULL DEFAULT NULL,
+						  `action` tinyint unsigned NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `owner_id` (`owner_id`),
+						  KEY `expires_at` (`expires_at`),
+						  CONSTRAINT `word_filters_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 63 -> {
+				conn.createStatement().execute("ALTER TABLE users ADD `presence` json DEFAULT NULL, ADD `is_online` BOOL AS (IFNULL(CAST(presence->'$.isOnline' AS UNSIGNED), 0)) NOT NULL, " +
+						"ADD KEY `is_online` (`is_online`), ADD `num_followers` bigint NOT NULL DEFAULT '0', ADD `num_following` bigint NOT NULL DEFAULT '0', ADD `num_friends` bigint NOT NULL DEFAULT '0'");
+			}
+			case 64 -> conn.createStatement().execute("ALTER TABLE group_memberships ADD `hints_rank` int unsigned NOT NULL DEFAULT '0', ADD KEY `hints_rank` (`hints_rank`)");
+			case 65 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `user_action_log` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `action` int unsigned NOT NULL,
+						  `user_id` int unsigned NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `info` json NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `user_id` (`user_id`),
+						  KEY `action` (`action`),
+						  CONSTRAINT `user_action_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 66 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `fasp_providers` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `confirmed` tinyint(1) NOT NULL DEFAULT '0',
+						  `name` varchar(300) NOT NULL,
+						  `base_url` varchar(300) NOT NULL,
+						  `sign_in_url` varchar(300) DEFAULT NULL,
+						  `remote_id` varchar(64) NOT NULL,
+						  `public_key` blob NOT NULL,
+						  `private_key` blob NOT NULL,
+						  `capabilities` json NOT NULL,
+						  `enabled_capabilities` json NOT NULL,
+						  `privacy_policy` json DEFAULT NULL,
+						  `contact_email` varchar(300) DEFAULT NULL,
+						  `actor_id` int DEFAULT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `base_url` (`base_url`),
+						  KEY `confirmed` (`confirmed`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				conn.createStatement().execute("""
+						CREATE TABLE `fasp_debug_callbacks` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `provider_id` bigint unsigned NOT NULL,
+						  `ip` binary(16) NOT NULL,
+						  `body` text COLLATE utf8mb4_general_ci NOT NULL,
+						  `received_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  KEY `provider_id` (`provider_id`),
+						  CONSTRAINT `fasp_debug_callbacks_ibfk_1` FOREIGN KEY (`provider_id`) REFERENCES `fasp_providers` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 67 -> {
+				conn.createStatement().execute("UPDATE `users` SET num_followers=(SELECT COUNT(*) FROM followings WHERE followee_id=id)");
+				conn.createStatement().execute("UPDATE `users` SET num_following=(SELECT COUNT(*) FROM followings WHERE follower_id=id)");
+				conn.createStatement().execute("UPDATE `users` SET num_friends=(SELECT COUNT(*) FROM followings WHERE follower_id=id AND mutual=1)");
+			}
+			case 68 -> conn.createStatement().execute("ALTER TABLE `users` ADD KEY num_followers (num_followers)");
+			case 69 -> conn.createStatement().execute("ALTER TABLE followings ADD `added_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD KEY `added_at` (`added_at`)");
+			case 70 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `friend_lists` (
+						  `id` tinyint unsigned NOT NULL,
+						  `owner_id` int unsigned NOT NULL,
+						  `name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`,`owner_id`),
+						  CONSTRAINT `friend_lists_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 71 -> {
+				conn.createStatement().execute("ALTER TABLE wall_posts CHANGE flags flags bit(64) NOT NULL DEFAULT b'0', ADD top_parent_is_wall_to_wall BOOL AS ((flags & 2)=2), ADD KEY top_parent_is_wall_to_wall (top_parent_is_wall_to_wall)");
+				List<Integer> wallPostsWithComments=new SQLQueryBuilder(conn)
+						.selectFrom("wall_posts")
+						.columns("id")
+						.where("author_id<>owner_user_id AND reply_count>0 AND reply_key IS NULL")
+						.executeAndGetIntList();
+				for(int postID:wallPostsWithComments){
+					new SQLQueryBuilder(conn)
+							.update("wall_posts")
+							.where("reply_key LIKE BINARY bin_prefix(?)", (Object) Utils.serializeIntArray(new int[]{postID}))
+							.valueExpr("flags", "flags | 2")
+							.executeNoResult();
+				}
+			}
 		}
 	}
 
@@ -1034,7 +1137,7 @@ public class DatabaseSchemaUpdater{
 				}else{
 					throw new IllegalStateException();
 				}
-				if(!attachments.getFirst().has("_p"))
+				if(!attachments.getFirst().has("_lid"))
 					continue;
 				long[] attachmentIDs=migrateMediaAttachments(conn, attachments, ownerID);
 				JsonArray newAttachments=new JsonArray();
@@ -1080,7 +1183,7 @@ public class DatabaseSchemaUpdater{
 				}else{
 					throw new IllegalStateException();
 				}
-				if(!attachments.getFirst().has("_p"))
+				if(!attachments.getFirst().has("_lid"))
 					continue;
 				long[] attachmentIDs=migrateMediaAttachments(conn, attachments, ownerID);
 				JsonArray newAttachments=new JsonArray();
@@ -1111,7 +1214,7 @@ public class DatabaseSchemaUpdater{
 
 	private static long migrateOneAvatar(DatabaseConnection conn, JsonObject avaObj, int id) throws SQLException{
 		String fileID=avaObj.get("_lid").getAsString();
-		String dirName=avaObj.get("_p").getAsString();
+		String dirName=avaObj.has("_p") ? avaObj.get("_p").getAsString() : "avatars";
 
 		File actualFile=new File(Config.uploadPath, dirName+"/"+fileID+".webp");
 		if(!actualFile.exists()){
@@ -1155,7 +1258,7 @@ public class DatabaseSchemaUpdater{
 		int i=0;
 		for(JsonObject obj:attachments){
 			String fileID=obj.get("_lid").getAsString();
-			String dirName=obj.get("_p").getAsString();
+			String dirName=obj.has("_p") ? obj.get("_p").getAsString() : "post_media";
 
 			File actualFile=new File(Config.uploadPath, dirName+"/"+fileID+".webp");
 			if(!actualFile.exists()){

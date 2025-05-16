@@ -30,7 +30,7 @@ public class PersonAddPersonHandler extends ActivityTypeHandler<ForeignUser, Add
 				BackgroundTaskRunner.getInstance().submit(()->{
 					try{
 						context.appContext.getObjectLinkResolver().ensureObjectIsInCollection(foreignUser, foreignUser.getFriendsURL(), actor.activityPubID);
-						context.appContext.getFriendsController().storeFriendship(actor, object);
+						context.appContext.getFriendsController().storeFriendship(actor, object, true);
 					}catch(Exception x){
 						LOG.warn("Error verifying that {} is a friend of {} or storing that relationship", actor.activityPubID, object.activityPubID);
 					}

@@ -1,5 +1,6 @@
 package smithereen.util;
 
+import java.net.IDN;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
@@ -10,6 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -69,6 +71,10 @@ public class UriBuilder{
 	}
 
 	public UriBuilder authority(String host, int port){
+		if(port==-1){
+			this.authority=host;
+			return this;
+		}
 		if(port<0 || port>65536)
 			throw new IllegalArgumentException("Invalid port value "+port);
 		this.authority=host+":"+port;
@@ -181,6 +187,17 @@ public class UriBuilder{
 
 	public static URI parseAndEncode(String str) throws URISyntaxException{
 		URI uri=new URI(str);
+		if("https".equals(uri.getScheme()) || "http".equals(uri.getScheme())){
+			if(uri.getHost()==null){
+				String authority=uri.getAuthority();
+				if(StringUtils.isEmpty(authority))
+					throw new URISyntaxException(str, "URI authority is empty");
+				if(!authority.matches("^[a-zA-Z0-9.-]$")){
+					String idnDomain=authority.split(":")[0];
+					uri=new UriBuilder(uri).authority(IDN.toASCII(idnDomain, uri.getPort())).build();
+				}
+			}
+		}
 		for(char c:str.toCharArray()){
 			if(c>128){
 				return URI.create(uri.toASCIIString());

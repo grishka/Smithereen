@@ -271,6 +271,7 @@ public class GroupsRoutes{
 			if(membershipState==Group.MembershipState.REQUESTED)
 				model.with("membershipStateText", l.get("requested_to_join"));
 			model.with("isBookmarked", ctx.getBookmarksController().isGroupBookmarked(self.user, group));
+			ctx.getGroupsController().incrementHintsRank(self.user, group, 1);
 		}else{
 			HashMap<String, String> meta=new LinkedHashMap<>();
 			meta.put("og:type", "profile");
@@ -421,14 +422,16 @@ public class GroupsRoutes{
 		SessionInfo info=sessionInfo(req);
 		ctx.getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
-		PaginatedList<User> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative);
+		PaginatedList<Integer> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative);
 		model.paginate(members);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(members.list);
+		model.with("users", users);
 		model.with("summary", lang(req).get(tentative ? "summary_event_X_tentative_members" : (group.isEvent() ? "summary_event_X_members" : "summary_group_X_members"), Map.of("count", tentative ? group.tentativeMemberCount : group.memberCount)));
 		model.with("contentTemplate", "user_grid").with("title", group.name);
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		if(!isMobile(req)){
-			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(members.list);
+			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(users.values());
 			model.with("avatarPhotos", userPhotos)
 					.with("avatarPvInfos", userPhotos.values()
 							.stream()
@@ -467,7 +470,9 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
-		model.paginate(ctx.getGroupsController().getAllMembers(group, offset(req), 100));
+		PaginatedList<Integer> ids=ctx.getGroupsController().getAllMembers(group, offset(req), 100);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(ids.list);
+		model.paginate(new PaginatedList<User>(ids, ids.list.stream().map(users::get).toList()));
 		model.with("group", group).with("title", group.name);
 		model.with("adminIDs", ctx.getGroupsController().getAdmins(group).stream().map(adm->adm.user.id).collect(Collectors.toList()));
 		model.with("canAddAdmins", level.isAtLeast(Group.AdminLevel.ADMIN));
@@ -1007,5 +1012,29 @@ public class GroupsRoutes{
 		ctx.getActivityPubWorker().fetchActorContentCollections(group);
 		Lang l=lang(req);
 		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
+	}
+
+	public static Object updateGroupStatus(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroup(req);
+		String status=req.queryParams("status");
+		status=ctx.getGroupsController().updateStatus(self.user, group, status);
+		if(!isAjax(req)){
+			resp.redirect(back(req));
+			return "";
+		}
+		if(isMobile(req)){
+			return new WebDeltaResponse(resp).refresh();
+		}else{
+			WebDeltaResponse wdr=new WebDeltaResponse(resp)
+					.runScript("ge('profileStatusBox').customData.dismiss();");
+			if(StringUtils.isEmpty(status)){
+				wdr.hide("profileStatusCont").show("profileStatusLink");
+			}else{
+				wdr.show("profileStatusCont")
+						.hide("profileStatusLink")
+						.setContent("profileStatusCont", status);
+			}
+			return wdr;
+		}
 	}
 }

@@ -6,18 +6,19 @@
 </div>
 {% endif %}
 <div class="userGrid">
-	{% for user in items %}
+	{% for id in items %}
+	{% set actor=id>0 ? users[id] : groups[-id] %}
 	<div class="userGridItem">
-		{% if avatarPhotos contains user.id %}
+		{% if avatarPhotos contains id %}
 		<div class="avaZoomableW">
-			<a href="{{ user.profileURL }}"{{ profileRel(user) }}>{{ user | pictureForAvatar('b') }}</a>
+			<a href="{{ profileURL(id) }}"{{ profileRel(actor) }}>{{ actor | pictureForAvatar('b') }}</a>
 			<a href="{{ avatarPhotos[user.id].url }}" class="avaZoom ellipsize" data-pv="{{ json(avatarPvInfos[user.id]) }}" onclick="return openPhotoViewer(this)"><span class="icon"></span><span>{{ L('view_user_profile_photos') }}</span></a>
 		</div>
 		{% else %}
-		<a href="{{ user.profileURL }}"{{ profileRel(user) }}>{{ user | pictureForAvatar('b') }}</a>
+		<a href="{{ profileURL(id) }}"{{ profileRel(actor) }}>{{ actor | pictureForAvatar('b') }}</a>
 		{% endif %}
-		<a href="{{ user.profileURL }}"{{ profileRel(user) }}>
-			<div class="name ellipsize">{{ user | name }}</div>
+		<a href="{{ profileURL(id) }}"{{ profileRel(actor) }}>
+			<div class="name ellipsize">{{ actor | name }}</div>
 		</a>
 	</div>
 	{% endfor %}

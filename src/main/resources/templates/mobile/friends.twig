@@ -1,7 +1,55 @@
 {%extends "page"%}
+{% block headerTitle %}
+{% if tab=='friends' %}
+<input type="checkbox" id="headerDropdownToggler"/>
+<span class="title withDropdown">
+	<label class="dropdown" tabindex="0" for="headerDropdownToggler"><span id="headerTitle">
+		{% if section=='recent' %}
+		{{ L('new_friends') }}
+		{% elseif section=='list' %}
+		{{ allLists[listID].name }}
+		{% else %}
+		{{ L('friends') }}
+		{% endif %}
+	</span><span class="icon"></span></label>
+	<div class="titleDropdownW">
+		<label class="closer" for="headerDropdownToggler"></label>
+		<ul class="titleDropdown">{% set i=0 %}
+			<li style="--i: {{ i }}{% set i=i+1 %}"><a href="/users/{{ owner.id }}/friends" class="filterItem{{ tab=='friends' and section is empty ? ' selected' : '' }}">{{ L('all_friends') }}</a></li>
+			{% if currentUser is not null and currentUser.id==owner.id %}<li style="--i: {{ i }}{% set i=i+1 %}"><a href="/users/{{ owner.id }}/friends?section=recent" class="filterItem{{ tab=='friends' and section=='recent' ? ' selected' : '' }}">{{ L('new_friends') }}</a></li>{% endif %}
+			{% if publicLists is not empty %}
+			<li class="separator" style="--i: {{ i }}{% set i=i+1 %}"></li>
+			{% for list in publicLists %}
+			<li style="--i: {{ i }}{% set i=i+1 %}"><a href="/users/{{ owner.id }}/friends?section=list&list={{ list.id }}" class="filterItem{{ tab=='friends' and section=='list' and listID==list.id ? ' selected' : '' }}">{{ list.name }}</a></li>
+			{% endfor %}
+			{% endif %}
+			{% if currentUser is not null and currentUser.id==owner.id %}
+			<li class="separator" style="--i: {{ i }}{% set i=i+1 %}"></li>
+			{% for list in lists %}
+			<li style="--i: {{ i }}{% set i=i+1 %}"><a href="/users/{{ owner.id }}/friends?section=list&list={{ list.id }}" class="filterItem{{ tab=='friends' and section=='list' and listID==list.id ? ' selected' : '' }}">{{ list.name }}</a></li>
+			{% endfor %}
+			<li style="--i: {{ i }}{% set i=i+1 %}"><a href="javascript:void(0)" onclick="showCreateFriendListBox()" class="filterItem">{{ L('friends_create_list') }}</a></li>
+			{% endif %}
+		</ul>
+	</div>
+</span>
+{% else %}
+{{ parent() }}
+{% endif %}
+{% endblock %}
+{% block headerActionButtons %}
+	{% if currentUser is not null and currentUser.id==owner.id and tab=='friends' and section=='list' %}
+	{% set options=[{'label': L('friends_edit_list').toString()}] %}
+	{% if listID<57 %}
+	{% set _=options.add({'label': L('friends_delete_list').toString(), 'type': 'confirm', 'title': L('friends_delete_list_title').toString(), 'msg': L('friends_delete_list_confirm').toString(), 'url': "/my/friends/deleteList?id=#{listID}"}) %}
+	{% endif %}
+    <button title="{{ L('more_options') }}" class="actionButton iconMore" onclick="var opts={{ json(options) }}; var listName=this.dataset.listName; opts[0].onclick=function(){showEditFriendListBox('{{ listID }}', listName);}; new MobileOptionsBox(opts).show();" id="friendsMoreButton" data-list-name="{{ allLists[listID].name }}"></button>
+    {% endif %}
+{% endblock %}
 {%block content%}
 {% include 'friends_tabbar' %}
 <div class="singleColumn">
+{% block friendsInner %}
 {% for friend in items %}
 <table width="100%" class="friendsRow noBorderSpacing" id="frow{{friend.id}}">
 	<tr valign="top">
@@ -28,11 +76,33 @@
 	{{ L('no_followers') }}
 	{% elseif tab=='following' %}
 	{{ L('no_follows') }}
+	{% elseif tab=='online' %}
+	{% if currentUser is not null and currentUser.id==owner.id %}
+	{{ L('no_friends_online_own') }}
+	{% else %}
+	{{ L('no_friends_online', {'name': owner.firstAndGender}) }}
+	{% endif %}
 	{% else %}
 	{{ L('no_friends') }}
 	{% endif %}
 </div>
 {% endfor %}
+{% endblock %}
+{% include "pagination_endless" %}
+{% if owner.domain is not empty and tab!='online' and query is empty %}
+{% if tab=='friends' %}
+{% set realTotal=owner.friendsCount %}
+{% set key='remote_friends_incomplete' %}
+{% elseif tab=='followers' %}
+{% set realTotal=owner.followersCount %}
+{% set key='remote_followers_incomplete' %}
+{% elseif tab=='following' %}
+{% set realTotal=owner.followingCount %}
+{% set key='remote_following_incomplete' %}
+{% endif %}
+{% if totalItems<realTotal %}
+<div class="bottomSummaryWrap"><div class="bottomSummary">{{ L(key, {'name': owner.firstAndGender, 'gender': owner.gender, 'server': owner.domain}, {'link': {'href': owner.url, 'target': '_blank', 'rel': 'nofollow'} }) }}</div></div>
+{% endif %}
+{% endif %}
 </div>
-{% include "pagination" %}
 {%endblock%}

@@ -28,6 +28,7 @@ import spark.utils.StringUtils;
 public class ActivityPubPhoto extends ActivityPubObject{
 	public ActivityPubObject target;
 	public int displayOrder;
+	public LinkOrObject likes;
 
 	@Override
 	public String getType(){
@@ -39,6 +40,7 @@ public class ActivityPubPhoto extends ActivityPubObject{
 		obj=super.asActivityPubObject(obj, serializerContext);
 		obj.add("target", target.asActivityPubObject(new JsonObject(), serializerContext));
 		obj.addProperty("displayOrder", displayOrder);
+		obj.add("likes", likes.serialize(serializerContext));
 		serializerContext.addSmAlias("displayOrder");
 		serializerContext.addSmAlias("Photo");
 		return obj;
@@ -77,6 +79,15 @@ public class ActivityPubPhoto extends ActivityPubObject{
 		repliesPage.items=Collections.emptyList();
 		replies.first=new LinkOrObject(repliesPage);
 		p.replies=new LinkOrObject(replies);
+
+		ActivityPubCollection likes=new ActivityPubCollection(false);
+		likes.activityPubID=new UriBuilder(p.activityPubID).appendPath("likes").build();
+		CollectionPage likesPage=new CollectionPage(false);
+		likesPage.next=new UriBuilder(likes.activityPubID).queryParam("page", "1").build();
+		likesPage.partOf=likes.activityPubID;
+		likesPage.items=Collections.emptyList();
+		likes.first=new LinkOrObject(likesPage);
+		p.likes=new LinkOrObject(likes);
 
 		Image image=new Image();
 		image.url=photo.image.getOriginalURI();

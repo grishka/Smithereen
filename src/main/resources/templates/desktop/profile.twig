@@ -18,12 +18,29 @@
 	{% endfor %}
 	{% endif %}
 {% endmacro %}
+{% block navBarExtra %}
+{% if presence is not null %}
+<span class="flR auxText">
+{%- if presence.online %}
+{{- L('user_online') }}
+{%- else %}
+{{- L('user_last_seen', {'gender': user.gender, 'date': LD(presence.lastUpdated)}) }}
+{%- endif %}
+{% if presence.mobile %}<span class="mobileOnlineIcon"></span>{% endif %}
+</span>
+<div class="clear"></div>
+{% endif %}
+{% endblock %}
 {%block content%}
 {% if movedTo is not null %}
 <div class="marginsAreMessy"></div>
 <div class="settingsMessage">
 	{{ L('profile_moved', {'name': user | name('first')}) }}<br/>
+	{% if movedTo.domain is empty %}
+	<a href="{{ movedTo.profileURL }}"><b>{{ movedTo | name }}</b></a>
+	{% else %}
 	<a href="{{ movedTo.profileURL }}">{{ L('profile_moved_link', {'domain': movedTo.domain, 'name': movedTo | name}) }}</a>
+	{% endif %}
 </div>
 {% elseif user.domain %}
 <div class="marginsAreMessy"></div>
@@ -94,15 +111,21 @@
 		{% if taggedPhotoCount>0 %}
 			<li><a href="/users/{{ user.id }}/tagged"><span class="profileCounterWithIcon">{{ taggedPhotoCount | numberformat }}<span class="icon iconPhotos"></span></span>{{ currentUser is not null and currentUser.id==user.id ? L('photos_of_me') : L('photos_of_user', {'name': user.firstAndGender}) }}</a></li>
 		{% endif %}
-		{% if followers.total>0 %}
-			<li><a href="/users/{{ user.id }}/followers"><span class="profileCounterWithIcon">{{ followers.total | numberformat }}<span class="icon iconFollowers"></span></span>{{L('followers')}}</a></li>
+		{% if user.followersCount>0 %}
+			<li><a href="/users/{{ user.id }}/followers"><span class="profileCounterWithIcon">{{ user.followersCount | numberformat }}<span class="icon iconFollowers"></span></span>{{L('followers')}}</a></li>
 		{% endif %}
 		{%if currentUser is not null and currentUser.id!=user.id%}
-		{% if followers.total>0 or taggedPhotoCount>0 %}<li class="separator"></li>{% endif %}
+		{% if user.followersCount>0 or taggedPhotoCount>0 %}<li class="separator"></li>{% endif %}
+		{% if isFriend %}
+			<li class="popupMenuW" id="friendListsButton{{ user.id }}" data-lists="{% for listID in userLists %}{{ listID }}{% if not loop.last %},{% endif %}{% endfor %}"><a href="javascript:void(0)" onclick="showFriendListsMenu('{{ user.id }}')" class="opener">{{ L('friend_set_lists') }}</a></li>
+		{% endif %}
 		{%if isFriend or following or friendRequestSent or followRequested%}
 			<li><a href="/users/{{ user.id }}/confirmRemoveFriend" onclick="return ajaxConfirm({%if following or followRequested%}'unfollow'{%else%}'remove_friend'{%endif%},this.dataset.confirm,'/users/{{ user.id }}/doRemoveFriend')" data-confirm="{{ L(following or followRequested ? 'confirm_unfollow_X' : 'confirm_unfriend_X', {'name': user.firstLastAndGender}) | forceEscape }}">{%if following or followRequested%}{{L('unfollow')}}{%else%}{{L('remove_friend')}}{%endif%}</a></li>
 		{%endif%}
 			<li><a href="/users/{{ user.id }}/{{ isBookmarked ? "removeBookmark" : "addBookmark" }}?csrf={{ csrf }}" id="profileBookmarkButton" data-ajax data-ajax-show="bookmarkLoader"><span id="profileBookmarkButtonText">{{ L(isBookmarked ? 'remove_bookmark' : 'add_bookmark') }}</span> <span class="inlineLoader" id="bookmarkLoader" style="display: none"></span></a></li>
+			{% if canMute %}
+			<li><a href="/users/{{ user.id }}/{{ isMuted ? 'unmute' : 'mute' }}?csrf={{ csrf }}" id="profileMuteButton" data-ajax data-ajax-show="muteLoader"><span id="profileMuteButtonText">{{ L(isMuted ? 'profile_unmute' : 'profile_mute', {'name': user.firstAndGender}) }}</span> <span class="inlineLoader" id="muteLoader" style="display: none"></span></a></li>
+			{% endif %}
 			{% if isBlocked %}
 			<li><a href="/users/{{ user.id }}/confirmUnblock" onclick="return ajaxConfirm('unblock', this.dataset.confirm, '/users/{{ user.id }}/unblock')" data-confirm="{{ L('confirm_unblock_user_X', {'name': user.firstLastAndGender}) | forceEscape }}">{{ L('unblock_user_X', {'name': user.firstAndGender}) }}</a></li>
 			{% else %}
@@ -125,20 +148,29 @@
 		{% if mutualFriends is not empty %}
 			{% include "profile_module_user_grid" with {'users': mutualFriends, 'headerTitle': L('mutual_friends'), 'headerHref': "/users/#{user.id}/friends/mutual", 'subheaderTitle': L('X_mutual_friends', {'count': mutualFriendCount})} %}
 		{% endif %}
-		{% if friends is not empty %}
-			{% include "profile_module_user_grid" with {'users': friends, 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': friendCount})} %}
+		{% if user.friendsCount>0 %}
+			{% if friends is not empty %}
+			{% include "profile_module_user_grid" with {'users': friends, 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': user.friendsCount})} %}
+			{% else %}
+			{% include "profile_module_centered_text" with {'text': L('remote_friends_incomplete', {'name': user.firstAndGender, 'gender': user.gender, 'server': user.domain}, {'link': {'href': user.url, 'target': '_blank', 'rel': 'nofollow'} }), 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': user.friendsCount})} %}
+			{% endif %}
+		{% endif %}
+		{% if onlineFriends is not empty %}
+			{% include "profile_module_user_grid" with {'users': onlineFriends, 'headerTitle': L('friends_online'), 'headerHref': "/users/#{user.id}/friends/online", 'subheaderTitle': L('X_friends', {'count': onlineFriendCount})} %}
 		{% endif %}
 		{% if albums is not empty %}
 			{% include "profile_module_photo_albums" with {'albums': albums, 'headerTitle': L('photo_albums'), 'headerHref': "/users/#{user.id}/albums", 'subheaderTitle': L('X_photo_albums', {'count': photoAlbumCount}), 'ownerID': user.id} %}
 		{% endif %}
-		{% if followees.list is not empty %}
+		{% if user.followingCount>0 %}
+			{% if followees.list is not empty %}
 			{% set followingWithTitles=[] %}
-			{% for followee in followees.list %}
-			    {% if loop.index<5 %}
-			    	{% set _=followingWithTitles.add({'user': followee}) %}
-			    {% endif %}
+			{% for followee in followees.list | length>5 ? followees.list | slice(0, 5) : followees.list %}
+				{% set _=followingWithTitles.add({'user': followee, 'title': followee | actorSummary}) %}
 			{% endfor %}
-			{% include "profile_module_user_list" with {'users': followingWithTitles, 'headerTitle': L('following'), 'subheaderTitle': L('X_people', {'count': followees.total}), 'headerHref': "/users/#{user.id}/following"} %}
+			{% include "profile_module_user_list" with {'users': followingWithTitles, 'headerTitle': L('following'), 'subheaderTitle': L('X_people', {'count': user.followingCount}), 'headerHref': "/users/#{user.id}/following"} %}
+			{% else %}
+			{% include "profile_module_centered_text" with {'text': L('remote_following_incomplete', {'name': user.firstAndGender, 'gender': user.gender, 'server': user.domain}, {'link': {'href': user.url, 'target': '_blank', 'rel': 'nofollow'} }), 'headerTitle': L('following'), 'subheaderTitle': L('X_people', {'count': user.followingCount}), 'headerHref': "/users/#{user.id}/following"} %}
+			{% endif %}
 		{% endif %}
 		{% if groups is not empty %}
 			{% include "profile_module_groups" with {'groups': groups, 'headerTitle': L('groups'), 'headerHref': "/users/#{user.id}/groups", 'subheaderTitle': L('X_groups', {'count': groups.size})} %}
@@ -147,8 +179,28 @@
 	</div>
 	<!-- right column -->
 	<div id="right">
-		<h2>{{user | name('complete')}}</h2>
+		<div class="profileNameW">
+			<h2>{{user | name('complete')}}</h2>
+			{% if currentUser is not null and currentUser.id==user.id %}
+			<div class="profileStatusW">
+				<a href="javascript:void(0)" id="profileStatusLink" style="{% if user.statusText is not empty %}display: none{% endif %}" onclick="showProfileStatusBox()">{{ L('profile_update_status') }}</a>
+				<div class="profileStatus editable" id="profileStatusCont" style="{% if user.statusText is empty %}display: none{% endif %}" onclick="showProfileStatusBox()" data-tooltip="{{ L('update_status') }}">{{ user.statusText }}</div>
+				<form id="profileStatusBox" action="/settings/updateStatus?csrf={{ csrf }}" method="post" style="display: none" data-ajax>
+					<input type="text" name="status" maxlength="100" value="{{ user.statusText }}"/>
+					<div class="buttonW">
+						<div>{{ L('profile_status_hint') }}</div>
+						<input type="submit" value="{{ L('save') }}"/>
+					</div>
+				</form>
+			</div>
+			{% elseif user.statusText is not empty %}
+			<div class="profileStatusW">{{ user.statusText }}</div>
+			{% endif %}
+		</div>
 		<div class="profileFields">
+			{% if mainFields is empty and contactsFields is empty and personalFields is empty and interestsFields is empty %}
+			<div class="empty">{{ L('profile_no_info') }}</div>
+			{% endif %}
 			{{ profileSection(_context, null, null, mainFields) }}
 			{{ profileSection(_context, L('profile_contacts_title'), "/settings/profile/contacts", contactsFields) }}
 			{{ profileSection(_context, L('profile_personal_title'), "/settings/profile/personal", personalFields) }}
@@ -158,4 +210,5 @@
 	</div>
 </div>
 {% script %}initExpandingProfileColumn(ge("right"), ge("left"), ge("profileLayout"));{% endscript %}
+{% if isFriend %}{% include "friend_lists_script" %}{% endif %}
 {%endblock%}

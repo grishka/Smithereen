@@ -102,9 +102,13 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 		return getShortTitle(100);
 	}
 
+	public String getShorterTitle(){
+		return getShortTitle(50);
+	}
+
 	public String getShortTitle(int maxLen){
 		if(StringUtils.isNotEmpty(contentWarning)){
-			return contentWarning;
+			return TextProcessor.truncateOnWordBoundary(contentWarning, maxLen);
 		}
 		if(StringUtils.isNotEmpty(text)){
 			return TextProcessor.truncateOnWordBoundary(text, maxLen);
@@ -127,7 +131,7 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 
 	@Override
 	public List<ActivityPubObject> getAttachments(){
-		return attachments;
+		return attachments==null ? List.of() : attachments;
 	}
 
 	public void setActivityPubID(URI activityPubID){

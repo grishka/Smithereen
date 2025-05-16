@@ -1,0 +1,34 @@
+{% extends "page" %}
+{% block content %}
+{% include "settings_tabbar" with {'tab': 'filters'} %}
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('settings_summary_X_filters', {'count': filters | length}) }}
+		<span class="auxText"> | <a href="/settings/filters/create">{{ L('settings_create_filter') }}</a></span>
+	</div>
+</div>
+{% else %}
+<a href="/settings/filters/create" class="fab iconAdd" title="{{ L('settings_create_filter') }}"></a>
+{% endif %}
+<div class="singleColumn">
+{% for filter in filters %}
+	<div class="friendsRow" id="filter{{ filter.id }}">
+		<div><b>{{ filter.name }}</b></div>
+		<div class="smallVMargin">
+			{{- L('settings_filter_X_words', {'count': filter.words | length}) }}:
+			{% for word in (filter.words | length>5) ? (filter.words | slice(0, 5)) : filter.words %}{{ word }}{% if not loop.last %}, {% endif %}{% endfor %}
+			{%- if filter.words | length>5 %}, ...{% endif %}
+		</div>
+		{% if filter.expiresAt is not null %}
+		<div class="smallVMargin">{{ L('settings_filter_expires') }}: {{ LD(filter.expiresAt) }}</div>
+		{% endif %}
+		<div>
+			<a href="/settings/filters/{{ filter.id }}/edit">{{ L('edit') }}</a> |
+			<a href="/settings/filters/{{ filter.id }}/confirmDelete" data-confirm-message="{{ L('settings_confirm_delete_filter') | forceEscape }}" data-confirm-title="{{ L('delete') | forceEscape }}" data-confirm-action="/settings/filters/{{ filter.id }}/delete?csrf={{ csrf }}">{{ L('delete') }}</a>
+		</div>
+	</div>
+{% else %}
+	<div class="emptyState">{{ L('settings_no_filters') }}</div>
+{% endfor %}
+</div>
+{% endblock %}

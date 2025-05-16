@@ -1,0 +1,37 @@
+{# @pebvariable name="msg" type="smithereen.model.MailMessage" #}
+{% extends "page" %}
+{% block content %}
+	<h1>{{ L('notification_title_new_message') }}</h1>
+	<table width="100%" cellpadding="0" cellspacing="0" border="0">
+		<tr>
+			<td valign="top" width="100">{% include 'actor_avatar' with {'actor': actor, 'size': 'b'} %}</td>
+			<td valign="top" style="padding-left: 10px">
+				<table width="100%" cellpadding="0" cellspacing="5" border="0">
+					<tr valign="top">
+						<td class="grayText">{{ L('mail_from') }}:</td>
+						<td width="99%"><a href="{{ actor.absoluteProfileURL }}">{{ actor | name('complete') }}</a></td>
+					</tr>
+					{% if msg.subject is not empty %}
+					<tr valign="top">
+						<td class="grayText">{{ L('mail_subject') }}:</td>
+						<td>{{ msg.subject }}</td>
+					</tr>
+					{% endif %}
+					<tr valign="top">
+						<td class="grayText">{{ L('message') }}:</td>
+						<td><div style="margin: -1em 0">{{ msg.text | postprocessHTML }}</div></td>
+					</tr>
+					{% include "media_attachments" with {'attachments': msg.processedAttachments} %}
+					<tr>
+						<td></td>
+						<td class="grayText">{{ LD(msg.createdAt, format='fullyAbsolute') }}</td>
+					</tr>
+					<tr>
+						<td></td>
+						<td style="padding-top: 10px"><a class="button" href="https://{{ domain }}/my/mail/messages/{{ msg.encodedID }}">{{ L('email_go_to_message') }}</a></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	</table>
+{% endblock %}

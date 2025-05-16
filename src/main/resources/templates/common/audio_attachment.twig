@@ -1,0 +1,53 @@
+{# @pebvariable name="audio" type="smithereen.model.viewmodel.AudioAttachmentViewModel" #}
+    {% set playerID = audio.audioID %}
+    {% if isPostInLayer %}
+        {% set playerID = playerID ~ '_' ~ randomID %}
+    {% endif %}
+<div id="audio{{ playerID }}" class="audio" data-artist="{{ audio.artist }}" data-title="{{ audio.title }}" {% if audio.durationSeconds >= 0 %}data-duration="{{ audio.durationSeconds }}"{% endif %}{% if audio.url is not null %} data-url="{{ audio.url }}" {% endif %}>
+	<div class="area" onclick="AudioPlayer.playOrPause('{{ audio.audioID }}')">
+		<table>
+			<tr>
+				<td>
+					<div class="playBtnWrap">
+						<div class="play"></div>
+					</div>
+				</td>
+				<td class="info">
+					<div class="duration flR" onclick="event.stopPropagation();">{{ audio.formattedDuration }}</div>
+					<div class="titleWrap" onmouseenter="AudioPlayer.maybeShowToolTip(this)">
+						<b>{{ audio.artist }}</b>
+						&ndash;
+                        {{ audio.title }}
+					</div>
+				</td>
+			</tr>
+		</table>
+		<div class="player" onclick="event.stopPropagation();" ondragstart="return false;" onselectstart="return false;" {# ondragstart and onselectstart are necessary to prevent text selection in Safari #}>
+			<table>
+				<tbody>
+				<tr>
+					<td style="width: 100%;">
+						<div class="audioProgress">
+							<div class="audioWhiteLine"></div>
+							<div class="audioBackLine"></div>
+							<div class="audioLoadLine"></div>
+							<div class="audioProgressLine audioProgressValue">
+								<div class="audioSlider"></div>
+							</div>
+						</div>
+					</td>
+					<td>
+						<div class="audioVolume">
+							<div class="audioVolumeWhiteLine"></div>
+							<div class="audioLoadLine audioVolumeBackLine"></div>
+							<div class="audioProgressLine audioVolumeValue">
+								<div class="audioSlider"></div>
+							</div>
+						</div>
+					</td>
+				</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>

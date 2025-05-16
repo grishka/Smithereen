@@ -39,6 +39,7 @@ import smithereen.activitypub.objects.activities.Join;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.activitypub.objects.activities.Move;
 import smithereen.activitypub.objects.activities.Offer;
+import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
@@ -355,6 +356,12 @@ public abstract class ActivityPubObject{
 		return -1;
 	}
 
+	protected long optLong(JsonObject obj, String key){
+		if(obj.has(key) && obj.get(key).isJsonPrimitive() && obj.getAsJsonPrimitive(key).isNumber())
+			return obj.get(key).getAsLong();
+		return -1;
+	}
+
 	protected boolean optBoolean(JsonObject obj, String key){
 		if(obj.has(key) && obj.get(key).isJsonPrimitive() && obj.getAsJsonPrimitive(key).isBoolean())
 			return obj.get(key).getAsBoolean();
@@ -595,6 +602,8 @@ public abstract class ActivityPubObject{
 			case "Event" -> new Event();
 			case "Photo" -> new ActivityPubPhoto();
 			case "TaggedPerson" -> new ActivityPubTaggedPerson();
+			case "QuoteAuthorization" -> new QuoteAuthorization();
+			case "ActorStatus" -> new ActivityPubActorStatus();
 
 			// Collections
 			case "Collection" -> new ActivityPubCollection(false);
@@ -624,6 +633,7 @@ public abstract class ActivityPubObject{
 			case "Flag" -> new Flag();
 			case "Read" -> new Read();
 			case "Move" -> new Move();
+			case "QuoteRequest" -> new QuoteRequest();
 
 			default -> {
 				LOG.debug("Unknown object type {}", type);

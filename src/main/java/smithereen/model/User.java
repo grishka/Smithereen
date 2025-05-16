@@ -14,10 +14,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -52,10 +50,14 @@ public class User extends Actor{
 	public int movedTo;
 	public int movedFrom;
 	public Instant movedAt;
-	public Set<URI> alsoKnownAs=new HashSet<>();
+	public URI movedToApID;
+	public List<URI> alsoKnownAs=new ArrayList<>();
 	public UserBanStatus banStatus=UserBanStatus.NONE;
 	public UserBanInfo banInfo;
 	public EnumSet<FriendsNewsfeedTypeFilter> newsTypesToShow;
+	protected long numFriends;
+	protected long numFollowers; // Followers and following include friends (mutual follows)
+	protected long numFollowing;
 
 	// additional profile fields
 	public boolean manuallyApprovesFollowers;
@@ -190,6 +192,7 @@ public class User extends Actor{
 				}
 			}
 			movedTo=optInt(o, "movedTo");
+			movedToApID=tryParseURL(optString(o, "movedToAP"));
 			movedFrom=optInt(o, "movedFrom");
 			if(o.has("movedAt")){
 				long moved=o.get("movedAt").getAsLong();
@@ -239,6 +242,10 @@ public class User extends Actor{
 			if(o.has("feedTypes")){
 				newsTypesToShow=Utils.gson.fromJson(o.get("feedTypes"), new TypeToken<>(){});
 			}
+
+			if(o.has("status")){
+				status=Utils.gson.fromJson(o.get("status"), ActorStatus.class);
+			}
 		}
 
 		String privacy=res.getString("privacy");
@@ -252,6 +259,10 @@ public class User extends Actor{
 				banInfo=Utils.gson.fromJson(_banInfo, UserBanInfo.class);
 			}
 		}
+
+		numFollowers=res.getLong("num_followers");
+		numFollowing=res.getLong("num_following");
+		numFriends=res.getLong("num_friends");
 	}
 
 	@Override
@@ -498,6 +509,18 @@ public class User extends Actor{
 			obj.add("newsfeedUpdatesPrivacy", jb.build());
 		}
 
+		if(!alsoKnownAs.isEmpty()){
+			JsonArray aka=new JsonArray();
+			alsoKnownAs.stream().map(Object::toString).forEach(aka::add);
+			obj.add("alsoKnownAs", aka);
+			serializerContext.addType("alsoKnownAs", "as:alsoKnownAs", "@id");
+		}
+
+		if(movedToApID!=null){
+			obj.addProperty("movedTo", movedToApID.toString());
+			serializerContext.addType("movedTo", "as:movedTo", "@id");
+		}
+
 		return obj;
 	}
 
@@ -511,6 +534,7 @@ public class User extends Actor{
 		return false;
 	}
 
+	@Override
 	public String serializeProfileFields(){
 		JsonObject o=new JsonObject();
 		if(manuallyApprovesFollowers)
@@ -540,6 +564,8 @@ public class User extends Actor{
 		}
 		if(movedTo>0)
 			o.addProperty("movedTo", movedTo);
+		if(movedToApID!=null)
+			o.addProperty("movedToAP", movedToApID.toString());
 		if(movedFrom>0)
 			o.addProperty("movedFrom", movedFrom);
 		if(movedAt!=null)
@@ -598,6 +624,9 @@ public class User extends Actor{
 		if(newsTypesToShow!=null)
 			o.add("feedTypes", Utils.gson.toJsonTree(newsTypesToShow));
 
+		if(status!=null)
+			o.add("status", Utils.gson.toJsonTree(status));
+
 		return o.toString();
 	}
 
@@ -624,6 +653,11 @@ public class User extends Actor{
 	@Override
 	public URI getWallURL(){
 		return Config.localURI("/users/"+id+"/wall");
+	}
+
+	@Override
+	public URI getWallCommentsURL(){
+		return Config.localURI("/users/"+id+"/wallComments");
 	}
 
 	public URI getFriendsURL(){
@@ -668,9 +702,22 @@ public class User extends Actor{
 
 	public void copyLocalFields(User previous){
 		movedTo=previous.movedTo;
+		movedToApID=previous.movedToApID;
 		movedFrom=previous.movedFrom;
 		movedAt=previous.movedAt;
 		banStatus=previous.banStatus;
+	}
+
+	public long getFriendsCount(){
+		return numFriends;
+	}
+
+	public long getFollowersCount(){
+		return numFollowers-numFriends;
+	}
+
+	public long getFollowingCount(){
+		return numFollowing-numFriends;
 	}
 
 	public enum Gender{
@@ -762,6 +809,8 @@ public class User extends Actor{
 		SNAPCHAT,
 		DISCORD,
 		GIT,
+		MASTODON,
+		PIXELFED,
 		PHONE_NUMBER,
 		EMAIL;
 
@@ -778,6 +827,8 @@ public class User extends Actor{
 				case SNAPCHAT -> "Snapchat";
 				case DISCORD -> "Discord";
 				case GIT -> "Git";
+				case MASTODON -> "Mastodon";
+				case PIXELFED -> "Pixelfed";
 				case PHONE_NUMBER -> "Phone number";
 				case EMAIL -> "E-mail";
 			};
@@ -816,6 +867,8 @@ public class User extends Actor{
 				case SNAPCHAT -> List.of("evan", "www.snapchat.com/add/evan");
 				case DISCORD -> List.of("jason");
 				case GIT -> List.of("github.com/octocat", "gitlab.com/gitlab-org");
+				case MASTODON -> List.of("@Gargron@mastodon.social", "mastodon.social/@Gargron");
+				case PIXELFED -> List.of("@dansup@pixelfed.social", "pixelfed.social/dansup");
 				case PHONE_NUMBER, EMAIL -> List.of();
 			};
 		}

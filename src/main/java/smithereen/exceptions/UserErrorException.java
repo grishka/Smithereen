@@ -1,11 +1,21 @@
 package smithereen.exceptions;
 
+import java.util.Map;
+
 public class UserErrorException extends RuntimeException{
+	public Map<String, Object> langArgs;
+	public boolean includeCauseMessage;
+
 	public UserErrorException(){
 	}
 
 	public UserErrorException(String message){
 		super(message);
+	}
+
+	public UserErrorException(String message, Map<String, Object> langArgs){
+		super(message);
+		this.langArgs=langArgs;
 	}
 
 	public UserErrorException(String message, Throwable cause){
@@ -14,5 +24,10 @@ public class UserErrorException extends RuntimeException{
 
 	public UserErrorException(Throwable cause){
 		super(cause);
+	}
+
+	public UserErrorException withCauseMessage(){
+		includeCauseMessage=true;
+		return this;
 	}
 }

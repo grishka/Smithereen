@@ -1,15 +1,7 @@
 {# @pebvariable name="wallOwner" type="smithereen.activitypub.objects.Actor" #}
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
 <div class="wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing' : '' }}{{ allowEmpty ? ' data-allow-empty' : '' }}>
-	{% if not wallOwner.hasWall and replyTo is null %}
-		<div class="wallPostFormError">
-		{% if isGroup %}
-			{{ L('server_of_group_no_wall') }}
-		{% else %}
-			{{ L('server_of_user_X_no_wall', {'name': wallOwner.firstAndGender}) }}
-		{% endif %}
-		</div>
-	{% else %}
+	{% block wallPostForm %}
 	<form action="{{ action | default(isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost") }}" id="wallPostFormForm_{{ id }}" method="post">
 		{% if showReplyBar %}
 		<div class="commentReplying" id="commentReplying_{{ id }}" style="display: none">
@@ -64,11 +56,13 @@
 		</div>
 		<input type="hidden" name="attachments" value="{{attachIDs}}"/>
 		<input type="hidden" name="attachAltTexts" value="{{ json(attachAltTexts | default({})) }}"/>
+		{% if randomID is not empty %}<input type="hidden" name="rid" value="{{ randomID }}"/>{% endif %}
+		{% if from is not empty %}<input type="hidden" name="from" value="{{ from }}"/>{% endif %}
 		<div class="bottomBar">
 			<div class="left">
 				{% if isEditing %}
 				<button id="postFormSubmit_{{ id }}">{{ L('save') }}</button>
-				<button class="tertiary jsRequired" type="button" onclick="cancelEditingPost('{{ editingPostID }}')">{{ L('cancel') }}</button>
+				<button class="tertiary jsRequired" type="button" onclick="cancelEditingPost('{{ editingPostID }}', '{{ randomID }}')">{{ L('cancel') }}</button>
 				{% else %}
 				<button id="postFormSubmit_{{ id }}">{{ submitButtonText | default(L('send')) }}</button>
 				{% endif %}
@@ -99,5 +93,5 @@
 		</noscript>
 	</form>
 	<div id="dropOverlay_{{id}}" class="dropOverlay">{{L('drop_files_here')}}</div>
-	{% endif %}
+	{% endblock %}
 </div>

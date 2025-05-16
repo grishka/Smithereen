@@ -55,6 +55,7 @@ import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
+import smithereen.model.notifications.RealtimeNotification;
 import smithereen.model.photos.AbsoluteImageRect;
 import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.ImageRect;
@@ -290,6 +291,8 @@ public class PhotosController{
 
 	public long createAlbum(User self, String title, String description, PrivacySetting viewPrivacy, PrivacySetting commentPrivacy){
 		try{
+			if(!viewPrivacy.allowLists.isEmpty() || !viewPrivacy.exceptLists.isEmpty() || !commentPrivacy.allowLists.isEmpty() || !commentPrivacy.exceptLists.isEmpty())
+				context.getPrivacyController().populatePrivacySettingsFriendListUsers(self, List.of(viewPrivacy, commentPrivacy));
 			long id;
 			synchronized(albumCreationLock){
 				if(PhotoStorage.getOwnerAlbumCount(Objects.requireNonNull(self).id)>=MAX_ALBUMS_PER_OWNER)
@@ -431,6 +434,8 @@ public class PhotosController{
 		if(album.systemType!=null)
 			throw new UserActionNotAllowedException();
 		enforceAlbumManagementPermission(self, album);
+		if(!viewPrivacy.allowLists.isEmpty() || !viewPrivacy.exceptLists.isEmpty() || !commentPrivacy.allowLists.isEmpty() || !commentPrivacy.exceptLists.isEmpty())
+			context.getPrivacyController().populatePrivacySettingsFriendListUsers(self, List.of(viewPrivacy, commentPrivacy));
 		if(Objects.equals(album.title, title) && Objects.equals(album.description, description)
 				&& Objects.equals(album.viewPrivacy, viewPrivacy) && Objects.equals(album.commentPrivacy, commentPrivacy))
 			return;
@@ -581,6 +586,10 @@ public class PhotosController{
 			else
 				album.numPhotos++;
 			albumCache.put(album.id, album);
+
+			if(owner instanceof Group g)
+				context.getGroupsController().incrementHintsRank(self, g, 3);
+
 			return id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -843,19 +852,33 @@ public class PhotosController{
 				}
 
 				PhotoStorage.putOrUpdateForeignPhoto(photo);
+				PhotoAlbum album=getAlbumIgnoringPrivacy(photo.albumID);
 				List<PhotoTag> existingTags;
 				if(isNew){
+					if(!album.flags.contains(PhotoAlbum.Flag.COVER_SET_EXPLICITLY)){
+						boolean needUpdateCover=true;
+						if(album.coverID!=0){
+							try{
+								needUpdateCover=getPhotoIgnoringPrivacy(album.coverID).createdAt.isBefore(photo.createdAt);
+							}catch(ObjectNotFoundException ignore){}
+						}
+						if(needUpdateCover){
+							PhotoStorage.setAlbumCover(photo.albumID, photo.id);
+						}
+					}
 					existingTags=List.of();
 					synchronized(albumCacheLock){
 						albumListCache.remove(photo.ownerID);
 						albumCache.remove(photo.albumID);
 					}
-					if(photo.ownerID>0){
-						User owner=context.getUsersController().getUserOrThrow(photo.ownerID);
-						context.getNewsfeedController().putFriendsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
-					}else{
-						Group owner=context.getGroupsController().getGroupOrThrow(-photo.ownerID);
-						context.getNewsfeedController().putGroupsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+					if(album.systemType==null){
+						if(photo.ownerID>0){
+							User owner=context.getUsersController().getUserOrThrow(photo.ownerID);
+							context.getNewsfeedController().putFriendsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+						}else{
+							Group owner=context.getGroupsController().getGroupOrThrow(-photo.ownerID);
+							context.getNewsfeedController().putGroupsFeedEntry(owner, photo.id, NewsfeedEntry.Type.ADD_PHOTO);
+						}
 					}
 				}else{
 					existingTags=PhotoStorage.getPhotoTags(photo.id);
@@ -874,18 +897,21 @@ public class PhotosController{
 				List<PhotoTag> tagsToDelete=existingTags.stream().filter(t->!newTagIDs.contains(t.apID())).toList();
 				if(!tagsToDelete.isEmpty()){
 					PhotoStorage.deletePhotoTags(photo.id, tagsToDelete.stream().map(PhotoTag::id).collect(Collectors.toSet()));
-					for(PhotoTag tag: tagsToDelete){
+					for(PhotoTag tag:tagsToDelete){
 						if(tag.userID()!=0){
 							if(!tag.approved()){
 								UserNotifications un=NotificationsStorage.getNotificationsFromCache(tag.userID());
 								if(un!=null)
 									un.incNewPhotoTagCount(-1);
+								try{
+									User user=context.getUsersController().getUserOrThrow(tag.userID());
+									context.getNotificationsController().sendRealtimeCountersUpdates(user);
+								}catch(ObjectNotFoundException ignore){}
 							}else{
 								try{
 									User user=context.getUsersController().getUserOrThrow(tag.userID());
 									context.getNewsfeedController().deleteFriendsFeedEntry(user, photo.id, NewsfeedEntry.Type.PHOTO_TAG);
-								}catch(ObjectNotFoundException ignore){
-								}
+								}catch(ObjectNotFoundException ignore){}
 							}
 						}
 					}
@@ -931,6 +957,7 @@ public class PhotosController{
 						UserNotifications un=NotificationsStorage.getNotificationsFromCache(user.id);
 						if(un!=null)
 							un.incNewPhotoTagCount(1);
+						context.getNotificationsController().sendRealtimeNotifications(user, "photoTag"+tagID, RealtimeNotification.Type.PHOTO_TAG, photo, null, placer);
 					}
 				}
 				List<ActivityPubTaggedPerson> tagsToMaybeUpdate=apTags.stream()
@@ -1309,6 +1336,7 @@ public class PhotosController{
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(user.id);
 				if(un!=null)
 					un.incNewPhotoTagCount(1);
+				context.getNotificationsController().sendRealtimeNotifications(user, "photoTag"+id, RealtimeNotification.Type.PHOTO_TAG, photo, null, self);
 			}
 			context.getActivityPubWorker().sendUpdateAlbumPhoto(context.getWallController().getContentAuthorAndOwner(photo).author(), photo, getAlbumIgnoringPrivacy(photo.albumID));
 			if(user!=null && user.id==self.id){
@@ -1348,6 +1376,10 @@ public class PhotosController{
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(tag.userID());
 				if(un!=null)
 					un.incNewPhotoTagCount(-1);
+				try{
+					User user=context.getUsersController().getUserOrThrow(tag.userID());
+					context.getNotificationsController().sendRealtimeCountersUpdates(user);
+				}catch(ObjectNotFoundException ignore){}
 			}
 			User placer=context.getUsersController().getUserOrThrow(tag.placerID());
 			if(tag.approved()){
@@ -1431,6 +1463,7 @@ public class PhotosController{
 			UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
 			if(un!=null)
 				un.incNewPhotoTagCount(-1);
+			context.getNotificationsController().sendRealtimeCountersUpdates(self);
 			User placer=context.getUsersController().getUserOrThrow(tag.placerID());
 			if(photo.apID!=null)
 				context.getActivityPubWorker().sendApprovePhotoTag(self, photo, getAlbumIgnoringPrivacy(photo.albumID), tag, placer, context.getWallController().getContentAuthorAndOwner(photo).owner());

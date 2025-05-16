@@ -1,0 +1,18 @@
+{# @pebvariable name="notification" type="smithereen.model.notifications.Notification" #}
+{% if notification.type=='LIKE' or notification.type=='REPOST' or notification.type=='RETOOT' %}
+{% set imgObject=object %}
+{% set imgObjectType=notification.objectType %}
+{% else %}
+{% set imgObject=relatedObject %}
+{% set imgObjectType=notification.relatedObjectType %}
+{% endif %}
+{% if imgObject is not null %}
+{% if imgObjectType=='POST' %}
+{% set postAttachments=imgObject.post.processedAttachments %}
+{% if postAttachments is not empty and postAttachments[0].image is not null %}
+<a class="notificationExtraImage" href="{{ imgObject.post.internalURL }}"{% if not isMobile %} onclick="return openPostLayer('{{ imgObject.post.replyLevel==0 ? imgObject.post.id : imgObject.post.replyKey[0] }}', {{ imgObject.post.replyLevel==0 ? 'null' : "'#{imgObject.post.id}'" }})"{% endif %}>{{ postAttachments[0].image | pictureForPhoto('s') }}</a>
+{% endif %}
+{% elseif imgObjectType=='PHOTO' %}
+<a class="notificationExtraImage" href="{{ imgObject.internalURL }}" onclick="return openPhotoViewer(this)" data-pv="{{ json(imgObject.singlePhotoViewerData) }}">{{ imgObject.image | pictureForPhoto('s') }}</a>
+{% endif %}
+{% endif %}

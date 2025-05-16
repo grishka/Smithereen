@@ -1,3 +1,4 @@
+{# @pebvariable name="setting" type="smithereen.model.PrivacySetting" #}
 <div class="settingLabel">{{ label }}</div>
 <div class="settingValue" id="{{ key }}_uiValue">
 	{% if setting.baseRule=='EVERYONE' %}
@@ -14,8 +15,14 @@
 		{% endif %}
 	{% endif %}
 	{{ L(mainRuleKey) }}
-	{%- if setting.allowUsers is not empty -%}
+	{%- if setting.allowUsers is not empty or setting.allowLists is not empty -%}
 		{{- L("privacy_settings_value_certain_friends_before") -}}
+		{%- for id in setting.allowLists -%}
+			{{ allLists[id].name }}
+			{%- if not loop.last or setting.allowUsers is not empty -%}
+				{{- L("privacy_settings_value_name_separator") -}}
+			{%- endif -%}
+		{%- endfor -%}
 		{%- for id in setting.allowUsers -%}
 			{{ users[id] | name }}
 			{%- if not loop.last -%}
@@ -23,13 +30,19 @@
 			{%- endif -%}
 		{%- endfor -%}
 	{%- endif -%}
-	{%- if setting.exceptUsers is not empty -%}
+	{%- if setting.exceptUsers is not empty or setting.exceptLists is not empty -%}
 		{{- L("privacy_settings_value_except") -}}
-			{%- for id in setting.exceptUsers -%}
-				{{ L("privacy_settings_value_except_name", {'name': users[id] | name('fullAndGender')}) }}
-				{%- if not loop.last -%}
-					{{- L("privacy_settings_value_name_separator") -}}
-				{%- endif -%}
-			{%- endfor -%}
+		{%- for id in setting.exceptLists -%}
+			{{ allLists[id].name }}
+			{%- if not loop.last or setting.exceptUsers is not empty -%}
+				{{- L("privacy_settings_value_name_separator") -}}
+			{%- endif -%}
+		{%- endfor -%}
+		{%- for id in setting.exceptUsers -%}
+			{{ L("privacy_settings_value_except_name", {'name': users[id] | name('fullAndGender')}) }}
+			{%- if not loop.last -%}
+				{{- L("privacy_settings_value_name_separator") -}}
+			{%- endif -%}
+		{%- endfor -%}
 	{%- endif -%}
 </div>

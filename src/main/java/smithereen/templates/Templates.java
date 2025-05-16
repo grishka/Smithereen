@@ -22,7 +22,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,6 +29,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import smithereen.ApplicationContext;
+import smithereen.BuildInfo;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.model.Account;
@@ -40,15 +41,16 @@ import smithereen.model.SessionInfo;
 import smithereen.model.UserNotifications;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.lang.Lang;
-import smithereen.storage.NotificationsStorage;
 import smithereen.storage.UserStorage;
+import smithereen.util.JsonObjectBuilder;
+import smithereen.util.UriBuilder;
 import spark.Request;
 
 public class Templates{
 	private static final PebbleEngine desktopEngine=makeEngineInstance("desktop", "common");
 	private static final PebbleEngine mobileEngine=makeEngineInstance("mobile", "common");
 	private static final PebbleEngine popupEngine=makeEngineInstance("popup");
-	private static final Map<String, String> staticHashes=new HashMap<>();
+	public static final Map<String, String> staticHashes=new HashMap<>();
 
 	private static final Logger LOG=LoggerFactory.getLogger(Templates.class);
 
@@ -86,6 +88,7 @@ public class Templates{
 	public static void addGlobalParamsToTemplate(Request req, RenderedTemplateResponse model){
 		JsonObject jsConfig=new JsonObject();
 		ZoneId tz=Utils.timeZoneForRequest(req);
+		ApplicationContext ctx=Utils.context(req);
 		if(req.session(false)!=null){
 			SessionInfo info=req.session().attribute("info");
 			if(info==null){
@@ -99,23 +102,28 @@ public class Templates{
 				model.with("userPermissions", info.permissions);
 				jsConfig.addProperty("csrf", info.csrfToken);
 				jsConfig.addProperty("uid", info.account.user.id);
+				jsConfig.add("notifier", new JsonObjectBuilder()
+						.add("ws", UriBuilder.local().scheme("wss").path("system", "ws", "notifier").build().toString())
+						.add("enabled", account.isActive() && (account.prefs.notifierTypes==null || !account.prefs.notifierTypes.isEmpty()))
+						.add("sound", account.prefs.notifierEnableSound)
+						.build()
+				);
+				UserNotifications notifications=ctx.getNotificationsController().getUserCounters(account);
+				model.with("userNotifications", notifications);
+				LocalDate today=LocalDate.now(tz);
 				try{
-					UserNotifications notifications=NotificationsStorage.getNotificationsForUser(account.user.id, account.prefs.lastSeenNotificationID);
-					model.with("userNotifications", notifications);
-
-					LocalDate today=LocalDate.now(tz);
 					BirthdayReminder reminder=UserStorage.getBirthdayReminderForUser(account.user.id, today);
 					if(!reminder.userIDs.isEmpty()){
 						model.with("birthdayUsers", UserStorage.getByIdAsList(reminder.userIDs));
 						model.with("birthdaysAreToday", reminder.day.equals(today));
 					}
-					EventReminder eventReminder=Utils.context(req).getGroupsController().getUserEventReminder(account.user, tz);
-					if(!eventReminder.groupIDs.isEmpty()){
-						model.with("eventReminderEvents", Utils.context(req).getGroupsController().getGroupsByIdAsList(eventReminder.groupIDs));
-						model.with("eventsAreToday", eventReminder.day.equals(today));
-					}
 				}catch(SQLException x){
 					throw new InternalServerErrorException(x);
+				}
+				EventReminder eventReminder=ctx.getGroupsController().getUserEventReminder(account.user, tz);
+				if(!eventReminder.groupIDs.isEmpty()){
+					model.with("eventReminderEvents", Utils.context(req).getGroupsController().getGroupsByIdAsList(eventReminder.groupIDs));
+					model.with("eventsAreToday", eventReminder.day.equals(today));
 				}
 
 				if(info.permissions.role!=null){ // TODO check if this role actually grants permissions that have counters in left menu
@@ -160,8 +168,11 @@ public class Templates{
 				.with("staticHashes", staticHashes)
 				.with("serverName", Config.getServerDisplayName())
 				.with("serverDomain", Config.domain)
+				.with("serverVersion", BuildInfo.VERSION)
+				.with("langName", lang.name)
 				.with("isMobile", req.attribute("mobile")!=null)
-				.with("isAjax", Utils.isAjax(req));
+				.with("isAjax", Utils.isAjax(req))
+				.with("_request", req);
 	}
 
 	public static PebbleTemplate getTemplate(Request req, String name){
@@ -171,6 +182,10 @@ public class Templates{
 		else if(req.attribute("mobile")!=null)
 			engine=mobileEngine;
 		return engine.getTemplate(name);
+	}
+
+	public static PebbleTemplate getTemplate(String name){
+		return desktopEngine.getTemplate(name);
 	}
 
 	public static int asInt(Object o){
@@ -213,7 +228,7 @@ public class Templates{
 	public static void addJsLangForPrivacySettings(Request req){
 		Utils.jsLangKey(req,
 				"privacy_value_everyone", "privacy_value_friends", "privacy_value_friends_of_friends", "privacy_value_no_one",
-				"privacy_value_only_me", "privacy_value_everyone_except", "privacy_value_certain_friends", "privacy_value_friends_except",
+				"privacy_value_only_me", "privacy_value_everyone_except", "privacy_value_certain_friends", "privacy_value_friends_except", "privacy_value_certain_friend_lists",
 				"save", "privacy_settings_title", "privacy_allowed_title", "privacy_denied_title", "privacy_allowed_to_X",
 				"privacy_value_to_everyone", "privacy_value_to_friends", "privacy_value_to_friends_of_friends", "privacy_value_to_certain_friends", "delete", "privacy_enter_friend_name",
 				"privacy_settings_value_except", "privacy_settings_value_certain_friends_before", "privacy_settings_value_name_separator",

@@ -185,6 +185,12 @@ class GraffitiEditorBox extends Box{
 	}
 }
 
+interface Window {
+	GraffitiEditorBox:typeof GraffitiEditorBox;
+}
+
+window.GraffitiEditorBox = GraffitiEditorBox;
+
 class DrawingArea{
 	private wrap:HTMLDivElement;
 	private svg:SVGSVGElement;

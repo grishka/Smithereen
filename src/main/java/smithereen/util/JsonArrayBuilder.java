@@ -13,11 +13,9 @@ import java.util.stream.Collector;
 
 public class JsonArrayBuilder{
 	public static final Collector<Object, JsonArray, JsonArray> COLLECTOR=new Collector<>(){
-		private final JsonArray arr=new JsonArray();
-
 		@Override
 		public Supplier<JsonArray> supplier(){
-			return ()->arr;
+			return JsonArray::new;
 		}
 
 		@Override
