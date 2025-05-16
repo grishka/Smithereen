@@ -54,7 +54,7 @@
   "events": "Сустрэчы",
   "summary_X_upcoming_events": "{count, select, 0 {У вас няма маючых адбыцца сустрэч} other {Вы пойдзеце на {count, plural, one {# сустрэчу} few {# сустрэчы} other {# сустрэч}}}}",
   "summary_X_past_events": "У вас {count, plural, =0 {няма мінулых сустрэч} one {# мінулая сустрэчв} few {# мінулыя сустрэчы} other {# мінулых сустрэч}}",
-  "write_on_event_wall": "Напісаць на сцяне сустрэчы...",
+  "write_on_event_wall": "Напісаць на сцяне сустрэчы…",
   "leave_event": "Пакінуць сустрэчу",
   "event_organizers": "Арганізатары",
   "event_X_organizers": "{count, plural, one {# арганізатар} few {# арганізатара} other {# арганізатараў}}",

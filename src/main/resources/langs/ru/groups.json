@@ -58,7 +58,7 @@
   "events": "Встречи",
   "summary_X_upcoming_events": "{count, select, 0 {У ваc нет предстоящих встреч} other {Вы пойдёте на {count, plural, one {# встречу} few {# встречи} other {# встреч}}}}",
   "summary_X_past_events": "У ваc {count, plural, =0 {нет прошедших встреч} one {# прошедшая встреча} few {# прошедшие встречи} other {# прошедших встреч}}",
-  "write_on_event_wall": "Написать на стене встречи...",
+  "write_on_event_wall": "Написать на стене встречи…",
   "leave_event": "Покинуть встречу",
   "event_organizers": "Организаторы",
   "event_X_organizers": "{count, plural, one {# организатор} few {# организатора} other {# организаторов}}",

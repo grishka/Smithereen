@@ -19,7 +19,7 @@
   "photo_album_restrict_uploads": "Снимки могат да бъдат добавяни от модератори и администратори",
   "photo_album_disable_commenting": "Изключи коментарите за този албум",
   "summary_album_X_photos": "{count, plural,=0 {Няма снимки}one {# снимка}other {# снимки}} в този албум",
-  "uploading_photo_X_of_Y": "Снимка <b>{current}</b> се качва в <b>{total}</b>...",
+  "uploading_photo_X_of_Y": "Снимка <b>{current}</b> се качва в <b>{total}</b>…",
   "photo_description": "Описание",
   "photo_description_saved": "Описанието е запазено",
   "edit_photo_album": "Редактирай албум",

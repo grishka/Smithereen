@@ -57,7 +57,7 @@
   "events": "Събития",
   "summary_X_upcoming_events": "Вие {count, select,0 {нямате предстоящи събития}other {ще присъствате на{count, plural,one {# събитие}other {# събития}}}}",
   "summary_X_past_events": "Вие {count, plural,=0 {нямате преминали събития}one {# преминало събитие}other {# преминали събития}}",
-  "write_on_event_wall": "Напиши на стената на събитието...",
+  "write_on_event_wall": "Напиши на стената на събитието…",
   "leave_event": "Напусни събитието",
   "event_organizers": "Организатори",
   "event_X_organizers": "{count, plural,one {# организатор}other {# организатори}}",

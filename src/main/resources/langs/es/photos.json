@@ -13,7 +13,7 @@
   "photo_album_restrict_uploads": "Las fotos solo pueden ser añadidas por moderadores y administradores",
   "photo_album_disable_commenting": "Deshabilitar los comentarios para este álbum",
   "summary_album_X_photos": "{count, plural, =0 {0 fotos} one {# foto} other {# fotos}} en este álbum",
-  "uploading_photo_X_of_Y": "Subiendo foto <b>{current}</b> de <b>{total}</b>...",
+  "uploading_photo_X_of_Y": "Subiendo foto <b>{current}</b> de <b>{total}</b>…",
   "photo_description": "Descripción",
   "photo_description_saved": "Descripción guardada",
   "edit_photo_album": "Editar álbum",

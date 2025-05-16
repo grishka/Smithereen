@@ -57,7 +57,7 @@
   "events": "Eventos",
   "summary_X_upcoming_events": "Tú {count, select, 0 {no tienes ningún evento próximo} other {vas a tener que atender {count, plural, one {# evento} other {# eventos}}}}",
   "summary_X_past_events": "Tienes {count, plural, =0 {0 eventos pasados} one {# evento pasado} other {# eventos pasados}}",
-  "write_on_event_wall": "Escribir en el muro de evento...",
+  "write_on_event_wall": "Escribir en el muro de evento…",
   "leave_event": "Abandonar evento",
   "event_organizers": "Organizadores",
   "event_X_organizers": "{count, plural, one {# organizador} other {# organizadores}}",

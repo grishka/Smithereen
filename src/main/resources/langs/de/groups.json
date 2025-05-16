@@ -57,7 +57,7 @@
   "events": "Ereignisse",
   "summary_X_upcoming_events": "Du {count, select, 0 {hast keine bevorstehenden Ereignisse} other {wirst {count, plural, one {# Ereignis besuchen} other {# Ereignisse besuchen}}}}",
   "summary_X_past_events": "Du hast {count, plural, =0 {keine vergangenen Ereignisse} one {# vergangenes Ereignis} other {# vergangene Ereignisse}}",
-  "write_on_event_wall": "Schreibe an die Ereignis-Pinnwand...",
+  "write_on_event_wall": "Schreibe an die Ereignis-Pinnwand…",
   "leave_event": "Verlasse Ereignis",
   "event_organizers": "Organisatoren",
   "event_X_organizers": "{count, plural, one {# Organisator} other {# Organisatoren}}",
