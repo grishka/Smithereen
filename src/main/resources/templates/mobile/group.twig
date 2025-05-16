@@ -92,6 +92,17 @@
 	</div>
 	{% endif %}
 	<ul class="profileInfoRows">
+		{% if canEditGroup %}
+		<li><a href="/settings/mobileStatusForm?gid={{ group.id }}" class="multiline" data-ajax-box>
+			<span class="icon iconStatus"></span>
+			<span class="text">{{ group.statusText | default(L('update_status')) }}</span>
+		</a></li>
+		{% elseif group.statusText is not empty %}
+		<li><div class="item multiline">
+			<span class="icon iconStatus"></span>
+			<span class="text">{{ group.statusText }}</span>
+		</div></li>
+		{% endif %}
 		{% if group.event %}
 		<li><div class="item">
 			<span class="icon iconTime"></span>

@@ -603,6 +603,7 @@ public abstract class ActivityPubObject{
 			case "Photo" -> new ActivityPubPhoto();
 			case "TaggedPerson" -> new ActivityPubTaggedPerson();
 			case "QuoteAuthorization" -> new QuoteAuthorization();
+			case "ActorStatus" -> new ActivityPubActorStatus();
 
 			// Collections
 			case "Collection" -> new ActivityPubCollection(false);

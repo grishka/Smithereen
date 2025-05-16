@@ -365,6 +365,8 @@ public class SmithereenApplication{
 			postWithCSRF("/updateEmailNotifications", SettingsRoutes::updateEmailNotificationSettings);
 			get("/notifications/emailUnsubscribe/:key", SettingsRoutes::emailUnsubscribe);
 			post("/notifications/emailUnsubscribe/:key", SettingsRoutes::doEmailUnsubscribe);
+			postWithCSRF("/updateStatus", SettingsRoutes::updateSelfStatus);
+			getLoggedIn("/mobileStatusForm", SettingsRoutes::mobileStatusForm);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
@@ -606,6 +608,7 @@ public class SmithereenApplication{
 
 			postWithCSRF("/setFriendLists", FriendsRoutes::setUserFriendLists);
 			getLoggedIn("/setListsMobileBox", FriendsRoutes::setUserListsMobileBox);
+			get("/statuses/:statusID", ActivityPubRoutes::userStatus);
 		});
 
 		path("/groups/:id", ()->{
@@ -684,6 +687,8 @@ public class SmithereenApplication{
 			getActivityPubCollection("/albums", 100, ActivityPubRoutes::groupAlbums);
 			get("/albums", PhotosRoutes::groupAlbums);
 			get("/allPhotos", PhotosRoutes::allGroupPhotos);
+			get("/statuses/:statusID", ActivityPubRoutes::groupStatus);
+			postWithCSRF("/updateStatus", GroupsRoutes::updateGroupStatus);
 		});
 
 		path("/posts/:postID", ()->{

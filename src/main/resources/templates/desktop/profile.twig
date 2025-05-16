@@ -181,7 +181,24 @@
 	</div>
 	<!-- right column -->
 	<div id="right">
-		<h2>{{user | name('complete')}}</h2>
+		<div class="profileNameW">
+			<h2>{{user | name('complete')}}</h2>
+			{% if currentUser is not null and currentUser.id==user.id %}
+			<div class="profileStatusW">
+				<a href="javascript:void(0)" id="profileStatusLink" style="{% if user.statusText is not empty %}display: none{% endif %}" onclick="showProfileStatusBox()">{{ L('profile_update_status') }}</a>
+				<div class="profileStatus editable" id="profileStatusCont" style="{% if user.statusText is empty %}display: none{% endif %}" onclick="showProfileStatusBox()" data-tooltip="{{ L('update_status') }}">{{ user.statusText }}</div>
+				<form id="profileStatusBox" action="/settings/updateStatus?csrf={{ csrf }}" method="post" style="display: none" data-ajax>
+					<input type="text" name="status" maxlength="100" value="{{ user.statusText }}"/>
+					<div class="buttonW">
+						<div>{{ L('profile_status_hint') }}</div>
+						<input type="submit" value="{{ L('save') }}"/>
+					</div>
+				</form>
+			</div>
+			{% elseif user.statusText is not empty %}
+			<div class="profileStatusW">{{ user.statusText }}</div>
+			{% endif %}
+		</div>
 		<div class="profileFields">
 			{{ profileSection(_context, null, null, mainFields) }}
 			{{ profileSection(_context, L('profile_contacts_title'), "/settings/profile/contacts", contactsFields) }}

@@ -147,6 +147,9 @@ public class JLDProcessor{
 		lc.add("relationshipStatus", idAndTypeObject("sm:relationshipStatus", "@id"));
 		lc.add("relationshipPartner", idAndTypeObject("sm:relationshipPartner", "@id"));
 		lc.add("taggedPhotos", idAndTypeObject("sm:taggedPhotos", "@id"));
+		addSmAlias(lc, "ActorStatus");
+		lc.add("status", idAndTypeObject("sm:status", "@id"));
+		lc.add("statusHistory", idAndTypeObject("sm:statusHistory", "@id"));
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

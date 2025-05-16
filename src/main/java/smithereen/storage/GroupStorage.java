@@ -160,6 +160,7 @@ public class GroupStorage{
 					.value("access_type", group.accessType)
 					.value("endpoints", group.serializeEndpoints())
 					.value("about", group.summary)
+					.value("profile_fields", group.serializeProfileFields())
 					.valueExpr("last_updated", "CURRENT_TIMESTAMP()");
 
 			if(existingGroupID==0){
@@ -809,6 +810,15 @@ public class GroupStorage{
 				.where("group_id=?", group.id)
 				.executeNoResult();
 
+		removeFromCache(group);
+	}
+
+	public static void updateProfileFields(Group group) throws SQLException{
+		new SQLQueryBuilder()
+				.update("groups")
+				.value("profile_fields", group.serializeProfileFields())
+				.where("id=?", group.id)
+				.executeNoResult();
 		removeFromCache(group);
 	}
 

@@ -38,6 +38,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.ActorStatus;
 import smithereen.model.AuditLogEntry;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -57,6 +58,7 @@ import smithereen.model.friends.FollowRelationship;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.FederationStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
@@ -961,6 +963,46 @@ public class UsersController{
 				movingUsers.remove(oldUser.id);
 			}
 		}
+	}
+
+	public String updateStatus(User self, String status){
+		ActorStatus result=updateStatus(self, new ActorStatus(status, Instant.now(), null, null));
+		return result==null ? null : result.text();
+	}
+
+	public ActorStatus updateStatus(User self, ActorStatus status){
+		ActorStatus prev=self.status;
+		if(status!=null && StringUtils.isNotEmpty(status.text()) && !status.isExpired()){
+			if(status.text().length()>100)
+				status=status.withText(TextProcessor.truncateOnWordBoundary(status.text(), 100)+"...");
+			if(self.status!=null && self.status.text().equals(status.text()))
+				return status;
+			self.status=status;
+		}else{
+			if(self.status==null)
+				return status;
+			self.status=null;
+		}
+		try{
+			UserStorage.updateExtendedFields(self, self.serializeProfileFields());
+			if(self instanceof ForeignUser){
+				if(prev!=null)
+					FederationStorage.deleteFromApIdIndex(ObjectLinkResolver.ObjectType.USER_STATUS, self.id);
+				if(status!=null && status.apId()!=null)
+					FederationStorage.addToApIdIndex(status.apId(), ObjectLinkResolver.ObjectType.USER_STATUS, self.id);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+
+		if(!(self instanceof ForeignUser)){
+			if(self.status!=null)
+				context.getActivityPubWorker().sendCreateStatusActivity(self, self.status);
+			else
+				context.getActivityPubWorker().sendClearStatusActivity(self, prev);
+		}
+
+		return status;
 	}
 
 	private record CachedUserPresence(int userID, long sessionID, UserPresence presence){}

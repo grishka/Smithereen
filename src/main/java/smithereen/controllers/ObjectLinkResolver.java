@@ -41,6 +41,7 @@ import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
+import smithereen.model.ActorStatus;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -312,6 +313,16 @@ public class ObjectLinkResolver{
 						long id=CommentStorage.getCommentIdByActivityPubId(link);
 						if(id!=-1)
 							return ensureTypeAndCast(context.getCommentsController().getCommentIgnoringPrivacy(id), expectedType);
+					}
+					if(tid.type==ObjectType.USER_STATUS && expectedType.isAssignableFrom(ActorStatus.class)){
+						User user=context.getUsersController().getUserOrThrow(tid.idInt());
+						if(user.status!=null && link.equals(user.status.apId()))
+							return ensureTypeAndCast(user.status, expectedType);
+					}
+					if(tid.type==ObjectType.GROUP_STATUS && expectedType.isAssignableFrom(ActorStatus.class)){
+						Group group=context.getGroupsController().getGroupOrThrow(tid.idInt());
+						if(group.status!=null && link.equals(group.status.apId()))
+							return ensureTypeAndCast(group.status, expectedType);
 					}
 				}else{
 					if(expectedType.isAssignableFrom(ForeignUser.class)){
@@ -629,7 +640,9 @@ public class ObjectLinkResolver{
 		MESSAGE('D', 'M', 'S', 'G'),
 		PHOTO_ALBUM('P', 'A', 'L', 'B'),
 		PHOTO('P', 'H', 'T', 'O'),
-		COMMENT('C', 'M', 'N', 'T');
+		COMMENT('C', 'M', 'N', 'T'),
+		USER_STATUS('U', 'S', 'T', 'A'),
+		GROUP_STATUS('G', 'S', 'T', 'A');
 
 		public final int id;
 

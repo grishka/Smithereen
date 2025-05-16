@@ -4879,3 +4879,63 @@ label.largeAccented{
 	text-align: center;
 	padding: 25px 10px;
 }
+
+.profileNameW{
+	border-bottom: solid 1px $mainHeaderSeparator;
+	padding-left: 6px;
+	h2{
+		border-bottom: none;
+		font-size: 12px;
+		padding-bottom: 1px;
+	}
+}
+
+.profileStatusW{
+	padding: 1px 0 6px;
+	position: relative;
+}
+
+.profileStatus.editable{
+	cursor: pointer;
+	padding: 5px;
+	margin: -5px;
+	border-radius: 3px;
+	&:hover{
+		background: $blockBackground;
+	}
+}
+
+#profileStatusLink{
+	color: #adadad;
+}
+
+#profileStatusBox{
+	display: block;
+	position: absolute;
+	left: -3px;
+	top: -10px;
+	background: $bgGrey;
+	border: solid 1px $sectionHeaderBorder;
+	width: 398px;
+	height: 63px;
+	padding: 6px;
+	@include popup-shadow;
+	>input{
+		width: 100%;
+	}
+	.buttonW{
+		display: flex;
+		margin-top: 6px;
+		align-items: center;
+		div{
+			flex-grow: 1;
+			color: $auxiliaryGrey;
+			font-size: 10px;
+		}
+		input{
+			flex: none;
+			height: 22px;
+			line-height: 20px;
+		}
+	}
+}

@@ -1834,3 +1834,32 @@ function showEditFriendListBox(id:string, name:string){
 		});
 	}, null);
 }
+
+function showProfileStatusBox(){
+	var box=ge("profileStatusBox");
+	box.showAnimated();
+	box.qs("input[type=text]").focus();
+	box.customData={
+		mouseListener: (ev:MouseEvent)=>{
+			if((ev.target as HTMLElement).closest("#profileStatusBox"))
+				return;
+			ev.preventDefault();
+			ev.stopPropagation();
+			box.customData.dismiss();
+		},
+		escListener: (ev:KeyboardEvent)=>{
+			if(ev.keyCode!=27) // esc
+				return;
+			ev.preventDefault();
+			ev.stopPropagation();
+			box.customData.dismiss();
+		},
+		dismiss: ()=>{
+			window.removeEventListener("mousedown", box.customData.mouseListener);
+			window.removeEventListener("keydown", box.customData.escListener);
+			box.hideAnimated();
+		},
+	};
+	window.addEventListener("mousedown", box.customData.mouseListener);
+	window.addEventListener("keydown", box.customData.escListener);
+}

@@ -32,6 +32,7 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
+import smithereen.activitypub.objects.ActivityPubActorStatus;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
@@ -74,6 +75,7 @@ import smithereen.activitypub.tasks.SendOneActivityRunnable;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.ActorStatus;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -515,6 +517,19 @@ public class ActivityPubWorker{
 				.withActorFragmentID("updateProfile"+System.currentTimeMillis());
 		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
 		submitActivityForMembers(update, group);
+	}
+
+	public void sendCreateStatusActivity(Actor actor, ActorStatus status){
+		Create create=new Create()
+				.withActorLinkAndObject(actor, ActivityPubActorStatus.fromNativeStatus(status, actor))
+				.withObjectFragmentID("create");
+		submitActivityForFollowersOrMembers(create, actor);
+	}
+
+	public void sendClearStatusActivity(Actor actor, ActorStatus formerStatus){
+		Delete delete=new Delete()
+				.withActorAndObjectLinks(actor, ActivityPubActorStatus.fromNativeStatus(formerStatus, actor));
+		submitActivityForFollowersOrMembers(delete, actor);
 	}
 
 	public void sendLikeActivity(LikeableContentObject object, User user, int likeID) throws SQLException{
@@ -1157,6 +1172,14 @@ public class ActivityPubWorker{
 			submitActivity(activity, group, GroupStorage.getGroupMemberInboxes(group.id), requiredFeature);
 		}catch(SQLException x){
 			LOG.error("Error getting member inboxes for sending {} on behalf of group {}", activity.getType(), group.id, x);
+		}
+	}
+
+	public void submitActivityForFollowersOrMembers(Activity activity, Actor actor){
+		switch(actor){
+			case User user -> submitActivityForFollowers(activity, user);
+			case Group group -> submitActivityForMembers(activity, group);
+			default -> throw new IllegalStateException("Unexpected value: "+actor);
 		}
 	}
 

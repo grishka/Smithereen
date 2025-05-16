@@ -15,7 +15,24 @@
 <div class="columnLayout rightNarrow" id="profileLayout">
 	<!-- left column -->
 	<div id="left">
-		<h2>{{ group.name }}</h2>
+		<div class="profileNameW">
+			<h2>{{ group.name }}</h2>
+			{% if canEditGroup %}
+			<div class="profileStatusW">
+				<a href="javascript:void(0)" id="profileStatusLink" style="{% if group.statusText is not empty %}display: none{% endif %}" onclick="showProfileStatusBox()">{{ L('profile_update_status') }}</a>
+				<div class="profileStatus editable" id="profileStatusCont" style="{% if group.statusText is empty %}display: none{% endif %}" onclick="showProfileStatusBox()" data-tooltip="{{ L('update_status') }}">{{ group.statusText }}</div>
+				<form id="profileStatusBox" action="/groups/{{ group.id }}/updateStatus?csrf={{ csrf }}" method="post" style="display: none" data-ajax>
+					<input type="text" name="status" maxlength="100" value="{{ group.statusText }}"/>
+					<div class="buttonW">
+						<div></div>
+						<input type="submit" value="{{ L('save') }}"/>
+					</div>
+				</form>
+			</div>
+			{% elseif group.statusText is not empty %}
+			<div class="profileStatusW">{{ group.statusText }}</div>
+			{% endif %}
+		</div>
 		<div class="profileFields">
 			{% for fld in profileFields %}
 			<div class="label">{{ fld.name }}:</div>

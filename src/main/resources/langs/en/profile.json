@@ -111,5 +111,8 @@
   "profile_user_muted": "{name}'s news will no longer be shown in your feed",
   "profile_user_unmuted": "{name}'s news will be shown in your feed",
   "user_online": "Online",
-  "user_last_seen": "Last seen {date}"
+  "user_last_seen": "Last seen {date}",
+  "profile_update_status": "edit status",
+  "profile_status_hint": "Enter your status text here.",
+  "update_status": "Edit status"
 }

@@ -35,6 +35,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
+import smithereen.model.ActorStatus;
 import smithereen.model.EventReminder;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -49,6 +50,7 @@ import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.FederationStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.utils.IntPair;
@@ -740,6 +742,47 @@ public class GroupsController{
 		}catch(SQLException x){
 			LOG.error("Failed to update hint ranks", x);
 		}
+	}
+
+	public String updateStatus(User self, Group group, String status){
+		enforceUserAdminLevel(group, self, Group.AdminLevel.ADMIN);
+		ActorStatus result=updateStatus(group, new ActorStatus(status, Instant.now(), null, null));
+		return result==null ? null : result.text();
+	}
+
+	public ActorStatus updateStatus(Group group, ActorStatus status){
+		ActorStatus prev=group.status;
+		if(status!=null && StringUtils.isNotEmpty(status.text()) && !status.isExpired()){
+			if(status.text().length()>100)
+				status=status.withText(TextProcessor.truncateOnWordBoundary(status.text(), 100)+"...");
+			if(group.status!=null && group.status.text().equals(status.text()))
+				return status;
+			group.status=status;
+		}else{
+			if(group.status==null)
+				return status;
+			group.status=null;
+		}
+		try{
+			GroupStorage.updateProfileFields(group);
+			if(group instanceof ForeignGroup){
+				if(prev!=null)
+					FederationStorage.deleteFromApIdIndex(ObjectLinkResolver.ObjectType.GROUP_STATUS, group.id);
+				if(status!=null && status.apId()!=null)
+					FederationStorage.addToApIdIndex(status.apId(), ObjectLinkResolver.ObjectType.GROUP_STATUS, group.id);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+
+		if(!(group instanceof ForeignGroup)){
+			if(group.status!=null)
+				context.getActivityPubWorker().sendCreateStatusActivity(group, group.status);
+			else
+				context.getActivityPubWorker().sendClearStatusActivity(group, prev);
+		}
+
+		return status;
 	}
 
 	public enum EventsType{

@@ -242,6 +242,10 @@ public class User extends Actor{
 			if(o.has("feedTypes")){
 				newsTypesToShow=Utils.gson.fromJson(o.get("feedTypes"), new TypeToken<>(){});
 			}
+
+			if(o.has("status")){
+				status=Utils.gson.fromJson(o.get("status"), ActorStatus.class);
+			}
 		}
 
 		String privacy=res.getString("privacy");
@@ -530,6 +534,7 @@ public class User extends Actor{
 		return false;
 	}
 
+	@Override
 	public String serializeProfileFields(){
 		JsonObject o=new JsonObject();
 		if(manuallyApprovesFollowers)
@@ -618,6 +623,9 @@ public class User extends Actor{
 
 		if(newsTypesToShow!=null)
 			o.add("feedTypes", Utils.gson.toJsonTree(newsTypesToShow));
+
+		if(status!=null)
+			o.add("status", Utils.gson.toJsonTree(status));
 
 		return o.toString();
 	}

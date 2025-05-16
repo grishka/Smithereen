@@ -39,9 +39,11 @@ import smithereen.activitypub.handlers.AddGroupHandler;
 import smithereen.activitypub.handlers.AddNoteHandler;
 import smithereen.activitypub.handlers.AddPhotoHandler;
 import smithereen.activitypub.handlers.AnnounceNoteHandler;
+import smithereen.activitypub.handlers.CreateActorStatusHandler;
 import smithereen.activitypub.handlers.CreateNoteHandler;
 import smithereen.activitypub.handlers.CreatePhotoAlbumHandler;
 import smithereen.activitypub.handlers.CreatePhotoHandler;
+import smithereen.activitypub.handlers.DeleteActorStatusHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
 import smithereen.activitypub.handlers.DeletePhotoAlbumHandler;
@@ -70,6 +72,7 @@ import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectPhotoHandler;
+import smithereen.activitypub.handlers.RemoveActorStatusHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
 import smithereen.activitypub.handlers.RemoveNoteHandler;
 import smithereen.activitypub.handlers.GroupRemovePhotoHandler;
@@ -87,6 +90,7 @@ import smithereen.activitypub.handlers.UpdatePhotoAlbumHandler;
 import smithereen.activitypub.handlers.UpdatePhotoHandler;
 import smithereen.activitypub.handlers.UserRemovePhotoHandler;
 import smithereen.activitypub.objects.Activity;
+import smithereen.activitypub.objects.ActivityPubActorStatus;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
@@ -225,6 +229,10 @@ public class ActivityPubRoutes{
 
 		registerActivityHandler(Actor.class, Add.class, NoteOrQuestion.class, new AddNoteHandler());
 		registerActivityHandler(Actor.class, Remove.class, NoteOrQuestion.class, new RemoveNoteHandler());
+
+		registerActivityHandler(Actor.class, Create.class, ActivityPubActorStatus.class, new CreateActorStatusHandler());
+		registerActivityHandler(Actor.class, Delete.class, ActivityPubActorStatus.class, new DeleteActorStatusHandler());
+		registerActivityHandler(Actor.class, Remove.class, ActivityPubActorStatus.class, new RemoveActorStatusHandler());
 
 		registerActivityHandler(Flag.class, new FlagHandler());
 
@@ -620,6 +628,25 @@ public class ActivityPubRoutes{
 		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
 		PaginatedList<Comment> comments=ctx.getCommentsController().getPhotoAlbumComments(album, offset, count);
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
+	}
+
+	public static Object userStatus(Request req, Response resp){
+		User user=context(req).getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		return actorStatus(req, resp, user);
+	}
+
+	public static Object groupStatus(Request req, Response resp){
+		Group group=context(req).getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
+		return actorStatus(req, resp, group);
+	}
+
+	private static Object actorStatus(Request req, Response resp, Actor actor){
+		if(actor.status==null || actor.status.isExpired())
+			throw new ObjectNotFoundException();
+		long ts=safeParseLong(req.params(":statusID"));
+		if(actor.status.updatedAt().getEpochSecond()!=ts)
+			throw new ObjectNotFoundException();
+		return ActivityPubActorStatus.fromNativeStatus(actor.status, actor);
 	}
 
 	public static Object externalInteraction(Request req, Response resp, Account self, ApplicationContext ctx){

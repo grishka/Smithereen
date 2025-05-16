@@ -28,6 +28,7 @@ import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 import smithereen.exceptions.FederationException;
+import smithereen.model.ActorStatus;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.SizedImage;
@@ -51,6 +52,7 @@ public abstract class Actor extends ActivityPubObject{
 	public URI following;
 	public URI collectionQueryEndpoint;
 	public Instant lastUpdated;
+	public ActorStatus status;
 
 	public String aboutSource;
 
@@ -183,6 +185,11 @@ public abstract class Actor extends ActivityPubObject{
 
 		serializerContext.addSchema(JLD.W3_SECURITY);
 
+		if(status!=null){
+			serializerContext.addSmIdType("status");
+			obj.add("status", ActivityPubActorStatus.fromNativeStatus(status, this).asActivityPubObject(new JsonObject(), serializerContext));
+		}
+
 		return obj;
 	}
 
@@ -254,6 +261,13 @@ public abstract class Actor extends ActivityPubObject{
 		if(summary!=null)
 			summary=TextProcessor.sanitizeHTML(summary);
 
+		if(obj.get("status") instanceof JsonObject jstatus){
+			ActivityPubObject rawStatus=ActivityPubObject.parse(jstatus, parserContext);
+			if(rawStatus instanceof ActivityPubActorStatus as){
+				status=as.asNativeStatus();
+			}
+		}
+
 		return this;
 	}
 
@@ -263,6 +277,7 @@ public abstract class Actor extends ActivityPubObject{
 	public abstract URI getPhotoAlbumsURL();
 	public abstract String getTypeAndIdForURL();
 	public abstract String getName();
+	public abstract String serializeProfileFields();
 
 	private static RSAPublicKeySpec decodeSimpleRSAKey(byte[] key) throws IOException{
 		ByteArrayInputStream in=new ByteArrayInputStream(key);
@@ -388,6 +403,10 @@ public abstract class Actor extends ActivityPubObject{
 
 	public int getOwnerID(){
 		throw new UnsupportedOperationException();
+	}
+
+	public String getStatusText(){
+		return status!=null && !status.isExpired() ? status.text() : null;
 	}
 
 	public static class EndpointsStorageWrapper{

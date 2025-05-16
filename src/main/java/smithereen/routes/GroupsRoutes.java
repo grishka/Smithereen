@@ -1013,4 +1013,28 @@ public class GroupsRoutes{
 		Lang l=lang(req);
 		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
 	}
+
+	public static Object updateGroupStatus(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroup(req);
+		String status=req.queryParams("status");
+		status=ctx.getGroupsController().updateStatus(self.user, group, status);
+		if(!isAjax(req)){
+			resp.redirect(back(req));
+			return "";
+		}
+		if(isMobile(req)){
+			return new WebDeltaResponse(resp).refresh();
+		}else{
+			WebDeltaResponse wdr=new WebDeltaResponse(resp)
+					.runScript("ge('profileStatusBox').customData.dismiss();");
+			if(StringUtils.isEmpty(status)){
+				wdr.hide("profileStatusCont").show("profileStatusLink");
+			}else{
+				wdr.show("profileStatusCont")
+						.hide("profileStatusLink")
+						.setContent("profileStatusCont", status);
+			}
+			return wdr;
+		}
+	}
 }

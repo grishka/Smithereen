@@ -2442,6 +2442,9 @@ input.searchField{
 	.iconTime{
 		background: svg-load('img/material/schedule_24dp_FILL0_wght400_GRAD0_opsz24.svg', fill: #afafaf);
 	}
+	.iconStatus{
+		background: svg-load('img/material/chat_bubble_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: #afafaf);
+	}
 	.iconMore{
 		background: svg-load('img/material/more_horiz_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $normalLink);
 	}

@@ -64,6 +64,11 @@ public class ServiceActor extends Actor{
 	}
 
 	@Override
+	public String serializeProfileFields(){
+		return null;
+	}
+
+	@Override
 	protected boolean canFollowOtherActors(){
 		return false;
 	}

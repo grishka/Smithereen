@@ -132,6 +132,17 @@
 		</div>
 	{%endif%}
 	<ul class="profileInfoRows">
+		{% if currentUser is not null and user.id==currentUser.id %}
+		<li><a href="/settings/mobileStatusForm" class="multiline" data-ajax-box>
+			<span class="icon iconStatus"></span>
+			<span class="text">{{ user.statusText | default(L('update_status')) }}</span>
+		</a></li>
+		{% elseif user.statusText is not empty %}
+		<li><div class="item multiline">
+			<span class="icon iconStatus"></span>
+			<span class="text">{{ user.statusText }}</span>
+		</div></li>
+		{% endif %}
 		{% if user.friendsCount>0 %}
 		<li><a href="/users/{{ user.id }}/friends">
 			<span class="icon iconFriends"></span>

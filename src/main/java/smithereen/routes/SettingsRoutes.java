@@ -53,6 +53,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
+import smithereen.model.ActorStatus;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -1166,5 +1167,43 @@ public class SettingsRoutes{
 	public static Object removeMoveRedirect(Request req, Response resp, Account self, ApplicationContext ctx){
 		ctx.getUsersController().clearMovedTo(self);
 		return ajaxAwareRedirect(req, resp, "/feed");
+	}
+
+	public static Object updateSelfStatus(Request req, Response resp, Account self, ApplicationContext ctx){
+		String status=req.queryParams("status");
+		status=ctx.getUsersController().updateStatus(self.user, status);
+		if(!isAjax(req)){
+			resp.redirect(back(req));
+			return "";
+		}
+		if(isMobile(req)){
+			return new WebDeltaResponse(resp).refresh();
+		}else{
+			WebDeltaResponse wdr=new WebDeltaResponse(resp)
+					.runScript("ge('profileStatusBox').customData.dismiss();");
+			if(StringUtils.isEmpty(status)){
+				wdr.hide("profileStatusCont").show("profileStatusLink");
+			}else{
+				wdr.show("profileStatusCont")
+						.hide("profileStatusLink")
+						.setContent("profileStatusCont", status);
+			}
+			return wdr;
+		}
+	}
+
+	public static Object mobileStatusForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(!isMobile(req)){
+			resp.redirect(back(req));
+			return "";
+		}
+		String status;
+		int groupID=safeParseInt(req.queryParams("gid"));
+		if(groupID==0)
+			status=self.user.getStatusText();
+		else
+			status=ctx.getGroupsController().getGroupOrThrow(groupID).getStatusText();
+		Lang l=lang(req);
+		return wrapForm(req, resp, "status_form", groupID>0 ? "/groups/"+groupID+"/updateStatus" : "/settings/updateStatus", l.get("update_status"), "save", new RenderedTemplateResponse("status_form", req).with("statusText", status));
 	}
 }
