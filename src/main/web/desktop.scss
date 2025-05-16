@@ -2996,6 +2996,9 @@ label.pretendLink{
 		color: #FFF;
 		backdrop-filter: saturate(180%) blur(3px);
 		pointer-events: all;
+		a{
+			color: $iconColor;
+		}
 	}
 }
 
