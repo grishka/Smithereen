@@ -8,6 +8,7 @@ import io.pebbletemplates.pebble.extension.AbstractExtension;
 import io.pebbletemplates.pebble.extension.Filter;
 import io.pebbletemplates.pebble.extension.Function;
 import io.pebbletemplates.pebble.tokenParser.TokenParser;
+import smithereen.templates.filters.ActorSummaryFilter;
 import smithereen.templates.filters.ForceEscapeFilter;
 import smithereen.templates.filters.NameFilter;
 import smithereen.templates.filters.Nl2brFilter;
@@ -67,6 +68,7 @@ public class SmithereenExtension extends AbstractExtension{
 		f.put("truncateText", new TruncateTextFilter());
 		f.put("stripHTML", new StripHTMLFilter());
 		f.put("name", new NameFilter());
+		f.put("actorSummary", new ActorSummaryFilter());
 		return f;
 	}
 

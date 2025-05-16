@@ -164,10 +164,8 @@
 		{% if user.followingCount>0 %}
 			{% if followees.list is not empty %}
 			{% set followingWithTitles=[] %}
-			{% for followee in followees.list %}
-			    {% if loop.index<5 %}
-			    	{% set _=followingWithTitles.add({'user': followee}) %}
-			    {% endif %}
+			{% for followee in followees.list | length>5 ? followees.list | slice(0, 5) : followees.list %}
+				{% set _=followingWithTitles.add({'user': followee, 'title': followee | actorSummary}) %}
 			{% endfor %}
 			{% include "profile_module_user_list" with {'users': followingWithTitles, 'headerTitle': L('following'), 'subheaderTitle': L('X_people', {'count': user.followingCount}), 'headerHref': "/users/#{user.id}/following"} %}
 			{% else %}
