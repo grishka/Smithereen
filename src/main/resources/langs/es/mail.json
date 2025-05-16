@@ -33,6 +33,7 @@
   "mail_in_reply_to_own_post": "tu publicación",
   "mail_in_reply_to_own_comment": "tu comentario",
   "profile_write_message": "Enviar un mensaje",
+  "profile_write_message_short": "Mensajear",
   "messages_title": "Mensajes",
   "mail_conversation_history": "Historial de conversación",
   "mail_privacy_forbidden": "No puedes escribir a este usuario debido a sus ajustes de privacidad"
