@@ -503,6 +503,8 @@ public class TextProcessor{
 			URI href=URI.create(link.attr("href"));
 			boolean found=false;
 			for(User user:users.values()){
+				if(user.id==0)
+					continue;
 				if(href.equals(user.url) || href.equals(user.activityPubID)){
 					link.attr("data-user-id", String.valueOf(user.id));
 					found=true;
