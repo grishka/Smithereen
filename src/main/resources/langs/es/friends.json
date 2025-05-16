@@ -83,6 +83,7 @@
   "friends_edit_list": "Editar lista",
   "friends_delete_list": "Eliminar lista",
   "friends_list_name": "Nombrar lista",
+  "friends_public_list": "Listas de amigos públicas",
   "friends_public_list_explanation": "Otros usuarios podrán ver esta lista de amigos.",
   "X_friends_in_list_summary": "{count, plural, =0 {0 amigos} one {# amigo} other {# amigos}} en la lista",
   "friend_lists_limit_reached": "Has llegado al número máximo permitido de listas de amigos. Elimina una lista existente para crear una nueva.",
