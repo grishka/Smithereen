@@ -198,6 +198,9 @@
 			{% endif %}
 		</div>
 		<div class="profileFields">
+			{% if mainFields is empty and contactsFields is empty and personalFields is empty and interestsFields is empty %}
+			<div class="empty">{{ L('profile_no_info') }}</div>
+			{% endif %}
 			{{ profileSection(_context, null, null, mainFields) }}
 			{{ profileSection(_context, L('profile_contacts_title'), "/settings/profile/contacts", contactsFields) }}
 			{{ profileSection(_context, L('profile_personal_title'), "/settings/profile/personal", personalFields) }}
