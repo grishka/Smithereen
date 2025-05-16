@@ -44,7 +44,6 @@
   "birthday_descr_past": "{age, plural, one {Споўніўся # год} few {Споўнілася # гады} other {Споўнілася # гадоў}}",
   "birthday_descr_today": "Споўнілася {age, plural, one {# год} few {#гады} other {# гадоў}}",
   "birthday_descr_future": "Споўніцца {age, plural, one {# год} few {# гады} other {# гадоў}}",
-  "friend_req_accepted": "Заяўка прынята",
   "friend_req_declined": "Заяўка адхілена",
   "select_friends_title": "Абярыце сяброў",
   "friends_search_placeholder": "Пачніце ўводзіць імя сябра",

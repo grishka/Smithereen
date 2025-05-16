@@ -34,5 +34,8 @@
   "delete_photo_confirm": "¿Estás seguro de que quieres eliminar esta foto?",
   "photo_open_original": "Abrir original",
   "set_photo_as_album_cover": "Establecer como portada del álbum",
-  "photo_was_set_as_album_cover": "Foto establecida como portada del álbum"
+  "photo_was_set_as_album_cover": "Foto establecida como portada del álbum",
+  "update_avatar_crop_explanation1": "Por favor, selecciona un área para tu foto de perfil.",
+  "avatars_album_own": "Mis fotos de perfil",
+  "avatars_album_user": "Las fotos de perfil de {name}"
 }

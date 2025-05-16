@@ -151,7 +151,6 @@
   "settings_activity_web": "{browserName} {browserVersion} на {osName}",
   "unknown_browser": "Невядомы браўзэр",
   "settings_deactivate_confirm": "Вы сапраўды хочаце выдаліць сваю старонку?\n\nВаша старонка будзе дэактываваная, а праз <b>{timeInterval}</b> — незваротна выдалена. Калі вы перадумаеце, вы зможаце аднавіць сваю старонку без страты дадзеных на працягу перыяду дэактывацыі.",
-  "settings_deactivate_account": "Вы можаце <a id=\"deactivate\">выдаліць сваю старонку</a>.",
   "settings_reactivate_confirm": "Увядзіце ваш пароль для аднаўлення сваёй старонкі і адмены яе выдалення.",
   "settings_reactivate_title": "Аднаўленне старонкі",
   "err_reg_email_domain_not_allowed": "Рэгістрацыі з E-mail гэтага паштовага сэрвісу забаронены на гэтым серверы",

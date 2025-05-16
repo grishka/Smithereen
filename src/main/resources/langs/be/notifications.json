@@ -9,7 +9,6 @@
   "notification_reposted_comment": "{gender, select, female {падзялілася} other {падзяліўся}} каментарам",
   "notification_posted_on_wall": "{gender, select, female {кінула} other {кінуў}} запіс на вашай сцяне",
   "notification_invite_signup": "{gender, select, female {зарэгістравалася} other {зарэгістраваўся}} па вашым запрашэнні",
-  "notification_follow": "{gender, select, female {падпісалася} other {падпісаўся}} на ваc",
   "notification_friend_req_accept": "{gender, select, female {прыняла} other {прыняў}} вашу заяўку ў сябры",
   "no_notifications": "У вас пакуль няма апавяшчэнняў",
   "notifications": "Апавяшчэнні",

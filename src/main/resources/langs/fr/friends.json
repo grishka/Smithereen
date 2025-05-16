@@ -47,7 +47,6 @@
   "birthday_descr_past": "A eu {age, plural, one {# année} other {# années}}",
   "birthday_descr_today": "Aura {age, plural, one {# année} other {# années}}",
   "birthday_descr_future": "Aura {age, plural, one {# année} other {# années}}",
-  "friend_req_accepted": "Demande d'ami acceptée",
   "friend_req_declined": "Demande d'ami refusée",
   "select_friends_title": "Sélectionnez des amis",
   "friends_search_placeholder": "Commencez à taper le nom d'un ami",
