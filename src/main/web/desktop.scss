@@ -1633,7 +1633,7 @@ select, .comboBoxW input{
 .popover{
 	position: fixed;
 	font-size: 11px;
-	line-height: 11px;
+	line-height: 13px;
 	z-index: 5;
 	.popoverHeader{
 		background: $simpleButton;
@@ -3589,6 +3589,15 @@ a.clickableListItem:hover{
 			flex: none;
 			margin-right: 5px;
 		}
+	}
+	.multiLineSummary{
+		line-height: 13px;
+		max-height: 39px;
+		text-overflow: ellipsis;
+		overflow-y: hidden;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
 	}
 }
 
