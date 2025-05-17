@@ -2,20 +2,20 @@
 			   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 			   xsi:schemaLocation="https://github.com/qoomon/maven-git-versioning-extension https://qoomon.github.io/maven-git-versioning-extension/configuration-9.4.0.xsd">
 
-	<refs>
-		<ref type="branch">
-			<pattern>master</pattern>
-			<version>${describe.tag}-${describe.distance}+${commit.short}</version>
-			<userProperties>
-				<gitVersion>${describe.tag}-${describe.distance}+${commit.short}</gitVersion>
-			</userProperties>
-		</ref>
-
+	<refs considerTagsOnBranches="true">
 		<ref type="tag">
 			<pattern>.+</pattern>
 			<version>${ref}</version>
 			<userProperties>
 				<gitVersion>${ref}</gitVersion>
+			</userProperties>
+		</ref>
+
+		<ref type="branch">
+			<pattern>master</pattern>
+			<version>${describe.tag}-${describe.distance}+${commit.short}</version>
+			<userProperties>
+				<gitVersion>${describe.tag}-${describe.distance}+${commit.short}</gitVersion>
 			</userProperties>
 		</ref>
 	</refs>
