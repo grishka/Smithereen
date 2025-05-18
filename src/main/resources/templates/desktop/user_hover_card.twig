@@ -4,7 +4,7 @@
 	<div>
 		<h4>{{ user | name('complete') }}</h4>
 		{% set summary=user | actorSummary %}
-		{% if summary is empty %}{% set summary=user.summary | stripHTML %}{% endif %}
+		{% if summary is empty and user.summary is not empty %}{% set summary=user.summary | stripHTML %}{% endif %}
 		{% if summary is not empty %}
 		<div class="marginAfter marginBefore {% if mutualFriends is not null and mutualFriends.total>0 %}ellipsize{% else %}multiLineSummary{% endif %}">{{ summary }}</div>
 		{% endif %}
