@@ -53,7 +53,7 @@ jobs:
             - name: Download imgproxy and libvips
               uses: actions/download-artifact@v4
               with:
-                  pattern: "imgproxy-libvips-*.zip"
+                  pattern: "imgproxy-libvips-*"
 
             - name: Prepare release bundles
               run: ./ci/prepare_bundles.sh
