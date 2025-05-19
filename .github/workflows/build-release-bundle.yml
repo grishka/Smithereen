@@ -29,9 +29,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: "imgproxy-libvips-${{ matrix.platform.arch }}"
-                  path: |
-                      imgproxy
-                      libvips-cpp.so.*
+                  path: out
 
     build_release_bundles:
         runs-on: ubuntu-latest
@@ -40,6 +38,8 @@ jobs:
         steps:
             - name: Check out repo
               uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
             - name: Set up JDK 21
               uses: actions/setup-java@v4

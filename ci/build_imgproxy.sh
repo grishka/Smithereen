@@ -62,4 +62,6 @@ echo "Building imgproxy"
 cd src
 PKG_CONFIG_PATH=$workDir/pkgconfig go build -ldflags "-s -w" -o ../imgproxy || exit 1
 cd ..
-cp libvips/lib/libvips-cpp.so.* .
+mkdir out
+mv libvips/lib/libvips-cpp.so.* out/
+mv imgproxy out/
