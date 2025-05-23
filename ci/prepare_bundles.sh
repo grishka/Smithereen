@@ -16,4 +16,5 @@ mkdir bundles
 doOneArch "amd64" "x86_64" "x86_64"
 doOneArch "arm64" "aarch64" "arm64"
 
-tar -cvzf bundles
+ls -lR bundles
+tar -cvzf bundles.tar.gz bundles
