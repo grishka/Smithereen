@@ -58,14 +58,8 @@ jobs:
             - name: Prepare release bundles
               run: ./ci/prepare_bundles.sh
 
-            - name: Upload release bundle x86_64
+            - name: Upload release bundles
               uses: actions/upload-artifact@v4
               with:
-                  name: "smithereen-bundle-x86_64"
-                  path: bundles/amd64
-
-            - name: Upload release bundle arm64
-              uses: actions/upload-artifact@v4
-              with:
-                  name: "smithereen-bundle-arm64"
-                  path: bundles/arm64
+                  name: "bundles"
+                  path: bundles.tar.gz
