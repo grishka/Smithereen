@@ -10,8 +10,20 @@ If you have any questions or feedback, there's a [Telegram chat](https://t.me/Sm
 
 ### Running directly on your server
 
-1. Install and configure MySQL
-2. Install maven and JDK >=21 if you don't have it already
+#### Recommended: use the installation script
+
+1. Install JRE or JDK 21 or newer from your distribution's package manager, [here](https://adoptium.net/temurin/releases/), [here](https://www.azul.com/downloads/) or [here](https://aws.amazon.com/corretto/)
+2. [Install MySQL](https://dev.mysql.com/doc/refman/8.4/en/linux-installation.html). Note: on Debian, `apt-get install mysql-server` would instead install MariaDB, which is known to be incompatible with Smithereen.
+3. Download a prebuilt bundle for your CPU architecture from [the latest release](https://github.com/grishka/Smithereen/releases/latest) to your server and unpack it somewhere
+4. Run `./install.sh`
+5. Answer a few questions to configure Smithereen and create the first account. If you're using S3 storage for files, see the section about that below to better understand what the script asks you and configure your storage provider correctly.
+6. Configure your web server to proxy the requests to Smithereen and imgproxy and serve user-uploaded files. See example configs for [nginx](examples/nginx.conf) and [Caddy](examples/Caddyfile).
+7. Log into your admin account from your web browser, then configure the rest of the server settings from its UI
+
+#### Install manually from sources
+
+1. Install JDK 21 or newer from your distribution's package manager, [here](https://adoptium.net/temurin/releases/), [here](https://www.azul.com/downloads/) or [here](https://aws.amazon.com/corretto/)
+2. [Install MySQL](https://dev.mysql.com/doc/refman/8.4/en/linux-installation.html). Note: on Debian, `apt-get install mysql-server` would instead install MariaDB, which is known to be incompatible with Smithereen.
 3. Build the jar by running `mvn package -DskipTests=true`, place it at `/opt/smithereen/smithereen.jar` and also copy the dependencies from `target/lib`. You should end up with this file structure:
    ```
    /opt/smithereen
