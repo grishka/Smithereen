@@ -10,6 +10,7 @@ function doOneArch {
 	pushd bundles/$3
 	ln -s libvips-cpp.so.* libvips-cpp.so
 	popd
+	tar -cvzf smithereen-bundle-$3.tar.gz bundles/$3
 }
 
 mkdir bundles
@@ -17,4 +18,3 @@ doOneArch "amd64" "x86_64" "x86_64"
 doOneArch "arm64" "aarch64" "arm64"
 
 ls -lR bundles
-tar -cvzf bundles.tar.gz bundles
