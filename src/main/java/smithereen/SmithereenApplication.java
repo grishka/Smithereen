@@ -158,6 +158,7 @@ public class SmithereenApplication{
 				System.err.println("Unknown argument: '"+args[1]+"'");
 				System.exit(1);
 			}
+			System.exit(0);
 			return;
 		}
 
