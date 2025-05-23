@@ -7,8 +7,9 @@ function doOneArch {
 	cp ci/bundle_install.sh bundles/$1/install.sh
 	sed -i -e "s/__arch__/$2/g" bundles/$1/install.sh
 	chmod +x bundles/$1/install.sh
-	cd bundles/$1
+	pushd bundles/$1
 	ln -s libvips-cpp.so.* libvips-cpp.so
+	popd
 }
 
 mkdir bundles
