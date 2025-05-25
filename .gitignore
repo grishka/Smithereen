@@ -38,4 +38,4 @@ node_modules/
 *.iml
 *.ipr
 
-pom.xml.new-version
+.git-versioned-pom.xml

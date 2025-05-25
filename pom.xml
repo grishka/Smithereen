@@ -14,7 +14,7 @@
 
 	<groupId>me.grishka.smithereen</groupId>
 	<artifactId>server</artifactId>
-	<version>0.4.4</version>
+	<version>not-set</version>
 	<build>
 		<plugins>
 
@@ -161,22 +161,6 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin>
-			<plugin>
-				<groupId>me.ccampo</groupId>
-				<artifactId>git-version-maven-plugin</artifactId>
-				<version>0.1.0</version> <!-- Use the latest stable version if possible -->
-				<extensions>true</extensions>
-				<configuration>
-					<strategy hint="git">
-						<!-- Strategy specific configuration goes here -->
-						<nonQualifierBranches>master</nonQualifierBranches>
-						<preReleaseStage>dev</preReleaseStage>
-						<dirtyQualifier>dirty</dirtyQualifier>
-						<snapshot>false</snapshot>
-					</strategy>
-					<deleteTemporaryFile>true</deleteTemporaryFile>
-				</configuration>
 			</plugin>
 
 		</plugins>

@@ -10,9 +10,28 @@ If you have any questions or feedback, there's a [Telegram chat](https://t.me/Sm
 
 ### Running directly on your server
 
-1. Install and configure MySQL
-2. Install maven and JDK >=21 if you don't have it already
-3. Build the jar by running `mvn package -DskipTests=true` and place the one with dependencies at `/opt/smithereen/smithereen.jar`
+#### Recommended: use the installation script
+
+1. Install JRE or JDK 21 or newer from your distribution's package manager, [here](https://adoptium.net/temurin/releases/), [here](https://www.azul.com/downloads/) or [here](https://aws.amazon.com/corretto/)
+2. [Install MySQL](https://dev.mysql.com/doc/refman/8.4/en/linux-installation.html). Note: on Debian, `apt-get install mysql-server` would instead install MariaDB, which is known to be incompatible with Smithereen.
+3. Download a prebuilt bundle for your CPU architecture from [the latest release](https://github.com/grishka/Smithereen/releases/latest) to your server and unpack it somewhere
+4. Run `./install.sh`
+5. Answer a few questions to configure Smithereen and create the first account. If you're using S3 storage for files, see the section about that below to better understand what the script asks you and configure your storage provider correctly.
+6. Configure your web server to proxy the requests to Smithereen and imgproxy and serve user-uploaded files. See example configs for [nginx](examples/nginx.conf) and [Caddy](examples/Caddyfile).
+7. Log into your admin account from your web browser, then configure the rest of the server settings from its UI
+
+#### Install manually from sources
+
+1. Install JDK 21 or newer from your distribution's package manager, [here](https://adoptium.net/temurin/releases/), [here](https://www.azul.com/downloads/) or [here](https://aws.amazon.com/corretto/)
+2. [Install MySQL](https://dev.mysql.com/doc/refman/8.4/en/linux-installation.html). Note: on Debian, `apt-get install mysql-server` would instead install MariaDB, which is known to be incompatible with Smithereen.
+3. Build the jar by running `mvn package -DskipTests=true`, place it at `/opt/smithereen/smithereen.jar` and also copy the dependencies from `target/lib`. You should end up with this file structure:
+   ```
+   /opt/smithereen
+   ├╴ smithereen.jar
+   └╴ lib
+      ├╴ activation-1.1.jar
+      └╴ ...other dependencies
+   ```
 4. Set up the image processing native library ([libvips](https://github.com/libvips/libvips)): run `java LibVipsDownloader.java` to automatically download a prebuilt one from [here](https://github.com/lovell/sharp-libvips). If you already have libvips installed on your system, you may skip this step, but be aware that not all libvips builds include all the features Smithereen needs.
 5. Install and configure [imgproxy](https://docs.imgproxy.net/GETTING_STARTED)
 6. Fill in the config file, see a commented example [here](examples/config.properties)
@@ -20,11 +39,12 @@ If you have any questions or feedback, there's a [Telegram chat](https://t.me/Sm
 7. Create a new MySQL database and initialize it with the [schema](schema.sql) using a command (`mysql -p smithereen < schema.sql`) or any GUI like phpMyAdmin
 8. Configure and start the daemon: assuming your distribution uses systemd, copy [the service file](examples/smithereen.service) to /etc/systemd/system, then run `systemctl daemon-reload` and `service smithereen start`
 9. Run `java -jar /opt/smithereen/smithereen.jar /etc/smithereen/config.properties init_admin` to create the first account
-10. Log into that account from your web browser, then configure the rest of the server settings from its UI
+10. Configure your web server to proxy the requests to Smithereen and imgproxy and serve user-uploaded files. See example configs for [nginx](examples/nginx.conf) and [Caddy](examples/Caddyfile).
+11. Log into that account from your web browser, then configure the rest of the server settings from its UI
 
 ### Using Docker
 
-Copy [Docker-specific config example](examples/config_docker.properties) to the project root directory as `config.properties` and edit it to set your domain. Also edit `docker-compose.yml` to add your imgproxy secrets. You can then use `docker-compose` to run Smithereen, MySQL, and imgproxy. You still need to [configure your web server to reverse proxy the port 4567](examples/nginx.conf). Create the first account by running `docker-compose exec web bash -c ./smithereen-init-admin`.
+Copy [Docker-specific config example](examples/config_docker.properties) to the project root directory as `config.properties` and edit it to set your domain. Also edit `docker-compose.yml` to add your imgproxy secrets. You can then use `docker-compose` to run Smithereen, MySQL, and imgproxy. You still need to configure your web server: [nginx](examples/nginx.conf), [Caddy](examples/Caddyfile). Create the first account by running `docker-compose exec web bash -c ./smithereen-init-admin`.
 
 ### Using S3 object storage
 

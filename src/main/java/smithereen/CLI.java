@@ -38,21 +38,8 @@ public class CLI{
 			System.out.println(E_FG_GREEN+E_BOLD+"Welcome to Smithereen!"+E_RESET+E_BOLD+" You will now answer a few questions to create the first user on your server."+E_RESET+"\n" +
 					"This user will have administrative privileges.\n");
 
-			String username, email, password;
+			String email, password;
 
-			while(true){
-				System.out.print("Username: ");
-				username=c.readLine();
-				if(!Utils.isValidUsername(username)){
-					System.out.println("This username isn't valid. Usernames can only contain letters, numbers, . and _, and must be at least 2 characters long. Please try again.");
-					continue;
-				}
-				if(Utils.isReservedUsername(username)){
-					System.out.println("This username is reserved by the system. You can't use it. Please try again.");
-					continue;
-				}
-				break;
-			}
 			while(true){
 				System.out.print("E-mail: ");
 				email=c.readLine();
@@ -80,8 +67,8 @@ public class CLI{
 				}
 				break;
 			}
-			SessionStorage.registerNewAccount(username, password, email, username, "", User.Gender.UNKNOWN);
-			Account acc=SessionStorage.getAccountForUsernameAndPassword(username, password);
+			SessionStorage.registerNewAccount(null, password, email, "Admin", "", User.Gender.UNKNOWN);
+			Account acc=SessionStorage.getAccountForUsernameAndPassword(email, password);
 			UserStorage.setAccountRole(acc, 1, 0); // owner
 			System.out.println(E_BOLD+"You're all set! Now, make sure your web server is properly configured, then navigate to https://"+Config.domain+" in your web browser and log into your account."+E_RESET);
 		}catch(SQLException|IOError x){
