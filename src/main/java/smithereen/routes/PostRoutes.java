@@ -359,7 +359,9 @@ public class PostRoutes{
 				fromLayer=false;
 			}
 			RenderedTemplateResponse model=new RenderedTemplateResponse(templateName, req).with("post", postVM);
-			model.with("users", Map.of(self.user.id, self.user));
+			HashSet<Integer> needUsers=new HashSet<>();
+			PostViewModel.collectActorIDs(List.of(postVM), needUsers, null);
+			model.with("users", ctx.getUsersController().getUsers(needUsers));
 
 			String rid=req.queryParams("rid");
 			String ridSuffix="";
