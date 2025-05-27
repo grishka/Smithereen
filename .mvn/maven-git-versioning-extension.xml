@@ -18,9 +18,19 @@
 				<gitVersion>${describe.tag}-${describe.distance}+${commit.short}</gitVersion>
 			</userProperties>
 		</ref>
+
+		<ref type="branch">
+			<describeTagFirstParent>false</describeTagFirstParent>
+			<pattern>.+</pattern>
+			<version>${describe.tag}-${ref}.${describe.distance}+${commit.short}</version>
+			<userProperties>
+				<gitVersion>${describe.tag}-${ref}.${describe.distance}+${commit.short}</gitVersion>
+			</userProperties>
+		</ref>
 	</refs>
 
 	<rev>
+		<describeTagFirstParent>false</describeTagFirstParent>
 		<version>${describe.tag}-${ref}.${describe.distance}+${commit.short}</version>
 		<userProperties>
 			<gitVersion>${describe.tag}-${ref}.${describe.distance}+${commit.short}</gitVersion>
