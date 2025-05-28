@@ -196,7 +196,7 @@
 		{% elseif latest.type=="FOLLOW" %}
 		{{ isMultiple ? L('notification_follow_multiple') : L('notification_follow', {'gender': actorGender}) }}
 		{% elseif latest.type=="FRIEND_REQ_ACCEPT" %}
-		{{ isMultiple ? L('notification_friend_req_accept_multuple') : L('notification_friend_req_accept', {'gender': actorGender}) }}
+		{{ isMultiple ? L('notification_friend_req_accept_multiple') : L('notification_friend_req_accept', {'gender': actorGender}) }}
 		{% endif %}
 		</div>
 	</div>
