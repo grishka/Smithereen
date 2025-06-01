@@ -326,7 +326,7 @@ select{
 		overflow-x: auto;
 	}
 	.repostHeader{
-		padding-bottom: 8px;
+		margin-bottom: 8px;
 		.avaW{
 			margin-right: 8px;
 		}
@@ -334,8 +334,8 @@ select{
 			font-weight: $mediumWeight;
 		}
 	}
-	.postContent:not(:empty)+.repostHeader{
-		padding-top: 8px;
+	.postContent:not(:empty)+.repostHeader, .postAttachments:not(:empty)+.repostHeader{
+		margin-top: 8px;
 	}
 	.postActions{
 		border-top: solid 1px $wallCommentSeparator;
