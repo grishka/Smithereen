@@ -320,7 +320,7 @@ select{
 		font-weight: $mediumWeight;
 	}
 	.postContentWrap{
-		padding: 8px 0;
+		margin: 8px 0;
 	}
 	.postContent pre{
 		overflow-x: auto;
@@ -345,6 +345,10 @@ select{
 		.share{
 			margin-right: -12px;
 		}
+	}
+	.postContentWrap:has(.postAttachments:last-child>.aspectBoxW:last-child)+.postActions{
+		border-top: none;
+		margin-top: -8px;
 	}
 	code{
 		line-height: 18px;
@@ -841,7 +845,7 @@ select{
 }
 
 .postAttachments{
-	margin: 0 -12px;
+	margin: 8px -12px 0;
 	text-align: center;
 	.aspectBox{
 		display: grid;
@@ -869,6 +873,10 @@ select{
 		max-height: 510px;
 		margin: auto;
 	}
+}
+
+.comment .postAttachments{
+	margin: 8px 0 0;
 }
 
 .feedCaptionWithAva{
@@ -2553,7 +2561,7 @@ input.searchField{
 		margin-left: 48px;
 		padding: 0;
 		.postContentWrap{
-			padding: 0;
+			margin: 0;
 		}
 		.postContent{
 			padding: 6px 0;
