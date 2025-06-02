@@ -24,11 +24,13 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.InaccessibleProfileException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.FriendshipStatus;
@@ -44,6 +46,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.UserRole;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
@@ -378,15 +381,30 @@ public class PrivacyController{
 		posts.removeIf(post->!checkPostPrivacy(self, post.post));
 	}
 
+	private boolean canAccessBannedProfiles(@Nullable User self){
+		if(self!=null && !(self instanceof ForeignUser)){
+			Account account=context.getUsersController().getAccountForUser(self);
+			if(account.roleID!=0)
+				return Config.userRoles.get(account.roleID).hasPermission(UserRole.Permission.MANAGE_USERS);
+		}
+		return false;
+	}
+
 	public void enforceUserProfileAccess(@Nullable User self, User target){
 		switch(target.banStatus){
 			case NONE -> {}
-			case FROZEN, SUSPENDED -> throw new UserErrorException("profile_banned");
+			case FROZEN, SUSPENDED -> {
+				if(!canAccessBannedProfiles(self))
+					throw new UserErrorException("profile_banned");
+			}
 			case HIDDEN -> {
 				if(self==null)
 					throw new InaccessibleProfileException(target);
 			}
-			case SELF_DEACTIVATED -> throw new UserErrorException("profile_deactivated");
+			case SELF_DEACTIVATED -> {
+				if(!canAccessBannedProfiles(self))
+					throw new UserErrorException("profile_deactivated");
+			}
 		}
 	}
 
