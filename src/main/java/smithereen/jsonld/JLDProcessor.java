@@ -75,6 +75,7 @@ public class JLDProcessor{
 		// Mastodon aliases
 		lc.addProperty("blurhash", "toot:blurhash");
 		lc.addProperty("votersCount", "toot:votersCount");
+		lc.addProperty("suspended", "toot:suspended");
 
 		// Misskey quote-reposts
 		lc.add("_misskey_quote", idAndTypeObject(JLD.MISSKEY+"_misskey_quote", "@id"));

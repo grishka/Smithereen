@@ -406,6 +406,8 @@ public class PrivacyController{
 					throw new UserErrorException("profile_deactivated");
 			}
 		}
+		if(target.banInfo!=null && target.banInfo.suspendedOnRemoteServer() && !canAccessBannedProfiles(self))
+			throw new UserErrorException("profile_banned");
 	}
 
 	void populatePrivacySettingsFriendListUsers(User self, Collection<PrivacySetting> settings){

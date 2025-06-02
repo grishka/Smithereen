@@ -277,5 +277,6 @@
   "signup_invite_deleted": "Invitation deleted",
   "admin_report_content_photo": "Photo #{id}",
   "admin_permission_manage_fasps": "Manage FASP services",
-  "admin_permission_manage_fasps_descr": "Allows establishing connections with FASP services, deleting them, and changing their settings and which of their capabilities are enabled"
+  "admin_permission_manage_fasps_descr": "Allows establishing connections with FASP services, deleting them, and changing their settings and which of their capabilities are enabled",
+  "admin_user_suspended_remotely": "This user is suspended by their server staff."
 }

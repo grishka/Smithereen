@@ -1268,11 +1268,14 @@ public class SettingsAdminRoutes{
 				}
 				forcePasswordChange="on".equals(req.queryParams("forcePasswordChange"));
 			}
-			info=new UserBanInfo(Instant.now(), expiresAt, message, forcePasswordChange, self.user.id, report==null ? 0 : report.id);
+			info=new UserBanInfo(Instant.now(), expiresAt, message, forcePasswordChange, self.user.id, report==null ? 0 : report.id, user.banInfo!=null && user.banInfo.suspendedOnRemoteServer());
 		}else{
 			if(report!=null)
 				throw new BadRequestException();
-			info=null;
+			if(user.banInfo!=null && user.banInfo.suspendedOnRemoteServer())
+				info=new UserBanInfo(Instant.now(), null, null, false, 0, 0, true);
+			else
+				info=null;
 		}
 		ctx.getModerationController().setUserBanStatus(self.user, user, user instanceof ForeignUser ? null : ctx.getUsersController().getAccountForUser(user), status, info);
 		if(report!=null){

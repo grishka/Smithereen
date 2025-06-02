@@ -24,6 +24,10 @@ public record UserRole(int id, String name, EnumSet<Permission> permissions){
 		};
 	}
 
+	public boolean hasPermission(Permission permission){
+		return permissions.contains(Permission.SUPERUSER) || permissions.contains(permission);
+	}
+
 	public enum Permission{
 		SUPERUSER,
 

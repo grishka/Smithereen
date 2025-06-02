@@ -464,7 +464,7 @@ public class UsersController{
 		try{
 			if(self.user.banStatus!=UserBanStatus.NONE)
 				throw new IllegalArgumentException("Already banned");
-			UserBanInfo info=new UserBanInfo(Instant.now(), null, null, false, 0, 0);
+			UserBanInfo info=new UserBanInfo(Instant.now(), null, null, false, 0, 0, false);
 			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.SELF_DEACTIVATED, Utils.gson.toJson(info));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

@@ -854,7 +854,8 @@ public class UserStorage{
 					.value("middle_name", user.middleName)
 					.value("maiden_name", user.maidenName)
 					.value("endpoints", user.serializeEndpoints())
-					.value("privacy", user.privacySettings!=null ? Utils.gson.toJson(user.privacySettings) : null);
+					.value("privacy", user.privacySettings!=null ? Utils.gson.toJson(user.privacySettings) : null)
+					.value("ban_info", user.banInfo!=null ? Utils.gson.toJson(user.banInfo) : null);
 
 			if(isNew){
 				bldr.value("num_followers", user.getRawFollowersCount())

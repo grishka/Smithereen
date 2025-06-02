@@ -8,6 +8,7 @@ import com.google.gson.JsonPrimitive;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -354,6 +355,18 @@ public class ForeignUser extends User implements ForeignActor{
 						.filter(Objects::nonNull)
 						.collect(Collectors.toCollection(()->EnumSet.noneOf(FriendsNewsfeedTypeFilter.class)));
 			}
+		}
+
+		if(optBoolean(obj, "suspended")){
+			if(banInfo==null)
+				banInfo=new UserBanInfo(Instant.now(), null, null, false, 0, 0, true);
+			else
+				banInfo=banInfo.withRemoteSuspensionStatus(true);
+		}else if(banInfo!=null){
+			if(banStatus==UserBanStatus.NONE)
+				banInfo=null;
+			else
+				banInfo=banInfo.withRemoteSuspensionStatus(false);
 		}
 
 		return this;

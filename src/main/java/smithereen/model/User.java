@@ -253,11 +253,9 @@ public class User extends Actor{
 			privacySettings=Utils.gson.fromJson(privacy, new TypeToken<>(){});
 		}
 		banStatus=UserBanStatus.values()[res.getInt("ban_status")];
-		if(banStatus!=UserBanStatus.NONE){
-			String _banInfo=res.getString("ban_info");
-			if(StringUtils.isNotEmpty(_banInfo)){
-				banInfo=Utils.gson.fromJson(_banInfo, UserBanInfo.class);
-			}
+		String _banInfo=res.getString("ban_info");
+		if(StringUtils.isNotEmpty(_banInfo)){
+			banInfo=Utils.gson.fromJson(_banInfo, UserBanInfo.class);
 		}
 
 		numFollowers=res.getLong("num_followers");
