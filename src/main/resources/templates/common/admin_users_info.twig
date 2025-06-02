@@ -109,26 +109,26 @@
 	</div>
 	{% endif %}
 	<h2 class="marginBefore marginAfter">{{ L('admin_user_restrictions') }}</h2>
-	<div class="marginBefore marginAfter">
+	<div class="marginBefore marginAfter textByItself">
 		{% if user.banStatus=='NONE' %}
-		{{ L('admin_user_state_no_restrictions') }}
+		{% if user.banInfo is null or not user.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_user_state_no_restrictions') }}</p>{% endif %}
 		{% elseif user.banStatus=='FROZEN' %}
-		{{ L('admin_user_state_frozen', {'expirationTime': user.banInfo.expiresAt is null ? L('email_account_frozen_until_first_login') : LD(user.banInfo.expiresAt)}) }}
+		<p>{{ L('admin_user_state_frozen', {'expirationTime': user.banInfo.expiresAt is null ? L('email_account_frozen_until_first_login') : LD(user.banInfo.expiresAt)}) }}</p>
 		{% elseif user.banStatus=='SUSPENDED' %}
 		{% if user.domain is empty %}
-		{{ L('admin_user_state_suspended', {'deletionTime': LD(accountDeletionTime)}) }}
+		<p>{{ L('admin_user_state_suspended', {'deletionTime': LD(accountDeletionTime)}) }}</p>
 		{% else %}
-		{{ L('admin_user_state_suspended_foreign') }}
+		<p>{{ L('admin_user_state_suspended_foreign') }}</p>
 		{% endif %}
 		{% elseif user.banStatus=='HIDDEN' %}
-		{{ L('admin_user_state_hidden') }}
+		<p>{{ L('admin_user_state_hidden') }}</p>
 		{% elseif user.banStatus=='SELF_DEACTIVATED' %}
-		{{ L('admin_user_state_self_deactivated', {'deletionTime': LD(accountDeletionTime)}) }}
+		<p>{{ L('admin_user_state_self_deactivated', {'deletionTime': LD(accountDeletionTime)}) }}</p>
 		{% endif %}
 		{% if user.banInfo is not null %}
-		{% if user.banInfo.suspendedOnRemoteServer %}<br/>{{ L('admin_user_suspended_remotely') }}{% endif %}
-		<br/>{% if banModerator is not null %}<a href="{{ banModerator.profileURL }}">{{ banModerator | name }}</a>, {% endif %}{{ LD(user.banInfo.bannedAt()) }}
-		{% if user.banInfo.message is not empty %}<br/>{{ L('admin_user_ban_message') }}: {{ user.banInfo.message }}{% endif %}
+		{% if user.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_user_suspended_remotely') }}</p>{% endif %}
+		<p>{% if banModerator is not null %}<a href="{{ banModerator.profileURL }}">{{ banModerator | name }}</a>, {% endif %}{{ LD(user.banInfo.bannedAt()) }}</p>
+		{% if user.banInfo.message is not empty %}<p>{{ L('admin_user_ban_message') }}: {{ user.banInfo.message }}</p>{% endif %}
 		{% endif %}
 	</div>
 	<a href="/users/{{ user.id }}/banForm" data-ajax-box class="button">{{ L('admin_user_change_restrictions') }}</a>

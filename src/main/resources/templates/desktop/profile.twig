@@ -49,6 +49,29 @@
 	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', {'domain': user.domain})}}</a>
 </div>
 {%endif%}
+{% if user.banInfo is not null and currentUser is not null and userPermissions.hasPermission('MANAGE_USERS') %}
+{% if user.domain is empty and movedTo is null %}<div class="marginsAreMessy"></div>{% endif %}
+<div class="settingsMessage textByItself">
+	{% if user.banStatus=='FROZEN' %}
+	<p>{{ L('admin_user_state_frozen', {'expirationTime': user.banInfo.expiresAt is null ? L('email_account_frozen_until_first_login') : LD(user.banInfo.expiresAt)}) }}</p>
+	{% elseif user.banStatus=='SUSPENDED' %}
+	{% if user.domain is empty %}
+	<p>{{ L('admin_user_state_suspended', {'deletionTime': LD(accountDeletionTime)}) }}</p>
+	{% else %}
+	<p>{{ L('admin_user_state_suspended_foreign') }}</p>
+	{% endif %}
+	{% elseif user.banStatus=='HIDDEN' %}
+	<p>{{ L('admin_user_state_hidden') }}</p>
+	{% elseif user.banStatus=='SELF_DEACTIVATED' %}
+	<p>{{ L('admin_user_state_self_deactivated', {'deletionTime': LD(accountDeletionTime)}) }}</p>
+	{% endif %}
+	{% if user.banInfo is not null %}
+	{% if user.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_user_suspended_remotely') }}</p>{% endif %}
+	<p>{% if banModerator is not null %}<a href="{{ banModerator.profileURL }}">{{ banModerator | name }}</a>, {% endif %}{{ LD(user.banInfo.bannedAt()) }}</p>
+	{% if user.banInfo.message is not empty %}<p>{{ L('admin_user_ban_message') }}: {{ user.banInfo.message }}</p>{% endif %}
+	{% endif %}
+</div>
+{% endif %}
 <div class="columnLayout leftNarrow" id="profileLayout">
 	<!-- left column -->
 	<div id="left">
