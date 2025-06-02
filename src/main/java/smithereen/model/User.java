@@ -519,6 +519,10 @@ public class User extends Actor{
 			serializerContext.addType("movedTo", "as:movedTo", "@id");
 		}
 
+		serializerContext.addAlias("toot", JLD.MASTODON);
+		serializerContext.addAlias("suspended", "toot:suspended");
+		obj.addProperty("suspended", banStatus==UserBanStatus.SUSPENDED);
+
 		return obj;
 	}
 

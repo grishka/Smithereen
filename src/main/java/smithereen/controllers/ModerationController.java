@@ -497,7 +497,10 @@ public class ModerationController{
 		try{
 			if(self.id==target.id && status!=UserBanStatus.NONE)
 				throw new UserErrorException("You can't ban yourself");
+			UserBanStatus prevStatus=target.banStatus;
 			UserStorage.setUserBanStatus(target, targetAccount, status, status!=UserBanStatus.NONE ? Utils.gson.toJson(info) : null);
+			target.banStatus=status;
+			target.banInfo=info;
 			HashMap<String, Object> auditLogArgs=new HashMap<>();
 			auditLogArgs.put("status", status);
 			if(info!=null){
@@ -512,6 +515,9 @@ public class ModerationController{
 			if(!(target instanceof ForeignUser) && (status==UserBanStatus.FROZEN || status==UserBanStatus.SUSPENDED)){
 				Account account=SessionStorage.getAccountByUserID(target.id);
 				Mailer.getInstance().sendAccountBanNotification(account, status, info);
+			}
+			if(!(target instanceof ForeignUser) && (status==UserBanStatus.SUSPENDED || prevStatus==UserBanStatus.SUSPENDED)){
+				context.getActivityPubWorker().sendUpdateUserActivity(target);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
