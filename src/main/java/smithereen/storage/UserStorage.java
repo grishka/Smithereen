@@ -1385,6 +1385,15 @@ public class UserStorage{
 					.deleteFrom("users")
 					.where("id=?", user.id)
 					.executeNoResult();
+			if(user.banInfo!=null){
+				new SQLQueryBuilder(conn)
+						.insertInto("deleted_user_bans")
+						.value("user_id", user.id)
+						.value("domain", user.domain)
+						.value("ban_status", user.banStatus)
+						.value("ban_info", Utils.gson.toJson(user.banInfo))
+						.executeNoResult();
+			}
 			removeFromCache(user);
 		}
 	}
@@ -1405,6 +1414,14 @@ public class UserStorage{
 					.deleteFrom("users")
 					.where("id=?", account.user.id)
 					.executeNoResult();
+			if(account.user.banInfo!=null){
+				new SQLQueryBuilder(conn)
+						.insertInto("deleted_user_bans")
+						.value("user_id", account.user.id)
+						.value("ban_status", account.user.banStatus)
+						.value("ban_info", Utils.gson.toJson(account.user.banInfo))
+						.executeNoResult();
+			}
 			removeFromCache(account.user);
 			accountCache.remove(account.id);
 		}

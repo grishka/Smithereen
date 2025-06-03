@@ -220,6 +220,18 @@ CREATE TABLE `config` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `deleted_user_bans`
+--
+
+CREATE TABLE `deleted_user_bans` (
+  `user_id` int unsigned NOT NULL,
+  `domain` varchar(100) DEFAULT NULL,
+  `ban_status` tinyint unsigned NOT NULL DEFAULT '0',
+  `ban_info` json NOT NULL,
+  PRIMARY KEY (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `draft_attachments`
 --
 
@@ -1056,4 +1068,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-04-27  4:28:05
+-- Dump completed on 2025-06-02 23:16:58

@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=71;
+	public static final int SCHEMA_VERSION=72;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -954,6 +954,16 @@ public class DatabaseSchemaUpdater{
 							.valueExpr("flags", "flags | 2")
 							.executeNoResult();
 				}
+			}
+			case 72 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `deleted_user_bans` (
+						  `user_id` int unsigned NOT NULL,
+						  `domain` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+						  `ban_status` tinyint unsigned NOT NULL DEFAULT '0',
+						  `ban_info` json NOT NULL,
+						  PRIMARY KEY (`user_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
 		}
 	}
