@@ -60,6 +60,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public URI quoteRepostID;
 	public String action;
 	public boolean canBeReposted;
+	public URI quoteRepostAuth;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -298,6 +299,11 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 								))
 				);
 				noq.content=root.html();
+
+				if(repost.isLocal()){
+					noq.quoteRepostAuth=UriBuilder.local().path("posts", String.valueOf(repost.id), "quoteAuth", String.valueOf(post.id)).build();
+				}
+				// TODO request and store these to make Mastodon happy
 			}catch(ObjectNotFoundException ignore){}
 		}
 
@@ -631,6 +637,10 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			serializerContext.addType("canQuote", "gts:canQuote", "@id");
 			serializerContext.addType("automaticApproval", "gts:automaticApproval", "@id");
 			obj.add("interactionPolicy",new JsonObjectBuilder().add("canQuote", new JsonObjectBuilder().add("automaticApproval", ActivityPub.AS_PUBLIC.toString())).build());
+		}
+		if(quoteRepostAuth!=null){
+			serializerContext.addAlias("quoteAuthorization", JLD.MASTODON_QUOTES_FEP+"quoteAuthorization");
+			obj.addProperty("quoteAuthorization", quoteRepostAuth.toString());
 		}
 
 		return obj;
