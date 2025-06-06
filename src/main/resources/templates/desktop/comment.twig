@@ -2,6 +2,7 @@
 {# @pebvariable name="realPost" type="smithereen.model.comments.Comment" #}
 {# @pebvariable name="parentObject" type="smithereen.model.comments.CommentableContentObject" #}
 {% set realPost=post.post %}
+{% if randomID is empty %}{% set randomID=randomString() %}{% endif %}
 {% set replyLevel=realPost.replyLevel-(baseReplyLevel | default(0)) %}
 <div class="post comment{{ first ? ' first' : '' }}{{ commentViewType=='TWO_LEVEL' and not hideIndent and replyLevel>0 ? ' twoLevelIndented' : '' }}" id="comment{{realPost.idString}}" data-reply-name="{{users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">
 	{% if replyLevel>0 and not hideIndent %}
@@ -10,10 +11,34 @@
 	{% endif %}
 	{% endif %}
 	{%if not(realPost.deleted)%}
-	<div class="postAvaWrap">
+	{% if users[realPost.authorID].suspended %}
+	<div class="postAvaWrap" id="commentSuspendedAvaWrap{{ realPost.idString }}_{{ randomID }}">
+		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}><span class="ava avaPlaceholder sizeA suspended" style="width: 32px; height: 32px;"></span></a>
+	</div>
+	<div class="postContentWrap" id="commentSuspendedContentWrap{{ realPost.idString }}_{{ randomID }}">
+		<a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ L('suspended_user') }}</a>
+		<div>
+			<div class="postContent">
+				{%- if currentUser is not null -%}
+				{{ L('comment_suspended_warning_show', {}, {'show': {'href': 'javascript:void(0)', 'onclick': "ge('commentSuspendedAvaWrap#{realPost.idString}_#{randomID}').remove();ge('commentSuspendedContentWrap#{realPost.idString}_#{randomID}').remove();ge('commentAvaWrap#{realPost.idString}_#{randomID}').show();ge('commentContentWrap#{realPost.idString}_#{randomID}').show();"} }) }}
+				{%- else -%}
+				{{ L('comment_suspended_warning') }}
+				{%- endif -%}
+			</div>
+			<div class="postInfo">
+				<a href="{{ realPost.internalURL }}" class="postLink">{{ LD(realPost.createdAt) }}</a>
+				{% if not realPost.local %}
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+	{% endif %}
+	{% if currentUser is not null or not users[realPost.authorID].suspended %}
+	<div class="postAvaWrap"{% if users[realPost.authorID].suspended %} id="commentAvaWrap{{ realPost.idString }}_{{ randomID }}" style="display: none"{% endif %}>
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 32) }}</a>
 	</div>
-	<div class="postContentWrap">
+	<div class="postContentWrap"{% if users[realPost.authorID].suspended %} id="commentContentWrap{{ realPost.idString }}_{{ randomID }}" style="display: none"{% endif %}>
 		<a name="comment{{realPost.idString}}"></a>
 		{% if not hideActions %}
 		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.idString }}">
@@ -49,8 +74,8 @@
 				{%- if interactions is not null -%}
 				<span class="postActions contentActions">
 					<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
-						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like commentLike{{ interactions.isLiked ? ' liked' : '' }}{{ interactions.likeCount>0 or interactions.repostCount>0 ? '' : ' revealOnHover' }} popoverButton" id="likeButtonPost{{realPost.idString}}" data-obj-type="post" data-obj-id="{{realPost.idString}}" data-popover-url="{{realPost.internalURL}}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} title="{{ L('like') }}">
-							<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.idString}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}&rid={{ randomID }}" class="action like commentLike{{ interactions.isLiked ? ' liked' : '' }}{{ interactions.likeCount>0 or interactions.repostCount>0 ? '' : ' revealOnHover' }} popoverButton" id="likeButtonPost{{realPost.idString}}_{{ randomID }}" data-obj-type="post" data-obj-id="{{realPost.idString}}_{{ randomID }}" data-popover-url="{{realPost.internalURL}}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} title="{{ L('like') }}">
+							<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.idString}}_{{ randomID }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 							{{- interactions.likeCount -}}
 						</span></a>
 						<span class="popoverPlace likePopoverWrap"></span>
@@ -70,6 +95,7 @@
 			{% endblock %}
 		</div>
 	</div>
+	{% endif %}
 	{%else%}
 	<div class="postAvaWrap"></div>
 	<div class="postContentWrap">

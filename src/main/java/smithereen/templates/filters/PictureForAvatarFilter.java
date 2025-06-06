@@ -14,6 +14,7 @@ import java.util.Map;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
+import smithereen.model.User;
 import smithereen.templates.Templates;
 
 public class PictureForAvatarFilter implements Filter{
@@ -48,6 +49,8 @@ public class PictureForAvatarFilter implements Filter{
 		if(image==null){
 			if(args.containsKey("wrapperClasses"))
 				additionalClasses+=" "+args.get("wrapperClasses").toString();
+			if(input==null)
+				additionalClasses+=" deleted";
 			return new SafeString("<span class=\"ava avaPlaceholder size"+typeStr.toUpperCase()+additionalClasses+"\""+(size>0 ? (" style=\"width: "+size+"px;height: "+size+"px\"") : "")+"></span>");
 		}
 

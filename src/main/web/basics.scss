@@ -60,6 +60,12 @@ a, .link{
 	border: solid 1px #ece5d1;
 	box-sizing: border-box;
 	border-radius: 2px;
+	&.suspended{
+		background-image: svg-load("img/ava_exclamation.svg", fill: #809528);
+	}
+	&.deleted{
+		background-image: svg-load("img/ava_ghost.svg", fill: #809528);
+	}
 }
 
 .grayText, a.grayText{

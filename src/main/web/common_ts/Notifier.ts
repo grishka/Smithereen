@@ -333,7 +333,7 @@ class Notifier{
 			siblingsAbove.push(wrap.children[i] as HTMLElement);
 		}
 
-		if(siblingsAbove.length){
+		if(siblingsAbove.length && fadeOut){
 			var offset=el.offsetHeight+10;
 			for(var sibling of siblingsAbove){
 				sibling.anim([{transform: "translateY(0)"}, {transform: `translateY(${offset}px)`}], {duration: 200, easing: "ease"});

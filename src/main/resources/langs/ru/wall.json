@@ -74,5 +74,9 @@
   "embed_preview": "Предварительный просмотр",
   "comment_in_reply_to_user": "{gender, select, female {ответила} other {ответил}} <a id=\"parentComment\">{name, inflect, dative}</a>",
   "comment_in_reply_to_user_short": "<a id=\"parentComment\">{name, inflect, dative}</a>",
-  "post_action_updated_avatar": "{gender, select, male {обновил} female {обновила} other {обновил}} фотографию на странице:"
+  "post_action_updated_avatar": "{gender, select, male {обновил} female {обновила} other {обновил}} фотографию на странице:",
+  "post_suspended_warning_show": "Запись от заблокированного пользователя. <a id=\"show\">Показать</a>.",
+  "post_suspended_warning": "Запись от заблокированного пользователя. Войдите, чтобы просмотреть.",
+  "comment_suspended_warning_show": "Комментарий от заблокированного пользователя. <a id=\"show\">Показать</a>.",
+  "comment_suspended_warning": "Комментарий от заблокированного пользователя. Войдите, чтобы просмотреть."
 }

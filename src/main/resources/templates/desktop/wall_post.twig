@@ -12,11 +12,35 @@
 </div>
 {% endif %}
 <div class="post{{ standalone ? ' standalone' : '' }}{{ post.matchedFilter is null ? '' : ' filtered' }}" id="post{{ realPost.id }}_{{ randomID }}">
-	<div class="postAvaWrap">
+	{% if users[realPost.authorID].suspended %}
+	<div class="postAvaWrap" id="postSuspendedAvaWrap{{ realPost.id }}_{{ randomID }}">
+		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}><span class="ava avaPlaceholder sizeA suspended" style="width: 50px; height: 50px;"></span></a>
+	</div>
+	<div class="postContentWrap" id="postSuspendedContentWrap{{ realPost.id }}_{{ randomID }}">
+		<a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ L('suspended_user') }}</a>
+		<div>
+			<div class="postContent">
+				{%- if currentUser is not null -%}
+				{{ L('post_suspended_warning_show', {}, {'show': {'href': 'javascript:void(0)', 'onclick': "ge('postSuspendedAvaWrap#{realPost.id}_#{randomID}').remove();ge('postSuspendedContentWrap#{realPost.id}_#{randomID}').remove();ge('postAvaWrap#{realPost.id}_#{randomID}').show();ge('postContentWrap#{realPost.id}_#{randomID}').show();"} }) }}
+				{%- else -%}
+				{{ L('post_suspended_warning') }}
+				{%- endif -%}
+			</div>
+			<div class="postInfo">
+				<a href="{{ realPost.internalURL }}" onclick="return openPostLayer('{{ realPost.id }}')" class="postLink">{{ LD(realPost.createdAt) }}</a>
+				{% if not realPost.local %}
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+	{% endif %}
+	{% if currentUser is not null or not users[realPost.authorID].suspended %}
+	<div class="postAvaWrap"{% if users[realPost.authorID].suspended %} id="postAvaWrap{{ realPost.id }}_{{ randomID }}" style="display: none"{% endif %}>
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a') }}</a>
 		{% if onlines contains realPost.authorID and onlines[realPost.authorID].isOnline %}<div class="onlineText">{{ L('user_online') }}{% if onlines[realPost.authorID].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>{% endif %}
 	</div>
-	<div class="postContentWrap">
+	<div class="postContentWrap"{% if users[realPost.authorID].suspended %} id="postContentWrap{{ realPost.id }}_{{ randomID }}" style="display: none"{% endif %}>
 		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.id }}_{{ randomID }}">
 			{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
 			<a href="{{ realPost.internalURL }}/confirmDelete" data-confirm-title="{{ L('delete_post') }}" data-confirm-message="{{ L('delete_post_confirm') }}" data-confirm-action="{{ realPost.internalURL }}/delete?rid={{ randomID }}" class="flR postIconAction actionDelete" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}"></a>
@@ -76,6 +100,7 @@
 			{% endblock %}
 		</div>
 	</div>
+	{% endif %}
 </div>
 {% if not standalone and interactions is not null %}
 <div class="commentsPreviewWrap{{ post.matchedFilter is null ? '' : ' filtered' }}">

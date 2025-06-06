@@ -229,8 +229,7 @@ public class CommentsController{
 			for(CommentViewModel post:replies){
 				if(post.post.getReplyLevel()>key.size()){
 					CommentViewModel parentVM=switch(type){
-						case THREADED -> postMap.get(post.post.replyKey.getLast());
-						case TWO_LEVEL -> postMap.get(post.post.replyKey.get(1));
+						case THREADED, TWO_LEVEL -> postMap.get(post.post.replyKey.getLast());
 						case FLAT -> throw new IllegalArgumentException();
 					};
 					if(parentVM!=null){

@@ -11,10 +11,34 @@
 	{% endif %}
 	{% endif %}
 	{%if not(realPost.deleted)%}
-	<div class="postAvaWrap">
+	{% if users[realPost.authorID].suspended %}
+	<div class="postAvaWrap" id="postSuspendedAvaWrap{{ realPost.id }}_{{ randomID }}">
+		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}><span class="ava avaPlaceholder sizeA suspended" style="width: 32px; height: 32px;"></span></a>
+	</div>
+	<div class="postContentWrap" id="postSuspendedContentWrap{{ realPost.id }}_{{ randomID }}">
+		<a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ L('suspended_user') }}</a>
+		<div>
+			<div class="postContent">
+				{%- if currentUser is not null -%}
+				{{ L('comment_suspended_warning_show', {}, {'show': {'href': 'javascript:void(0)', 'onclick': "ge('postSuspendedAvaWrap#{realPost.id}_#{randomID}').remove();ge('postSuspendedContentWrap#{realPost.id}_#{randomID}').remove();ge('postAvaWrap#{realPost.id}_#{randomID}').show();ge('postContentWrap#{realPost.id}_#{randomID}').show();"} }) }}
+				{%- else -%}
+				{{ L('comment_suspended_warning') }}
+				{%- endif -%}
+			</div>
+			<div class="postInfo">
+				<a href="{{ realPost.internalURL }}" onclick="return openPostLayer('{{ realPost.id }}')" class="postLink">{{ LD(realPost.createdAt) }}</a>
+				{% if not realPost.local %}
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+	{% endif %}
+	{% if currentUser is not null or not users[realPost.authorID].suspended %}
+	<div class="postAvaWrap"{% if users[realPost.authorID].suspended %} id="postAvaWrap{{ realPost.id }}_{{ randomID }}" style="display: none"{% endif %}>
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', avaSize | default(32)) }}</a>
 	</div>
-	<div class="postContentWrap">
+	<div class="postContentWrap"{% if users[realPost.authorID].suspended %} id="postContentWrap{{ realPost.id }}_{{ randomID }}" style="display: none"{% endif %}>
 		<a name="comment{{realPost.id}}"></a>
 		{% if not hideActions %}
 		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.id }}_{{ randomID }}">
@@ -82,6 +106,7 @@
 			{% endblock %}
 		</div>
 	</div>
+	{% endif %}
 	{%else%}
 	<div class="postAvaWrap"></div>
 	<div class="postContentWrap">

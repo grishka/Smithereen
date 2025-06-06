@@ -10,10 +10,30 @@
 	{% endif %}
 	{% endif %}
 	{%if not(realPost.deleted)%}
-	<div class="commentAvaWrap">
+	{% if users[realPost.authorID].suspended %}
+	<div class="commentAvaWrap" id="postSuspendedAvaWrap{{ realPost.idString }}">
+		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}><span class="ava avaPlaceholder sizeA suspended" style="width: 32px; height: 32px;"></span></a>
+	</div>
+	<div class="commentContentWrap" id="postSuspendedContentWrap{{ realPost.idString }}">
+		<div class="authorNameWrap"><a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ L('suspended_user') }}</a></div>
+		<div class="postContent">
+			{%- if currentUser is not null -%}
+			{{ L('comment_suspended_warning_show', {}, {'show': {'href': 'javascript:void(0)', 'onclick': "ge('postSuspendedAvaWrap#{realPost.idString}').remove();ge('postSuspendedContentWrap#{realPost.idString}').remove();ge('postAvaWrap#{realPost.idString}').show();ge('postContentWrap#{realPost.idString}').show();"} }) }}
+			{%- else -%}
+			{{ L('comment_suspended_warning') }}
+			{%- endif -%}
+			<div class="postInfo">
+				<a href="{{realPost.internalURL}}" onclick="return highlightComment('{{realPost.idString}}')" class="postLink">{{LD(realPost.createdAt)}}</a>
+				{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText"> {{ L('comment_in_reply_to_user_short', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink", 'data-parent-id': realPost.replyKey.last, 'onclick': "highlightComment(#{realPost.replyKey.last}); return false;"} }) }}</span>{% endif %}
+			</div>
+		</div>
+	</div>
+	{% endif %}
+	{% if currentUser is not null or not users[realPost.authorID].suspended %}
+	<div class="commentAvaWrap"{% if users[realPost.authorID].suspended %} id="postAvaWrap{{ realPost.idString }}" style="display: none"{% endif %}>
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 32) }}</a>
 	</div>
-	<div class="commentContentWrap">
+	<div class="commentContentWrap"{% if users[realPost.authorID].suspended %} id="postContentWrap{{ realPost.idString }}" style="display: none"{% endif %}>
 		<div class="authorNameWrap"><a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a></div>
 		{% if realPost.hasContentWarning %}
 			<input type="checkbox" id="postCW_{{ realPost.idString }}" class="commentCWCheckbox" style="display: none"/>
@@ -29,7 +49,7 @@
 		{% endif %}
 		{%set interactions=commentInteractions[realPost.id]%}
 		<div class="postInfo">
-			<a href="{{realPost.internalURL}}" onclick="return highlightComment({{realPost.idString}})" class="postLink">{{LD(realPost.createdAt)}}</a>
+			<a href="{{realPost.internalURL}}" onclick="return highlightComment('{{realPost.idString}}')" class="postLink">{{LD(realPost.createdAt)}}</a>
 			{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText"> {{ L('comment_in_reply_to_user_short', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink", 'data-parent-id': realPost.replyKey.last, 'onclick': "highlightComment(#{realPost.replyKey.last}); return false;"} }) }}</span>{% endif %}<br/>
 			<div class="actions">
 				{% if currentUser is not null %}
@@ -68,6 +88,7 @@
 			</div>
 		{%endif%}
 	</div>
+	{% endif %}
 	{%else%}
 	<div class="commentContentWrap">
 		<i>{{L('deleted_placeholder')}}</i>

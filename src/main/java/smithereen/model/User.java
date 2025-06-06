@@ -722,6 +722,10 @@ public class User extends Actor{
 		return numFollowing-numFriends;
 	}
 
+	public boolean isSuspended(){
+		return banStatus==UserBanStatus.SUSPENDED || (banInfo!=null && banInfo.suspendedOnRemoteServer());
+	}
+
 	public enum Gender{
 		UNKNOWN,
 		MALE,

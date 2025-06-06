@@ -74,5 +74,9 @@
   "embed_preview": "Preview",
   "comment_in_reply_to_user": "replied to <a id=\"parentComment\">{name}</a>",
   "comment_in_reply_to_user_short": "to <a id=\"parentComment\">{name}</a>",
-  "post_action_updated_avatar": "updated {gender, select, male {his} female {her} other {their}} profile picture:"
+  "post_action_updated_avatar": "updated {gender, select, male {his} female {her} other {their}} profile picture:",
+  "post_suspended_warning_show": "Post by a suspended user. <a id=\"show\">Show</a>.",
+  "post_suspended_warning": "Post by a suspended user. Log in to view.",
+  "comment_suspended_warning_show": "Comment by a suspended user. <a id=\"show\">Show</a>.",
+  "comment_suspended_warning": "Comment by a suspended user. Log in to view."
 }
