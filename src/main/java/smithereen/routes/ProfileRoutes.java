@@ -106,7 +106,7 @@ public class ProfileRoutes{
 		model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 
 		PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
-		model.with("users", ctx.getUsersController().getUsers(needUsers));
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true));
 
 		PaginatedList<User> friends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM);
 		model.with("friendCount", friends.total).with("friends", friends.list);

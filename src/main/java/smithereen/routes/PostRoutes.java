@@ -566,7 +566,7 @@ public class PostRoutes{
 		if(!post.post.isLocal() && owner instanceof ForeignActor)
 			model.with("noindex", true);
 
-		model.with("users", ctx.getUsersController().getUsers(needUsers))
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 		return model;
 	}
@@ -683,7 +683,7 @@ public class PostRoutes{
 	public static void preparePostList(ApplicationContext ctx, List<PostViewModel> wall, RenderedTemplateResponse model, Account self){
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		PostViewModel.collectActorIDs(wall, needUsers, needGroups);
-		model.with("users", ctx.getUsersController().getUsers(needUsers))
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
 				.with("maxReplyDepth", getMaxReplyDepth(self));
 	}
@@ -1131,7 +1131,7 @@ public class PostRoutes{
 		return new RenderedTemplateResponse("wall_reply_hover_card", req)
 				.with("post", pvm)
 				.with("maxReplyDepth", getMaxReplyDepth(self))
-				.with("users", ctx.getUsersController().getUsers(needUsers))
+				.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 	}
 

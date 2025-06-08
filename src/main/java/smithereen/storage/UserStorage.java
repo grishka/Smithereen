@@ -74,6 +74,10 @@ public class UserStorage{
 	private static final NamedMutexCollection foreignUserUpdateLocks=new NamedMutexCollection();
 
 	public static User getById(int id) throws SQLException{
+		return getById(id, false);
+	}
+
+	public static User getById(int id, boolean wantDeleted) throws SQLException{
 		User user=cache.get(id);
 		if(user!=null)
 			return user;
@@ -88,6 +92,11 @@ public class UserStorage{
 					li.fillIn(mfr);
 			}
 			putIntoCache(user);
+		}else if(wantDeleted){
+			user=new SQLQueryBuilder()
+					.selectFrom("deleted_user_bans")
+					.where("user_id=?", id)
+					.executeAndGetSingleObject(User::fromDeletedBannedResultSet);
 		}
 		return user;
 	}
@@ -97,11 +106,11 @@ public class UserStorage{
 			return Collections.emptyList();
 		if(ids.size()==1)
 			return Collections.singletonList(getById(ids.get(0)));
-		Map<Integer, User> users=getById(ids);
+		Map<Integer, User> users=getById(ids, false);
 		return ids.stream().map(users::get).filter(Objects::nonNull).collect(Collectors.toList());
 	}
 
-	public static Map<Integer, User> getById(Collection<Integer> _ids) throws SQLException{
+	public static Map<Integer, User> getById(Collection<Integer> _ids, boolean wantDeleted) throws SQLException{
 		if(_ids.isEmpty())
 			return Map.of();
 		if(_ids.size()==1){
@@ -150,6 +159,14 @@ public class UserStorage{
 				User u=result.get(id);
 				if(u!=null)
 					putIntoCache(u);
+			}
+			if(wantDeleted && ids.size()>result.size()){
+				ids.removeIf(result::containsKey);
+				new SQLQueryBuilder(conn)
+						.selectFrom("deleted_user_bans")
+						.whereIn("user_id", ids)
+						.executeAsStream(User::fromDeletedBannedResultSet)
+						.forEach(u->result.put(u.id, u));
 			}
 			return result;
 		}
@@ -518,7 +535,7 @@ public class UserStorage{
 			// 2. make a list of distinct users we need
 			Set<Integer> needUsers=mutualFriendIDs.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 			// 3. get them all in one go
-			Map<Integer, User> mutualFriends=getById(needUsers);
+			Map<Integer, User> mutualFriends=getById(needUsers, false);
 			// 4. finally, put them into friend requests
 			for(FriendRequest req: reqs){
 				List<Integer> ids=mutualFriendIDs.get(req.from.id);

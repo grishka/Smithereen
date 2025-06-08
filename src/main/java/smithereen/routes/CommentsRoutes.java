@@ -156,7 +156,7 @@ public class CommentsRoutes{
 	public static void prepareCommentList(ApplicationContext ctx, List<CommentViewModel> wall, RenderedTemplateResponse model, Account self){
 		HashSet<Integer> needUsers=new HashSet<>();
 		CommentViewModel.collectUserIDs(wall, needUsers);
-		model.with("users", ctx.getUsersController().getUsers(needUsers))
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
 	}
 
@@ -377,7 +377,7 @@ public class CommentsRoutes{
 		return new RenderedTemplateResponse("comment_hover_card", req)
 				.with("post", pvm)
 				.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1)
-				.with("users", ctx.getUsersController().getUsers(needUsers));
+				.with("users", ctx.getUsersController().getUsers(needUsers, true));
 	}
 
 	private static Comment getCommentForRequest(Request req){

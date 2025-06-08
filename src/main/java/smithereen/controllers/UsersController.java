@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -328,10 +327,14 @@ public class UsersController{
 	}
 
 	public Map<Integer, User> getUsers(Collection<Integer> ids){
+		return getUsers(ids, false);
+	}
+
+	public Map<Integer, User> getUsers(Collection<Integer> ids, boolean wantDeleted){
 		if(ids.isEmpty())
 			return Map.of();
 		try{
-			return UserStorage.getById(ids);
+			return UserStorage.getById(ids, wantDeleted);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

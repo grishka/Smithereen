@@ -128,7 +128,7 @@ public class NewsfeedRoutes{
 					.collect(Collectors.toMap(e->e.getKey().id(), Map.Entry::getValue)));
 		}
 
-		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers, true);
 		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(needGroups);
 
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);

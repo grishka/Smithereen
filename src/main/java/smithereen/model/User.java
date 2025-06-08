@@ -153,6 +153,18 @@ public class User extends Actor{
 		return user;
 	}
 
+	public static User fromDeletedBannedResultSet(ResultSet res) throws SQLException{
+		String domain=res.getString("domain");
+		User user=domain.isEmpty() ? new User() : new ForeignUser();
+		user.id=res.getInt("user_id");
+		user.domain=domain;
+		user.banStatus=UserBanStatus.values()[res.getInt("ban_status")];
+		user.banInfo=Utils.gson.fromJson(res.getString("ban_info"), UserBanInfo.class);
+		user.username="id"+user.id;
+		user.firstName="DELETED";
+		return user;
+	}
+
 	protected void fillFromResultSet(ResultSet res) throws SQLException{
 		super.fillFromResultSet(res);
 		id=res.getInt("id");

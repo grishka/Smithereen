@@ -957,7 +957,7 @@ public class GroupStorage{
 		Set<Integer> needGroups=ids.stream().map(IntPair::first).collect(Collectors.toSet());
 		Set<Integer> needUsers=ids.stream().map(IntPair::second).collect(Collectors.toSet());
 		Map<Integer, Group> groups=getById(needGroups);
-		Map<Integer, User> users=UserStorage.getById(needUsers);
+		Map<Integer, User> users=UserStorage.getById(needUsers, false);
 		// All groups and users must exist, this is taken care of by schema constraints
 		return ids.stream().map(i->new GroupInvitation(groups.get(i.first()), users.get(i.second()))).collect(Collectors.toList());
 	}
