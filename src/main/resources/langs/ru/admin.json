@@ -278,5 +278,13 @@
   "admin_report_content_photo": "Фотография №{id}",
   "admin_permission_manage_fasps": "Управление FASP-службами",
   "admin_permission_manage_fasps_descr": "Позволяет устанавливать подключения к FASP-службам, удалять их, и изменять настройки и набор включенных возможностей каждой службы",
-  "admin_user_suspended_remotely": "Этот пользователь заблокирован администрацией своего сервера."
+  "admin_user_suspended_remotely": "Этот пользователь заблокирован администрацией своего сервера.",
+  "admin_users_ban_status": "Ограничения",
+  "admin_users_any_ban_status": "(любое состояние)",
+  "admin_users_ban_status_none": "Без ограничений",
+  "admin_users_ban_status_frozen": "Замороженные",
+  "admin_users_ban_status_suspended": "Заблокированные",
+  "admin_users_ban_status_hidden": "Скрытые",
+  "admin_users_ban_status_self_deactivated": "Удалившие свою страницу",
+  "admin_users_ban_status_remote_suspended": "Заблокированные на своём сервере"
 }

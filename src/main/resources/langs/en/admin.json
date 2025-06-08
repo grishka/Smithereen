@@ -278,5 +278,13 @@
   "admin_report_content_photo": "Photo #{id}",
   "admin_permission_manage_fasps": "Manage FASP services",
   "admin_permission_manage_fasps_descr": "Allows establishing connections with FASP services, deleting them, and changing their settings and which of their capabilities are enabled",
-  "admin_user_suspended_remotely": "This user is suspended by their server staff."
+  "admin_user_suspended_remotely": "This user is suspended by their server staff.",
+  "admin_users_ban_status": "Restrictions",
+  "admin_users_any_ban_status": "(any status)",
+  "admin_users_ban_status_none": "Unrestricted",
+  "admin_users_ban_status_frozen": "Frozen",
+  "admin_users_ban_status_suspended": "Suspended",
+  "admin_users_ban_status_hidden": "Hidden",
+  "admin_users_ban_status_self_deactivated": "Self-deactivated",
+  "admin_users_ban_status_remote_suspended": "Suspended on remote server"
 }

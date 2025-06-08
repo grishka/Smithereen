@@ -23,6 +23,7 @@ import smithereen.model.IPBlockRule;
 import smithereen.model.IPBlockRuleFull;
 import smithereen.model.PaginatedList;
 import smithereen.model.SignupInvitation;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserRole;
 import smithereen.model.ViolationReport;
 import smithereen.model.ViolationReportAction;
@@ -214,7 +215,7 @@ public class ModerationStorage{
 		}
 	}
 
-	public static PaginatedList<AdminUserViewModel> getUsers(String q, Boolean localOnly, String emailDomain, InetAddressRange ipRange, int role, int offset, int count) throws SQLException{
+	public static PaginatedList<AdminUserViewModel> getUsers(String q, Boolean localOnly, String emailDomain, InetAddressRange ipRange, int role, UserBanStatus banStatus, boolean remoteSuspended, int offset, int count) throws SQLException{
 		if(StringUtils.isNotEmpty(q)){
 			q=Arrays.stream(TextProcessor.transliterate(q).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
 		}
@@ -250,6 +251,12 @@ public class ModerationStorage{
 		if(role>0){
 			whereParts.add("accounts.role=?");
 			whereArgs.add(role);
+		}
+		if(banStatus!=null){
+			whereParts.add("`users`.ban_status=?");
+			whereArgs.add(banStatus);
+		}else if(remoteSuspended){
+			whereParts.add("`users`.ap_id IS NOT NULL AND `users`.ban_info IS NOT NULL AND `users`.ban_info->'$.suspendedOnRemoteServer'=true");
 		}
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String where;

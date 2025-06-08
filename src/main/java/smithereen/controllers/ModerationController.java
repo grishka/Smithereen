@@ -451,10 +451,10 @@ public class ModerationController{
 		}
 	}
 
-	public PaginatedList<AdminUserViewModel> getAllUsers(int offset, int count, String query, Boolean localOnly, String emailDomain, String ipSubnet, int roleID){
+	public PaginatedList<AdminUserViewModel> getAllUsers(int offset, int count, String query, Boolean localOnly, String emailDomain, String ipSubnet, int roleID, UserBanStatus banStatus, boolean remoteSuspended){
 		try{
 			InetAddressRange subnet=ipSubnet!=null ? InetAddressRange.parse(ipSubnet) : null;
-			return ModerationStorage.getUsers(query, localOnly, emailDomain, subnet, roleID, offset, count);
+			return ModerationStorage.getUsers(query, localOnly, emailDomain, subnet, roleID, banStatus, remoteSuspended, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

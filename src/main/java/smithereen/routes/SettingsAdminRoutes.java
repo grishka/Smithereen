@@ -148,7 +148,9 @@ public class SettingsAdminRoutes{
 		String emailDomain=req.queryParams("emailDomain");
 		String lastIP=req.queryParams("lastIP");
 		int role=safeParseInt(req.queryParams("role"));
-		PaginatedList<AdminUserViewModel> items=ctx.getModerationController().getAllUsers(offset(req), 100, q, localOnly, emailDomain, lastIP, role);
+		String banStatusParam=req.queryParams("banStatus");
+		UserBanStatus banStatus=enumValueOpt(banStatusParam, UserBanStatus.class);
+		PaginatedList<AdminUserViewModel> items=ctx.getModerationController().getAllUsers(offset(req), 100, q, localOnly, emailDomain, lastIP, role, banStatus, "REMOTE_SUSPENDED".equals(banStatusParam));
 		model.paginate(items);
 		model.with("users", ctx.getUsersController().getUsers(items.list.stream().map(AdminUserViewModel::userID).collect(Collectors.toSet())));
 		model.with("accounts", ctx.getModerationController().getAccounts(items.list.stream().map(AdminUserViewModel::accountID).filter(i->i>0).collect(Collectors.toSet())));
@@ -161,6 +163,7 @@ public class SettingsAdminRoutes{
 				.with("emailDomain", emailDomain)
 				.with("lastIP", lastIP)
 				.with("roleID", role)
+				.with("banStatus", banStatusParam)
 				.with("query", q)
 				.with("hasFilters", StringUtils.isNotEmpty(q) || localOnly!=null || StringUtils.isNotEmpty(emailDomain) || StringUtils.isNotEmpty(lastIP) || role>0);
 		jsLangKey(req, "cancel", "yes", "no");
