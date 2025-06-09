@@ -375,7 +375,6 @@ public class PhotosRoutes{
 		}
 		if(isMobile(req)){
 			html=StringUtils.isNotEmpty(pa.description) ? TextProcessor.escapeHTML(pa.description).replace("\n", "<br/>") : "";
-			origURL=pa.image.getOriginalURI().toString();
 		}else{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
 			model.with("description", pa.description==null ? null : pa.description.replace("\n", "<br/>"))
@@ -388,8 +387,8 @@ public class PhotosRoutes{
 						.with("saveElementID", saveType+"_"+saveID+"_"+index);
 			}
 			html=model.renderToString();
-			origURL=null;
 		}
+		origURL=Objects.toString(pa.image.getOriginalURI(), null);
 		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, null,
 				allowedActions, pa.image.getURLsForPhotoViewer(), null, origURL, null, null, saveURL);
 	}
@@ -441,7 +440,6 @@ public class PhotosRoutes{
 			}else{
 				pvInteractions=null;
 			}
-			origURL=photo.image.getOriginalURI().toString();
 		}else{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
 			model.with("description", photo.description)
@@ -462,7 +460,6 @@ public class PhotosRoutes{
 			}
 			html=model.renderToString();
 			pvInteractions=null;
-			origURL=null;
 			if(self!=null){
 				for(PhotoTag tag:tags){
 					if(tag.userID()==self.user.id && !tag.approved()){
@@ -476,6 +473,7 @@ public class PhotosRoutes{
 				}
 			}
 		}
+		origURL=Objects.toString(photo.image.getOriginalURI(), null);
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.getLocalizedTitle(lang(req), self!=null ? self.user : null, owner),
 				html, topHTML, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString(), null);

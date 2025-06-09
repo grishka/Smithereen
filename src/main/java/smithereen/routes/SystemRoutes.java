@@ -321,18 +321,25 @@ public class SystemRoutes{
 							item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType, false, 0, 0);
 						if(item==null){
 							if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
-								if(user!=null){
-									ForeignUser updatedUser=context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
-									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
-									return "";
-								}else if(group!=null){
-									ForeignGroup updatedGroup=context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
-									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
-									return "";
-								}
+								try{
+									if(user!=null){
+										ForeignUser updatedUser=context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
+										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+										return "";
+									}else{
+										ForeignGroup updatedGroup=context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
+										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+										return "";
+									}
+								}catch(ObjectNotFoundException ignore){}
 							}
-							LOG.debug("downloadExternalMedia: redirecting to original url {}", uri);
-							resp.redirect(uri.toString());
+							LOG.debug("downloadExternalMedia: all attempts failed for {}", uri);
+							if(req.queryParams("fb")!=null){
+								boolean is2x=req.queryParams("2x")!=null;
+								resp.redirect(Config.localURI(sizeType==SizedImage.Type.AVA_SQUARE_SMALL || (is2x && sizeType==SizedImage.Type.AVA_SQUARE_MEDIUM) ? "/res/broken_photo_small.svg" : "/res/broken_photo.svg").toString());
+								return "";
+							}
+							resp.status(404);
 						}else{
 							LOG.debug("downloadExternalMedia: download finished {}", uri);
 							resp.redirect(new CachedRemoteImage(item, cropRegion, uri).getUriForSizeAndFormat(sizeType, format).toString());

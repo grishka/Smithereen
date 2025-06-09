@@ -144,7 +144,7 @@ public class Templates{
 			}
 		}
 		for(String key:List.of("error", "ok", "network_error", "close", "cancel", "yes", "no", "show_technical_details", "photo_X_of_Y",
-				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder", "save", "photo_description")){
+				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder", "save", "photo_description", "photo_load_failed_remote", "photo_load_failed_local")){
 			if(k!=null && k.contains(key))
 				continue;
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
@@ -157,7 +157,8 @@ public class Templates{
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
 		}else{
-			for(String key:List.of("photo_tagging_info", "photo_tagging_done", "photo_tag_myself", "photo_tag_select_friend", "photo_tag_not_found", "photo_delete_tag", "photo_add_tag_submit", "photo_tag_name_search")){
+			for(String key:List.of("photo_tagging_info", "photo_tagging_done", "photo_tag_myself", "photo_tag_select_friend", "photo_tag_not_found", "photo_delete_tag",
+					"photo_add_tag_submit", "photo_tag_name_search")){
 				if(k!=null && k.contains(key))
 					continue;
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));

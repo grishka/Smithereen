@@ -103,9 +103,11 @@ public class LocalImage extends Image implements SizedImage{
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format){
+	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
 		if(fileRecord==null){
 			LOG.warn("Tried to get a URL for a LocalImage with fileRecord not set (file ID {})", fileID);
+			if(useFallback)
+				return Config.localURI(size==Type.AVA_SQUARE_SMALL || (is2x && size==Type.AVA_SQUARE_MEDIUM) ? "/res/broken_photo_small.svg" : "/res/broken_photo.svg");
 			return null;
 		}
 		ImgProxy.UrlBuilder builder=MediaFileStorageDriver.getInstance().getImgProxyURL(fileRecord.id())
@@ -145,6 +147,8 @@ public class LocalImage extends Image implements SizedImage{
 
 	@Override
 	public URI getOriginalURI(){
+		if(fileRecord==null)
+			return null;
 		if(rotation!=null){
 			return MediaFileStorageDriver.getInstance().getImgProxyURL(fileRecord.id())
 					.format(Format.WEBP)

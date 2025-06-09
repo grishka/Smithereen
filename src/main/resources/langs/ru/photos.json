@@ -96,5 +96,7 @@
   "photos_of_user": "Фотографии с {name, inflect, instrumental}",
   "summary_X_photos_of_me": "{count, plural, one {# фотография} few {# фотографии} other {# фотографий}} с вами",
   "summary_X_photos_of_user": "{count, plural, one {# фотография} few {# фотографии} other {# фотографий}} с {name, inflect, instrumental}",
-  "view_user_profile_photos": "Увеличить"
+  "view_user_profile_photos": "Увеличить",
+  "photo_load_failed_local": "Фотография недоступна или повреждена.",
+  "photo_load_failed_remote": "Не удалось загрузить фотографию с другого сервера. <a id=\"direct\">Просмотреть напрямую</a>."
 }

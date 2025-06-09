@@ -96,5 +96,7 @@
   "photos_of_user": "Photos of {name}",
   "summary_X_photos_of_me": "{count, plural, one {# photo} other {# photos}} of you",
   "summary_X_photos_of_user": "{count, plural, one {# photo} other {# photos}} of {name}",
-  "view_user_profile_photos": "View photos"
+  "view_user_profile_photos": "View photos",
+  "photo_load_failed_local": "Photo unavailable or damaged.",
+  "photo_load_failed_remote": "Unable to download photo from remote server. <a id=\"direct\">View directly</a>."
 }

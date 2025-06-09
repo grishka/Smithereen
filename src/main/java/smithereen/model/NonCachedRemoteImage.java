@@ -19,10 +19,14 @@ public final class NonCachedRemoteImage extends RemoteImage{
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format){
+	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
 		UriBuilder builder=UriBuilder.local().path("system", "downloadExternalMedia");
 		args.addToUriBuilder(builder);
 		builder.queryParam("size", size.suffix()).queryParam("format", format.fileExtension());
+		if(is2x)
+			builder.queryParam("2x", "");
+		if(useFallback)
+			builder.queryParam("fb", "");
 		return builder.build();
 	}
 

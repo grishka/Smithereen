@@ -4020,6 +4020,17 @@ label.largeAccented{
 				margin: -1px 0 0 -1px;
 			}
 		}
+		.errorOverlay{
+			position: absolute;
+			left: 20px;
+			right: 20px;
+			top: 50%;
+			z-index: 3;
+			text-align: center;
+			font-size: 13px;
+			margin-top: 86px;
+			color: $grayText;
+		}
 	}
 	.pvLoader{
 		background: svg-load('img/loading_anim_large.svg', fill: $normalLink) no-repeat center;
