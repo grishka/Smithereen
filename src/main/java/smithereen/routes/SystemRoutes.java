@@ -310,7 +310,12 @@ public class SystemRoutes{
 					try{
 						SessionInfo sessionInfo=sessionInfo(req);
 						if(sessionInfo==null || sessionInfo.account==null){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
-							resp.redirect(uri.toString());
+							if(req.queryParams("fb")!=null){
+								boolean is2x=req.queryParams("2x")!=null;
+								resp.redirect(Config.localURI(sizeType==SizedImage.Type.AVA_SQUARE_SMALL || (is2x && sizeType==SizedImage.Type.AVA_SQUARE_MEDIUM) ? "/res/broken_photo_small.svg" : "/res/broken_photo.svg").toString());
+								return "";
+							}
+							resp.status(404);
 							return "";
 						}
 						LOG.debug("downloadExternalMedia: downloading {}", uri);
@@ -322,13 +327,18 @@ public class SystemRoutes{
 						if(item==null){
 							if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
 								try{
+									String extraParams="";
+									if(req.queryParams("fb")!=null)
+										extraParams+="&fb";
+									if(req.queryParams("2x")!=null)
+										extraParams+="&2x";
 									if(user!=null){
 										ForeignUser updatedUser=context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
-										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying"+extraParams).toString());
 										return "";
 									}else{
 										ForeignGroup updatedGroup=context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
-										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
+										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying"+extraParams).toString());
 										return "";
 									}
 								}catch(ObjectNotFoundException ignore){}
@@ -348,7 +358,12 @@ public class SystemRoutes{
 					}catch(IOException x){
 						LOG.debug("Exception while downloading external media file from {}", uri, x);
 					}
-					resp.redirect(uri.toString());
+					if(req.queryParams("fb")!=null){
+						boolean is2x=req.queryParams("2x")!=null;
+						resp.redirect(Config.localURI(sizeType==SizedImage.Type.AVA_SQUARE_SMALL || (is2x && sizeType==SizedImage.Type.AVA_SQUARE_MEDIUM) ? "/res/broken_photo_small.svg" : "/res/broken_photo.svg").toString());
+						return "";
+					}
+					resp.status(404);
 				}
 			}finally{
 				downloadMutex.release(uriStr);
