@@ -23,6 +23,7 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Create;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
@@ -35,6 +36,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoMetadata;
 import smithereen.storage.PhotoStorage;
@@ -189,6 +191,12 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				checkNotBlocked(owner, actor, true);
 				if(owner instanceof User u)
 					context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_COMMENTING);
+				if(owner instanceof Group g){
+					if(g.wallState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Wall is disabled in this group");
+					if(g.wallState==GroupFeatureState.ENABLED_CLOSED)
+						throw new UserActionNotAllowedException("Wall commenting is disabled in this group");
+				}
 
 				boolean isNew=nativePost.id==0;
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
@@ -222,6 +230,12 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				context.appContext.getActivityPubWorker().fetchWallReplyThread(post);
 			}
 		}else{
+			if(owner instanceof Group g){
+				if(g.wallState==GroupFeatureState.DISABLED)
+					throw new UserActionNotAllowedException("Wall is disabled in this group");
+				if((g.wallState==GroupFeatureState.ENABLED_RESTRICTED || g.wallState==GroupFeatureState.ENABLED_CLOSED) && !context.appContext.getGroupsController().getMemberAdminLevel(g, actor).isAtLeast(Group.AdminLevel.MODERATOR))
+					throw new UserActionNotAllowedException("Only admins can post on this group's wall");
+			}
 			Post nativePost=post.asNativePost(context.appContext);
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 			URI repostID=post.getQuoteRepostID();
@@ -246,6 +260,8 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 			if(nativePost.ownerID!=nativePost.authorID){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
+				if(nativePost.ownerID<0)
+					context.appContext.getNewsfeedController().clearGroupsFeedCache();
 			}else{
 				context.appContext.getNewsfeedController().clearFriendsFeedCache();
 			}

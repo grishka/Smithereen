@@ -29,6 +29,7 @@ import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.User;
+import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.CommentsNewsfeedObjectType;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
@@ -36,6 +37,7 @@ import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.filtering.FilterContext;
 import smithereen.model.filtering.WordFilter;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
@@ -305,6 +307,7 @@ public class NewsfeedController{
 				}
 
 				EnumSet<NewsfeedEntry.Type> actualFilter=getGroupsFeedTypesForFilter(filter);
+				HashMap<Integer, Group> groups=new HashMap<>();
 
 				while(startIndex==-1 || startIndex+offset+count>=cache.feed.size()){
 					LOG.debug("Getting new feed page from database: userID={}, startFrom={}, offset={}, realOffset={}, count={}, filter={}", self.user.id, startFrom, offset, cache.realOffset, count, actualFilter);
@@ -315,6 +318,22 @@ public class NewsfeedController{
 					if(newPage.isEmpty()){
 						break;
 					}
+
+					Set<Integer> needGroups=page.list.stream().map(e->-e.authorID).filter(id->!groups.containsKey(id)).collect(Collectors.toSet());
+					if(!needGroups.isEmpty()){
+						groups.putAll(context.getGroupsController().getGroupsByIdAsMap(needGroups));
+					}
+
+					newPage.removeIf(e->{
+						Group g=groups.get(-e.authorID);
+						if(g!=null){
+							if(e.type==NewsfeedEntry.Type.POST)
+								return g.wallState==GroupFeatureState.DISABLED;
+							if(e.type==NewsfeedEntry.Type.ADD_PHOTO)
+								return g.photosState==GroupFeatureState.DISABLED;
+						}
+						return false;
+					});
 
 					Set<Long> needPhotos=newPage.stream().filter(e->e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG).map(e->e.objectID).collect(Collectors.toSet());
 					if(!needPhotos.isEmpty()){
@@ -415,16 +434,64 @@ public class NewsfeedController{
 	public PaginatedList<NewsfeedEntry> getCommentsFeed(Account self, int offset, int count, EnumSet<CommentsNewsfeedObjectType> filter){
 		try{
 			PaginatedList<NewsfeedEntry> feed=PostStorage.getCommentsFeed(self.user.id, offset, count, filter);
+			feed.list=new ArrayList<>(feed.list);
+
+			Set<Integer> postIDs=feed.list.stream().filter(e->e.type==NewsfeedEntry.Type.POST).map(e->(int)e.objectID).collect(Collectors.toSet());
+			if(!postIDs.isEmpty()){
+				Map<Integer, int[]> postOwnersAuthors=PostStorage.getPostOwnerAndAuthorIDs(postIDs);
+				Set<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+				for(int[] ids:postOwnersAuthors.values()){
+					if(ids[0]!=ids[1]){
+						if(ids[0]>0)
+							needUsers.add(ids[0]);
+						else
+							needGroups.add(-ids[0]);
+					}
+				}
+				Set<Integer> inaccessibleOwners=new HashSet<>();
+				if(!needUsers.isEmpty()){
+					for(User u:context.getUsersController().getUsers(needUsers).values()){
+						if(!context.getPrivacyController().checkUserPrivacy(self.user, u, UserPrivacySettingKey.WALL_OTHERS_POSTS))
+							inaccessibleOwners.add(u.id);
+					}
+				}
+				if(!needGroups.isEmpty()){
+					for(Group g:context.getGroupsController().getGroupsByIdAsList(needGroups)){
+						if(g==null)
+							continue;
+						if(g.wallState==GroupFeatureState.DISABLED || (g.accessType!=Group.AccessType.OPEN && !context.getPrivacyController().canUserAccessGroupContent(self.user, g))){
+							inaccessibleOwners.add(-g.id);
+						}
+					}
+				}
+				feed.list.removeIf(e->{
+					if(e.type==NewsfeedEntry.Type.POST){
+						int[] ids=postOwnersAuthors.get((int)e.objectID);
+						return ids[0]!=ids[1] && inaccessibleOwners.contains(ids[0]);
+					}
+					return false;
+				});
+			}
+
 			Set<Long> photoIDs=feed.list.stream().filter(e->e.type==NewsfeedEntry.Type.PHOTO).map(e->e.objectID).collect(Collectors.toSet());
 			if(!photoIDs.isEmpty()){
 				Map<Long, Long> albumsIDs=PhotoStorage.getAlbumIDsForPhotos(photoIDs);
 				Map<Long, PhotoAlbum> albums=context.getPhotosController().getAlbumsIgnoringPrivacy(new HashSet<>(albumsIDs.values()));
 				Map<Integer, User> ownerUsers=context.getUsersController().getUsers(albums.values().stream().map(a->a.ownerID).filter(id->id>0).collect(Collectors.toSet()));
+				Map<Integer, Group> ownerGroups=context.getGroupsController().getGroupsByIdAsMap(albums.values().stream().map(a->a.ownerID).filter(id->id<0).map(id->-id).collect(Collectors.toSet()));
 				Set<Long> accessibleAlbums=albums.values().stream()
-						.filter(a->a.ownerID<0 || context.getPrivacyController().checkUserPrivacy(self.user, ownerUsers.get(a.ownerID), a.viewPrivacy))
+						.filter(a->{
+							if(a.ownerID<0){
+								Group g=ownerGroups.get(-a.ownerID);
+								if(g==null || g.photosState==GroupFeatureState.DISABLED)
+									return false;
+								if(g.accessType!=Group.AccessType.OPEN)
+									return context.getPrivacyController().canUserAccessGroupContent(self.user, g);
+							}
+							return context.getPrivacyController().checkUserPrivacy(self.user, ownerUsers.get(a.ownerID), a.viewPrivacy);
+						})
 						.map(a->a.id)
 						.collect(Collectors.toSet());
-				feed.list=new ArrayList<>(feed.list);
 				feed.list.removeIf(e->e.type==NewsfeedEntry.Type.PHOTO && !accessibleAlbums.contains(albumsIDs.get(e.objectID)));
 			}
 			return feed;

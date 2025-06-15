@@ -26,9 +26,12 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InaccessibleProfileException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
@@ -42,15 +45,12 @@ import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.UserContentUnavailableException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.UserRole;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.friends.FriendList;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
@@ -73,7 +73,10 @@ public class PrivacyController{
 	public void enforceObjectPrivacy(@Nullable User self, @NotNull OwnedContentObject object){
 		if(object instanceof Post post){
 			if(post.ownerID<0){
-				enforceUserAccessToGroupContent(self, context.getGroupsController().getGroupOrThrow(-post.ownerID));
+				Group group=context.getGroupsController().getGroupOrThrow(-post.ownerID);
+				enforceUserAccessToGroupContent(self, group);
+				if(group.wallState==GroupFeatureState.DISABLED)
+					throw new UserActionNotAllowedException("err_access_content");
 			}else if(post.ownerID!=post.authorID){
 				if(post.getReplyLevel()==0){
 					enforceUserPrivacy(self, context.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_OTHERS_POSTS);
@@ -270,6 +273,25 @@ public class PrivacyController{
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(obj);
 		if(oaa.owner() instanceof Group g){
 			enforceGroupContentAccess(req, g);
+			switch(obj){
+				case Post post -> {
+					if(g.wallState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Wall is disabled in this group");
+				}
+				case PhotoAlbum pa -> {
+					if(g.photosState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Photo albums are disabled in this group");
+				}
+				case Photo photo -> {
+					if(g.photosState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Photo albums are disabled in this group");
+				}
+				case Comment comment -> {
+					CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+					enforceContentPrivacyForActivityPub(req, parent);
+				}
+				default -> {}
+			}
 		}else if(oaa.owner() instanceof User u){
 			switch(obj){
 				case Post post when post.ownerID!=post.authorID && post.getReplyLevel()==0 -> {

@@ -39,7 +39,7 @@
 			<div>{{ fld.value | postprocessHTML }}</div>
 			{% endfor %}
 		</div>
-		{% if canAccessContent %}
+		{% if canAccessContent and group.wallState!='DISABLED' %}
 		{% include "profile_module_wall" with {'wallOwner': group, 'isGroup': true, 'headerTitle': L('wall'), 'headerHref': "/groups/#{group.id}/wall", 'additionalHeader': L('X_posts', {'count': totalItems})} %}
 		{% endif %}
 	</div>
@@ -143,7 +143,7 @@
 			{% if group.event and group.tentativeMemberCount>0 %}
 			{% include "profile_module_user_grid" with {'users': tentativeMembers, 'headerTitle': L('tentative_members'), 'headerHref': "/groups/#{group.id}/tentativeMembers", 'subheaderTitle': L('X_people', {'count': group.tentativeMemberCount})} %}
 			{% endif %}
-			{% if albums is not empty or canManageGroup %}
+			{% if group.photosState!='DISABLED' and (albums is not empty or canManageGroup) %}
 				{% include "profile_module_photo_albums" with {'albums': albums, 'headerTitle': L('photo_albums'), 'headerHref': "/groups/#{group.id}/albums", 'subheaderTitle': L('X_photo_albums', {'count': photoAlbumCount}), 'ownerID': -group.id} %}
 			{% endif %}
 			{% include "profile_module_user_list" with {'users': admins, 'headerTitle': L(group.event ? 'event_organizers' : 'group_admins'), 'headerHref': "/groups/#{group.id}/admins", 'headerAjaxBox': true, 'subheaderTitle': L(group.event ? 'event_X_organizers' : 'group_X_admins', {'count': admins.size})} %}

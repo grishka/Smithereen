@@ -53,6 +53,7 @@ import smithereen.model.User;
 import smithereen.model.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.RealtimeNotification;
@@ -169,6 +170,8 @@ public class PhotosController{
 		try{
 			if(owner instanceof Group group){
 				context.getPrivacyController().enforceGroupContentAccess(req, group);
+				if(group.photosState==GroupFeatureState.DISABLED)
+					throw new UserActionNotAllowedException("Photo albums are disabled in this group");
 			}
 			List<PhotoAlbum> albums=albumListCache.get(owner.getOwnerID());
 			if(albums==null){
@@ -213,6 +216,8 @@ public class PhotosController{
 		}else{
 			Group owner=context.getGroupsController().getGroupOrThrow(-album.ownerID);
 			context.getPrivacyController().enforceUserAccessToGroupContent(self, owner);
+			if(owner.photosState==GroupFeatureState.DISABLED)
+				throw new UserActionNotAllowedException("err_access_content");
 		}
 		return album;
 	}

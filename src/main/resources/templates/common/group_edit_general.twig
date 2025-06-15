@@ -25,6 +25,33 @@
 					{'value': 'PRIVATE', 'label': L('group_access_private'), 'selected': group.accessType=='PRIVATE', 'explanation': L('group_access_private_explain')}
 				]
 			) }}
+			{{ form.radioGroup(
+				'wallState',
+				L('group_feature_wall'),
+				[
+					{'value': 'ENABLED_OPEN', 'label': L('group_feature_wall_public'), 'selected': group.wallState=='ENABLED_OPEN', 'explanation': L('group_feature_wall_public_explanation')},
+					{'value': 'ENABLED_RESTRICTED', 'label': L('group_feature_wall_restricted'), 'selected': group.wallState=='ENABLED_RESTRICTED', 'explanation': L(group.event ? 'event_feature_wall_restricted_explanation' : 'group_feature_wall_restricted_explanation')},
+					{'value': 'ENABLED_CLOSED', 'label': L('group_feature_wall_closed'), 'selected': group.wallState=='ENABLED_CLOSED', 'explanation': L(group.event ? 'event_feature_wall_closed_explanation' : 'group_feature_wall_closed_explanation')},
+					{'value': 'DISABLED', 'label': L('group_feature_wall_disabled'), 'selected': group.wallState=='DISABLED'}
+				]
+			) }}
+			{{ form.radioGroup(
+				'photosState',
+				L('group_feature_photos'),
+				[
+					{'value': 'ENABLED_RESTRICTED', 'label': L('group_feature_photos_restricted'), 'selected': group.photosState=='ENABLED_RESTRICTED', 'explanation': L(group.event ? 'event_feature_photos_restricted_explanation' : 'group_feature_photos_restricted_explanation')},
+					{'value': 'DISABLED', 'label': L('group_feature_photos_disabled'), 'selected': group.photosState=='DISABLED'}
+				]
+			) }}
+			{{ form.radioGroup(
+				'boardState',
+				L('group_feature_board'),
+				[
+					{'value': 'ENABLED_OPEN', 'label': L('group_feature_board_public'), 'selected': group.boardState=='ENABLED_OPEN', 'explanation': L('group_feature_board_public_explanation')},
+					{'value': 'ENABLED_RESTRICTED', 'label': L('group_feature_board_restricted'), 'selected': group.boardState=='ENABLED_RESTRICTED', 'explanation': L(group.event ? 'event_feature_board_restricted_explanation' : 'group_feature_board_restricted_explanation')},
+					{'value': 'DISABLED', 'label': L('group_feature_board_disabled'), 'selected': group.boardState=='DISABLED'}
+				]
+			) }}
 			{{ form.footer(L('save')) }}
 		{{ form.end() }}
 		<input type="hidden" name="csrf" value="{{csrf}}"/>

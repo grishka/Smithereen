@@ -52,6 +52,7 @@ import smithereen.model.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
@@ -677,6 +678,8 @@ public class PostRoutes{
 
 	public static Object groupWall(Request req, Response resp){
 		Group group=context(req).getGroupsController().getGroupOrThrow(safeParseInt(req.params(":id")));
+		if(group.wallState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("err_access_content");
 		return wall(req, resp, group, false);
 	}
 

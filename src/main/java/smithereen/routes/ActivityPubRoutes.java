@@ -147,6 +147,7 @@ import smithereen.model.StatsType;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
@@ -489,6 +490,8 @@ public class ActivityPubRoutes{
 		ApplicationContext ctx=context(req);
 		Group group=ctx.getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
 		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		if(group.wallState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("Wall is disabled in this group");
 		return actorWall(req, resp, offset, count, group);
 	}
 
@@ -514,6 +517,8 @@ public class ActivityPubRoutes{
 		ApplicationContext ctx=context(req);
 		Group group=ctx.getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
 		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		if(group.wallState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("Wall is disabled in this group");
 		return actorWallComments(req, resp, offset, count, group);
 	}
 

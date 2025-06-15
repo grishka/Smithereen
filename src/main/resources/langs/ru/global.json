@@ -128,6 +128,7 @@
   "gender_other": "другой",
   "remote_object_loading_error": "При получении объекта с другого сервера произошла ошибка.",
   "err_access_user_content": "Пользователь предпочёл скрыть эту страницу.",
+  "err_access_content": "У вас нет доступа к этой странице.",
   "menu_mail": "Мои Сообщения",
   "content_type_message": "Сообщение",
   "X_users": "{count, plural, =0 {Нет пользователей} one {# пользователь} few {# пользователя} other {# пользователей}}",

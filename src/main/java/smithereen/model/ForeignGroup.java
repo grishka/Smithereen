@@ -18,6 +18,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Event;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.exceptions.BadRequestException;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.storage.DatabaseUtils;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
@@ -121,6 +122,13 @@ public class ForeignGroup extends Group implements ForeignActor{
 		ensureHostMatchesID(tentativeMembers, "tentativeMembers");
 		photoAlbums=tryParseURL(optString(obj, "photoAlbums"));
 		ensureHostMatchesID(photoAlbums, "photoAlbums");
+
+		JsonObject featureState=optObject(obj, "featureState");
+		if(featureState!=null){
+			wallState=GroupFeatureState.fromActivityPubValue(optString(featureState, "wall"), GroupFeatureState.ENABLED_OPEN);
+			photosState=GroupFeatureState.fromActivityPubValue(optString(featureState, "photoAlbums"), GroupFeatureState.ENABLED_RESTRICTED);
+			boardState=GroupFeatureState.fromActivityPubValue(optString(featureState, "board"), GroupFeatureState.ENABLED_RESTRICTED);
+		}
 
 		return this;
 	}

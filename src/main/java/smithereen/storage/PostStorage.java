@@ -469,6 +469,18 @@ public class PostStorage{
 		return post;
 	}
 
+	public static Map<Integer, int[]> getPostOwnerAndAuthorIDs(Collection<Integer> postIDs) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.columns("id", "owner_user_id", "owner_group_id", "author_id")
+				.whereIn("id", postIDs)
+				.executeAsStream(r->{
+					int uid=r.getInt("owner_user_id");
+					return new Pair<>(r.getInt("id"), new int[]{uid>0 ? uid : -r.getInt("owner_group_id"), r.getInt("author_id")});
+				})
+				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
 	public static int getLocalIDByActivityPubID(URI apID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("wall_posts")

@@ -151,6 +151,8 @@ public class JLDProcessor{
 		addSmAlias(lc, "ActorStatus");
 		lc.add("status", idAndTypeObject("sm:status", "@id"));
 		lc.add("statusHistory", idAndTypeObject("sm:statusHistory", "@id"));
+		addSmAlias(lc, "featureState");
+		addSmIdAlias(lc, "board");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");
@@ -173,6 +175,10 @@ public class JLDProcessor{
 
 	private static void addSmAlias(JsonObject obj, String key){
 		obj.addProperty(key, "sm:"+key);
+	}
+
+	private static void addSmIdAlias(JsonObject obj, String key){
+		obj.add(key, idAndTypeObject("sm:"+key, "@id"));
 	}
 
 	public static JsonArray expandToArray(JsonElement src){

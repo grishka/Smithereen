@@ -43,6 +43,7 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
@@ -206,58 +207,12 @@ public class GroupsRoutes{
 		Lang l=lang(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group", req);
 
-
-		// Public info: still visible for non-members in public groups
-		List<User> members=ctx.getGroupsController().getRandomMembersForProfile(group, false);
-		model.with("group", group).with("members", members);
-		if(group.isEvent())
-			model.with("tentativeMembers", ctx.getGroupsController().getRandomMembersForProfile(group, true));
-		model.with("title", group.name);
-		model.with("admins", ctx.getGroupsController().getAdmins(group));
-		model.with("canAccessContent", canAccessContent);
-
-		// Wall posts
-		int wallPostsCount=0;
-		if(canAccessContent){
-			int offset=offset(req);
-			PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, false, offset, 20));
-			wallPostsCount=wall.total;
-			ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
-			CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
-			if(req.attribute("mobile")==null){
-				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
-			}
-			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
-			model.with("postCount", wall.total)
-					.paginate(wall, "/groups/"+group.id+"/wall?offset=", null)
-					.with("canPostOnWall", self!=null)
-					.with("canSeeOthersPosts", true);
-			model.with("postInteractions", interactions);
-			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
-			PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
-			model.with("users", ctx.getUsersController().getUsers(needUsers));
-			model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
-
-			PaginatedList<PhotoAlbum> albums;
-			if(isMobile(req))
-				albums=ctx.getPhotosController().getMostRecentAlbums(group, self!=null ? self.user : null, 1, true);
-			else
-				albums=ctx.getPhotosController().getRandomAlbumsForProfile(group, self!=null ? self.user : null, 2);
-			model.with("albums", albums.list)
-					.with("photoAlbumCount", albums.total)
-					.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
-		}
-
-		if(group instanceof ForeignGroup)
-			model.with("noindex", true);
-
-		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete");
-		Templates.addJsLangForNewPostForm(req);
+		Group.AdminLevel adminLevel;
 		if(self!=null){
-			Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
+			adminLevel=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 			model.with("membershipState", membershipState);
-			model.with("groupAdminLevel", level);
-			if(level.isAtLeast(Group.AdminLevel.ADMIN)){
+			model.with("groupAdminLevel", adminLevel);
+			if(adminLevel.isAtLeast(Group.AdminLevel.ADMIN)){
 				jsLangKey(req, "update_avatar_title", "update_avatar_intro_group", "update_avatar_formats", "update_avatar_footer", "update_avatar_crop_title_group", "update_avatar_crop_explanation1_group",
 						"update_avatar_crop_explanation2", "update_avatar_thumb_title", "update_avatar_thumb_explanation1", "update_avatar_thumb_explanation2_group", "choose_file", "save_and_continue", "go_back",
 						"remove_profile_picture", "confirm_remove_profile_picture_group");
@@ -273,6 +228,65 @@ public class GroupsRoutes{
 			model.with("isBookmarked", ctx.getBookmarksController().isGroupBookmarked(self.user, group));
 			ctx.getGroupsController().incrementHintsRank(self.user, group, 1);
 		}else{
+			adminLevel=null;
+		}
+
+		// Public info: still visible for non-members in public groups
+		List<User> members=ctx.getGroupsController().getRandomMembersForProfile(group, false);
+		model.with("group", group).with("members", members);
+		if(group.isEvent())
+			model.with("tentativeMembers", ctx.getGroupsController().getRandomMembersForProfile(group, true));
+		model.with("title", group.name);
+		model.with("admins", ctx.getGroupsController().getAdmins(group));
+		model.with("canAccessContent", canAccessContent);
+
+		int wallPostsCount=0;
+		if(canAccessContent){
+			// Wall posts
+			if(group.wallState!=GroupFeatureState.DISABLED){
+				int offset=offset(req);
+				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, false, offset, 20));
+				wallPostsCount=wall.total;
+				ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+				CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
+				if(req.attribute("mobile")==null){
+					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
+				}
+				Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
+				model.with("postCount", wall.total)
+						.paginate(wall, "/groups/"+group.id+"/wall?offset=", null)
+						.with("canPostOnWall", self!=null && switch(group.wallState){
+							case ENABLED_OPEN -> true;
+							case ENABLED_RESTRICTED, ENABLED_CLOSED -> adminLevel.isAtLeast(Group.AdminLevel.MODERATOR);
+							case DISABLED -> false;
+						})
+						.with("canSeeOthersPosts", true);
+				model.with("postInteractions", interactions);
+				HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+				PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
+				model.with("users", ctx.getUsersController().getUsers(needUsers));
+				model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
+			}
+
+			// Photo albums
+			if(group.photosState!=GroupFeatureState.DISABLED){
+				PaginatedList<PhotoAlbum> albums;
+				if(isMobile(req))
+					albums=ctx.getPhotosController().getMostRecentAlbums(group, self!=null ? self.user : null, 1, true);
+				else
+					albums=ctx.getPhotosController().getRandomAlbumsForProfile(group, self!=null ? self.user : null, 2);
+				model.with("albums", albums.list)
+						.with("photoAlbumCount", albums.total)
+						.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
+			}
+		}
+
+		if(group instanceof ForeignGroup)
+			model.with("noindex", true);
+
+		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "remove_friend", "cancel", "delete");
+		Templates.addJsLangForNewPostForm(req);
+		if(self==null){
 			HashMap<String, String> meta=new LinkedHashMap<>();
 			meta.put("og:type", "profile");
 			meta.put("og:site_name", Config.serverDisplayName);
@@ -369,7 +383,7 @@ public class GroupsRoutes{
 		Group.AccessType accessType=enumValue(req.queryParams("access"), Group.AccessType.class);
 		String message;
 		try{
-			if(StringUtils.isEmpty(name) || name.length()<1)
+			if(StringUtils.isEmpty(name))
 				throw new BadRequestException(lang(req).get("group_name_too_short"));
 
 			Instant eventStart=null, eventEnd=null;
@@ -392,7 +406,10 @@ public class GroupsRoutes{
 			if(StringUtils.isEmpty(about))
 				about=null;
 
-			ctx.getGroupsController().updateGroupInfo(group, self.user, name, about, eventStart, eventEnd, username, accessType);
+			GroupFeatureState wallState=enumValue(req.queryParams("wallState"), GroupFeatureState.class);
+			GroupFeatureState photosState=enumValue(req.queryParams("photosState"), GroupFeatureState.class);
+			GroupFeatureState boardState=enumValue(req.queryParams("boardState"), GroupFeatureState.class);
+			ctx.getGroupsController().updateGroupInfo(group, self.user, name, about, eventStart, eventEnd, username, accessType, wallState, photosState, boardState);
 
 			message=lang(req).get(group.isEvent() ? "event_info_updated" : "group_info_updated");
 		}catch(BadRequestException x){

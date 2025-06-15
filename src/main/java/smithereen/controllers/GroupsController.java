@@ -48,6 +48,7 @@ import smithereen.model.User;
 import smithereen.model.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.FederationStorage;
@@ -235,7 +236,8 @@ public class GroupsController{
 			throw new UserActionNotAllowedException();
 	}
 
-	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd, String username, Group.AccessType accessType){
+	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd, String username, Group.AccessType accessType,
+								GroupFeatureState wallState, GroupFeatureState photosState, GroupFeatureState boardState){
 		try{
 			enforceUserAdminLevel(group, admin, Group.AdminLevel.ADMIN);
 			String about=StringUtils.isNotEmpty(aboutSrc) ? TextProcessor.preprocessPostHTML(aboutSrc, null) : null;
@@ -251,6 +253,17 @@ public class GroupsController{
 					throw new BadRequestException("err_group_username_taken");
 			}else{
 				GroupStorage.updateGroupGeneralInfo(group, name, username, aboutSrc, about, eventStart, eventEnd, accessType);
+			}
+			if(photosState==GroupFeatureState.ENABLED_OPEN || photosState==GroupFeatureState.ENABLED_CLOSED)
+				photosState=GroupFeatureState.ENABLED_RESTRICTED;
+			if(boardState==GroupFeatureState.ENABLED_CLOSED)
+				boardState=GroupFeatureState.ENABLED_RESTRICTED;
+			if(group.wallState!=wallState || group.photosState!=photosState || group.boardState!=boardState){
+				group.wallState=wallState;
+				group.photosState=photosState;
+				group.boardState=boardState;
+				GroupStorage.updateProfileFields(group);
+				context.getNewsfeedController().clearGroupsFeedCache();
 			}
 			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 			if(group.isEvent()){

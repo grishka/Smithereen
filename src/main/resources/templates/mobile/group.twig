@@ -160,8 +160,9 @@
 </div>
 
 {% include "profile_section_thumbs" with {'actor': group} %}
-
+{% if group.wallState!='DISABLED' %}
 {% include "wall_profile_block" with {'wallOwner': group, 'isGroup': true} %}
+{% endif %}
 </div>
 {% script %}
 initProfileTitleHideOnScroll();

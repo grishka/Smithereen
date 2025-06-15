@@ -57,6 +57,7 @@ import smithereen.model.UserPermissions;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.viewmodel.PostViewModel;
@@ -118,8 +119,13 @@ public class WallController{
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
-				if(inReplyTo==null)
+				if(group.wallState==GroupFeatureState.DISABLED)
+					throw new UserActionNotAllowedException();
+				if(inReplyTo==null){
 					ensureUserNotBlocked(author, group);
+					if(group.wallState==GroupFeatureState.ENABLED_CLOSED)
+						context.getGroupsController().enforceUserAdminLevel(group, author, Group.AdminLevel.MODERATOR);
+				}
 			}else if(wallOwner instanceof User user){
 				if(inReplyTo==null){
 					ensureUserNotBlocked(author, user);
@@ -237,6 +243,9 @@ public class WallController{
 
 				mentionedUsers.add(topLevelAuthor);
 				if(topLevel.isGroupOwner()){
+					Group group=(Group) topLevelOwner;
+					if(group.wallState==GroupFeatureState.ENABLED_CLOSED || group.wallState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException();
 					ownerGroupID=-topLevel.ownerID;
 					ownerUserID=0;
 					ensureUserNotBlocked(author, topLevelOwner);
@@ -595,12 +604,14 @@ public class WallController{
 	public Map<Integer, UserInteractions> getUserInteractions(@NotNull List<PostViewModel> posts, @Nullable User self){
 		try{
 			Set<Integer> postIDs=posts.stream().map(p->p.post.getIDForInteractions()).collect(Collectors.toSet());
-			Set<Integer> ownerUserIDs=new HashSet<>();
+			Set<Integer> ownerUserIDs=new HashSet<>(), ownerGroupIDs=new HashSet<>();
 			for(PostViewModel p:posts){
 				p.getAllReplyIDs(postIDs);
 				if(!p.post.isMastodonStyleRepost()){
 					if(p.post.ownerID>0)
 						ownerUserIDs.add(p.post.ownerID);
+					else
+						ownerGroupIDs.add(-p.post.ownerID);
 				}else if(p.repost!=null && p.repost.post()!=null){
 					Post repost=p.repost.post().post;
 					if(repost.ownerID>0)
@@ -611,6 +622,13 @@ public class WallController{
 					.entrySet()
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
+
+			if(!ownerGroupIDs.isEmpty()){
+				canComment=new HashMap<>(canComment);
+				for(Group group:context.getGroupsController().getGroupsByIdAsList(ownerGroupIDs)){
+					canComment.put(-group.id, group.wallState!=GroupFeatureState.ENABLED_CLOSED);
+				}
+			}
 
 			List<PostViewModel> allPosts=posts.stream().flatMap(pvm->{
 				ArrayList<PostViewModel> replies=new ArrayList<>();

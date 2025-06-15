@@ -132,6 +132,7 @@
   "gender_other": "other",
   "remote_object_loading_error": "Failed to load the remote object.",
   "err_access_user_content": "This user has chosen to hide this page.",
+  "err_access_content": "You do not have access to this page.",
   "menu_mail": "My Messages",
   "content_type_message": "Message",
   "X_users": "{count, plural, =0 {No users} one {# user} other {# users}}",

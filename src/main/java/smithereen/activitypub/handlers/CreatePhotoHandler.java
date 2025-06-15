@@ -12,6 +12,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 
@@ -36,6 +37,8 @@ public class CreatePhotoHandler extends ActivityTypeHandler<ForeignUser, Create,
 
 		Group group=context.appContext.getGroupsController().getLocalGroupOrThrow(-album.ownerID);
 		context.appContext.getPrivacyController().enforceUserAccessToGroupContent(actor, group);
+		if(group.photosState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("Photo albums are disabled in this group");
 		if(album.flags.contains(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS))
 			throw new UserActionNotAllowedException("Uploads to this album are restricted to group staff");
 		Photo photo=object.asNativePhoto(context.appContext);

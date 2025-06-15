@@ -16,7 +16,9 @@ import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Event;
 import smithereen.jsonld.JLD;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.storage.DatabaseUtils;
+import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
 
 public class Group extends Actor{
@@ -26,6 +28,9 @@ public class Group extends Actor{
 	public Type type=Type.GROUP;
 	public Instant eventStartTime, eventEndTime;
 	public AccessType accessType;
+	public GroupFeatureState wallState=GroupFeatureState.ENABLED_OPEN;
+	public GroupFeatureState photosState=GroupFeatureState.ENABLED_RESTRICTED;
+	public GroupFeatureState boardState=GroupFeatureState.ENABLED_RESTRICTED;
 
 	public List<GroupAdmin> adminsForActivityPub;
 
@@ -84,6 +89,9 @@ public class Group extends Actor{
 		JsonObject o=new JsonObject();
 		if(status!=null)
 			o.add("status", Utils.gson.toJsonTree(status));
+		o.addProperty("wall", wallState.toString());
+		o.addProperty("photos", photosState.toString());
+		o.addProperty("board", boardState.toString());
 		return o.toString();
 	}
 
@@ -120,6 +128,12 @@ public class Group extends Actor{
 			if(o.has("status")){
 				status=Utils.gson.fromJson(o.get("status"), ActorStatus.class);
 			}
+			if(o.has("wall"))
+				wallState=Utils.enumValue(o.get("wall").getAsString(), GroupFeatureState.class);
+			if(o.has("photos"))
+				photosState=Utils.enumValue(o.get("photos").getAsString(), GroupFeatureState.class);
+			if(o.has("board"))
+				boardState=Utils.enumValue(o.get("board").getAsString(), GroupFeatureState.class);
 		}
 	}
 
@@ -169,6 +183,14 @@ public class Group extends Actor{
 
 		serializerContext.addSmIdType("photoAlbums");
 		obj.addProperty("photoAlbums", getPhotoAlbumsURL().toString());
+
+		serializerContext.addSmAlias("featureState");
+		serializerContext.addSmIdType("board");
+		obj.add("featureState", new JsonObjectBuilder()
+				.add("wall", wallState.asActivityPubValue())
+				.add("photoAlbums", photosState.asActivityPubValue())
+				.add("board", boardState.asActivityPubValue())
+				.build());
 
 		return obj;
 	}

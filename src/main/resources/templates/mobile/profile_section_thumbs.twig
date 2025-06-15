@@ -1,7 +1,7 @@
 {# @pebvariable name="actor" type="smithereen.activitypub.objects.Actor" #}
 {% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or actor.followingCount>0 or groups is not empty %}
 <div class="card profileSectionThumbs">
-{% if photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup) %}
+{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) and (actor.ownerID>0 or actor.photosState!='DISABLED') %}
 	<a href="{{ actor.typeAndIdForURL }}/albums">
 		<div class="titleW">
 			<div class="title">{{ L('photo_albums') }}</div>
