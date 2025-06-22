@@ -368,7 +368,7 @@ class AudioPlayer{
 			if(this.pausedByVideo) this.pausedByVideo=null;
 			if(curAudioID) this.stop();
 			this.setAudioID(id);
-			if(!this.lastSong) this.setSongInfo();
+			if(!this.lastSong || this.lastSong.id!=id) this.setSongInfo();
 			if(!this.lastSong) return;
 			const lastSong=this.lastSong
 			if(lastSong.unavailabilityReason){
