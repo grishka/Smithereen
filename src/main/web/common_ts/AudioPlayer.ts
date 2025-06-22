@@ -226,6 +226,35 @@ class AudioPlayer{
 		this.setPlayer(new AudioManager(this), id);
 	}
 
+	private handleMediaSessionAction(details:MediaSessionActionDetails){
+		switch(details.action){
+			case "play":
+				this.state=AudioPlayerState.PLAY;
+				this.mgr.playAudio(this.time);
+				break;
+			case "pause":
+				this.state=AudioPlayerState.PAUSE;
+				this.mgr.pauseAudio();
+				break;
+			case "stop":
+				this.state=AudioPlayerState.STOP;
+				this.stop();
+				break;
+			case "seekto":
+				this.time=details.seekTime;
+				if(this.lastSong){
+					this.onPlayProgress(details.seekTime, this.lastSong.duration, true);
+				}
+				if(!this.mgr.paused()){
+					this.mgr.playAudio(this.time);
+				}
+				break;
+			default:
+				break;
+		}
+		this.forEachControl(this.setGraphics.bind(this));
+	}
+
 	private initEvents(){
 		if(this.eventsInitialized) return;
 
@@ -241,6 +270,14 @@ class AudioPlayer{
 		document.body.addEventListener("mouseout", this.hideTipWithTimeOut.bind(this));
 		document.body.addEventListener("touchcancel", this.hideTipWithTimeOut.bind(this));
 		document.body.addEventListener("touchend", this.hideTipWithTimeOut.bind(this));
+
+		const mediaSession=navigator.mediaSession;
+		if(mediaSession){
+			mediaSession.setActionHandler("play", this.handleMediaSessionAction.bind(this));
+			mediaSession.setActionHandler("pause", this.handleMediaSessionAction.bind(this));
+			mediaSession.setActionHandler("stop", this.handleMediaSessionAction.bind(this));
+			mediaSession.setActionHandler("seekto", this.handleMediaSessionAction.bind(this));
+		}
 
 		this.timeFormatLeft=Boolean(parseInt(localStorage.getItem(AudioLocalStorageKey.TIME_FORMAT_LEFT) || "1"));
 
@@ -381,6 +418,7 @@ class AudioPlayer{
 			}catch(e){}
 			this.state=AudioPlayerState.LOAD;
 		}
+		this.setMediaSession();
 		this.forEachControl(this.setGraphics.bind(this))
 	}
 
@@ -445,11 +483,35 @@ class AudioPlayer{
 		}
 	}
 
+	private setMediaSession(){
+		const session=navigator.mediaSession;
+		if(!session) return;
+		//noinspection FallThroughInSwitchStatementJS
+		switch(this.state){
+			case AudioPlayerState.PLAY:
+				session.playbackState="playing";
+			case AudioPlayerState.LOAD:
+				session.metadata=new MediaMetadata({
+					artist: this.lastSong.artist,
+					title: this.lastSong.title,
+				});
+				break;
+			case AudioPlayerState.PAUSE:
+				session.playbackState="paused";
+				break;
+			case AudioPlayerState.STOP:
+				session.playbackState="none";
+				session.metadata=null;
+				break;
+		}
+	}
+
 	private stop(){
 		const id=this.curAudioID;
 		if(!id) return;
 		if(this.mgr && !this.mgr.paused()) this.mgr.stopAudio();
 		this.state=AudioPlayerState.STOP;
+		this.setMediaSession();
 		this.forEachControl(this.setGraphics.bind(this));
 		this.setAudioID(null);
 		this.controlsForCurrentAudio=[];
