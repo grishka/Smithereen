@@ -610,7 +610,7 @@ public class WallController{
 				if(!p.post.isMastodonStyleRepost()){
 					if(p.post.ownerID>0)
 						ownerUserIDs.add(p.post.ownerID);
-					else
+					else if(p.post.ownerID<0)
 						ownerGroupIDs.add(-p.post.ownerID);
 				}else if(p.repost!=null && p.repost.post()!=null){
 					Post repost=p.repost.post().post;
@@ -626,6 +626,8 @@ public class WallController{
 			if(!ownerGroupIDs.isEmpty()){
 				canComment=new HashMap<>(canComment);
 				for(Group group:context.getGroupsController().getGroupsByIdAsList(ownerGroupIDs)){
+					if(group==null)
+						continue;
 					canComment.put(-group.id, group.wallState!=GroupFeatureState.ENABLED_CLOSED);
 				}
 			}
