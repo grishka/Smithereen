@@ -14,6 +14,7 @@ import smithereen.model.Account;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.notifications.GroupedNotification;
 import smithereen.model.notifications.Notification;
@@ -41,7 +42,7 @@ public class NotificationsRoutes{
 			model.paginate(notifications, "/my/notifications?maxID="+maxID+"&offset=", "/my/notifications");
 		}
 		HashSet<Integer> needUsers=new HashSet<>(), needPosts=new HashSet<>();
-		HashSet<Long> needPhotos=new HashSet<>(), needComments=new HashSet<>();
+		HashSet<Long> needPhotos=new HashSet<>(), needComments=new HashSet<>(), needTopics=new HashSet<>();
 
 		for(NotificationWrapper nw:notifications.list){
 			switch(nw){
@@ -59,12 +60,14 @@ public class NotificationsRoutes{
 				case POST -> needPosts.add((int) n.objectID);
 				case PHOTO -> needPhotos.add(n.objectID);
 				case COMMENT -> needComments.add(n.objectID);
+				case BOARD_TOPIC -> needTopics.add(n.objectID);
 			}
 			switch(n.relatedObjectType){
 				case null -> {}
 				case POST -> needPosts.add((int) n.relatedObjectID);
 				case PHOTO -> needPhotos.add(n.relatedObjectID);
 				case COMMENT -> needComments.add(n.relatedObjectID);
+				case BOARD_TOPIC -> needTopics.add(n.relatedObjectID);
 			}
 		}
 
@@ -98,11 +101,13 @@ public class NotificationsRoutes{
 
 		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
 		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+		Map<Long, BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(needTopics);
 
 		model.with("users", users)
 				.with("posts", posts)
 				.with("photos", photos)
 				.with("comments", comments)
+				.with("topics", topics)
 				.with("lastSeenID", self.prefs.lastSeenNotificationID);
 
 		if(!isMobile(req)){

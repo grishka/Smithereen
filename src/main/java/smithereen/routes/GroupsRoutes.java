@@ -43,6 +43,7 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
@@ -242,6 +243,7 @@ public class GroupsRoutes{
 
 		int wallPostsCount=0;
 		if(canAccessContent){
+			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			// Wall posts
 			if(group.wallState!=GroupFeatureState.DISABLED){
 				int offset=offset(req);
@@ -262,9 +264,7 @@ public class GroupsRoutes{
 						})
 						.with("canSeeOthersPosts", true);
 				model.with("postInteractions", interactions);
-				HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 				PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
-				model.with("users", ctx.getUsersController().getUsers(needUsers));
 				model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 			}
 
@@ -279,6 +279,17 @@ public class GroupsRoutes{
 						.with("photoAlbumCount", albums.total)
 						.with("covers", ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.list.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet())));
 			}
+
+			// Board topics
+			if(group.boardState!=GroupFeatureState.DISABLED){
+				PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopics(group, 0, 3);
+				for(BoardTopic t:topics.list){
+					needUsers.add(t.lastCommentAuthorID);
+				}
+				model.with("boardTopics", topics);
+				model.with("canCreateTopics", self!=null && (group.boardState==GroupFeatureState.ENABLED_OPEN || (group.boardState==GroupFeatureState.ENABLED_RESTRICTED && adminLevel.isAtLeast(Group.AdminLevel.MODERATOR))));
+			}
+			model.with("users", ctx.getUsersController().getUsers(needUsers));
 		}
 
 		if(group instanceof ForeignGroup)

@@ -1,5 +1,5 @@
 {# @pebvariable name="actor" type="smithereen.activitypub.objects.Actor" #}
-{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or actor.followingCount>0 or groups is not empty %}
+{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or actor.followingCount>0 or groups is not empty or (actor.ownerID<0 and actor.boardState!='DISABLED') %}
 <div class="card profileSectionThumbs">
 {% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) and (actor.ownerID>0 or actor.photosState!='DISABLED') %}
 	<a href="{{ actor.typeAndIdForURL }}/albums">
@@ -39,6 +39,21 @@
 			    {{ group | pictureForAvatar('a', 42) }}
 			{% endfor %}
 			{% for i in range(groups | length, 5, 1) %}<div class="placeholder"></div>{% endfor %}
+		</div>
+	</a>
+{% endif %}
+{% if actor.ownerID<0 and actor.boardState!='DISABLED' %}
+	<a href="{{ actor.typeAndIdForURL }}/board">
+		<div class="titleW">
+			<div class="title">{{ L('group_board') }}</div>
+			<div class="count">{{ boardTopics.total | numberformat }}</div>
+		</div>
+		<div class="thumb iconWithText">
+			<div class="icon iconBoard"></div>
+			{% if boardTopics.list is not empty %}
+			<div class="thumbTitle ellipsize">{{ boardTopics.list.first.title }}</div>
+			<div class="thumbSubtitle ellipsize">{{ LD(boardTopics.list.first.updatedAt) }}</div>
+			{% endif %}
 		</div>
 	</a>
 {% endif %}

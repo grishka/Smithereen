@@ -1105,6 +1105,7 @@ public class PostStorage{
 						entry.type=switch(type){
 							case POST -> NewsfeedEntry.Type.POST;
 							case PHOTO -> NewsfeedEntry.Type.PHOTO;
+							case BOARD_TOPIC -> NewsfeedEntry.Type.BOARD_TOPIC;
 						};
 						return entry;
 					}).toList();

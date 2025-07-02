@@ -1,0 +1,26 @@
+<div class="tabbar">
+	<a href="/groups/{{ group.id }}/board" class="{% if tab=='all' %}selected{% endif %}">{{ L('group_board') }}</a>
+	{% if tab=='new' %}<a href="/groups/{{ group.id }}/createTopic" class="selected">{{ L('board_new_topic_title') }}</a>{% endif %}
+	{% if tab=='topic' %}<a href="{{ topic.uri }}" class="selected">{{ L('board_viewing_topic') }}</a>{% endif %}
+	{% if tab=='all' and canCreateTopics %}<div class="aux"><a href="/groups/{{ group.id }}/createTopic">{{ L('board_create_topic') }}</a></div>{% endif %}
+	{% if tab=='topic' and canEditTopic %}
+	<div class="aux">
+		<span class="popupMenuW" id="topicEditMenuW"><a href="javascript:void(0)" onclick="cur.showTopicEditMenu()" class="opener">{{ L('edit') }}</a></span>
+	</div>
+{% script %}
+cur.topicEditMenu=new PopupMenu(ge("topicEditMenuW"), function(item){
+	if(item=="rename"){
+		LayerManager.getInstance().showBoxLoader();
+		ajaxGetAndApplyActions("{{ topic.url }}/renameForm");
+	}else if(item=="delete"){
+		ajaxConfirm("{{ L('board_topic_deletion') }}", "{{ L('board_delete_topic_confirm') }}", "{{ topic.url }}/delete?csrf={{ csrf }}", {}, false, "{{ L('delete') }}");
+	}
+}, false, true);
+cur.topicEditMenu.addItem({title: "{{ L('board_edit_topic_title') }}", id: "rename"});
+cur.topicEditMenu.addItem({title: "{{ L('board_delete_topic') }}", id: "delete"});
+cur.showTopicEditMenu=function(){
+	cur.topicEditMenu.show();
+};
+{% endscript %}
+	{% endif %}
+</div>

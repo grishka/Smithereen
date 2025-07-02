@@ -204,6 +204,10 @@ public class Lang{
 	}
 
 	public String formatDate(Instant date, ZoneId timeZone, boolean forceAbsolute){
+		return formatDate(date, timeZone, forceAbsolute, false);
+	}
+
+	public String formatDate(Instant date, ZoneId timeZone, boolean forceAbsolute, boolean forceShortMonthName){
 		long ts=date.toEpochMilli();
 		long tsNow=System.currentTimeMillis();
 		long diff=tsNow-ts;
@@ -238,7 +242,7 @@ public class Lang{
 		}
 		if(day==null){
 			if(now.getYear()==dt.getYear()){
-				day=get("date_format_current_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_full", Map.of("month", dt.getMonthValue()))));
+				day=get("date_format_current_year", Map.of("day", dt.getDayOfMonth(), "month", get(forceShortMonthName ? "month_short" : "month_full", Map.of("month", dt.getMonthValue()))));
 			}else{
 				day=get("date_format_other_year", Map.of("day", dt.getDayOfMonth(), "month", get("month_short", Map.of("month", dt.getMonthValue())), "year", dt.getYear()));
 			}
@@ -267,6 +271,16 @@ public class Lang{
 		}else{
 			return String.format(locale, "%02d.%02d.%02d", dt.getDayOfMonth(), dt.getMonthValue(), dt.getYear()%100);
 		}
+	}
+
+	public String formatDateShort(Instant date, ZoneId timeZone){
+		// For current year: 12 Jan at 12:34
+		// For other years: 25 May 2016
+		LocalDate ld=LocalDate.ofInstant(date, timeZone);
+		LocalDate now=LocalDate.now(timeZone);
+		if(ld.getYear()==now.getYear())
+			return formatDate(date, timeZone, false, true);
+		return get("date_format_other_year", Map.of("day", ld.getDayOfMonth(), "month", get("month_short", Map.of("month", ld.getMonthValue())), "year", ld.getYear()));
 	}
 
 	public String formatFileSize(long size){

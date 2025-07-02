@@ -39,6 +39,7 @@ public record RealtimeNotification(String id, Type type, ObjectType objectType, 
 		POST,
 		PHOTO,
 		PHOTO_COMMENT,
-		MESSAGE
+		MESSAGE,
+		BOARD_COMMENT
 	}
 }

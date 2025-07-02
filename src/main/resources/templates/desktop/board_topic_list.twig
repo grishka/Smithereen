@@ -1,0 +1,42 @@
+{% extends "page" %}
+{% block content %}
+{% set postsPerPage=20 %}
+{% include "board_tabbar" with {'tab': 'all'} %}
+<div class="summaryWrap">
+	<div class="summary">{{ L('board_topic_list_summary', {'count': totalItems}) }}</div>
+	{% include "pagination" %}
+</div>
+<div>
+{% if message %}<div class="settingsMessage"><b>{{ message }}</b><br/>{{ messageSubtitle }}</div>{% endif %}
+{% for topic in items %}
+	<div class="boardTopicListItem">
+		<div class="mainW">
+			<a class="title" href="{{ topic.url }}">{{ topic.title }}</a>
+			<div class="info">
+				<span class="postCount">{{ L('board_topic_post_count', {'count': topic.numComments}) }}</span>
+			{% if topic.numComments>postsPerPage %}
+			{% set numPages=(topic.numComments+(postsPerPage-1))/postsPerPage %}
+			<span class="pageLinks">{{ L('board_topic_page_links') }}
+			{% if numPages<8 %}
+			{% for i in range(0, numPages-1) %}<a href="{{ topic.url }}?offset={{ i*postsPerPage }}">{{ i+1 }}</a>{% endfor %}
+			{% else %}
+			{% for i in range(0, 2) %}<a href="{{ topic.url }}?offset={{ i*postsPerPage }}">{{ i+1 }}</a>{% endfor %}
+			..
+			{% for i in range(numPages-3, numPages-1) %}<a href="{{ topic.url }}?offset={{ i*postsPerPage }}">{{ i+1 }}</a>{% endfor %}
+			{% endif %}
+			</span>
+			{% endif %}
+			</div>
+		</div>
+		<a href="{{ topic.url }}?last" class="lastPost">
+			{{ users[topic.lastCommentAuthorID] | pictureForAvatar('a', 32) }}
+			<div class="ellipsize name">{{ users[topic.lastCommentAuthorID] | name }}</div>
+			<div class="ellipsize date">{{ L('board_topic_last_post_date', {'date': LD(topic.updatedAt, false, 'short'), 'gender': users[topic.lastCommentAuthorID].gender}) }}</div>
+		</a>
+	</div>
+{% else %}
+	<div class="emptyState">{{ L('board_no_topics') }}</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}

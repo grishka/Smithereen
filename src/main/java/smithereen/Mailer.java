@@ -367,6 +367,7 @@ public class Mailer{
 						needUsers.add(replyTo.authorID);
 						yield switch(comment.parentObjectID.type()){
 							case PHOTO -> "photo_comment";
+							case BOARD_TOPIC -> "board_comment";
 						};
 					}
 				};
@@ -409,6 +410,7 @@ public class Mailer{
 						needUsers.add(parent.getAuthorID());
 						yield switch(comment.parentObjectID.type()){
 							case PHOTO -> "photo_comment";
+							case BOARD_TOPIC -> "board_comment";
 						};
 					}
 				};

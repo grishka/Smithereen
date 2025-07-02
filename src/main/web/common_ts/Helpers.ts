@@ -443,7 +443,7 @@ function setGlobalLoading(loading:boolean):void{
 	document.body.style.cursor=loading ? "progress" : "";
 }
 
-function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, useLang:boolean=true):boolean{
+function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, useLang:boolean=true, confirmButtonTitle:string=null):boolean{
 	var box:ConfirmBox;
 	box=new ConfirmBox(useLang ? lang(titleKey) : titleKey, useLang ? lang(msgKey) : msgKey, function(){
 		var btn=box.getButton(0);
@@ -465,7 +465,7 @@ function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, 
 			box.dismiss();
 			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 		});
-	});
+	}, confirmButtonTitle ? [useLang ? lang(confirmButtonTitle) : confirmButtonTitle, lang("cancel")] : null);
 	box.show();
 	return false;
 }

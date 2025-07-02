@@ -1,0 +1,88 @@
+package smithereen.storage;
+
+import java.sql.SQLException;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import smithereen.model.PaginatedList;
+import smithereen.model.board.BoardTopic;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.storage.sql.SQLQueryBuilder;
+
+public class BoardStorage{
+	public static PaginatedList<BoardTopic> getGroupTopics(int groupID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("board_topics")
+					.count()
+					.where("group_id=?", groupID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			String orderBy="updated_at DESC"; // TODO
+			List<BoardTopic> topics=new SQLQueryBuilder(conn)
+					.selectFrom("board_topics")
+					.allColumns()
+					.where("group_id=?",groupID)
+					.orderBy("ISNULL(pinned_at) ASC, pinned_at DESC, "+orderBy)
+					.limit(count, offset)
+					.executeAsStream(BoardTopic::fromResultSet)
+					.toList();
+			return new PaginatedList<>(topics, total, offset, count);
+		}
+	}
+
+	public static BoardTopic getTopic(long id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("board_topics")
+				.where("id=?", id)
+				.executeAndGetSingleObject(BoardTopic::fromResultSet);
+	}
+
+	public static Map<Long, BoardTopic> getTopics(Collection<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("board_topics")
+				.whereIn("id", ids)
+				.executeAsStream(BoardTopic::fromResultSet)
+				.collect(Collectors.toMap(bt->bt.id, Function.identity()));
+	}
+
+	public static long createTopic(int groupID, String title, int authorID, String activityPubID, String activityPubURL) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("board_topics")
+				.value("title", title)
+				.value("author_id", authorID)
+				.value("group_id", groupID)
+				.value("last_comment_author_id", authorID)
+				.value("ap_id", activityPubID)
+				.value("ap_url", activityPubURL)
+				.executeAndGetIDLong();
+	}
+
+	public static void setTopicFirstCommentID(long topicID, long commentID) throws SQLException{
+		new SQLQueryBuilder()
+				.update("board_topics")
+				.where("id=?", topicID)
+				.value("first_comment_id", commentID)
+				.executeNoResult();
+	}
+
+	public static void deleteTopic(long topicID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("board_topics")
+				.where("id=?", topicID)
+				.executeNoResult();
+	}
+
+	public static void renameTopic(long topicID, String title) throws SQLException{
+		new SQLQueryBuilder()
+				.update("board_topics")
+				.where("id=?", topicID)
+				.value("title", title)
+				.executeNoResult();
+	}
+}

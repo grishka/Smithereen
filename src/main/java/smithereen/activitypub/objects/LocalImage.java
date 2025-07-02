@@ -141,6 +141,35 @@ public class LocalImage extends Image implements SizedImage{
 	}
 
 	@Override
+	public Dimensions getDimensionsForSize(Type size){
+		Dimensions d;
+		if(avaCropRects!=null){
+			int w, h;
+			if(rotation==Rotation._90 || rotation==Rotation._270){
+				w=height;
+				h=width;
+			}else{
+				w=width;
+				h=height;
+			}
+			if(size==Type.AVA_RECT || size==Type.AVA_RECT_LARGE){
+				AbsoluteImageRect profileCrop=avaCropRects.profile().makeAbsolute(w, h);
+				d=new Dimensions(profileCrop.getWidth(), profileCrop.getHeight());
+			}else if(size==Type.AVA_SQUARE_SMALL || size==Type.AVA_SQUARE_MEDIUM || size==Type.AVA_SQUARE_LARGE || size==Type.AVA_SQUARE_XLARGE){
+				AbsoluteImageRect profileCrop=avaCropRects.profile().makeAbsolute(w, h);
+				AbsoluteImageRect squareCrop=avaCropRects.thumb().makeAbsolute(profileCrop.getWidth(), profileCrop.getHeight());
+				int croppedSize=squareCrop.getWidth();
+				d=new Dimensions(croppedSize, croppedSize);
+			}else{
+				d=getOriginalDimensions();
+			}
+		}else{
+			d=getOriginalDimensions();
+		}
+		return SizedImage.super.getDimensionsForSize(size, d);
+	}
+
+	@Override
 	public Dimensions getOriginalDimensions(){
 		return rotation==Rotation._90 || rotation==Rotation._270 ? new Dimensions(height, width) : size;
 	}

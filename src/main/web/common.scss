@@ -163,6 +163,28 @@ table{
 
 .ava{
 	display: inline-block;
+	width: var(--ava-width);
+	height: var(--ava-height);
+	img{
+		width: var(--ava-width);
+		height: var(--ava-height);
+	}
+	&.sizeA{
+		--ava-width: 50px;
+		--ava-height: 50px;
+	}
+	&.sizeB{
+		--ava-width: 100px;
+		--ava-height: 100px;
+	}
+	&.sizeC{
+		--ava-width: 200px;
+		--ava-height: 200px;
+	}
+	&.sizeD{
+		--ava-width: 400px;
+		--ava-height: 400px;
+	}
 }
 
 .avaHasImage.sizeR img{

@@ -6,5 +6,6 @@ public enum ObfuscatedObjectIDType{
 	PHOTO_ALBUM,
 	PHOTO,
 	COMMENT,
-	FASP_PROVIDER
+	FASP_PROVIDER,
+	BOARD_TOPIC
 }

@@ -448,7 +448,6 @@ select{
 
 .pagination{
 	padding: 8px;
-	text-align: center;
 	a, span{
 		padding: 8px;
 		display: inline-block;
@@ -1430,6 +1429,10 @@ input[type=time]::-webkit-calendar-picker-indicator{
 	margin-bottom: 16px;
 }
 
+.smallMarginAfter{
+	margin-bottom: 8px;
+}
+
 .buttonBar{
 	>.button, >button, >input{
 		margin: 0 8px 8px 0;
@@ -2093,6 +2096,29 @@ input.searchField{
 		}
 		.avaHasImage:last-child:after{
 			border-bottom-right-radius: 3px;
+		}
+	}
+	.iconWithText{
+		display: flex;
+		flex-direction: column;
+		padding: 6px;
+		justify-content: center;
+		text-align: center;
+		font-size: 13px;
+		.icon{
+			width: 24px;
+			height: 24px;
+			align-self: center;
+		}
+		.iconBoard{
+			background: svg-load('img/material/forum_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $iconColor);
+		}
+		.thumbTitle{
+			margin: 6px 0 2px;
+			font-weight: $mediumWeight;
+		}
+		.thumbSubtitle{
+			color: $iconColor;
 		}
 	}
 }
@@ -2858,6 +2884,36 @@ input.searchField{
 		background-color: #EDE5F0;
 		color: #80478F20;
 		background-position: 0 -224px;
+	}
+}
+
+.boardTopicRow{
+	padding: 12px;
+	.topLink{
+		display: block;
+		padding: 4px 4px 8px;
+		border-bottom: solid 1px $wallPostSeparator;
+	}
+	.lastLink{
+		display: block;
+		padding: 8px 4px 4px;
+		.ava{
+			float: left;
+			margin-right: 8px;
+		}
+		.name{
+			margin-top: 3px;
+		}
+	}
+}
+
+.boardTopicHeader{
+	padding: 12px;
+	border-bottom: solid 1px $wallPostSeparator;
+	.title{
+		font-weight: $mediumWeight;
+		font-size: 16px;
+		margin-bottom: 6px;
 	}
 }
 

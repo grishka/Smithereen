@@ -81,6 +81,15 @@ public class CommentStorage{
 				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(parentID));
 			}
 
+			if(parentID.type()==CommentableObjectType.BOARD_TOPIC){
+				new SQLQueryBuilder(conn)
+						.update("board_topics")
+						.where("id=?", parentID.id())
+						.valueExpr("num_comments", "num_comments+1")
+						.valueExpr("updated_at", "CURRENT_TIMESTAMP()")
+						.executeNoResult();
+			}
+
 			return id;
 		}
 	}
@@ -301,6 +310,22 @@ public class CommentStorage{
 						.valueExpr("reply_count", "GREATEST(1, reply_count)-1")
 						.whereIn("id", comment.replyKey)
 						.andWhere("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
+						.executeNoResult();
+			}
+
+			if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
+				new SQLQueryBuilder(conn)
+						.update("board_topics")
+						.where("id=?", comment.parentObjectID.id())
+						.valueExpr("num_comments", "num_comments-1")
+						.value("updated_at", new SQLQueryBuilder(conn)
+								.selectFrom("comments")
+								.columns("created_at")
+								.where("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
+								.orderBy("created_at DESC")
+								.limit(1, 0)
+								.executeAndGetSingleObject(r->r.getTimestamp(1))
+						)
 						.executeNoResult();
 			}
 			BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(comment.parentObjectID));

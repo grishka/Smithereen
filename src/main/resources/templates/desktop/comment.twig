@@ -4,7 +4,7 @@
 {% set realPost=post.post %}
 {% if randomID is empty %}{% set randomID=randomString() %}{% endif %}
 {% set replyLevel=realPost.replyLevel-(baseReplyLevel | default(0)) %}
-<div class="post comment{{ first ? ' first' : '' }}{{ commentViewType=='TWO_LEVEL' and not hideIndent and replyLevel>0 ? ' twoLevelIndented' : '' }}" id="comment{{realPost.idString}}" data-reply-name="{{users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">
+<div class="post{{ board ? '' : ' comment' }}{{ first ? ' first' : '' }}{{ commentViewType=='TWO_LEVEL' and not hideIndent and replyLevel>0 ? ' twoLevelIndented' : '' }}" id="comment{{realPost.idString}}" data-reply-name="{{users[realPost.authorID].nameForReply}}" data-replying-name="{{ L('in_reply_to_name', {'name': users[realPost.authorID].firstAndGender}) }}">
 	{% if replyLevel>0 and not hideIndent %}
 	{% if commentViewType=='THREADED' %}
 	<div style="--indent-level: {{ min(replyLevel, maxReplyDepth) }}" class="treeIndent"></div>
@@ -42,7 +42,7 @@
 		<a name="comment{{realPost.idString}}"></a>
 		{% if not hideActions %}
 		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.idString }}">
-			{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
+			{% if userPermissions is not null and userPermissions.canDeletePost(realPost) and not suppressDeletion %}
 			<a href="{{ realPost.internalURL }}/confirmDelete" onclick="return ajaxConfirm('delete_reply', 'delete_reply_confirm', '{{ realPost.internalURL }}/delete')" class="flR postIconAction actionDelete" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}"></a>
 			{% endif %}
 			{% if userPermissions is not null and userPermissions.canEditPost(realPost) %}
@@ -74,8 +74,8 @@
 				{%- if interactions is not null -%}
 				<span class="postActions contentActions">
 					<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
-						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}&rid={{ randomID }}" class="action like commentLike{{ interactions.isLiked ? ' liked' : '' }}{{ interactions.likeCount>0 or interactions.repostCount>0 ? '' : ' revealOnHover' }} popoverButton" id="likeButtonPost{{realPost.idString}}_{{ randomID }}" data-obj-type="post" data-obj-id="{{realPost.idString}}_{{ randomID }}" data-popover-url="{{realPost.internalURL}}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} title="{{ L('like') }}">
-							<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.idString}}_{{ randomID }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}&rid={{ randomID }}" class="action like commentLike{{ interactions.isLiked ? ' liked' : '' }}{{ interactions.likeCount>0 or interactions.repostCount>0 ? '' : ' revealOnHover' }} popoverButton" id="likeButtonComment{{realPost.idString}}_{{ randomID }}" data-obj-type="comment" data-obj-id="{{realPost.idString}}_{{ randomID }}" data-popover-url="{{realPost.internalURL}}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %}{% if not board %} title="{{ L('like') }}"{% endif %}>
+							{% if board %}{{ L('like') }}{% endif %}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterComment{{realPost.idString}}_{{ randomID }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 							{{- interactions.likeCount -}}
 						</span></a>
 						<span class="popoverPlace likePopoverWrap"></span>

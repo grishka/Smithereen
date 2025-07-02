@@ -61,6 +61,7 @@ import java.util.zip.CRC32;
 
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.Account;
 import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -410,6 +411,13 @@ public class Utils{
 			return null;
 		SessionInfo info=sess.attribute("info");
 		return info;
+	}
+
+	public static Account currentUserAccount(Request req){
+		SessionInfo info=sessionInfo(req);
+		if(info==null)
+			return null;
+		return info.account;
 	}
 
 	@NotNull

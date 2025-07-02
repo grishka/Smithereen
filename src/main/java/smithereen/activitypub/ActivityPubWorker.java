@@ -90,6 +90,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
@@ -252,6 +253,7 @@ public class ActivityPubWorker{
 						}
 					}
 				}
+				case BoardTopic topic -> {} // TODO
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

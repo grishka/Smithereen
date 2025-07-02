@@ -1,0 +1,4 @@
+{% import "forms" as form %}
+{{ form.start('renameTopic', null) }}
+	{{ form.textInput('title', L('board_topic_new_title'), title, {'maxlength': '255', 'required': true}) }}
+{{ form.end() }}

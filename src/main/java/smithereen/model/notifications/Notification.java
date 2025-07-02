@@ -97,6 +97,7 @@ public final class Notification implements NotificationWrapper{
 	public enum ObjectType{
 		POST,
 		PHOTO,
-		COMMENT
+		COMMENT,
+		BOARD_TOPIC
 	}
 }

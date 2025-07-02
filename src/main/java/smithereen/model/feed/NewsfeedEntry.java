@@ -97,5 +97,6 @@ public class NewsfeedEntry{
 		 * Someone updated their relationship status
 		 */
 		RELATIONSHIP_STATUS,
+		BOARD_TOPIC,
 	}
 }

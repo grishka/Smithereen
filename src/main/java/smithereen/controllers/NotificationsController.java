@@ -43,6 +43,7 @@ import smithereen.model.UserNotifications;
 import smithereen.model.UserPresence;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
@@ -245,6 +246,7 @@ public class NotificationsController{
 			case Post post -> Notification.ObjectType.POST;
 			case Photo photo -> Notification.ObjectType.PHOTO;
 			case Comment comment -> Notification.ObjectType.COMMENT;
+			case BoardTopic topic -> Notification.ObjectType.BOARD_TOPIC;
 			default -> throw new IllegalStateException("Unexpected value: " + obj);
 		};
 	}
@@ -294,6 +296,7 @@ public class NotificationsController{
 						}else if(plo instanceof Comment comment){
 							yield switch(comment.parentObjectID.type()){
 								case PHOTO -> EmailNotificationType.PHOTO_COMMENT;
+								case BOARD_TOPIC -> null; // TODO
 							};
 						}else{
 							throw new IllegalStateException("Unreachable");
@@ -328,11 +331,11 @@ public class NotificationsController{
 				Lang l=conn.lang;
 				ZoneId tz=conn.session.timeZone;
 				String title=l.get(switch(type){
-					case REPLY -> ((PostLikeObject)object).getReplyLevel()>1 ? "notification_title_reply" : "notification_title_comment";
+					case REPLY -> ((PostLikeObject)object).getReplyLevel()>1 || relatedObject instanceof BoardTopic ? "notification_title_reply" : "notification_title_comment";
 					case LIKE -> switch(objType){
 						case POST -> ((Post)object).getReplyLevel()>0 ? "notification_title_like_comment" : "notification_title_like_post";
 						case PHOTO -> "notification_title_like_photo";
-						case PHOTO_COMMENT -> "notification_title_like_comment";
+						case PHOTO_COMMENT, BOARD_COMMENT -> "notification_title_like_comment";
 						case null, default -> throw new IllegalStateException("Unexpected value: " + objType);
 					};
 					case MENTION -> "notification_title_mention";
@@ -357,10 +360,11 @@ public class NotificationsController{
 						String text;
 						User u=(User)actor;
 						String objURL="";
-						if(comment.getReplyLevel()==1){
+						if(comment.getReplyLevel()==1 && !(relatedObject instanceof BoardTopic)){
 							if(comment instanceof Comment c){
 								text=switch(c.parentObjectID.type()){
 									case PHOTO -> l.get("notification_content_comment_photo", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
+									case BOARD_TOPIC -> null; // Comments on a board topic itself (no reply) don't make notifications
 								};
 								objURL=((CommentableContentObject)relatedObject).getURL();
 							}else{
@@ -390,9 +394,11 @@ public class NotificationsController{
 						case Comment comment -> {
 							User u=(User)actor;
 							CommentableContentObject parent=(CommentableContentObject) relatedObject;
-							String text=l.get(switch(parent.getCommentParentID().type()){
-								case PHOTO -> "notification_content_like_photo_comment";
-							}, Map.of("name", u.getFirstLastAndGender(), "gender", u.gender, "text", makePostPreview(comment, l, tz)));
+							String text=switch(parent.getCommentParentID().type()){
+								case PHOTO -> l.get("notification_content_like_photo_comment", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender, "text", makePostPreview(comment, l, tz)));
+								case BOARD_TOPIC -> l.get("notification_content_like_board_comment", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender, "text", makePostPreview(comment, l, tz),
+										"topic", TextProcessor.truncateOnWordBoundary(((BoardTopic)parent).title, 40)));
+							};
 							yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL()), "object", Map.of("href", parent.getURL())));
 						}
 						case null, default -> throw new IllegalStateException("Unexpected value: " + objType);
@@ -569,6 +575,7 @@ public class NotificationsController{
 			case Photo photo -> RealtimeNotification.ObjectType.PHOTO;
 			case Comment comment -> switch(comment.parentObjectID.type()){
 				case PHOTO -> RealtimeNotification.ObjectType.PHOTO_COMMENT;
+				case BOARD_TOPIC -> RealtimeNotification.ObjectType.BOARD_COMMENT;
 			};
 			case null, default -> null;
 		};

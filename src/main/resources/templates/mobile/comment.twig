@@ -60,7 +60,7 @@
 					{% if interactions is not null and interactions.likeCount>0 %}
 						{% set _=options.add({'type': 'link', 'href': "#{realPost.internalURL}/likes", 'label': L('liked_by_X_people', {'count': interactions.likeCount}).toString()}) %}
 					{% endif %}
-					{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
+					{% if userPermissions is not null and userPermissions.canDeletePost(realPost) and not suppressDeletion %}
 						{% set _=options.add({'type': 'confirm', 'label': L('delete').toString(), 'title': 'delete_reply', 'msg': 'delete_reply_confirm', 'url': "#{realPost.internalURL}/delete"}) %}
 					{% endif %}
 					{% if userPermissions is not null and userPermissions.canEditPost(realPost) %}

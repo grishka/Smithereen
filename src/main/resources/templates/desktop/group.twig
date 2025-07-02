@@ -39,8 +39,13 @@
 			<div>{{ fld.value | postprocessHTML }}</div>
 			{% endfor %}
 		</div>
-		{% if canAccessContent and group.wallState!='DISABLED' %}
+		{% if canAccessContent %}
+		{% if group.boardState!='DISABLED' %}
+		{% include "profile_module_board" with {'group': group, 'topics': boardTopics.list, 'headerTitle': L('group_board'), 'headerHref': "/groups/#{group.id}/board", 'subheaderTitle': L('board_X_topics', {'count': boardTopics.total}), 'subheaderLink': canCreateTopics ? L('board_create_topic') : null, 'subheaderLinkHref': "/groups/#{group.id}/createTopic"} %}
+		{% endif %}
+		{% if group.wallState!='DISABLED' %}
 		{% include "profile_module_wall" with {'wallOwner': group, 'isGroup': true, 'headerTitle': L('wall'), 'headerHref': "/groups/#{group.id}/wall", 'additionalHeader': L('X_posts', {'count': totalItems})} %}
+		{% endif %}
 		{% endif %}
 	</div>
 

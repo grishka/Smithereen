@@ -10,7 +10,7 @@
 		{%- endif -%}
 	</div>
 	{% if subheaderTitle is not empty %}
-	<div class="blockSubheader">{{ subheaderTitle }}</div>
+	<div class="blockSubheader">{{ subheaderTitle }}{% if subheaderLink is not empty %}<a href="{{ subheaderLinkHref }}">{{ subheaderLink }}</a>{% endif %}</div>
 	{% endif %}
 	{% block moduleContent %}
 	{% endblock %}

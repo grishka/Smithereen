@@ -1,0 +1,37 @@
+{# @pebvariable name="topic" type="smithereen.model.board.BoardTopic" #}
+{% extends "page" %}
+{% block content %}
+{% include "board_tabbar" with {'tab': 'topic'} %}
+<div class="gray boardTopicHeader">
+	<div class="title"><a href="{{ topic.url }}">{{ topic.title }}</a></div>
+	<a href="{{ profileURL(topic.authorID) }}">{{ users[topic.authorID] | name('complete') }}</a>
+</div>
+<div class="summaryWrap largerPadding">
+  <div class="summary">{{ L('board_topic_summary', {'count': totalItems}) }}</div>
+  {% include "pagination" %}
+</div>
+<div class="singleColumnLargerPadding boardComments" id="comments_{{ topic.commentParentID.htmlElementID }}">
+{% for comment in items %}
+	{% include "comment" with {'post': comment, 'replyFormID': "wallPostForm_comment_#{topic.commentParentID.htmlElementID}", 'parentObject': topic, 'baseReplyLevel': 0, 'canComment': canComment, 'first': loop.first, 'board': true, 'suppressDeletion': comment.post.id==topic.firstCommentID} %}
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% if canComment %}
+{% include "wall_post_form" with {'id': "comment_#{topic.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=topic&parentID=#{topic.idString}", 'isComment': true, 'addClasses': "collapsed boardCommentForm", 'showReplyBar': true} %}
+<div id="boardTopicScrollDetector"></div>
+{% script %}
+(function(){
+	var form=ge("wallPostForm_comment_{{ topic.commentParentID.htmlElementID }}");
+	var observer=new IntersectionObserver(function(entries){
+		var entry=entries[entries.length-1];
+		if(entry.isIntersecting)
+			form.classList.remove("floating");
+		else
+			form.classList.add("floating");
+	});
+	observer.observe(ge("boardTopicScrollDetector"));
+})();
+{% endscript %}
+{% endif %}
+{% endblock %}
+

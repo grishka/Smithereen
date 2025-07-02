@@ -39,6 +39,7 @@ import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.PostSource;
 import smithereen.model.User;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentableContentObject;
@@ -74,11 +75,21 @@ public class CommentsController{
 				else if(album.flags.contains(PhotoAlbum.Flag.GROUP_DISABLE_COMMENTING))
 					throw new UserActionNotAllowedException();
 			}
+			case BoardTopic topic -> {
+				if(!context.getBoardController().canPostInTopic(self, topic))
+					throw new UserActionNotAllowedException();
+			}
 		}
 	}
 
 	public Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
 								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
+		return createComment(self, parent, inReplyTo, textSource, sourceFormat, contentWarning, attachmentIDs, attachAltTexts, false);
+	}
+
+	Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
+								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts,
+								 boolean skipFederation){
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(parent);
 		if(context.getPrivacyController().isUserBlocked(self, oaa.owner()))
 			throw new UserActionNotAllowedException();
@@ -149,10 +160,12 @@ public class CommentsController{
 				context.getGroupsController().incrementHintsRank(self, g, 3);
 			}
 
-			if(oaa.owner() instanceof ForeignActor){
-				context.getActivityPubWorker().sendCreateComment(self, comment, parent);
-			}else{
-				context.getActivityPubWorker().sendAddComment(oaa.owner(), comment, parent);
+			if(!skipFederation){
+				if(oaa.owner() instanceof ForeignActor){
+					context.getActivityPubWorker().sendCreateComment(self, comment, parent);
+				}else{
+					context.getActivityPubWorker().sendAddComment(oaa.owner(), comment, parent);
+				}
 			}
 
 			return comment;
@@ -262,6 +275,8 @@ public class CommentsController{
 				throw new UserActionNotAllowedException();
 		}
 		CommentableContentObject parent=self instanceof User user ? getCommentParent(user, comment) : getCommentParentIgnoringPrivacy(comment);
+		if(parent instanceof BoardTopic topic && topic.firstCommentID==comment.id)
+			throw new UserActionNotAllowedException("Can't delete first comment in a board topic");
 		try{
 			CommentStorage.deleteComment(comment);
 			if(comment.isLocal() && comment.attachments!=null){
@@ -300,6 +315,7 @@ public class CommentsController{
 	public CommentableContentObject getCommentParentIgnoringPrivacy(Comment comment){
 		return switch(comment.parentObjectID.type()){
 			case PHOTO -> context.getPhotosController().getPhotoIgnoringPrivacy(comment.parentObjectID.id());
+			case BOARD_TOPIC -> context.getBoardController().getTopicIgnoringPrivacy(comment.parentObjectID.id());
 		};
 	}
 

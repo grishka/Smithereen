@@ -643,8 +643,8 @@ class ScrollableBox extends BaseScrollableBox{
 }
 
 class ConfirmBox extends Box{
-	public constructor(title:string, msg:string, onConfirmed:{():void}){
-		super(title, [lang("yes"), lang("no")], function(idx:number){
+	public constructor(title:string, msg:string, onConfirmed:{():void}, buttonTitles:string[]=null){
+		super(title, buttonTitles || [lang("yes"), lang("no")], function(idx:number){
 			if(idx==0){
 				onConfirmed();
 			}else{

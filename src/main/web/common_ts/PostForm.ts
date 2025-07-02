@@ -409,7 +409,7 @@ class PostForm{
 			this.input.resizeToFitContent();
 			this.hideCWLayout();
 			this.hidePollLayout();
-			if(this.isMobileComment){
+			if(this.isMobileComment || this.replyBar){
 				this.resetReply();
 			}
 			this.forceOverrideDirty=false;

@@ -54,15 +54,17 @@ public class UserInteractionsRoutes{
 				case Comment comment -> comment.getInternalURL().toString();
 			};
 
+			String urlParams="?csrf="+requireSession(req).csrfToken;
 			String rid=req.queryParams("rid");
 			if(StringUtils.isNotEmpty(rid)){
 				elementID+="_"+rid;
+				urlParams+="&rid="+rid;
 			}
 
 			String urlPath=liked ? "unlike" : "like";
 			WebDeltaResponse b=new WebDeltaResponse(resp)
 					.setContent("likeCounter"+elementID, String.valueOf(interactions.likeCount))
-					.setAttribute("likeButton"+elementID, "href", url+"/"+urlPath+"?csrf="+requireSession(req).csrfToken);
+					.setAttribute("likeButton"+elementID, "href", url+"/"+urlPath+urlParams);
 			if(interactions.likeCount==0)
 				b.hide("likeCounter"+elementID);
 			else

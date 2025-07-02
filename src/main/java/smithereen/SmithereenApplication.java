@@ -57,6 +57,7 @@ import smithereen.model.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.fasp.FASPCapability;
 import smithereen.routes.ActivityPubRoutes;
+import smithereen.routes.BoardRoutes;
 import smithereen.routes.FaspApiRoutes;
 import smithereen.routes.MastodonApiRoutes;
 import smithereen.routes.BookmarksRoutes;
@@ -690,6 +691,10 @@ public class SmithereenApplication{
 			get("/allPhotos", PhotosRoutes::allGroupPhotos);
 			get("/statuses/:statusID", ActivityPubRoutes::groupStatus);
 			postWithCSRF("/updateStatus", GroupsRoutes::updateGroupStatus);
+
+			getLoggedIn("/createTopic", BoardRoutes::createTopicForm);
+			postWithCSRF("/createTopic", BoardRoutes::createTopic);
+			get("/board", BoardRoutes::groupTopics);
 		});
 
 		path("/posts/:postID", ()->{
@@ -789,6 +794,13 @@ public class SmithereenApplication{
 				get("/likes", CommentsRoutes::likeList);
 				get("/likePopover", CommentsRoutes::likePopover);
 			});
+		});
+
+		path("/topics/:id", ()->{
+			get("", BoardRoutes::topic);
+			postWithCSRF("/delete", BoardRoutes::deleteTopic);
+			getLoggedIn("/renameForm", BoardRoutes::renameTopicForm);
+			postWithCSRF("/rename", BoardRoutes::renameTopic);
 		});
 
 		path("/my", ()->{

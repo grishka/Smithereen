@@ -3,6 +3,7 @@ package smithereen.model;
 import com.google.gson.annotations.SerializedName;
 
 import java.net.URI;
+import java.text.Format;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -18,8 +19,13 @@ public interface SizedImage{
 	URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback);
 	Dimensions getOriginalDimensions();
 	URI getOriginalURI();
+
+	default Dimensions getDimensionsForSize(Type size, Dimensions dimensions){
+		return size.getResizedDimensions(dimensions);
+	}
+
 	default Dimensions getDimensionsForSize(Type size){
-		return size.getResizedDimensions(getOriginalDimensions());
+		return getDimensionsForSize(size, getOriginalDimensions());
 	}
 
 	default List<SizedImageURLs> getURLsForPhotoViewer(){

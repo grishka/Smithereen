@@ -724,6 +724,9 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 		border-top: solid 1px $blockBorderBottom;
 		color: $auxiliaryGrey;
 		padding: 3px 8px;
+		a{
+			float: right;
+		}
 	}
 }
 
@@ -894,7 +897,7 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	}
 }
 
-.postInfo, .postLink:link, .postLink:visited{
+.postInfo, .postLink, .postLink:visited{
 	padding-top: 4px;
 	font-size: 10px;
 	color: $auxiliaryGrey;
@@ -1134,7 +1137,8 @@ select, .comboBoxW input{
 		float: right;
 		padding: 0;
 		margin-right: 0;
-		line-height: 23px;
+		padding: 5px 0;
+		line-height: 13px;
 	}
 }
 
@@ -2172,6 +2176,9 @@ select, .comboBoxW input{
 	}
 	&.noPadTop{
 		padding-top: 0;
+	}
+	&.largerPadding{
+		padding: 13px 15px 0;
 	}
 }
 
@@ -4962,3 +4969,151 @@ label.largeAccented{
 		}
 	}
 }
+
+.boardNewTopic{
+	padding: 16px 40px 20px;
+	textarea{
+		min-height: 242px;
+	}
+}
+
+.formWithBoldHeaders{
+	h4{
+		font-size: 12px;
+		margin-bottom: 7px;
+	}
+	input[type=date], input[type=email], input[type=number], input[type=password], input[type=text], input[type=time], select, textarea{
+		padding: 5px;
+		margin-bottom: 16px;
+	}
+}
+
+.profileBlock .topicRow{
+	padding: 10px 8px;
+	border-bottom: solid 1px $wallPostSeparator;
+	&:last-child{
+		border-bottom: none;
+	}
+	small span{
+		color: $auxiliaryGrey;
+	}
+	div{
+		margin-bottom: 7px;
+	}
+	.last{
+		display: inline-block;
+		padding: 4px;
+		margin: -4px 0;
+		&:hover{
+			text-decoration: none;
+			background: $blockBackground;
+		}
+	}
+}
+
+.boardTopicHeader{
+	padding: 10px 15px 9px;
+	border-bottom: solid 1px $wallPostSeparator;
+	.title{
+		display: block;
+		border-bottom: none;
+		font-size: 12px;
+		margin-bottom: 6px;
+		font-weight: bold;
+		a{
+			color: $boldHeaders;
+		}
+	}
+}
+
+.boardComments{
+	>.post{
+		>.postContentWrap{
+			padding-left: 15px;
+		}
+		>.postAvaWrap .ava, >.postAvaWrap .ava img{
+			width: 50px;
+			height: 50px;
+		}
+		.postInfo, .postLink{
+			font-size: 11px;
+		}
+	}
+	>.post:last-child{
+		border-bottom: none;
+		padding-bottom: 0;
+		margin-bottom: 0;
+	}
+}
+
+.boardCommentForm{
+	padding: 15px;
+	border-bottom: none;
+	position: sticky;
+	bottom: 0;
+	textarea{
+		line-height: 14px;
+		padding: 6px;
+		max-height: min(40vh, 600px);
+	}
+	&.floating{
+		box-shadow: 0 -2px 0 rgba(0,0,0,0.08);
+	}
+}
+
+.boardTopicListItem{
+	padding: 10px 0;
+	margin: 0 10px;
+	border-bottom: solid 1px $wallPostSeparator;
+	display: flex;
+	.mainW{
+		padding: 7px 15px 0;
+		flex-grow: 1;
+	}
+	.title{
+		font-size: 12px;
+		font-weight: bold;
+	}
+	.info{
+		padding-top: 4px;
+	}
+	.postCount{
+		padding: 2px 0;
+		display: inline-block;
+	}
+	.pageLinks{
+		padding: 0 5px;
+		color: $auxiliaryGrey;
+		a{
+			padding: 2px 4px;
+			display: inline-block;
+			&:hover{
+				background: $blockBackground;
+				text-decoration: none;
+			}
+		}
+	}
+	.lastPost{
+		width: 190px;
+		flex: none;
+		.ava{
+			float: left;
+			margin: 8px;
+		}
+		.name{
+			padding: 9px 2px 0;
+		}
+		.date{
+			padding: 3px 2px 0;
+			color: $secondaryLink;
+		}
+		&:hover{
+			background: $audioAreaOnHover;
+			text-decoration: none;
+		}
+	}
+	&:last-child{
+		border-bottom: none;
+	}
+}
+
