@@ -22,6 +22,11 @@
 			<span class="feedIcon feedIconPhoto"></span>
 			<span class="ellipsize">{{ L('feed_type_photos') }}</span>
 		</label>
+		<label>
+			<input type="checkbox" onchange="updateFeedFilters()" name="BOARD_TOPIC"{{ feedFilter contains "BOARD_TOPIC" ? ' checked' : '' }}/>
+			<span class="feedIcon feedIconTopic"></span>
+			<span class="ellipsize">{{ L('feed_type_board_topics') }}</span>
+		</label>
 	</form>
 </div>
 <div id="feedContent">
@@ -85,6 +90,41 @@
 			{% if currentUser is not null and interactions.canComment %}
 				{% include "wall_post_form" with {'id': "comment_#{photo.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString, 'showReplyBar': commentViewType=='FLAT', 'isComment': true} %}
 				{% if commentViewType!='FLAT' %}{% include "wall_post_form" with {'id': "commentReply_#{photo.commentParentID.htmlElementID}", 'hidden': true, 'action': "/comments/createComment?parentType=photo&parentID="+photo.idString, 'isComment': true} %}{% endif %}
+			{% endif %}
+		</div>
+	</div>
+	{% elseif entry.type=="BOARD_TOPIC" and topics[entry.objectID] is not null %}
+	{% set topic=topics[entry.objectID] %}
+	{% set canComment=not topic.closed %}
+	<div class="feedRow feedPostRow">
+		<div class="post">
+			<div class="postAvaWrap">
+				<a href="{{ profileURL(-topic.groupID) }}">{{ groups[topic.groupID] | pictureForAvatar('a') }}</a>
+			</div>
+			<div class="postContentWrap">
+				<a href="{{ profileURL(-topic.groupID) }}" class="authorName">{{ groups[topic.groupID] | name }}</a>
+				<div>
+					<div class="postContent marginBefore marginAfter"><span class="feedIcon feedIconTopic"></span><span class="grayText">{{ L('board_topic') }}</span> <a href="{{ topic.url }}">{{ topic.title }}</a></div>
+				</div>
+				<div class="postInfo">
+					<a href="{{ topic.url }}" class="postLink">{{ LD(topic.createdAt) }}</a>
+				</div>
+			</div>
+		</div>
+		{% set comments=topicsComments[entry.objectID] %}
+		<div class="commentsPreviewWrap">
+			{% set replyCount=topic.numComments %}
+			{% if replyCount>comments.list.size %}
+				<a href="{{ topic.url }}" onclick="return loadOlderComments('{{ topic.idString }}', 'topic')" class="loadPrev" id="loadPrevBtn_{{ topic.commentParentID.htmlElementID }}" data-first-id="{{ comments.list.first.post.idString }}">{{ L('comments_show_X_more_comments', {'count': replyCount-comments.list.size}) }}</a>
+				<div class="prevLoader loader" id="prevLoader_{{ topic.commentParentID.htmlElementID }}" style="display: none;"></div>
+			{% endif %}
+			<div class="commentsPreview" id="comments_{{ topic.commentParentID.htmlElementID }}">
+			{%- for reply in comments.list %}
+				{% include "comment" with {'post': reply, 'preview': true, 'replyFormID': "wallPostForm_comment_#{topic.commentParentID.htmlElementID}", 'parentObject': topic, 'baseReplyLevel': 0, 'maxReplyDepth': 0, 'commentViewType': 'FLAT'} %}
+			{% endfor -%}
+			</div>
+			{% if canComment %}
+				{% include "wall_post_form" with {'id': "comment_#{topic.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=topic&parentID="+topic.idString+"&from=feed", 'showReplyBar': true, 'isComment': true} %}
 			{% endif %}
 		</div>
 	</div>

@@ -615,6 +615,9 @@ ul.actualList{
 	&.feedIconPersonal{
 		background: svg-load('img/pages_s.svg');
 	}
+	&.feedIconTopic{
+		background: svg-load('img/topics_s.svg');
+	}
 }
 
 .undecoratedLink{

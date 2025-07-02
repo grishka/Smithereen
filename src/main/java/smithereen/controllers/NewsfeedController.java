@@ -41,6 +41,7 @@ import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
+import smithereen.storage.BoardStorage;
 import smithereen.storage.NewsfeedStorage;
 import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
@@ -467,7 +468,7 @@ public class NewsfeedController{
 				feed.list.removeIf(e->{
 					if(e.type==NewsfeedEntry.Type.POST){
 						int[] ids=postOwnersAuthors.get((int)e.objectID);
-						return ids[0]!=ids[1] && inaccessibleOwners.contains(ids[0]);
+						return ids!=null && ids[0]!=ids[1] && inaccessibleOwners.contains(ids[0]);
 					}
 					return false;
 				});
@@ -494,6 +495,20 @@ public class NewsfeedController{
 						.collect(Collectors.toSet());
 				feed.list.removeIf(e->e.type==NewsfeedEntry.Type.PHOTO && !accessibleAlbums.contains(albumsIDs.get(e.objectID)));
 			}
+
+			Set<Long> topicIDs=feed.list.stream().filter(e->e.type==NewsfeedEntry.Type.BOARD_TOPIC).map(e->e.objectID).collect(Collectors.toSet());
+			if(!topicIDs.isEmpty()){
+				Map<Long, Integer> groupIDs=BoardStorage.getGroupIDsForTopics(topicIDs);
+				List<Group> groups=context.getGroupsController().getGroupsByIdAsList(groupIDs.values());
+				Set<Integer> inaccessibleGroups=groups.stream()
+						.filter(g->g.boardState==GroupFeatureState.DISABLED || (g.accessType!=Group.AccessType.OPEN && !context.getPrivacyController().canUserAccessGroupContent(self.user, g)))
+						.map(g->g.id)
+						.collect(Collectors.toSet());
+				if(!inaccessibleGroups.isEmpty()){
+					feed.list.removeIf(e->e.type==NewsfeedEntry.Type.BOARD_TOPIC && groupIDs.containsKey(e.objectID) && inaccessibleGroups.contains(groupIDs.get(e.objectID)));
+				}
+			}
+
 			return feed;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

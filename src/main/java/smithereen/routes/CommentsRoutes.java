@@ -26,7 +26,6 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
-import smithereen.model.Group;
 import smithereen.model.LikeableContentObject;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -39,7 +38,6 @@ import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
-import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
@@ -104,6 +102,7 @@ public class CommentsRoutes{
 			if(StringUtils.isNotEmpty(rid))
 				ridSuffix="_"+rid;
 			boolean fromNotifications="notifications".equals(req.queryParams("from"));
+			boolean fromFeed="feed".equals(req.queryParams("from"));
 			String formID=req.queryParams("formID");
 			CommentViewModel pvm=new CommentViewModel(comment);
 			ArrayList<LikeableContentObject> needInteractions=new ArrayList<>();
@@ -127,7 +126,7 @@ public class CommentsRoutes{
 			Map<Long, UserInteractions> commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(needInteractions, self.user);
 			model.with("commentInteractions", commentsInteractions);
 
-			model.with("replyFormID", "wallPostForm_commentReply_"+parent.getCommentParentID().getHtmlElementID());
+			model.with("replyFormID", "wallPostForm_"+(viewType==CommentViewType.FLAT ? "comment_" : "commentReply_")+parent.getCommentParentID().getHtmlElementID());
 			Map<Integer, User> users=new HashMap<>();
 			users.put(self.user.id, self.user);
 			if(inReplyTo!=null && inReplyTo.authorID!=self.user.id){
@@ -140,7 +139,7 @@ public class CommentsRoutes{
 			model.with("commentViewType", viewType);
 			model.with("canComment", true).with("parentObject", parent);
 			if(parent instanceof BoardTopic){
-				model.with("board", true);
+				model.with("board", !fromFeed);
 				model.with("maxReplyDepth", 0);
 			}else{
 				model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
@@ -170,11 +169,11 @@ public class CommentsRoutes{
 		return "";
 	}
 
-	public static void prepareCommentList(ApplicationContext ctx, List<CommentViewModel> wall, RenderedTemplateResponse model, Account self){
+	private static void prepareCommentList(ApplicationContext ctx, List<CommentViewModel> wall, RenderedTemplateResponse model, Account self, CommentableContentObject parent){
 		HashSet<Integer> needUsers=new HashSet<>();
 		CommentViewModel.collectUserIDs(wall, needUsers);
 		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
-				.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
+				.with("maxReplyDepth", parent instanceof BoardTopic ? 0 : PostRoutes.getMaxReplyDepth(self)-1);
 	}
 
 	public static Object ajaxCommentPreview(Request req, Response resp){
@@ -189,10 +188,12 @@ public class CommentsRoutes{
 			throw new BadRequestException();
 
 		CommentViewType viewType=info!=null && info.account!=null ? info.account.prefs.commentViewType : CommentViewType.THREADED;
+		if(parent instanceof BoardTopic)
+			viewType=CommentViewType.FLAT;
 		PaginatedList<CommentViewModel> comments=ctx.getCommentsController().getCommentsWithMaxID(parent, maxID, 100, viewType==CommentViewType.FLAT);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("comment_list", req);
 		model.with("comments", comments.list).with("baseReplyLevel", 0);
-		prepareCommentList(ctx, comments.list, model, self);
+		prepareCommentList(ctx, comments.list, model, self, parent);
 		Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(comments.list.stream().map(cvm->cvm.post).toList(), self!=null ? self.user : null);
 		model.with("commentInteractions", interactions);
 
@@ -248,7 +249,7 @@ public class CommentsRoutes{
 		}
 		Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(allReplies.stream().map(cvm->cvm.post).toList(), self!=null ? self.user : null);
 		model.with("commentInteractions", interactions);
-		prepareCommentList(ctx, comments.list, model, self);
+		prepareCommentList(ctx, comments.list, model, self, parent);
 		boolean canComment=switch(parent){
 			case Photo p -> ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(p.ownerID), ctx.getPhotosController().getAlbumIgnoringPrivacy(p.albumID).commentPrivacy);
 			case BoardTopic bt -> self!=null && ctx.getBoardController().canPostInTopic(self.user, bt);

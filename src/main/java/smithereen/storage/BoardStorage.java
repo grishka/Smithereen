@@ -4,6 +4,7 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -12,6 +13,7 @@ import smithereen.model.board.BoardTopic;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
+import smithereen.storage.utils.Pair;
 
 public class BoardStorage{
 	public static PaginatedList<BoardTopic> getGroupTopics(int groupID, int offset, int count) throws SQLException{
@@ -84,5 +86,14 @@ public class BoardStorage{
 				.where("id=?", topicID)
 				.value("title", title)
 				.executeNoResult();
+	}
+
+	public static Map<Long, Integer> getGroupIDsForTopics(Set<Long> topicIDs) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("board_topics")
+				.columns("id", "group_id")
+				.whereIn("id", topicIDs)
+				.executeAsStream(r->new Pair<>(r.getLong(1), r.getInt(2)))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}
 }
