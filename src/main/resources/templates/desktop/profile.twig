@@ -221,7 +221,7 @@
 			{% endif %}
 		</div>
 		<div class="profileFields">
-			{% if mainFields is empty and contactsFields is empty and personalFields is empty and interestsFields is empty %}
+			{% if mainFields is empty and contactsFields is empty and personalFields is empty and interestsFields is empty and (currentUser is null or currentUser.id!=user.id) %}
 			<div class="empty">{{ L('profile_no_info') }}</div>
 			{% endif %}
 			{{ profileSection(_context, null, null, mainFields) }}
