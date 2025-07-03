@@ -86,7 +86,19 @@ public abstract class Actor extends ActivityPubObject{
 			return icon;
 		if(icon.image!=null && !icon.image.isEmpty() && icon.image.getFirst().width>0 && icon.image.getFirst().height>0)
 			return icon.image.getFirst();
-		return icon;
+
+		if(this.icon.size()==1)
+			return icon;
+		Image largest=null;
+		int largestArea=0;
+		for(Image img:this.icon){
+			int area=img.width*img.height;
+			if(area>largestArea){
+				largestArea=area;
+				largest=img;
+			}
+		}
+		return largest;
 	}
 
 	public float[] getAvatarCropRegion(){
