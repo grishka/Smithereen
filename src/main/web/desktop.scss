@@ -2217,10 +2217,44 @@ textarea{
 	}
 }
 
-.hasJS .wallPostForm.collapsed textarea{
-	min-height: 21px;
-	height: 21px;
+.hasJS .wallPostForm.collapsed{
+	textarea{
+		min-height: 21px;
+		height: 21px;
+	}
+	.ownAvaW .ava{
+		display: none;
+	}
 }
+
+.wallPostForm.withAvatar{
+	.ownAvaW{
+		display: flex;
+		.ava{
+			flex: none;
+			margin-right: 15px;
+		}
+		.formContent{
+			flex-grow: 1;
+		}
+	}
+	.commentReplying{
+		padding-left: 65px;
+	}
+	&.postLayerCommentForm .commentReplying{
+		padding-left: 60px;
+	}
+	&.postLayerCommentForm .ownAvaW .ava{
+		margin-right: 10px;
+	}
+	.bottomBar{
+		margin-top: 10px;
+	}
+	textarea{
+		min-height: 50px;
+	}
+}
+
 
 .profileColumnBorder{
 	position: relative;

@@ -17,7 +17,7 @@
 </div>
 <div class="bottomSummaryWrap">{% include "pagination" %}</div>
 {% if canComment %}
-{% include "wall_post_form" with {'id': "comment_#{topic.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=topic&parentID=#{topic.idString}", 'isComment': true, 'addClasses': "collapsed boardCommentForm", 'showReplyBar': true} %}
+{% include "wall_post_form" with {'id': "comment_#{topic.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=topic&parentID=#{topic.idString}", 'isComment': true, 'addClasses': "collapsed boardCommentForm", 'showReplyBar': true, 'showOwnAvatar': true} %}
 <div id="boardTopicScrollDetector"></div>
 {% script %}
 (function(){

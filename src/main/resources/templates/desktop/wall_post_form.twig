@@ -1,6 +1,6 @@
 {# @pebvariable name="wallOwner" type="smithereen.activitypub.objects.Actor" #}
 {%if wallOwner is null%}{%set wallOwner=currentUser%}{%endif%}
-<div class="wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing' : '' }}{{ allowEmpty ? ' data-allow-empty' : '' }}>
+<div class="wallPostForm {{ addClasses is empty ? 'collapsed' : addClasses }}{{ showOwnAvatar ? ' withAvatar' : '' }}" id="wallPostForm_{{id}}" data-unique-id="{{id}}" style="{{ hidden ? 'display: none;' : '' }}"{{ isEditing ? ' data-editing' : '' }}{{ allowEmpty ? ' data-allow-empty' : '' }}>
 	{% block wallPostForm %}
 	<form action="{{ action | default(isEditing ? "/posts/#{editingPostID}/edit" : "#{wallOwner.typeAndIdForURL}/createWallPost") }}" id="wallPostFormForm_{{ id }}" method="post">
 		{% if showReplyBar %}
@@ -20,6 +20,7 @@
 	{% else %}
 		{% set fieldPlaceholder=L('write_on_own_wall') %}
 	{% endif %}
+	{% if showOwnAvatar %}<div class="ownAvaW">{{ currentUser | pictureForAvatar('a') }}<div class="formContent">{% endif %}
 		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="3" maxlength="65000" placeholder="{{ fieldPlaceholder }}">{{prefilledPostText}}</textarea>
 		<div class="completionsContainer"></div>
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
@@ -86,6 +87,7 @@
 				</div>
 			</div>
 		</div>
+	{% if showOwnAvatar %}</div></div>{% endif %}
 	</form>
 	<form action="/system/upload/postPhoto?draft=1&csrf={{csrf}}" method="post" enctype="multipart/form-data" id="attachmentUploadForm_{{id}}">
 		<noscript>
