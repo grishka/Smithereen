@@ -189,13 +189,15 @@ public interface SizedImage{
 			if(resizingType==ImgProxy.ResizingType.FILL){
 				return new Dimensions(maxWidth, maxHeight);
 			}
+			float ratio;
 			if(maxWidth==maxHeight){
-				float ratio=Math.min(1f, maxWidth/(float)Math.max(in.width, in.height));
-				return new Dimensions(Math.round(in.width*ratio), Math.round(in.height*ratio));
+				ratio=maxWidth/(float) Math.max(in.width, in.height);
 			}else{
-				float ratio=Math.min(1f, maxWidth/(float)in.width);
-				return new Dimensions(Math.round(in.width*ratio), Math.round(in.height*ratio));
+				ratio=maxWidth/(float) in.width;
 			}
+			if(this!=AVA_RECT && this!=AVA_RECT_LARGE)
+				ratio=Math.min(1f, ratio);
+			return new Dimensions(Math.round(in.width*ratio), Math.round(in.height*ratio));
 		}
 
 		public Type get2xType(){
