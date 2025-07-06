@@ -654,6 +654,13 @@ class ConfirmBox extends Box{
 		var content:HTMLDivElement=ce("div", {innerHTML: msg});
 		this.setContent(content);
 	}
+
+	onShown(){
+		super.onShown();
+		if(this.buttons.length>0){
+			this.buttons[0].focus();
+		}
+	}
 }
 
 class MessageBox extends Box{
@@ -849,4 +856,3 @@ class MobileOptionsBox extends Box{
 		this.setContent(content);
 	}
 }
-
