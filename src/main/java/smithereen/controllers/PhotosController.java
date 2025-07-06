@@ -601,9 +601,13 @@ public class PhotosController{
 		}
 	}
 
-	public void deletePhoto(User self, Photo photo){
+	public record PhotoDeletionResult(Boolean noPhotosRemainingInAlbum, long newAlbumCoverID){
+	}
+
+	public PhotoDeletionResult deletePhoto(User self, Photo photo){
 		enforcePhotoManagementPermission(self, photo);
 		PhotoAlbum album=getAlbumIgnoringPrivacy(photo.albumID);
+		long oldCoverId=album.coverID;
 		try{
 			deletePhotoInternal(photo, album);
 		}catch(SQLException x){
@@ -618,6 +622,7 @@ public class PhotosController{
 				throw new IllegalStateException();
 			}
 		}
+		return new PhotoDeletionResult(album.numPhotos==0, album.coverID==oldCoverId ? -1 : album.coverID);
 	}
 
 	public void deletePhoto(Group self, Photo photo){
@@ -677,6 +682,9 @@ public class PhotosController{
 			album.numPhotos=numPhotos;
 		else
 			album.numPhotos--;
+		if(needUpdateCover){
+			album.coverID=newCoverID;
+		}
 		LikeStorage.deleteAllLikesForObject(photo.id, Like.ObjectType.PHOTO);
 		context.getCommentsController().deleteCommentsForObject(photo);
 		NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.PHOTO, photo.id);
