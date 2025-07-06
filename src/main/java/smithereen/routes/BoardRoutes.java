@@ -103,7 +103,7 @@ public class BoardRoutes{
 		Map<Long, UserInteractions> commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(allComments.stream().map(vm->vm.post).toList(), self!=null ? self.user : null);
 		Group.AdminLevel adminLevel=self==null ? Group.AdminLevel.REGULAR : ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 
-		return new RenderedTemplateResponse("board_topic", req)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("board_topic", req)
 				.with("users", ctx.getUsersController().getUsers(needUsers))
 				.paginate(comments)
 				.with("commentInteractions", commentsInteractions)
@@ -115,6 +115,16 @@ public class BoardRoutes{
 				.with("canEditTopic", self!=null && (adminLevel.isAtLeast(Group.AdminLevel.MODERATOR) || topic.authorID==self.user.id))
 				.headerBack(group)
 				.pageTitle(topic.title+" | "+group.name);
+
+		String msg=req.session().attribute("boardTopicMessage"+topic.id);
+		if(msg!=null){
+			req.session().removeAttribute("boardTopicMessage"+topic.id);
+			Lang l=lang(req);
+			model.with("message", l.get("board_topic_"+msg+"_title"))
+					.with("messageSubtitle", l.get("board_topic_"+msg+"_subtitle"));
+		}
+
+		return model;
 	}
 
 	public static Object groupTopics(Request req, Response resp){
@@ -169,5 +179,45 @@ public class BoardRoutes{
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
+	}
+
+	private static Object setTopicClosed(Request req, Response resp, Account self, ApplicationContext ctx, boolean closed){
+		BoardTopic topic=getTopic(req);
+
+		ctx.getBoardController().setTopicClosed(self.user, topic, closed);
+		req.session().attribute("boardTopicMessage"+topic.id, closed ? "locked" : "unlocked");
+
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object closeTopic(Request req, Response resp, Account self, ApplicationContext ctx){
+		return setTopicClosed(req, resp, self, ctx, true);
+	}
+
+	public static Object openTopic(Request req, Response resp, Account self, ApplicationContext ctx){
+		return setTopicClosed(req, resp, self, ctx, false);
+	}
+
+	private static Object setTopicPinned(Request req, Response resp, Account self, ApplicationContext ctx, boolean pinned){
+		BoardTopic topic=getTopic(req);
+
+		ctx.getBoardController().setTopicPinned(self.user, topic, pinned);
+		req.session().attribute("boardTopicMessage"+topic.id, pinned ? "pinned" : "unpinned");
+
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object pinTopic(Request req, Response resp, Account self, ApplicationContext ctx){
+		return setTopicPinned(req, resp, self, ctx, true);
+	}
+
+	public static Object unpinTopic(Request req, Response resp, Account self, ApplicationContext ctx){
+		return setTopicPinned(req, resp, self, ctx, false);
 	}
 }

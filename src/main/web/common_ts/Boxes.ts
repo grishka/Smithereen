@@ -834,7 +834,11 @@ class MobileOptionsBox extends Box{
 					if(opt.ajax=="box"){
 						LayerManager.getInstance().showBoxLoader();
 					}
-					ajaxGetAndApplyActions(link.href);
+					if(opt.type=="post"){
+						ajaxPostAndApplyActions(opt.href, {});
+					}else{
+						ajaxGetAndApplyActions(link.href);
+					}
 					ev.preventDefault();
 				}else if(opt.onclick){
 					opt.onclick();

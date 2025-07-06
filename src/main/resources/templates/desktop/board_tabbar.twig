@@ -1,3 +1,4 @@
+{# @pebvariable name="topic" type="smithereen.model.board.BoardTopic" #}
 <div class="tabbar">
 	<a href="/groups/{{ group.id }}/board" class="{% if tab=='all' %}selected{% endif %}">{{ L('group_board') }}</a>
 	{% if tab=='new' %}<a href="/groups/{{ group.id }}/createTopic" class="selected">{{ L('board_new_topic_title') }}</a>{% endif %}
@@ -6,6 +7,7 @@
 	{% if tab=='topic' and canEditTopic %}
 	<div class="aux">
 		<span class="popupMenuW" id="topicEditMenuW"><a href="javascript:void(0)" onclick="cur.showTopicEditMenu()" class="opener">{{ L('edit') }}</a></span>
+		<span class="inlineLoader" id="topicEditMenuLoader" style="display: none"></span>
 	</div>
 {% script %}
 cur.topicEditMenu=new PopupMenu(ge("topicEditMenuW"), function(item){
@@ -14,9 +16,30 @@ cur.topicEditMenu=new PopupMenu(ge("topicEditMenuW"), function(item){
 		ajaxGetAndApplyActions("{{ topic.url }}/renameForm");
 	}else if(item=="delete"){
 		ajaxConfirm("{{ L('board_topic_deletion') }}", "{{ L('board_delete_topic_confirm') }}", "{{ topic.url }}/delete?csrf={{ csrf }}", {}, false, "{{ L('delete') }}");
+	}else{
+		var menu=ge("topicEditMenuW");
+		var loader=ge("topicEditMenuLoader");
+		menu.hide();
+		loader.show();
+		ajaxPostAndApplyActions("{{ topic.url }}/"+item, {}, null, function(){
+			menu.show();
+			loader.hide();
+		}, true);
 	}
 }, false, true);
 cur.topicEditMenu.addItem({title: "{{ L('board_edit_topic_title') }}", id: "rename"});
+{% if userPermissions.canManageGroup(group) %}
+{% if topic.isPinned %}
+cur.topicEditMenu.addItem({title: "{{ L('board_unpin_topic') }}", id: "unpin"});
+{% else %}
+cur.topicEditMenu.addItem({title: "{{ L('board_pin_topic') }}", id: "pin"});
+{% endif %}
+{% if topic.isClosed %}
+cur.topicEditMenu.addItem({title: "{{ L('board_unlock_topic') }}", id: "open"});
+{% else %}
+cur.topicEditMenu.addItem({title: "{{ L('board_lock_topic') }}", id: "close"});
+{% endif %}
+{% endif %}
 cur.topicEditMenu.addItem({title: "{{ L('board_delete_topic') }}", id: "delete"});
 cur.showTopicEditMenu=function(){
 	cur.topicEditMenu.show();

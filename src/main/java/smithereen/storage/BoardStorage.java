@@ -96,4 +96,20 @@ public class BoardStorage{
 				.executeAsStream(r->new Pair<>(r.getLong(1), r.getInt(2)))
 				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}
+
+	public static void setTopicClosed(long topicID, boolean closed) throws SQLException{
+		new SQLQueryBuilder()
+				.update("board_topics")
+				.value("is_closed", closed)
+				.where("id=?", topicID)
+				.executeNoResult();
+	}
+
+	public static void setTopicPinned(long topicID, boolean pinned) throws SQLException{
+		new SQLQueryBuilder()
+				.update("board_topics")
+				.valueExpr("pinned_at", pinned ? "CURRENT_TIMESTAMP()" : "NULL")
+				.where("id=?", topicID)
+				.executeNoResult();
+	}
 }

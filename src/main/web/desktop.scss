@@ -5149,6 +5149,9 @@ label.largeAccented{
 			text-decoration: none;
 		}
 	}
+	.closed{
+		padding: 0 10px;
+	}
 	&:last-child{
 		border-bottom: none;
 	}

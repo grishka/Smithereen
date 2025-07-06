@@ -7,7 +7,16 @@
 <div class="card boardTopicRow">
 	<a href="{{ topic.url }}" class="topLink">
 		<div class="smallMarginAfter"><b>{{ topic.title }}</b></div>
-		<div class="grayText">{{ L('board_topic_post_count', {'count': topic.numComments}) }}</div>
+		<div class="grayText">
+			{{ L('board_topic_post_count', {'count': topic.numComments}) }}
+			{% if topic.isPinned and topic.isClosed %}
+			{{ L('board_pinned_and_locked_topic_mobile') }}
+			{% elseif topic.isPinned %}
+			{{ L('board_pinned_topic_mobile') }}
+			{% elseif topic.isClosed %}
+			{{ L('board_locked_topic_mobile') }}
+			{% endif %}
+		</div>
 	</a>
 	<a href="{{ topic.url }}?last" class="lastLink">
 		{{ users[topic.lastCommentAuthorID] | pictureForAvatar('a', 40) }}

@@ -10,6 +10,7 @@
   <div class="summary">{{ L('board_topic_summary', {'count': totalItems}) }}</div>
   {% include "pagination" %}
 </div>
+{% if message %}<div class="singleColumnLargerPadding"><div class="settingsMessage"><b>{{ message }}</b><br/>{{ messageSubtitle }}</div></div>{% endif %}
 <div class="singleColumnLargerPadding boardComments" id="comments_{{ topic.commentParentID.htmlElementID }}">
 {% for comment in items %}
 	{% include "comment" with {'post': comment, 'replyFormID': "wallPostForm_comment_#{topic.commentParentID.htmlElementID}", 'parentObject': topic, 'baseReplyLevel': 0, 'canComment': canComment, 'first': loop.first, 'board': true, 'suppressDeletion': comment.post.id==topic.firstCommentID} %}

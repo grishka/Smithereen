@@ -12,6 +12,13 @@
 	<div class="boardTopicListItem">
 		<div class="mainW">
 			<a class="title" href="{{ topic.url }}">{{ topic.title }}</a>
+			{% if topic.isPinned and topic.isClosed %}
+			<nobr class="grayText closed">{{ L('board_pinned_and_locked_topic') }}</nobr>
+			{% elseif topic.isPinned %}
+			<nobr class="grayText closed">{{ L('board_pinned_topic') }}</nobr>
+			{% elseif topic.isClosed %}
+			<nobr class="grayText closed">{{ L('board_locked_topic') }}</nobr>
+			{% endif %}
 			<div class="info">
 				<span class="postCount">{{ L('board_topic_post_count', {'count': topic.numComments}) }}</span>
 			{% if topic.numComments>postsPerPage %}

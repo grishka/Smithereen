@@ -801,6 +801,10 @@ public class SmithereenApplication{
 			postWithCSRF("/delete", BoardRoutes::deleteTopic);
 			getLoggedIn("/renameForm", BoardRoutes::renameTopicForm);
 			postWithCSRF("/rename", BoardRoutes::renameTopic);
+			postWithCSRF("/open", BoardRoutes::openTopic);
+			postWithCSRF("/close", BoardRoutes::closeTopic);
+			postWithCSRF("/pin", BoardRoutes::pinTopic);
+			postWithCSRF("/unpin", BoardRoutes::unpinTopic);
 		});
 
 		path("/my", ()->{

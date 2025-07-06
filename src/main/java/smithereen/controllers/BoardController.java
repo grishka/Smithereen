@@ -138,4 +138,26 @@ public class BoardController{
 		}
 		// TODO federate
 	}
+
+	public void setTopicClosed(User self, BoardTopic topic, boolean closed){
+		Group group=context.getGroupsController().getGroupOrThrow(topic.groupID);
+		context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+		try{
+			BoardStorage.setTopicClosed(topic.id, closed);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		// TODO federate
+	}
+
+	public void setTopicPinned(User self, BoardTopic topic, boolean pinned){
+		Group group=context.getGroupsController().getGroupOrThrow(topic.groupID);
+		context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+		try{
+			BoardStorage.setTopicPinned(topic.id, pinned);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		// TODO federate
+	}
 }
