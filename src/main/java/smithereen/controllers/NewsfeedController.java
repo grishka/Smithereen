@@ -202,6 +202,7 @@ public class NewsfeedController{
 				.flatMap(f->switch(f){
 					case POSTS -> Stream.of(NewsfeedEntry.Type.POST);
 					case PHOTOS -> Stream.of(NewsfeedEntry.Type.ADD_PHOTO);
+					case TOPICS -> Stream.of(NewsfeedEntry.Type.BOARD_TOPIC);
 					case FRIENDS -> Stream.of(NewsfeedEntry.Type.ADD_FRIEND);
 					case GROUPS -> Stream.of(NewsfeedEntry.Type.JOIN_GROUP, NewsfeedEntry.Type.CREATE_GROUP);
 					case EVENTS -> Stream.of(NewsfeedEntry.Type.JOIN_EVENT, NewsfeedEntry.Type.CREATE_EVENT);
@@ -376,6 +377,7 @@ public class NewsfeedController{
 		return filter.stream()
 				.flatMap(f->switch(f){
 					case POSTS -> Stream.of(NewsfeedEntry.Type.POST);
+					case TOPICS -> Stream.of(NewsfeedEntry.Type.BOARD_TOPIC);
 					case PHOTOS -> Stream.of(NewsfeedEntry.Type.ADD_PHOTO);
 				})
 				.collect(Collectors.toCollection(()->EnumSet.noneOf(NewsfeedEntry.Type.class)));

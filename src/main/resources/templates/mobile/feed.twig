@@ -3,6 +3,7 @@
 	<button title="{{ L('feed_filters') }}" class="actionButton iconFilterList" onclick="showMobileFeedFilters({{ json([
 		{'title': L('feed_type_posts').toString(), 'icon': 'Status', 'value': 'POSTS', 'selected': feedFilter contains 'POSTS'},
 		{'title': L('feed_type_photos').toString(), 'icon': 'Photo', 'value': 'PHOTOS', 'selected': feedFilter contains 'PHOTOS'},
+		{'title': L('feed_type_board_topics').toString(), 'icon': 'Topic', 'value': 'TOPICS', 'selected': feedFilter contains 'TOPICS'},
 		{'title': L('feed_type_friends').toString(), 'icon': 'Add', 'value': 'FRIENDS', 'selected': feedFilter contains 'FRIENDS'},
 		{'title': L('feed_type_groups').toString(), 'icon': 'Group', 'value': 'GROUPS', 'selected': feedFilter contains 'GROUPS'},
 		{'title': L('feed_type_events').toString(), 'icon': 'Event', 'value': 'EVENTS', 'selected': feedFilter contains 'EVENTS'},

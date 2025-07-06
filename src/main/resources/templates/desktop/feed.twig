@@ -27,6 +27,11 @@
 				<span class="ellipsize">{{ L('feed_type_photos') }}</span>
 			</label>
 			<label>
+				<input type="checkbox" onchange="updateFeedFilters()" name="TOPICS"{{ feedFilter contains "TOPICS" ? ' checked' : '' }}/>
+				<span class="feedIcon feedIconTopic"></span>
+				<span class="ellipsize">{{ L('feed_type_board_topics') }}</span>
+			</label>
+			<label>
 				<input type="checkbox" onchange="updateFeedFilters()" name="FRIENDS"{{ feedFilter contains "FRIENDS" ? ' checked' : '' }}/>
 				<span class="feedIcon feedIconAdd"></span>
 				<span class="ellipsize">{{ L('feed_type_friends') }}</span>

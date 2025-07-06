@@ -133,8 +133,11 @@ public class NewsfeedRoutes{
 		}
 
 		Set<Long> needTopics=feed.stream()
-				.filter(e->e.type==NewsfeedEntry.Type.BOARD_TOPIC)
-				.map(e->e.objectID)
+				.filter(e->e.type==NewsfeedEntry.Type.BOARD_TOPIC || (e instanceof GroupedNewsfeedEntry gne && gne.childEntriesType==NewsfeedEntry.Type.BOARD_TOPIC))
+				.flatMap(e->switch(e){
+					case GroupedNewsfeedEntry gne -> gne.childEntries.stream().map(ce->ce.objectID);
+					default -> Stream.of(e.objectID);
+				})
 				.collect(Collectors.toSet());
 
 		if(!needTopics.isEmpty()){

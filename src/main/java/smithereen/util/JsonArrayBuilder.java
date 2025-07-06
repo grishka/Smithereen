@@ -91,6 +91,14 @@ public class JsonArrayBuilder{
 		return arr;
 	}
 
+	public int size(){
+		return arr.size();
+	}
+
+	public boolean isEmpty(){
+		return arr.isEmpty();
+	}
+
 	public static JsonArray fromCollection(Collection<?> list){
 		JsonArray arr=new JsonArray();
 		for(Object o:list){

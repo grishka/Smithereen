@@ -345,6 +345,7 @@ public class ForeignUser extends User implements ForeignActor{
 				newsTypesToShow=typeIDs.stream()
 						.map(id->switch(id){
 							case "sm:Photos" -> FriendsNewsfeedTypeFilter.PHOTOS;
+							case "sm:BoardTopics" -> FriendsNewsfeedTypeFilter.TOPICS;
 							case "sm:Friends" -> FriendsNewsfeedTypeFilter.FRIENDS;
 							case "sm:Groups" -> FriendsNewsfeedTypeFilter.GROUPS;
 							case "sm:Events" -> FriendsNewsfeedTypeFilter.EVENTS;

@@ -18,6 +18,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.storage.BoardStorage;
 import smithereen.text.FormattedTextFormat;
@@ -100,6 +101,9 @@ public class BoardController{
 			topic.firstCommentID=comment.id;
 			BoardStorage.setTopicFirstCommentID(id, comment.id);
 
+			context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.BOARD_TOPIC);
+			context.getNewsfeedController().putGroupsFeedEntry(group, id, NewsfeedEntry.Type.BOARD_TOPIC);
+
 			// TODO federate
 
 			return topic;
@@ -121,6 +125,8 @@ public class BoardController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+		context.getNewsfeedController().deleteFriendsFeedEntriesForObject(topic.id, NewsfeedEntry.Type.BOARD_TOPIC);
+		context.getNewsfeedController().deleteGroupsFeedEntriesForObject(topic.id, NewsfeedEntry.Type.BOARD_TOPIC);
 		// TODO federate
 	}
 

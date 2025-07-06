@@ -509,6 +509,7 @@ public class User extends Actor{
 				jb.add(switch(type){
 					case POSTS -> null;
 					case PHOTOS -> "sm:Photos";
+					case TOPICS -> "sm:BoardTopics";
 					case FRIENDS -> "sm:Friends";
 					case GROUPS -> "sm:Groups";
 					case EVENTS -> "sm:Events";
@@ -516,6 +517,8 @@ public class User extends Actor{
 					case PERSONAL_INFO -> "sm:PersonalInfo";
 				});
 			}
+			if(jb.isEmpty())
+				jb.add("sm:None");
 			obj.add("newsfeedUpdatesPrivacy", jb.build());
 		}
 

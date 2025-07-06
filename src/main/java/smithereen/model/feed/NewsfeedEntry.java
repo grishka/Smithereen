@@ -51,7 +51,7 @@ public class NewsfeedEntry{
 	}
 
 	public boolean canBeGrouped(){
-		return type==Type.ADD_FRIEND || type==Type.JOIN_GROUP || type==Type.JOIN_EVENT || type==Type.ADD_PHOTO || type==Type.PHOTO_TAG;
+		return type==Type.ADD_FRIEND || type==Type.JOIN_GROUP || type==Type.JOIN_EVENT || type==Type.ADD_PHOTO || type==Type.PHOTO_TAG || type==Type.BOARD_TOPIC;
 	}
 
 	public enum Type{

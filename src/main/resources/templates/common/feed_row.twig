@@ -34,6 +34,9 @@
 		    {% set _=albumLinks.add('<a href="'+album.url+'">'+(album.title | forceEscape)+"</a>") %}
 		{% endfor %}
 		{% set _=langArgs.put('albums', albumLinks | join(L('feed_links_separator').toString()) | raw) %}
+	{% elseif entry.childEntriesType=="BOARD_TOPIC" %}
+		{% set icon="Topic" %}
+		{% set langKey=entry.authorID<0 ? "group_multiple_topics" : "created_multiple_topics" %}
 	{% endif %}
 <div class="feedRow">
 	<div class="feedIcon feedIcon{{ icon }}"></div>
@@ -48,6 +51,10 @@
 		{% endfor %}
 		{{ renderPhotoGrid(entryPhotos, "#{groupedPhotosList | default('friendsFeedGrouped')}/#{entry.childEntries.first.id}") }}
 		</div>
+		{% elseif entry.childEntriesType=="BOARD_TOPIC" %}
+		{% for ce in entry.mostRecentEntries %}
+		"<a href="{{ topics[ce.objectID].url }}">{{ topics[ce.objectID].title }}</a>"{% if loop.last %}.{% else %},{% endif %}
+		{% endfor %}
 		{% else %}
 		<div class="feedRowUsers">
 				{% for ce in entry.mostRecentEntries %}
@@ -121,6 +128,11 @@
 		{% set targetName=users[entry.extraData['partnerID']] | name('fullAndGender') %}
 		{% set extraLangArgs={'targetGender': users[entry.extraData['partnerID']].gender} %}
 	{% endif %}
+{% elseif entry.type=="BOARD_TOPIC" %}
+	{% set icon="Topic" %}
+	{% set langKey=entry.authorID<0 ? "group_new_topic" : "created_topic" %}
+	{% set targetHref=profileURL(-topics[entry.objectID].groupID) %}
+	{% set targetName=(groups[topics[entry.objectID].groupID] | name) %}
 {% endif %}
 <div class="feedRow">
 	<div class="feedIcon feedIcon{{ icon }}"></div>
@@ -132,6 +144,7 @@
 		{% if entry.type=="ADD_PHOTO" or entry.type=="PHOTO_TAG" %}
 		<div class="feedRowPhotos">{{ renderPhotoGrid([photos[entry.objectID]], "#{photosList | default('friendsFeed')}/#{entry.id}") }}</div>
 		{% endif %}
+		{% if entry.type=="BOARD_TOPIC" %}"<a href="{{ topics[entry.objectID].url }}">{{ topics[entry.objectID].title }}</a>".{% endif %}
 	</div>
 </div>
 {%else%}
