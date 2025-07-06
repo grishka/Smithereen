@@ -36,7 +36,23 @@
 		{% set _=langArgs.put('albums', albumLinks | join(L('feed_links_separator').toString()) | raw) %}
 	{% elseif entry.childEntriesType=="BOARD_TOPIC" %}
 		{% set icon="Topic" %}
-		{% set langKey=entry.authorID<0 ? "group_multiple_topics" : "created_multiple_topics" %}
+		{% if entry.authorID<0 %}
+		{% set langKey="group_multiple_topics" %}
+		{% else %}
+		{% set groupIDs=[] %}
+		{% for ce in entry.childEntries %}
+			{% set groupID=topics[ce.objectID].groupID %}
+			{% if not (groupIDs contains groupID) %}{% set _=groupIDs.add(groupID) %}{% endif %}
+		{% endfor %}
+		{% if (groupIDs | length)==1 %}
+		{% set langKey="created_multiple_topics" %}
+		{% set _=langArgs.put('target', groups[groupIDs.first] | name) %}
+		{% set _=langLinks.put('target', {'href': profileURL(-groupIDs.first)}) %}
+		{% else %}
+		{% set langKey="created_multiple_topics_multiple_groups" %}
+		{% set _=langArgs.put('groupCount', groupIDs | length) %}
+		{% endif %}
+		{% endif %}
 	{% endif %}
 <div class="feedRow">
 	<div class="feedIcon feedIcon{{ icon }}"></div>
