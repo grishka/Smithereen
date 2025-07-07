@@ -267,7 +267,18 @@ public class ActivityPubWorker{
 			LOG.trace("Inboxes: {}", inboxes);
 			for(URI inbox:inboxes){
 				SendOneActivityRunnable r=new SendOneActivityRunnable(this, context, activity, inbox, actor);
-				if(post.getReplyLevel()==0 && post.authorID!=post.ownerID)
+				Post topLevel;
+				if(post.getReplyLevel()==0){
+					topLevel=post;
+				}else{
+					try{
+						topLevel=context.getWallController().getPostOrThrow(post.replyKey.getFirst());
+					}catch(ObjectNotFoundException x){
+						LOG.debug("Top-level post for {} not found", post.getActivityPubID());
+						topLevel=post;
+					}
+				}
+				if(topLevel.authorID!=topLevel.ownerID)
 					r.requireFeature(Server.Feature.WALL_POSTS);
 				executor.submit(r);
 			}
