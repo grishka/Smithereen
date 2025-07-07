@@ -130,7 +130,7 @@ public class BoardRoutes{
 	public static Object groupTopics(Request req, Response resp){
 		Group group=getGroup(req);
 		ApplicationContext ctx=context(req);
-		PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopics(group, offset(req), 40);
+		PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, offset(req), 40);
 		Account self=currentUserAccount(req);
 		Group.AdminLevel adminLevel=Group.AdminLevel.REGULAR;
 		if(self!=null)

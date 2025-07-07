@@ -141,7 +141,7 @@ public class Group extends Actor{
 	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
 		obj=super.asActivityPubObject(obj, serializerContext);
 
-		String userURL=activityPubID.toString();
+		String groupURL=activityPubID.toString();
 		JsonArray ar=new JsonArray();
 		for(GroupAdmin admin : adminsForActivityPub){
 			JsonObject ja=new JsonObject();
@@ -153,12 +153,12 @@ public class Group extends Actor{
 		}
 		obj.add("attributedTo", ar);
 
-		obj.addProperty("members", userURL+"/members");
+		obj.addProperty("members", groupURL+"/members");
 		serializerContext.addType("members", "sm:members", "@id");
 		JsonObject capabilities=new JsonObject();
 
 		if(type==Type.EVENT){
-			obj.addProperty("tentativeMembers", userURL+"/tentativeMembers");
+			obj.addProperty("tentativeMembers", groupURL+"/tentativeMembers");
 			serializerContext.addType("tentativeMembers", "sm:tentativeMembers", "@id");
 			capabilities.addProperty("tentativeMembership", true);
 			serializerContext.addAlias("tentativeMembership", "sm:tentativeMembership");
@@ -177,7 +177,7 @@ public class Group extends Actor{
 
 		JsonObject endpoints=obj.getAsJsonObject("endpoints");
 		if(accessType!=AccessType.OPEN){
-			endpoints.addProperty("actorToken", userURL+"/actorToken");
+			endpoints.addProperty("actorToken", groupURL+"/actorToken");
 			serializerContext.addAlias("actorToken", "sm:actorToken");
 		}
 
@@ -191,6 +191,11 @@ public class Group extends Actor{
 				.add("photoAlbums", photosState.asActivityPubValue())
 				.add("board", boardState.asActivityPubValue())
 				.build());
+
+		serializerContext.addSmIdType("boardTopics");
+		serializerContext.addSmIdType("pinnedBoardTopics");
+		obj.addProperty("boardTopics", groupURL+"/topics");
+		obj.addProperty("pinnedBoardTopics", groupURL+"/pinnedTopics");
 
 		return obj;
 	}

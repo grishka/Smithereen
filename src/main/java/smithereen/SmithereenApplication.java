@@ -695,6 +695,8 @@ public class SmithereenApplication{
 			getLoggedIn("/createTopic", BoardRoutes::createTopicForm);
 			postWithCSRF("/createTopic", BoardRoutes::createTopic);
 			get("/board", BoardRoutes::groupTopics);
+			getActivityPubCollection("/topics", 100, ActivityPubRoutes::groupTopics);
+			getActivityPubCollection("/pinnedTopics", 100, ActivityPubRoutes::groupPinnedTopics);
 		});
 
 		path("/posts/:postID", ()->{
@@ -805,6 +807,7 @@ public class SmithereenApplication{
 			postWithCSRF("/close", BoardRoutes::closeTopic);
 			postWithCSRF("/pin", BoardRoutes::pinTopic);
 			postWithCSRF("/unpin", BoardRoutes::unpinTopic);
+			getActivityPubCollection("", 100, ActivityPubRoutes::topic);
 		});
 
 		path("/my", ()->{

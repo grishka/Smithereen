@@ -38,6 +38,27 @@ public class BoardStorage{
 		}
 	}
 
+	public static PaginatedList<BoardTopic> getGroupPinnedTopics(int groupID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("board_topics")
+					.count()
+					.where("group_id=? AND pinned_at IS NOT NULL",groupID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<BoardTopic> topics=new SQLQueryBuilder(conn)
+					.selectFrom("board_topics")
+					.allColumns()
+					.where("group_id=? AND pinned_at IS NOT NULL",groupID)
+					.orderBy("pinned_at DESC")
+					.limit(count, offset)
+					.executeAsStream(BoardTopic::fromResultSet)
+					.toList();
+			return new PaginatedList<>(topics, total, offset, count);
+		}
+	}
+
 	public static BoardTopic getTopic(long id) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("board_topics")

@@ -30,9 +30,17 @@ public class BoardController{
 		this.context=context;
 	}
 
-	public PaginatedList<BoardTopic> getTopics(Group group, int offset, int count){
+	public PaginatedList<BoardTopic> getTopicsIgnoringPrivacy(Group group, int offset, int count){
 		try{
 			return BoardStorage.getGroupTopics(group.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<BoardTopic> getPinnedTopicsIgnoringPrivacy(Group group, int offset, int count){
+		try{
+			return BoardStorage.getGroupPinnedTopics(group.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

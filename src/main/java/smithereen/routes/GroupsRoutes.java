@@ -282,7 +282,7 @@ public class GroupsRoutes{
 
 			// Board topics
 			if(group.boardState!=GroupFeatureState.DISABLED){
-				PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopics(group, 0, 3);
+				PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, 0, 3);
 				for(BoardTopic t:topics.list){
 					needUsers.add(t.lastCommentAuthorID);
 				}

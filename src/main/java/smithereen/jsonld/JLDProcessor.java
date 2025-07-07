@@ -120,6 +120,8 @@ public class JLDProcessor{
 		addSmAlias(lc, "TaggedPerson");
 		lc.add("rect", idAndContainerObject("sm:rect", "@list"));
 		addSmAlias(lc, "approved");
+		addSmIdAlias(lc, "boardTopics");
+		addSmIdAlias(lc, "pinnedBoardTopics");
 		// privacy settings keys
 		lc.addProperty("wallPosting", "sm:wallPosting");
 		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");

@@ -29,6 +29,7 @@ public final class BoardTopic implements ActivityPubRepresentable, CommentableCo
 	public URI apID;
 	public URI apURL;
 	public long firstCommentID;
+	public Instant pinnedAt;
 
 	public static BoardTopic fromResultSet(ResultSet res) throws SQLException{
 		BoardTopic t=new BoardTopic();
@@ -38,7 +39,8 @@ public final class BoardTopic implements ActivityPubRepresentable, CommentableCo
 		t.authorID=res.getInt("author_id");
 		t.createdAt=DatabaseUtils.getInstant(res, "created_at");
 		t.updatedAt=DatabaseUtils.getInstant(res, "updated_at");
-		t.isPinned=res.getTimestamp("pinned_at")!=null;
+		t.pinnedAt=DatabaseUtils.getInstant(res, "pinned_at");
+		t.isPinned=t.pinnedAt!=null;
 		t.numComments=res.getInt("num_comments");
 		t.lastCommentAuthorID=res.getInt("last_comment_author_id");
 		t.isClosed=res.getBoolean("is_closed");

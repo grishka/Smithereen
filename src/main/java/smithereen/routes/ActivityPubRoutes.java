@@ -91,6 +91,7 @@ import smithereen.activitypub.handlers.UpdatePhotoHandler;
 import smithereen.activitypub.handlers.UserRemovePhotoHandler;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubActorStatus;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
@@ -145,6 +146,7 @@ import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.groups.GroupFeatureState;
@@ -633,6 +635,34 @@ public class ActivityPubRoutes{
 		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
 		PaginatedList<Comment> comments=ctx.getCommentsController().getPhotoAlbumComments(album, offset, count);
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
+	}
+
+	public static ActivityPubCollectionPageResponse groupTopics(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(parseIntOrDefault(req.params(":id"), 0));
+		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		if(group.boardState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("Discussion board is disabled in this group");
+		PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, offset, count);
+		return ActivityPubCollectionPageResponse.forObjects(new PaginatedList<>(topics, topics.list.stream().map(t->ActivityPubBoardTopic.fromNativeTopic(t, ctx)).toList()));
+	}
+
+	public static ActivityPubCollectionPageResponse groupPinnedTopics(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(parseIntOrDefault(req.params(":id"), 0));
+		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		if(group.boardState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("Discussion board is disabled in this group");
+		PaginatedList<BoardTopic> topics=ctx.getBoardController().getPinnedTopicsIgnoringPrivacy(group, offset, count);
+		return ActivityPubCollectionPageResponse.forObjects(new PaginatedList<>(topics, topics.list.stream().map(t->ActivityPubBoardTopic.fromNativeTopic(t, ctx)).toList()));
+	}
+
+	public static ActivityPubCollectionPageResponse topic(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		BoardTopic topic=ctx.getBoardController().getTopicIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.BOARD_TOPIC));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, topic);
+		return objectComments(req, resp, topic, offset, count)
+				.withCustomObject(ActivityPubBoardTopic.fromNativeTopic(topic, ctx));
 	}
 
 	public static Object userStatus(Request req, Response resp){

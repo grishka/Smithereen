@@ -46,6 +46,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.UserRole;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
@@ -289,6 +290,10 @@ public class PrivacyController{
 				case Comment comment -> {
 					CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
 					enforceContentPrivacyForActivityPub(req, parent);
+				}
+				case BoardTopic topic -> {
+					if(g.boardState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Discussion board is disabled in this group");
 				}
 				default -> {}
 			}
