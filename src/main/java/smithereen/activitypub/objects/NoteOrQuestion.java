@@ -42,6 +42,7 @@ import smithereen.model.User;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
@@ -440,7 +441,10 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		replies.first=new LinkOrObject(repliesPage);
 		n.replies=new LinkOrObject(replies);
 
-		ActivityPubCollection target=new ActivityPubCollection(false);
+		ActivityPubCollection target=switch(comment.parentObjectID.type()){
+			case BOARD_TOPIC -> new ActivityPubBoardTopic();
+			default -> new ActivityPubCollection(false);
+		};
 		target.attributedTo=parentOwner.activityPubID;
 		target.activityPubID=parent.getCommentCollectionID(context);
 		n.target=target;

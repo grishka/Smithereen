@@ -1,6 +1,8 @@
 package smithereen.storage;
 
+import java.net.URI;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +88,47 @@ public class BoardStorage{
 				.executeAndGetIDLong();
 	}
 
+	public static long getTopicIDByActivityPubID(URI apID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("board_topics")
+				.columns("id")
+				.where("ap_id=?", apID.toString())
+				.executeAndGetLong();
+	}
+
+	public static long putForeignTopic(BoardTopic topic) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			long id=new SQLQueryBuilder(conn)
+					.selectFrom("board_topics")
+					.columns("id")
+					.where("ap_id=?", topic.apID.toString())
+					.executeAndGetLong();
+			if(id!=-1)
+				return id;
+			id=new SQLQueryBuilder(conn)
+					.insertInto("board_topics")
+					.value("title", topic.title)
+					.value("author_id", topic.authorID)
+					.value("group_id", topic.groupID)
+					.value("last_comment_author_id", topic.authorID)
+					.value("ap_id", topic.getActivityPubID())
+					.value("ap_url", topic.getActivityPubURL())
+					.value("created_at", topic.createdAt)
+					.value("updated_at", topic.updatedAt)
+					.executeAndGetIDLong();
+			return id;
+		}
+	}
+
+	public static void setTopicActivityPubID(long id, URI apID, URI apURL) throws SQLException{
+		new SQLQueryBuilder()
+				.update("board_topics")
+				.where("id=? AND ap_id IS NULL", id)
+				.value("ap_id", apID.toString())
+				.value("ap_url", apURL==null ? apID.toString() : apURL.toString())
+				.executeNoResult();
+	}
+
 	public static void setTopicFirstCommentID(long topicID, long commentID) throws SQLException{
 		new SQLQueryBuilder()
 				.update("board_topics")
@@ -130,6 +173,14 @@ public class BoardStorage{
 		new SQLQueryBuilder()
 				.update("board_topics")
 				.valueExpr("pinned_at", pinned ? "CURRENT_TIMESTAMP()" : "NULL")
+				.where("id=?", topicID)
+				.executeNoResult();
+	}
+
+	public static void setTopicPinned(long topicID, Instant pinnedAt) throws SQLException{
+		new SQLQueryBuilder()
+				.update("board_topics")
+				.value("pinned_at", pinnedAt)
 				.where("id=?", topicID)
 				.executeNoResult();
 	}

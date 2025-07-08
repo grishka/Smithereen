@@ -1,5 +1,6 @@
 package smithereen.activitypub.objects;
 
+import smithereen.ApplicationContext;
 import smithereen.model.board.BoardTopic;
 
 public class LocalActivityPubBoardTopic extends ActivityPubBoardTopic{
@@ -10,7 +11,7 @@ public class LocalActivityPubBoardTopic extends ActivityPubBoardTopic{
 	}
 
 	@Override
-	public BoardTopic asNativeTopic(){
+	public BoardTopic asNativeTopic(ApplicationContext ctx){
 		return topic;
 	}
 }

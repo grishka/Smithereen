@@ -33,6 +33,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubActorStatus;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
@@ -64,6 +65,7 @@ import smithereen.activitypub.objects.activities.Update;
 import smithereen.activitypub.tasks.FetchActorContentCollectionsTask;
 import smithereen.activitypub.tasks.FetchActorRelationshipCollectionsTask;
 import smithereen.activitypub.tasks.FetchAllWallRepliesTask;
+import smithereen.activitypub.tasks.FetchBoardTopicCommentsTask;
 import smithereen.activitypub.tasks.FetchCommentReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchPhotoAlbumPhotosTask;
 import smithereen.activitypub.tasks.FetchWallReplyThreadRunnable;
@@ -136,6 +138,7 @@ public class ActivityPubWorker{
 	private final HashSet<URI> fetchingContentCollectionsActors=new HashSet<>();
 	private final HashMap<URI, Future<List<Post>>> fetchingRepostChains=new HashMap<>();
 	private final HashMap<URI, Future<Void>> fetchingPhotoAlbums=new HashMap<>();
+	private final HashMap<URI, Future<Void>> fetchingBoardTopics=new HashMap<>();
 
 	private final ApplicationContext context;
 
@@ -1118,6 +1121,10 @@ public class ActivityPubWorker{
 
 	public synchronized Future<Void> fetchPhotoAlbumContents(ActivityPubPhotoAlbum album, PhotoAlbum nativeAlbum){
 		return fetchingPhotoAlbums.computeIfAbsent(album.activityPubID, uri->executor.submit(new FetchPhotoAlbumPhotosTask(context, album, nativeAlbum, this, fetchingPhotoAlbums)));
+	}
+
+	public synchronized Future<Void> fetchBoardTopicComments(ActivityPubBoardTopic topic, BoardTopic nativeTopic){
+		return fetchingBoardTopics.computeIfAbsent(topic.activityPubID, uri->executor.submit(new FetchBoardTopicCommentsTask(context, topic, nativeTopic, this, fetchingBoardTopics)));
 	}
 
 	public <R, T extends Callable<R>> List<Future<R>> invokeAll(Collection<T> tasks){

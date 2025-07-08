@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=73;
+	public static final int SCHEMA_VERSION=74;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -54,6 +54,7 @@ public class DatabaseSchemaUpdater{
 				createApIdIndexTriggers(conn);
 				createApIdIndexTriggersForPhotos(conn);
 				createApIdIndexTriggersForComments(conn);
+				createApIdIndexTriggersForBoardTopics(conn);
 				insertDefaultRoles(conn);
 			}
 		}else{
@@ -990,6 +991,7 @@ public class DatabaseSchemaUpdater{
 						  CONSTRAINT `board_topics_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
+			case 74 -> createApIdIndexTriggersForBoardTopics(conn);
 		}
 	}
 
@@ -1085,6 +1087,15 @@ public class DatabaseSchemaUpdater{
 		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_comments_to_ap_ids AFTER INSERT ON comments FOR EACH ROW BEGIN " +
 				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.COMMENT.id).execute();
 		conn.createStatement().execute("CREATE TRIGGER delete_foreign_comments_from_ap_ids AFTER DELETE ON comments FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+	}
+
+	private static void createApIdIndexTriggersForBoardTopics(DatabaseConnection conn) throws SQLException{
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_topics_to_ap_ids AFTER INSERT ON board_topics FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.BOARD_TOPIC.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_updated_foreign_topics_to_ap_ids AFTER UPDATE ON board_topics FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL AND OLD.ap_id IS NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.BOARD_TOPIC.id).execute();
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_topics_from_ap_ids AFTER DELETE ON board_topics FOR EACH ROW BEGIN " +
 				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
 	}
 

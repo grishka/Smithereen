@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.activitypub.ActivityPub;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
@@ -39,6 +40,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.SearchResult;
 import smithereen.model.User;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.photos.Photo;
@@ -203,6 +205,7 @@ public class SearchController{
 				case PhotoAlbum pa -> pa;
 				case Comment c -> c;
 				case Photo p -> p;
+				case BoardTopic t -> t;
 				default -> throw new RemoteObjectFetchException(RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, uri);
 			};
 		}catch(ObjectNotFoundException ignore){}
@@ -288,6 +291,11 @@ public class SearchController{
 						LOG.debug("Timed out fetching parent thread for {}", uri, e);
 						throw new RemoteObjectFetchException("Timed out fetching parent reply thread", RemoteObjectFetchException.ErrorType.OTHER_ERROR, uri);
 					}
+				}else if(post.target instanceof ActivityPubBoardTopic topic){
+					loadRemoteObject(self, topic.activityPubID.toString());
+					Comment comment=post.asNativeComment(context);
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(comment, post);
+					yield comment;
 				}else{
 					Future<List<CommentReplyParent>> future=context.getActivityPubWorker().fetchCommentReplyThread(post);
 					try{
@@ -347,6 +355,24 @@ public class SearchController{
 					LOG.debug("Photo album fetch failed", x);
 					throw new RemoteObjectFetchException(x, RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, uri);
 				}
+			}
+			case ActivityPubBoardTopic topic -> {
+				BoardTopic nativeTopic=null;
+				try{
+					nativeTopic=topic.asNativeTopic(context);
+					context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativeTopic, topic);
+					context.getActivityPubWorker().fetchBoardTopicComments(topic, nativeTopic).get(30, TimeUnit.SECONDS);
+				}catch(ObjectNotFoundException x){
+					throw new RemoteObjectFetchException(x, RemoteObjectFetchException.ErrorType.NOT_FOUND, uri);
+				}catch(InterruptedException x){
+					throw new RuntimeException(x);
+				}catch(TimeoutException x){
+					yield nativeTopic;
+				}catch(FederationException | ExecutionException x){
+					LOG.debug("Failed to fetch board topic", x);
+					throw new RemoteObjectFetchException(x, RemoteObjectFetchException.ErrorType.OTHER_ERROR, uri);
+				}
+				yield nativeTopic;
 			}
 			default -> throw new RemoteObjectFetchException(Config.DEBUG ? ("Object type: "+obj.getClass().getName()) : null, RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, uri);
 		};

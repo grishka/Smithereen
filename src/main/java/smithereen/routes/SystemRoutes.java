@@ -77,6 +77,7 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
@@ -436,6 +437,7 @@ public class SystemRoutes{
 				case PhotoAlbum album -> album.getURL();
 				case Photo photo -> photo.getURL();
 				case Comment comment -> ctx.getCommentsController().getCommentParent(self.user, comment).getURL();
+				case BoardTopic topic -> topic.getURL();
 				default -> throw new RemoteObjectFetchException(RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, null);
 			}).build();
 		}catch(RemoteObjectFetchException x){

@@ -27,11 +27,13 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.ActivityPubTaggedPerson;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
@@ -52,6 +54,7 @@ import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserBanStatus;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
@@ -67,7 +70,7 @@ import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 
-import static smithereen.Utils.parseIntOrDefault;
+import static smithereen.Utils.*;
 
 public class ObjectLinkResolver{
 
@@ -78,6 +81,7 @@ public class ObjectLinkResolver{
 	private static final Pattern ALBUMS=Pattern.compile("^/albums/([a-zA-Z0-9_-]+)$");
 	private static final Pattern PHOTOS=Pattern.compile("^/photos/([a-zA-Z0-9_-]+)$");
 	private static final Pattern COMMENTS=Pattern.compile("^/comments/([a-zA-Z0-9_-]+)$");
+	private static final Pattern TOPICS=Pattern.compile("^/topics/([a-zA-Z0-9_-]+)$");
 
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
@@ -273,6 +277,11 @@ public class ObjectLinkResolver{
 					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT);
 					return ensureTypeAndCast(context.getCommentsController().getCommentIgnoringPrivacy(id), expectedType);
 				}
+
+				matcher=TOPICS.matcher(link.getPath());
+				if(matcher.find()){
+					return ensureTypeAndCast(context.getBoardController().getTopicIgnoringPrivacy(XTEA.decodeObjectID(matcher.group(1), ObfuscatedObjectIDType.BOARD_TOPIC)), expectedType);
+				}
 			}else{
 				ObjectTypeAndID tid=FederationStorage.getObjectTypeAndID(link);
 				if(tid!=null){
@@ -323,6 +332,10 @@ public class ObjectLinkResolver{
 						Group group=context.getGroupsController().getGroupOrThrow(tid.idInt());
 						if(group.status!=null && link.equals(group.status.apId()))
 							return ensureTypeAndCast(group.status, expectedType);
+					}
+					if(tid.type==ObjectType.BOARD_TOPIC && expectedType.isAssignableFrom(BoardTopic.class)){
+						BoardTopic topic=context.getBoardController().getTopicIgnoringPrivacy(tid.id);
+						return ensureTypeAndCast(topic, expectedType);
 					}
 				}else{
 					if(expectedType.isAssignableFrom(ForeignUser.class)){
@@ -418,6 +431,27 @@ public class ObjectLinkResolver{
 				case PhotoAlbum pa -> context.getPhotosController().putOrUpdateForeignAlbum(pa);
 				case Photo p -> context.getPhotosController().putOrUpdateForeignPhoto(p, (ActivityPubPhoto) origObj);
 				case Comment c -> context.getCommentsController().putOrUpdateForeignComment(c);
+				case BoardTopic t -> {
+					if(t.id>0){
+						BoardTopic old=context.getBoardController().getTopicIgnoringPrivacy(t.id);
+						if(!Objects.equals(old.title, t.title))
+							context.getBoardController().renameTopic(t, t.title);
+						if(!Objects.equals(old.pinnedAt, t.pinnedAt))
+							context.getBoardController().setTopicPinned(t, t.pinnedAt);
+						if(old.isClosed!=t.isClosed)
+							context.getBoardController().setTopicClosed(t, t.isClosed);
+					}else{
+						ActivityPubBoardTopic origTopic=(ActivityPubBoardTopic) origObj;
+						NoteOrQuestion firstComment;
+						if(uriHostMatches(origTopic.activityPubID, origTopic.firstCommentID) && origTopic.first!=null
+								&& origTopic.first.object instanceof CollectionPage page && !page.items.isEmpty() && page.items.getFirst().object instanceof NoteOrQuestion noq){
+							firstComment=noq;
+						}else{
+							firstComment=resolve(origTopic.firstCommentID, NoteOrQuestion.class, true, false, false);
+						}
+						context.getBoardController().putForeignTopic(t, firstComment);
+					}
+				}
 				case null, default -> {}
 			}
 		}catch(SQLException|InterruptedException x){
@@ -459,6 +493,8 @@ public class ObjectLinkResolver{
 			return type.cast(ActivityPubPhotoAlbum.fromNativeAlbum(pa, context));
 		}else if(type.isAssignableFrom(ActivityPubPhoto.class) && o instanceof Photo p){
 			return type.cast(ActivityPubPhoto.fromNativePhoto(p, context.getPhotosController().getAlbumIgnoringPrivacy(p.albumID), context));
+		}else if(type.isAssignableFrom(ActivityPubBoardTopic.class) && o instanceof BoardTopic t){
+			return type.cast(ActivityPubBoardTopic.fromNativeTopic(t, context));
 		}
 		throw new UnsupportedRemoteObjectTypeException("Native type "+o.getClass().getName()+" does not have an ActivityPub representation");
 	}
@@ -472,6 +508,8 @@ public class ObjectLinkResolver{
 			return type.cast(pa.asNativePhotoAlbum(context));
 		}else if(o instanceof ActivityPubPhoto p && type.isAssignableFrom(Photo.class)){
 			return type.cast(p.asNativePhoto(context));
+		}else if(o instanceof ActivityPubBoardTopic t && type.isAssignableFrom(BoardTopic.class)){
+			return type.cast(t.asNativeTopic(context));
 		}else if(type.isAssignableFrom(o.getClass())){
 			return type.cast(o);
 		}
@@ -615,6 +653,11 @@ public class ObjectLinkResolver{
 			return new ObjectTypeAndID(ObjectType.COMMENT, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT));
 		}
 
+		matcher=TOPICS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.BOARD_TOPIC, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.BOARD_TOPIC));
+		}
+
 		return null;
 	}
 
@@ -642,7 +685,8 @@ public class ObjectLinkResolver{
 		PHOTO('P', 'H', 'T', 'O'),
 		COMMENT('C', 'M', 'N', 'T'),
 		USER_STATUS('U', 'S', 'T', 'A'),
-		GROUP_STATUS('G', 'S', 'T', 'A');
+		GROUP_STATUS('G', 'S', 'T', 'A'),
+		BOARD_TOPIC('B', 'T', 'O', 'P');
 
 		public final int id;
 

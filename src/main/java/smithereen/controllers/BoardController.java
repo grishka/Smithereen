@@ -3,13 +3,17 @@ package smithereen.controllers;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.net.URI;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import smithereen.ApplicationContext;
+import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -120,6 +124,30 @@ public class BoardController{
 		}
 	}
 
+	public long getTopicIDByActivityPubID(URI apID){
+		try{
+			return BoardStorage.getTopicIDByActivityPubID(apID);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public long putForeignTopic(BoardTopic topic, NoteOrQuestion firstComment){
+		if(topic.id>0)
+			throw new IllegalArgumentException("This topic is already stored locally");
+		try{
+			topic.id=BoardStorage.putForeignTopic(topic);
+			Comment comment=firstComment.asNativeComment(context);
+			context.getCommentsController().putOrUpdateForeignComment(comment);
+			if(!comment.parentObjectID.equals(topic.getCommentParentID()))
+				throw new FederationException("Comment doesn't belong to this topic");
+			BoardStorage.setTopicFirstCommentID(topic.id, comment.id);
+			return topic.id;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void deleteTopic(User self, BoardTopic topic){
 		Group group=context.getGroupsController().getGroupOrThrow(topic.groupID);
 		if(topic.authorID!=self.id){
@@ -145,33 +173,53 @@ public class BoardController{
 		}else if(context.getPrivacyController().isUserBlocked(self, group)){
 			throw new UserActionNotAllowedException();
 		}
+		renameTopic(topic, title);
+		// TODO federate
+	}
+
+	void renameTopic(BoardTopic topic, String title){
 		try{
 			BoardStorage.renameTopic(topic.id, title);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
-		// TODO federate
 	}
 
 	public void setTopicClosed(User self, BoardTopic topic, boolean closed){
 		Group group=context.getGroupsController().getGroupOrThrow(topic.groupID);
 		context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+		setTopicClosed(topic, closed);
+		// TODO federate
+	}
+
+	void setTopicClosed(BoardTopic topic, boolean closed){
 		try{
 			BoardStorage.setTopicClosed(topic.id, closed);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
-		// TODO federate
 	}
 
 	public void setTopicPinned(User self, BoardTopic topic, boolean pinned){
 		Group group=context.getGroupsController().getGroupOrThrow(topic.groupID);
 		context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+		setTopicPinned(topic, pinned);
+		// TODO federate
+	}
+
+	void setTopicPinned(BoardTopic topic, boolean pinned){
 		try{
 			BoardStorage.setTopicPinned(topic.id, pinned);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
-		// TODO federate
+	}
+
+	void setTopicPinned(BoardTopic topic, Instant pinnedAt){
+		try{
+			BoardStorage.setTopicPinned(topic.id, pinnedAt);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }

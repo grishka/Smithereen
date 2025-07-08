@@ -122,6 +122,9 @@ public class JLDProcessor{
 		addSmAlias(lc, "approved");
 		addSmIdAlias(lc, "boardTopics");
 		addSmIdAlias(lc, "pinnedBoardTopics");
+		addSmIdAlias(lc, "firstComment");
+		addSmIdAlias(lc, "author");
+		addSmAlias(lc, "BoardTopic");
 		// privacy settings keys
 		lc.addProperty("wallPosting", "sm:wallPosting");
 		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");

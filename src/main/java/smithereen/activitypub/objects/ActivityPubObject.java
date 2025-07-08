@@ -47,6 +47,7 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.board.BoardTopic;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.UriBuilder;
 import smithereen.util.JsonArrayBuilder;
@@ -612,6 +613,7 @@ public abstract class ActivityPubObject{
 			case "OrderedCollectionPage" -> new CollectionPage(true);
 			case "CollectionQueryResult" -> new CollectionQueryResult();
 			case "PhotoAlbum" -> new ActivityPubPhotoAlbum();
+			case "BoardTopic" -> new ActivityPubBoardTopic();
 
 			// Activities
 			case "Accept" -> new Accept();

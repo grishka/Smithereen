@@ -87,6 +87,7 @@ public class CommentStorage{
 						.where("id=?", parentID.id())
 						.valueExpr("num_comments", "num_comments+1")
 						.valueExpr("updated_at", "CURRENT_TIMESTAMP()")
+						.value("last_comment_author_id", authorID)
 						.executeNoResult();
 			}
 
@@ -314,18 +315,25 @@ public class CommentStorage{
 			}
 
 			if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
+				Timestamp updatedAt;
+				int lastAuthorID;
+				try(ResultSet res=new SQLQueryBuilder(conn)
+						.selectFrom("comments")
+						.columns("created_at", "author_id")
+						.where("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
+						.orderBy("created_at DESC")
+						.limit(1, 0)
+						.execute()){
+					res.next();
+					updatedAt=res.getTimestamp(1);
+					lastAuthorID=res.getInt(2);
+				}
 				new SQLQueryBuilder(conn)
 						.update("board_topics")
 						.where("id=?", comment.parentObjectID.id())
 						.valueExpr("num_comments", "num_comments-1")
-						.value("updated_at", new SQLQueryBuilder(conn)
-								.selectFrom("comments")
-								.columns("created_at")
-								.where("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
-								.orderBy("created_at DESC")
-								.limit(1, 0)
-								.executeAndGetSingleObject(r->r.getTimestamp(1))
-						)
+						.value("updated_at", updatedAt)
+						.value("last_comment_author_id", lastAuthorID)
 						.executeNoResult();
 			}
 			BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(comment.parentObjectID));
@@ -471,6 +479,28 @@ public class CommentStorage{
 							.update("comments")
 							.valueExpr("reply_count", "reply_count+1")
 							.whereIn("id", comment.replyKey)
+							.executeNoResult();
+				}
+				if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
+					Timestamp updatedAt;
+					int lastAuthorID;
+					try(ResultSet res=new SQLQueryBuilder(conn)
+							.selectFrom("comments")
+							.columns("created_at", "author_id")
+							.where("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
+							.orderBy("created_at DESC")
+							.limit(1, 0)
+							.execute()){
+						res.next();
+						updatedAt=res.getTimestamp(1);
+						lastAuthorID=res.getInt(2);
+					}
+					new SQLQueryBuilder(conn)
+							.update("board_topics")
+							.where("id=?", comment.parentObjectID.id())
+							.valueExpr("num_comments", "num_comments+1")
+							.value("updated_at", updatedAt)
+							.value("last_comment_author_id", lastAuthorID)
 							.executeNoResult();
 				}
 			}else{
