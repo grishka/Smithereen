@@ -3,6 +3,7 @@ package smithereen.model;
 import java.net.URI;
 
 import smithereen.Utils;
+import smithereen.model.comments.Comment;
 import smithereen.model.photos.Photo;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
@@ -115,6 +116,23 @@ public final class NonCachedRemoteImage extends RemoteImage{
 		protected void addToUriBuilder(UriBuilder builder){
 			builder.queryParam("type", "album_photo");
 			builder.queryParam("photo_id", Utils.encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)));
+		}
+	}
+
+	public static class CommentArgs extends Args{
+		private final Comment comment;
+		private final int index;
+
+		public CommentArgs(Comment comment, int index){
+			this.comment=comment;
+			this.index=index;
+		}
+
+		@Override
+		protected void addToUriBuilder(UriBuilder builder){
+			builder.queryParam("type", "comment_photo");
+			builder.queryParam("comment_id", XTEA.encodeObjectID(comment.id, ObfuscatedObjectIDType.COMMENT));
+			builder.queryParam("index", index+"");
 		}
 	}
 }

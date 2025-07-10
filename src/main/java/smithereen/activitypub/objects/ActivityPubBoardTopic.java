@@ -15,6 +15,7 @@ import smithereen.exceptions.FederationException;
 import smithereen.model.Group;
 import smithereen.model.User;
 import smithereen.model.board.BoardTopic;
+import smithereen.util.UriBuilder;
 import spark.utils.StringUtils;
 
 public class ActivityPubBoardTopic extends ActivityPubCollection{
@@ -74,6 +75,7 @@ public class ActivityPubBoardTopic extends ActivityPubCollection{
 		t.attributedTo=ctx.getGroupsController().getGroupOrThrow(topic.groupID).activityPubID;
 		t.totalItems=topic.numComments;
 		t.firstCommentID=ctx.getCommentsController().getCommentIgnoringPrivacy(topic.firstCommentID).getActivityPubID();
+		t.first=new LinkOrObject(new UriBuilder(t.activityPubID).queryParam("page", "1").build());
 		return t;
 	}
 

@@ -69,7 +69,7 @@ public sealed class Comment extends PostLikeObject implements ActivityPubReprese
 
 	@Override
 	public NonCachedRemoteImage.Args getPhotoArgs(int index){
-		return null;
+		return new NonCachedRemoteImage.CommentArgs(this, index);
 	}
 
 	@Override

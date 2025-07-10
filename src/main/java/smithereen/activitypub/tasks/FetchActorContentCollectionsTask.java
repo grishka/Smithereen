@@ -14,7 +14,9 @@ import java.util.concurrent.Future;
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
+import smithereen.model.ForeignGroup;
 import smithereen.model.Post;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.util.NoResultCallable;
 
 public class FetchActorContentCollectionsTask extends NoResultCallable{
@@ -44,6 +46,9 @@ public class FetchActorContentCollectionsTask extends NoResultCallable{
 		}
 		if(actor.hasPhotoAlbums()){
 			tasks.add(new FetchActorPhotoAlbumsTask(apw, context, actor, fetchingPhotoAlbums));
+		}
+		if(actor instanceof ForeignGroup group && group.boardState!=GroupFeatureState.DISABLED && group.getBoardTopicsURL()!=null){
+			tasks.add(new FetchGroupBoardTopicsTask(apw, context, group));
 		}
 		try{
 			apw.invokeAll(tasks);

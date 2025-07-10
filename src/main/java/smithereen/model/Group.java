@@ -74,6 +74,10 @@ public class Group extends Actor{
 		return Config.localURI("/groups/"+id+"/albums");
 	}
 
+	public URI getBoardTopicsURL(){
+		return Config.localURI("/group/"+id+"/topics");
+	}
+
 	@Override
 	public String getTypeAndIdForURL(){
 		return "/groups/"+id;

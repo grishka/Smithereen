@@ -25,7 +25,7 @@ import spark.utils.StringUtils;
 
 public class ForeignGroup extends Group implements ForeignActor{
 
-	private URI wall, photoAlbums, wallComments;
+	private URI wall, photoAlbums, wallComments, boardTopics;
 	public URI actorTokenEndpoint;
 	public URI members;
 	public URI tentativeMembers;
@@ -58,6 +58,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 		members=tryParseURL(ep.groupMembers);
 		tentativeMembers=tryParseURL(ep.tentativeGroupMembers);
 		photoAlbums=tryParseURL(ep.photoAlbums);
+		boardTopics=tryParseURL(ep.boardTopics);
 	}
 
 	@Override
@@ -122,12 +123,21 @@ public class ForeignGroup extends Group implements ForeignActor{
 		ensureHostMatchesID(tentativeMembers, "tentativeMembers");
 		photoAlbums=tryParseURL(optString(obj, "photoAlbums"));
 		ensureHostMatchesID(photoAlbums, "photoAlbums");
+		boardTopics=tryParseURL(optString(obj, "boardTopics"));
+		ensureHostMatchesID(boardTopics, "boardTopics");
 
 		JsonObject featureState=optObject(obj, "featureState");
 		if(featureState!=null){
-			wallState=GroupFeatureState.fromActivityPubValue(optString(featureState, "wall"), GroupFeatureState.ENABLED_OPEN);
-			photosState=GroupFeatureState.fromActivityPubValue(optString(featureState, "photoAlbums"), GroupFeatureState.ENABLED_RESTRICTED);
-			boardState=GroupFeatureState.fromActivityPubValue(optString(featureState, "board"), GroupFeatureState.ENABLED_RESTRICTED);
+			wallState=GroupFeatureState.fromActivityPubValue(optString(featureState, "wall"), wall==null ? GroupFeatureState.DISABLED : GroupFeatureState.ENABLED_OPEN);
+			photosState=GroupFeatureState.fromActivityPubValue(optString(featureState, "photoAlbums"), photoAlbums==null ? GroupFeatureState.DISABLED : GroupFeatureState.ENABLED_RESTRICTED);
+			boardState=GroupFeatureState.fromActivityPubValue(optString(featureState, "board"), boardTopics==null ? GroupFeatureState.DISABLED : GroupFeatureState.ENABLED_RESTRICTED);
+		}else{
+			if(wall==null)
+				wallState=GroupFeatureState.DISABLED;
+			if(photoAlbums==null)
+				photosState=GroupFeatureState.DISABLED;
+			if(boardTopics==null)
+				boardState=GroupFeatureState.DISABLED;
 		}
 
 		return this;
@@ -184,6 +194,11 @@ public class ForeignGroup extends Group implements ForeignActor{
 	}
 
 	@Override
+	public URI getBoardTopicsURL(){
+		return boardTopics;
+	}
+
+	@Override
 	public boolean needUpdate(){
 		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.toEpochMilli()>24L*60*60*1000;
 	}
@@ -197,6 +212,8 @@ public class ForeignGroup extends Group implements ForeignActor{
 			ep.groupMembers=members.toString();
 		if(tentativeMembers!=null)
 			ep.tentativeGroupMembers=tentativeMembers.toString();
+		if(boardTopics!=null)
+			ep.boardTopics=boardTopics.toString();
 		return ep;
 	}
 

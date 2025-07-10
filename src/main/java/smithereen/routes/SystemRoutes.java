@@ -234,7 +234,7 @@ public class SystemRoutes{
 						mime="image/jpeg";
 				}
 			}
-			case "post_photo", "message_photo" -> {
+			case "post_photo", "message_photo", "comment_photo" -> {
 				itemType=MediaCache.ItemType.PHOTO;
 				SessionInfo sess=sessionInfo(req);
 				Object contentObj=switch(type){
@@ -248,6 +248,10 @@ public class SystemRoutes{
 							yield null;
 						long msgID=decodeLong(req.queryParams("msg_id"));
 						yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
+					}
+					case "comment_photo" -> {
+						long id=XTEA.decodeObjectID(req.queryParams("comment_id"), ObfuscatedObjectIDType.COMMENT);
+						yield ctx.getCommentsController().getCommentIgnoringPrivacy(id);
 					}
 					default -> throw new IllegalStateException("Unexpected value: "+type);
 				};

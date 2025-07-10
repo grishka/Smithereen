@@ -448,5 +448,7 @@ public abstract class Actor extends ActivityPubObject{
 		public String taggedPhotos;
 		@SerializedName("wc")
 		public String wallComments;
+		@SerializedName("bt")
+		public String boardTopics;
 	}
 }
