@@ -36,6 +36,10 @@ public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 	}
 
 	public static void collectActorIDs(Collection<PostViewModel> posts, Set<Integer> userIDs, Set<Integer> groupIDs){
+		collectActorIDs(posts, userIDs, groupIDs, 0);
+	}
+
+	public static void collectActorIDs(Collection<PostViewModel> posts, Set<Integer> userIDs, Set<Integer> groupIDs, int depth){
 		for(PostViewModel pvm:posts){
 			userIDs.add(pvm.post.authorID);
 			if(pvm.post.ownerID>0){
@@ -45,8 +49,8 @@ public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 					groupIDs.add(-pvm.post.ownerID);
 			}
 			if(pvm.repost!=null){
-				if(pvm.repost.post!=null)
-					collectActorIDs(Set.of(pvm.repost.post), userIDs, groupIDs);
+				if(pvm.repost.post!=null && depth<10)
+					collectActorIDs(Set.of(pvm.repost.post), userIDs, groupIDs, depth+1);
 				if(pvm.repost.topLevel!=null)
 					collectActorIDs(Set.of(pvm.repost.topLevel), userIDs, groupIDs);
 			}
