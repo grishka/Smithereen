@@ -604,6 +604,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			// Pleroma, Akkoma and possibly other "*oma"s
 			quoteRepostID=tryParseURL(optString(obj, "quoteUrl"));
 		}
+		if(quoteRepostID==null){
+			quoteRepostID=tryParseURL(optString(obj, JLD.MASTODON_QUOTES_FEP+"quote"));
+		}
 		action=optString(obj, "action");
 
 		return this;
