@@ -3,6 +3,7 @@ package smithereen.activitypub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -38,6 +39,7 @@ import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Note;
@@ -60,6 +62,7 @@ import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
+import smithereen.activitypub.objects.activities.TopicCreationRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.activitypub.tasks.FetchActorContentCollectionsTask;
@@ -74,8 +77,10 @@ import smithereen.activitypub.tasks.ForwardOneActivityRunnable;
 import smithereen.activitypub.tasks.RetryActivityRunnable;
 import smithereen.activitypub.tasks.SendActivitySequenceRunnable;
 import smithereen.activitypub.tasks.SendOneActivityRunnable;
+import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.ActorStatus;
 import smithereen.model.ForeignGroup;
@@ -1065,6 +1070,50 @@ public class ActivityPubWorker{
 	}
 
 	// endregion
+	// region Board topics
+
+	public void sendCreateBoardTopic(Group group, BoardTopic topic, Comment firstComment){
+		ActivityPubBoardTopic apTopic=ActivityPubBoardTopic.fromNativeTopic(topic, context);
+		CollectionPage firstPage=new CollectionPage(false);
+		firstPage.partOf=apTopic.activityPubID;
+		firstPage.totalItems=1;
+		if(firstComment.isLocal()){
+			firstPage.items=List.of(new LinkOrObject(NoteOrQuestion.fromNativeComment(firstComment, context)));
+		}else{
+			firstPage.items=List.of(new LinkOrObject(firstComment.getActivityPubID()));
+		}
+		apTopic.first=new LinkOrObject(firstPage);
+		Create create=new Create()
+				.withActorLinkAndObject(group, apTopic)
+				.withActorFragmentID("createTopic"+topic.getIdString())
+				.withTarget(group.getBoardTopicsURL());
+		submitActivityForMembers(create, group);
+	}
+
+	public void sendAcceptCreateBoardTopicRequest(Group group, User author, BoardTopic topic, TopicCreationRequest origRequest){
+		ActivityPubBoardTopic apTopic=ActivityPubBoardTopic.fromNativeTopic(topic, context);
+		Accept accept=new Accept()
+				.withActorLinkAndObject(group, origRequest)
+				.withActorFragmentID("acceptCreateTopic"+topic.getIdString());
+		accept.result=List.of(new LinkOrObject(apTopic));
+
+		// Sending this activity to author and getting a successful response before sending Create{BoardTopic} to all group members
+		// ensures that the comment will be up to date with its parent object set to the newly created topic
+		sendActivitySynchronously(accept, group, author.inbox);
+	}
+
+	public void sendCreateBoardTopicRequest(User self, ForeignGroup group, BoardTopic topic, Comment firstComment){
+		NoteOrQuestion note=NoteOrQuestion.fromNativeComment(firstComment, context);
+		note.target=null;
+		TopicCreationRequest req=new TopicCreationRequest()
+				.withActorLinkAndObject(self, note);
+		req.name=topic.title;
+		req.to=List.of(new LinkOrObject(group.activityPubID));
+		req.activityPubID=new UriBuilder(topic.getActivityPubID()).fragment("createRequest").build();
+		sendActivitySynchronously(req, self, group.inbox);
+	}
+
+	// endregion
 
 	public synchronized Future<List<Post>> fetchWallReplyThread(NoteOrQuestion post){
 		return fetchingWallReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchWallReplyThreadRunnable(this, afterFetchWallReplyThreadActions, context, fetchingWallReplyThreads, post)));
@@ -1224,6 +1273,16 @@ public class ActivityPubWorker{
 	public void submitActivity(Activity activity, Actor actor, Collection<URI> inboxes, Server.Feature requiredFeature){
 		for(URI inbox:inboxes){
 			submitActivity(activity, actor, inbox, requiredFeature);
+		}
+	}
+
+	public void sendActivitySynchronously(Activity activity, Actor actor, URI inbox){
+		try{
+			ActivityPub.postActivity(inbox, activity, actor, context, false, EnumSet.noneOf(Server.Feature.class), true);
+		}catch(UserActionNotAllowedException x){
+			throw x;
+		}catch(Exception x){
+			throw new FederationException(x);
 		}
 	}
 }

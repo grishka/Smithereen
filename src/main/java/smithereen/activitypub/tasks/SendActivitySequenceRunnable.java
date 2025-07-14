@@ -55,7 +55,7 @@ public class SendActivitySequenceRunnable implements Runnable{
 	public void run(){
 		for(Activity activity: activities){
 			try{
-				ActivityPub.postActivity(destination, activity, user, context, false, requiredServerFeatures);
+				ActivityPub.postActivity(destination, activity, user, context, false, requiredServerFeatures, false);
 			}catch(Exception x){
 				LOG.error("Exception while sending activity", x);
 				if(!(x instanceof FederationException)){

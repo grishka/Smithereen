@@ -2,6 +2,8 @@ package smithereen.controllers;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.sql.SQLException;
@@ -11,12 +13,18 @@ import java.util.List;
 import java.util.Map;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
+import smithereen.activitypub.objects.LocalActivityPubBoardTopic;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
@@ -28,6 +36,7 @@ import smithereen.storage.BoardStorage;
 import smithereen.text.FormattedTextFormat;
 
 public class BoardController{
+	private static final Logger LOG=LoggerFactory.getLogger(BoardController.class);
 	private final ApplicationContext context;
 
 	public BoardController(ApplicationContext context){
@@ -116,7 +125,42 @@ public class BoardController{
 			context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.BOARD_TOPIC);
 			context.getNewsfeedController().putGroupsFeedEntry(group, id, NewsfeedEntry.Type.BOARD_TOPIC);
 
-			// TODO federate
+			if(group instanceof ForeignGroup fg){
+				LOG.debug("Creating topic remotely in {} on behalf of {}", fg.activityPubID, self.activityPubID);
+				try{
+					context.getActivityPubWorker().sendCreateBoardTopicRequest(self, fg, topic, comment);
+				}catch(FederationException x){
+					LOG.debug("Failed to create topic. Deleting the local one", x);
+					BoardStorage.deleteTopic(topic.id);
+					context.getCommentsController().deleteCommentsForObject(topic);
+					throw new UserErrorException(x.getMessage(), x);
+				}
+				topic=getTopicIgnoringPrivacy(id); // To make sure all fields are set after Accept{TopicCreationRequest}
+			}else{
+				context.getActivityPubWorker().sendCreateBoardTopic(group, topic, comment);
+			}
+
+			return topic;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public BoardTopic createTopicWithExistingFirstComment(ForeignUser self, Group group, String title, NoteOrQuestion comment){
+		enforceTopicCreationPermission(self, group);
+		try{
+			long id=BoardStorage.createTopic(group.id, title, self.id, null, null);
+			BoardTopic topic=BoardStorage.getTopic(id);
+
+			ActivityPubBoardTopic target=new LocalActivityPubBoardTopic(topic);
+			target.activityPubID=topic.getActivityPubID();
+			target.attributedTo=group.activityPubID;
+			comment.target=target;
+			Comment nativeComment=comment.asNativeComment(context);
+			context.getCommentsController().putOrUpdateForeignComment(nativeComment);
+			BoardStorage.setTopicFirstCommentID(id, nativeComment.id);
+			topic.firstCommentID=nativeComment.id;
+			topic.numComments=1;
 
 			return topic;
 		}catch(SQLException x){
@@ -125,6 +169,12 @@ public class BoardController{
 	}
 
 	public long getTopicIDByActivityPubID(URI apID){
+		if(Config.isLocal(apID)){
+			ObjectLinkResolver.ObjectTypeAndID tid=ObjectLinkResolver.getObjectIdFromLocalURL(apID);
+			if(tid!=null && tid.type()==ObjectLinkResolver.ObjectType.BOARD_TOPIC)
+				return tid.id();
+			return -1;
+		}
 		try{
 			return BoardStorage.getTopicIDByActivityPubID(apID);
 		}catch(SQLException x){
@@ -218,6 +268,14 @@ public class BoardController{
 	void setTopicPinned(BoardTopic topic, Instant pinnedAt){
 		try{
 			BoardStorage.setTopicPinned(topic.id, pinnedAt);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setTopicActivityPubID(BoardTopic topic, URI apID, URI apURL){
+		try{
+			BoardStorage.setTopicActivityPubID(topic.id, apID, apURL);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

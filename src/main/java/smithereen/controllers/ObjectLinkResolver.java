@@ -449,6 +449,8 @@ public class ObjectLinkResolver{
 						}else{
 							firstComment=resolve(origTopic.firstCommentID, NoteOrQuestion.class, true, false, false);
 						}
+						if(!Objects.equals(firstComment.attributedTo, origTopic.authorID))
+							throw new FederationException("Topic author ID does not match first comment author ID");
 						context.getBoardController().putForeignTopic(t, firstComment);
 					}
 				}

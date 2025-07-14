@@ -327,7 +327,7 @@ public class ActivityPub{
 		}
 	}
 
-	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry, EnumSet<Server.Feature> requiredServerFeatures) throws IOException{
+	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry, EnumSet<Server.Feature> requiredServerFeatures, boolean throwFor403) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
@@ -360,7 +360,7 @@ public class ActivityPub{
 			return;
 		}
 		LOG.debug("Sending activity: {}", body);
-		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry);
+		postActivityInternal(inboxUrl, body.toString(), actor, server, ctx, isRetry, throwFor403);
 	}
 
 	public static void forwardActivity(URI inboxUrl, String activityJson, Actor actor, ApplicationContext ctx, EnumSet<Server.Feature> requiredServerFeatures) throws IOException{
@@ -383,10 +383,10 @@ public class ActivityPub{
 			}
 		}
 
-		postActivityInternal(inboxUrl, activityJson, actor, server, ctx, false);
+		postActivityInternal(inboxUrl, activityJson, actor, server, ctx, false, false);
 	}
 
-	private static void postActivityInternal(URI inboxUrl, String activityJson, Actor actor, Server server, ApplicationContext ctx, boolean isRetry) throws IOException{
+	private static void postActivityInternal(URI inboxUrl, String activityJson, Actor actor, Server server, ApplicationContext ctx, boolean isRetry, boolean throwFor403) throws IOException{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
@@ -409,7 +409,10 @@ public class ActivityPub{
 					}else{
 						throw new FederationException("Response from "+inboxUrl+" is not successful: "+resp.statusCode());
 					}
+				}else if(throwFor403){
+					throw new UserActionNotAllowedException("Action not allowed: "+resp.body());
 				}
+				return;
 			}
 			ctx.getStatsController().incrementDaily(StatsType.SERVER_ACTIVITIES_SENT, server.id());
 			if(server.getAvailability()!=Server.Availability.UP){

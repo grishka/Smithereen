@@ -39,7 +39,9 @@ import smithereen.lang.Lang;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
 import smithereen.model.User;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
@@ -428,7 +430,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		if(comment.getReplyLevel()>0){
 			Comment parentComment=context.getCommentsController().getCommentIgnoringPrivacy(comment.replyKey.getLast());
 			n.inReplyTo=parentComment.getActivityPubID();
-		}else{
+		}else if(comment.parentObjectID.type()!=CommentableObjectType.BOARD_TOPIC){
 			n.inReplyTo=parent.getActivityPubID();
 		}
 
@@ -500,23 +502,33 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		User author=context.getObjectLinkResolver().resolve(attributedTo, User.class, true, true, false);
 		comment.authorID=author.id;
 		comment.ownerID=owner.getOwnerID();
-		if(inReplyTo==null)
-			throw new FederationException("inReplyTo is required");
-		CommentReplyParent replyParent=context.getObjectLinkResolver().resolveNative(inReplyTo, CommentReplyParent.class, true, true, false, owner, true);
-		CommentableContentObject parentObj=switch(replyParent){
-			case CommentableContentObject _parentObj -> {
+		if(target instanceof ActivityPubBoardTopic topic){
+			comment.parentObjectID=new CommentParentObjectID(CommentableObjectType.BOARD_TOPIC, context.getBoardController().getTopicIDByActivityPubID(topic.activityPubID));
+			if(inReplyTo!=null){
+				Comment replyParent=context.getObjectLinkResolver().resolveNative(inReplyTo, Comment.class, true, true, false, owner, true);
+				comment.replyKey=replyParent.getReplyKeyForReplies();
+			}else{
 				comment.replyKey=List.of();
-				comment.parentObjectID=_parentObj.getCommentParentID();
-				yield _parentObj;
 			}
-			case Comment parentComment -> {
-				comment.replyKey=parentComment.getReplyKeyForReplies();
-				comment.parentObjectID=parentComment.parentObjectID;
-				yield context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
-			}
-		};
-		if(!Objects.equals(target.activityPubID, parentObj.getCommentCollectionID(context)))
-			throw new FederationException("target.id does not match the expected comment collection ID");
+		}else{
+			if(inReplyTo==null)
+				throw new FederationException("inReplyTo is required");
+			CommentReplyParent replyParent=context.getObjectLinkResolver().resolveNative(inReplyTo, CommentReplyParent.class, true, true, false, owner, true);
+			CommentableContentObject parentObj=switch(replyParent){
+				case CommentableContentObject _parentObj -> {
+					comment.replyKey=List.of();
+					comment.parentObjectID=_parentObj.getCommentParentID();
+					yield _parentObj;
+				}
+				case Comment parentComment -> {
+					comment.replyKey=parentComment.getReplyKeyForReplies();
+					comment.parentObjectID=parentComment.parentObjectID;
+					yield context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+				}
+			};
+			if(!Objects.equals(target.activityPubID, parentObj.getCommentCollectionID(context)))
+				throw new FederationException("target.id does not match the expected comment collection ID");
+		}
 
 		comment.setActivityPubID(activityPubID);
 		comment.activityPubURL=url==null ? activityPubID : url;

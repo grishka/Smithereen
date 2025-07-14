@@ -43,6 +43,7 @@ import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
+import smithereen.activitypub.objects.activities.TopicCreationRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.model.ForeignGroup;
@@ -636,6 +637,7 @@ public abstract class ActivityPubObject{
 			case "Read" -> new Read();
 			case "Move" -> new Move();
 			case "QuoteRequest" -> new QuoteRequest();
+			case "TopicCreationRequest" -> new TopicCreationRequest();
 
 			default -> {
 				LOG.debug("Unknown object type {}", type);

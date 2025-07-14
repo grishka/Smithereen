@@ -158,6 +158,7 @@ public class JLDProcessor{
 		lc.add("statusHistory", idAndTypeObject("sm:statusHistory", "@id"));
 		addSmAlias(lc, "featureState");
 		addSmIdAlias(lc, "board");
+		addSmAlias(lc, "TopicCreationRequest");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

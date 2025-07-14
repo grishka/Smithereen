@@ -59,7 +59,7 @@ public class SendOneActivityRunnable implements Runnable{
 	@Override
 	public void run(){
 		try{
-			ActivityPub.postActivity(destination, activity, actor, context, retryAttempt>0, requiredServerFeatures);
+			ActivityPub.postActivity(destination, activity, actor, context, retryAttempt>0, requiredServerFeatures, false);
 		}catch(Exception x){
 			LOG.error("Exception while sending activity", x);
 			if(!(x instanceof FederationException)){
