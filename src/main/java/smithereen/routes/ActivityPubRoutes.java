@@ -135,6 +135,7 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.RemoteObjectFetchException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.CommentViewType;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -158,6 +159,7 @@ import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
@@ -638,7 +640,13 @@ public class ActivityPubRoutes{
 
 	private static ActivityPubCollectionPageResponse objectComments(Request req, Response resp, CommentableContentObject obj, int offset, int count){
 		ApplicationContext ctx=context(req);
-		PaginatedList<Comment> comments=ctx.getCommentsController().getCommentReplies(obj, null, offset, count);
+		PaginatedList<Comment> comments;
+		if(obj instanceof BoardTopic){
+			PaginatedList<CommentViewModel> cvms=ctx.getCommentsController().getComments(obj, List.of(), offset, count, 0, CommentViewType.FLAT);
+			comments=new PaginatedList<>(cvms, cvms.list.stream().map(cvm->cvm.post).toList());
+		}else{
+			comments=ctx.getCommentsController().getCommentReplies(obj, null, offset, count);
+		}
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
 	}
 

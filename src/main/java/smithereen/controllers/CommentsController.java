@@ -269,7 +269,7 @@ public class CommentsController{
 		if(comment.ownerID>0 && self.getOwnerID()!=comment.ownerID && self.getOwnerID()!=comment.authorID)
 			throw new UserActionNotAllowedException();
 		if(comment.ownerID<0){
-			if(self instanceof User user)
+			if(self instanceof User user && comment.authorID!=user.id)
 				context.getGroupsController().enforceUserAdminLevel(context.getGroupsController().getGroupOrThrow(-comment.ownerID), user, Group.AdminLevel.MODERATOR);
 			else if(self instanceof Group group && group.getOwnerID()!=comment.ownerID)
 				throw new UserActionNotAllowedException();
