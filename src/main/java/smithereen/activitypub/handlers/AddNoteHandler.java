@@ -7,6 +7,7 @@ import java.util.Objects;
 import smithereen.Config;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
@@ -15,6 +16,7 @@ import smithereen.activitypub.objects.activities.Add;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.Post;
 import smithereen.exceptions.BadRequestException;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
@@ -31,11 +33,16 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuesti
 			throw new BadRequestException("Add.target is required (either a collection ID or abbreviated collection object)");
 
 		if(!Objects.equals(actor.getWallURL(), targetCollectionID) && !Objects.equals(actor.getWallCommentsURL(), targetCollectionID)){
-			if(post.inReplyTo!=null && post.target!=null){
-				// Comments always have inReplyTo
+			if(post.target!=null){
 				if(Config.isLocal(post.activityPubID))
 					return;
-				CommentReplyParent replyParent=context.appContext.getObjectLinkResolver().resolveNative(post.inReplyTo, CommentReplyParent.class, true, true, false, actor, true);
+				CommentReplyParent replyParent;
+				if(post.target instanceof ActivityPubBoardTopic)
+					replyParent=context.appContext.getObjectLinkResolver().resolveNative(post.target.activityPubID, BoardTopic.class, true, true, false, actor, true);
+				else if(post.inReplyTo==null)
+					return;
+				else
+					replyParent=context.appContext.getObjectLinkResolver().resolveNative(post.inReplyTo, CommentReplyParent.class, true, true, false, actor, true);
 				CommentableContentObject parent=switch(replyParent){
 					case CommentableContentObject cco -> cco;
 					case Comment comment -> context.appContext.getCommentsController().getCommentParentIgnoringPrivacy(comment);

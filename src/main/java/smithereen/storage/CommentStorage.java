@@ -570,6 +570,20 @@ public class CommentStorage{
 		return comments;
 	}
 
+	public static Set<URI> getInboxesForCommentInteractionForwarding(CommentParentObjectID parentID, Set<Integer> exceptUsers) throws SQLException{
+		SQLQueryBuilder b=new SQLQueryBuilder()
+				.selectFrom("users")
+				.distinct()
+				.selectExpr("IFNULL(ap_shared_inbox, ap_inbox)")
+				.where("id IN (SELECT DISTINCT author_id FROM comments WHERE parent_object_type=? AND parent_object_id=?) AND ap_id IS NOT NULL", parentID.type(), parentID.id());
+
+		if(!exceptUsers.isEmpty())
+			b.andWhere("id NOT IN ("+String.join(", ", Collections.nCopies(exceptUsers.size(), "?"))+")", exceptUsers.toArray());
+
+		return b.executeAsStream(r->URI.create(r.getString(1)))
+				.collect(Collectors.toSet());
+	}
+
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{
 		Set<Long> needFileIDs=posts.stream()
 				.filter(p->p.attachments!=null && !p.attachments.isEmpty())

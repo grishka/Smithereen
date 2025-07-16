@@ -105,6 +105,7 @@ import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoTag;
+import smithereen.storage.CommentStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -246,10 +247,13 @@ public class ActivityPubWorker{
 							if(context.getPrivacyController().checkUserPrivacy(mentionedUser, user, album.viewPrivacy))
 								inboxes.add(inbox);
 						}
+						if(album.viewPrivacy.baseRule==PrivacySetting.Rule.EVERYONE)
+							inboxes.addAll(CommentStorage.getInboxesForCommentInteractionForwarding(comment.parentObjectID, album.viewPrivacy.exceptUsers));
 					}else if(oaa.owner() instanceof Group group){
 						inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
 						if(group.accessType==Group.AccessType.OPEN){
 							mentionedUsers.stream().map(this::actorInbox).forEach(inboxes::add);
+							inboxes.addAll(CommentStorage.getInboxesForCommentInteractionForwarding(comment.parentObjectID, Set.of()));
 						}else{
 							for(User mentionedUser:mentionedUsers){
 								URI inbox=actorInbox(mentionedUser);
@@ -262,7 +266,25 @@ public class ActivityPubWorker{
 						}
 					}
 				}
-				case BoardTopic topic -> {} // TODO
+				case BoardTopic topic -> {
+					Group group=(Group) oaa.owner();
+					Collection<User> mentionedUsers=context.getUsersController().getUsers(comment.mentionedUserIDs).values();
+					inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
+					if(group.accessType==Group.AccessType.OPEN){
+						mentionedUsers.stream().map(this::actorInbox).forEach(inboxes::add);
+					}else{
+						for(User mentionedUser:mentionedUsers){
+							URI inbox=actorInbox(mentionedUser);
+							if(inboxes.contains(inbox))
+								continue;
+							Group.MembershipState state=context.getGroupsController().getUserMembershipState(group, mentionedUser);
+							if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER)
+								inboxes.add(inbox);
+						}
+					}
+					if(group.accessType==Group.AccessType.OPEN)
+						inboxes.addAll(CommentStorage.getInboxesForCommentInteractionForwarding(comment.parentObjectID, Set.of()));
+				}
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -990,7 +1012,11 @@ public class ActivityPubWorker{
 
 	private void sendActivityForComment(Comment comment, Actor actor, CommentableContentObject parent, Activity activity){
 		Set<URI> inboxes=getInboxesForComment(comment, parent);
-		submitActivity(activity, actor, inboxes, comment.parentObjectID.getRqeuiredServerFeature());
+		Server.Feature requiredFeature=comment.parentObjectID.getRqeuiredServerFeature();
+		if(requiredFeature==null)
+			submitActivity(activity, actor, inboxes);
+		else
+			submitActivity(activity, actor, inboxes, requiredFeature);
 	}
 
 	private void sendActivityForCommentToBeForwarded(Comment comment, Actor actor, CommentableContentObject parent, Activity activity){
@@ -1003,7 +1029,11 @@ public class ActivityPubWorker{
 				inboxes.add(actorInbox(oaa.owner()));
 			if(oaa.author() instanceof ForeignActor)
 				inboxes.add(actorInbox(oaa.author()));
-			submitActivity(activity, actor, inboxes, comment.parentObjectID.getRqeuiredServerFeature());
+			Server.Feature requiredFeature=comment.parentObjectID.getRqeuiredServerFeature();
+			if(requiredFeature==null)
+				submitActivity(activity, actor, inboxes);
+			else
+				submitActivity(activity, actor, inboxes, requiredFeature);
 		}
 	}
 
