@@ -9,11 +9,15 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.LruCache;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.LocalActivityPubBoardTopic;
 import smithereen.activitypub.objects.NoteOrQuestion;
@@ -39,6 +43,8 @@ public class BoardController{
 	private static final Logger LOG=LoggerFactory.getLogger(BoardController.class);
 	private final ApplicationContext context;
 
+	private final LruCache<Long, BoardTopic> topicCache=new LruCache<>(1000);
+
 	public BoardController(ApplicationContext context){
 		this.context=context;
 	}
@@ -60,10 +66,14 @@ public class BoardController{
 	}
 
 	public BoardTopic getTopicIgnoringPrivacy(long id){
+		BoardTopic topic=topicCache.get(id);
+		if(topic!=null)
+			return topic;
 		try{
-			BoardTopic topic=BoardStorage.getTopic(id);
+			topic=BoardStorage.getTopic(id);
 			if(topic==null)
 				throw new ObjectNotFoundException();
+			topicCache.put(id, topic);
 			return topic;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -82,8 +92,28 @@ public class BoardController{
 	public Map<Long, BoardTopic> getTopicsIgnoringPrivacy(Collection<Long> ids){
 		if(ids.isEmpty())
 			return Map.of();
+		if(ids.size()==1){
+			long id=ids.iterator().next();
+			return Map.of(id, getTopicIgnoringPrivacy(id));
+		}
+		HashMap<Long, BoardTopic> topics=new HashMap<>();
+		Set<Long> remainingIDs=new HashSet<>(ids);
+		for(long id:ids){
+			BoardTopic topic=topicCache.get(id);
+			if(topic!=null){
+				topics.put(id, topic);
+				remainingIDs.remove(id);
+			}
+		}
+		if(remainingIDs.isEmpty())
+			return topics;
 		try{
-			return BoardStorage.getTopics(ids);
+			Map<Long, BoardTopic> moreTopics=BoardStorage.getTopics(remainingIDs);
+			topics.putAll(moreTopics);
+			for(BoardTopic topic:moreTopics.values()){
+				topicCache.put(topic.id, topic);
+			}
+			return topics;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -192,6 +222,7 @@ public class BoardController{
 			if(!comment.parentObjectID.equals(topic.getCommentParentID()))
 				throw new FederationException("Comment doesn't belong to this topic");
 			BoardStorage.setTopicFirstCommentID(topic.id, comment.id);
+			topicCache.put(topic.id, topic);
 			return topic.id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -215,6 +246,7 @@ public class BoardController{
 	}
 
 	public void deleteTopic(BoardTopic topic){
+		topicCache.remove(topic.id);
 		try{
 			BoardStorage.deleteTopic(topic.id);
 			context.getCommentsController().deleteCommentsForObject(topic);
@@ -256,6 +288,7 @@ public class BoardController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+		topicCache.put(topic.id, topic);
 	}
 
 	public void setTopicClosed(User self, BoardTopic topic, boolean closed){
@@ -273,6 +306,7 @@ public class BoardController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+		topicCache.put(topic.id, topic);
 	}
 
 	public void setTopicPinned(User self, BoardTopic topic, boolean pinned){
@@ -291,6 +325,7 @@ public class BoardController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+		topicCache.put(topic.id, topic);
 	}
 
 	void setTopicPinned(BoardTopic topic, Instant pinnedAt){
@@ -299,6 +334,7 @@ public class BoardController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+		topicCache.put(topic.id, topic);
 	}
 
 	public void setTopicActivityPubID(BoardTopic topic, URI apID, URI apURL){
@@ -307,5 +343,6 @@ public class BoardController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+		topicCache.remove(topic.id);
 	}
 }
