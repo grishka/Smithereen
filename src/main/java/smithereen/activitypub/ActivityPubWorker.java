@@ -63,6 +63,7 @@ import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.TopicCreationRequest;
+import smithereen.activitypub.objects.activities.TopicRenameRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.activitypub.tasks.FetchActorContentCollectionsTask;
@@ -1111,6 +1112,22 @@ public class ActivityPubWorker{
 		req.to=List.of(new LinkOrObject(group.activityPubID));
 		req.activityPubID=new UriBuilder(topic.getActivityPubID()).fragment("createRequest").build();
 		sendActivitySynchronously(req, self, group.inbox);
+	}
+
+	public void sendRenameBoardTopicRequest(User self, ForeignGroup group, BoardTopic topic, String newName){
+		TopicRenameRequest req=new TopicRenameRequest()
+				.withActorAndObjectLinks(self, topic)
+				.withActorFragmentID("renameTopic"+topic.getIdString()+"_"+rand());
+		req.name=newName;
+		sendActivitySynchronously(req, self, group.inbox);
+	}
+
+	public void sendUpdateBoardTopic(Group group, BoardTopic topic){
+		Update update=new Update()
+				.withActorLinkAndObject(group, ActivityPubBoardTopic.fromNativeTopic(topic, context))
+				.withActorFragmentID("updateTopic"+topic.getIdString()+"_"+rand());
+
+		submitActivityForMembers(update, group);
 	}
 
 	// endregion

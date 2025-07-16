@@ -44,6 +44,7 @@ import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.TopicCreationRequest;
+import smithereen.activitypub.objects.activities.TopicRenameRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.model.ForeignGroup;
@@ -638,6 +639,7 @@ public abstract class ActivityPubObject{
 			case "Move" -> new Move();
 			case "QuoteRequest" -> new QuoteRequest();
 			case "TopicCreationRequest" -> new TopicCreationRequest();
+			case "TopicRenameRequest" -> new TopicRenameRequest();
 
 			default -> {
 				LOG.debug("Unknown object type {}", type);

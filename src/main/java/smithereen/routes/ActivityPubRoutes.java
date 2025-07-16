@@ -79,6 +79,7 @@ import smithereen.activitypub.handlers.RemoveGroupHandler;
 import smithereen.activitypub.handlers.RemoveNoteHandler;
 import smithereen.activitypub.handlers.GroupRemovePhotoHandler;
 import smithereen.activitypub.handlers.TopicCreationRequestHandler;
+import smithereen.activitypub.handlers.TopicRenameRequestHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
@@ -126,6 +127,7 @@ import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
 import smithereen.activitypub.objects.activities.TopicCreationRequest;
+import smithereen.activitypub.objects.activities.TopicRenameRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.controllers.ObjectLinkResolver;
@@ -259,6 +261,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Create.class, ActivityPubBoardTopic.class, new GroupCreateBoardTopicHandler());
 		registerActivityHandler(ForeignUser.class, TopicCreationRequest.class, NoteOrQuestion.class, new TopicCreationRequestHandler());
 		registerActivityHandler(ForeignGroup.class, Accept.class, TopicCreationRequest.class, new GroupAcceptTopicCreationRequestHandler());
+		registerActivityHandler(ForeignUser.class, TopicRenameRequest.class, ActivityPubBoardTopic.class, new TopicRenameRequestHandler());
 
 		// More general handlers at the end so they match last
 		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());

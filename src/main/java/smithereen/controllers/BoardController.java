@@ -223,8 +223,22 @@ public class BoardController{
 		}else if(context.getPrivacyController().isUserBlocked(self, group)){
 			throw new UserActionNotAllowedException();
 		}
+		title=title.trim();
+		String oldTitle=topic.title;
 		renameTopic(topic, title);
-		// TODO federate
+		topic.title=title;
+		if(group instanceof ForeignGroup fg){
+			try{
+				context.getActivityPubWorker().sendRenameBoardTopicRequest(self, fg, topic, title);
+			}catch(FederationException x){
+				LOG.debug("Failed to rename topic {}, reverting", topic.id, x);
+				renameTopic(topic, oldTitle);
+				topic.title=oldTitle;
+				throw new UserErrorException(x.getMessage(), x);
+			}
+		}else{
+			context.getActivityPubWorker().sendUpdateBoardTopic(group, topic);
+		}
 	}
 
 	void renameTopic(BoardTopic topic, String title){
@@ -239,7 +253,9 @@ public class BoardController{
 		Group group=context.getGroupsController().getGroupOrThrow(topic.groupID);
 		context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
 		setTopicClosed(topic, closed);
-		// TODO federate
+		topic.isClosed=closed;
+		if(!(group instanceof ForeignGroup))
+			context.getActivityPubWorker().sendUpdateBoardTopic(group, topic);
 	}
 
 	void setTopicClosed(BoardTopic topic, boolean closed){
@@ -254,7 +270,10 @@ public class BoardController{
 		Group group=context.getGroupsController().getGroupOrThrow(topic.groupID);
 		context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
 		setTopicPinned(topic, pinned);
-		// TODO federate
+		topic.isPinned=pinned;
+		topic.pinnedAt=pinned ? Instant.now() : null;
+		if(!(group instanceof ForeignGroup))
+			context.getActivityPubWorker().sendUpdateBoardTopic(group, topic);
 	}
 
 	void setTopicPinned(BoardTopic topic, boolean pinned){
