@@ -205,6 +205,16 @@ public class BoardController{
 		}else if(context.getPrivacyController().isUserBlocked(self, group)){
 			throw new UserActionNotAllowedException();
 		}
+		if(group instanceof ForeignGroup){
+			Comment firstComment=context.getCommentsController().getCommentIgnoringPrivacy(topic.firstCommentID);
+			context.getActivityPubWorker().sendDeleteComment(self, firstComment, topic);
+		}else{
+			context.getActivityPubWorker().sendDeleteBoardTopic(group, topic);
+		}
+		deleteTopic(topic);
+	}
+
+	public void deleteTopic(BoardTopic topic){
 		try{
 			BoardStorage.deleteTopic(topic.id);
 			context.getCommentsController().deleteCommentsForObject(topic);
@@ -213,7 +223,6 @@ public class BoardController{
 		}
 		context.getNewsfeedController().deleteFriendsFeedEntriesForObject(topic.id, NewsfeedEntry.Type.BOARD_TOPIC);
 		context.getNewsfeedController().deleteGroupsFeedEntriesForObject(topic.id, NewsfeedEntry.Type.BOARD_TOPIC);
-		// TODO federate
 	}
 
 	public void renameTopic(User self, BoardTopic topic, String title){

@@ -55,6 +55,7 @@ import smithereen.activitypub.handlers.GroupAcceptTopicCreationRequestHandler;
 import smithereen.activitypub.handlers.GroupAddPersonHandler;
 import smithereen.activitypub.handlers.GroupBlockPersonHandler;
 import smithereen.activitypub.handlers.GroupCreateBoardTopicHandler;
+import smithereen.activitypub.handlers.GroupDeleteBoardTopicHandler;
 import smithereen.activitypub.handlers.GroupRemovePersonHandler;
 import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.InviteGroupHandler;
@@ -264,6 +265,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, TopicCreationRequest.class, NoteOrQuestion.class, new TopicCreationRequestHandler());
 		registerActivityHandler(ForeignGroup.class, Accept.class, TopicCreationRequest.class, new GroupAcceptTopicCreationRequestHandler());
 		registerActivityHandler(ForeignUser.class, TopicRenameRequest.class, ActivityPubBoardTopic.class, new TopicRenameRequestHandler());
+		registerActivityHandler(ForeignGroup.class, Delete.class, ActivityPubBoardTopic.class, new GroupDeleteBoardTopicHandler());
 
 		// More general handlers at the end so they match last
 		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());

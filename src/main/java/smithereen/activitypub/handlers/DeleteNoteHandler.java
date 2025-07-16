@@ -20,6 +20,7 @@ import smithereen.model.OwnerAndAuthor;
 import smithereen.model.Post;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.notifications.Notification;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -86,7 +87,13 @@ public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, 
 	}
 
 	private void handleForComment(Comment comment, ForeignUser actor, ActivityHandlerContext context){
+		boolean needForward=true;
+		if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC)
+			needForward=context.appContext.getBoardController().getTopicIgnoringPrivacy(comment.parentObjectID.id()).firstCommentID!=comment.id;
+
 		context.appContext.getCommentsController().deleteComment(actor, comment);
-		ActivityForwardingUtils.forwardCommentInteraction(context, comment);
+
+		if(needForward)
+			ActivityForwardingUtils.forwardCommentInteraction(context, comment);
 	}
 }

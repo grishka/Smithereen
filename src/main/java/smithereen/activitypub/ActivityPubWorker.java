@@ -1130,6 +1130,14 @@ public class ActivityPubWorker{
 		submitActivityForMembers(update, group);
 	}
 
+	public void sendDeleteBoardTopic(Group group, BoardTopic topic){
+		Delete delete=new Delete()
+				.withActorAndObjectLinks(group, ActivityPubBoardTopic.fromNativeTopic(topic, context))
+				.withActorFragmentID("deleteTopic"+topic.getIdString());
+
+		submitActivityForMembers(delete, group);
+	}
+
 	// endregion
 
 	public synchronized Future<List<Post>> fetchWallReplyThread(NoteOrQuestion post){

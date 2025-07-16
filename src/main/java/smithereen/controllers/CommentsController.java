@@ -276,7 +276,12 @@ public class CommentsController{
 		}
 		CommentableContentObject parent=self instanceof User user ? getCommentParent(user, comment) : getCommentParentIgnoringPrivacy(comment);
 		if(parent instanceof BoardTopic topic && topic.firstCommentID==comment.id)
-			throw new UserActionNotAllowedException("Can't delete first comment in a board topic");
+			if(self instanceof ForeignUser){
+				context.getBoardController().deleteTopic(topic);
+				return;
+			}else{
+				throw new UserActionNotAllowedException("Can't delete first comment in a board topic");
+			}
 		try{
 			CommentStorage.deleteComment(comment);
 			if(comment.isLocal() && comment.attachments!=null){
