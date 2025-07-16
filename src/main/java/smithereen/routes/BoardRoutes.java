@@ -116,6 +116,8 @@ public class BoardRoutes{
 				.headerBack(group)
 				.pageTitle(topic.title+" | "+group.name);
 
+		jsLangKey(req, "delete_reply", "delete_reply_confirm");
+
 		String msg=req.session().attribute("boardTopicMessage"+topic.id);
 		if(msg!=null){
 			req.session().removeAttribute("boardTopicMessage"+topic.id);
