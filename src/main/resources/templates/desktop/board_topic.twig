@@ -5,6 +5,7 @@
 <div class="gray boardTopicHeader">
 	<div class="title"><a href="{{ topic.url }}">{{ topic.title }}</a></div>
 	<a href="{{ profileURL(topic.authorID) }}">{{ users[topic.authorID] | name('complete') }}</a>
+	{% if topic.apURL is not empty %}| <a href="{{ topic.activityPubURL }}" target="_blank">{{ L('open_on_server_X', {'domain': topic.apURL.host}) }}</a>{% endif %}
 </div>
 <div class="summaryWrap largerPadding">
   <div class="summary">{{ L('board_topic_summary', {'count': totalItems}) }}</div>

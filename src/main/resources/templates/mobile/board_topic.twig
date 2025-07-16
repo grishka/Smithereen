@@ -2,6 +2,9 @@
 {% extends "page" %}
 {% block headerActionButtons %}
 	{% set options=[] %}
+	{% if topic.apURL is not empty %}
+		{% set _=options.add({'label': L('open_on_server_X', {'domain': topic.apURL.host}).toString(), 'type': 'link', 'href': topic.activityPubURL, 'target': '_blank'}) %}
+	{% endif %}
 	{% if canEditTopic %}
 		{% set _=options.add({'label': L('board_edit_topic_title').toString(), 'type': 'link', 'ajax': 'box', 'href': "#{topic.url}/renameForm"}) %}
 		{% if userPermissions.canManageGroup(group) %}
