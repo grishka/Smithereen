@@ -105,6 +105,7 @@ import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoTag;
+import smithereen.storage.BoardStorage;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
@@ -1103,6 +1104,18 @@ public class ActivityPubWorker{
 	// endregion
 	// region Board topics
 
+	private void sendActivityForBoardTopic(Activity activity, BoardTopic topic, Group owner){
+		try{
+			Set<URI> inboxes=new HashSet<>(GroupStorage.getGroupMemberInboxes(owner.id));
+			if(owner.accessType==Group.AccessType.OPEN){
+				inboxes.addAll(CommentStorage.getInboxesForCommentInteractionForwarding(topic.getCommentParentID(), Set.of()));
+			}
+			submitActivity(activity, owner, inboxes);
+		}catch(SQLException x){
+			LOG.error("Error getting member inboxes or topic participants for sending {} on behalf of group {}", activity.getType(), owner.id, x);
+		}
+	}
+
 	public void sendCreateBoardTopic(Group group, BoardTopic topic, Comment firstComment){
 		ActivityPubBoardTopic apTopic=ActivityPubBoardTopic.fromNativeTopic(topic, context);
 		CollectionPage firstPage=new CollectionPage(false);
@@ -1157,7 +1170,7 @@ public class ActivityPubWorker{
 				.withActorLinkAndObject(group, ActivityPubBoardTopic.fromNativeTopic(topic, context))
 				.withActorFragmentID("updateTopic"+topic.getIdString()+"_"+rand());
 
-		submitActivityForMembers(update, group);
+		sendActivityForBoardTopic(update, topic, group);
 	}
 
 	public void sendDeleteBoardTopic(Group group, BoardTopic topic){
@@ -1165,7 +1178,7 @@ public class ActivityPubWorker{
 				.withActorAndObjectLinks(group, ActivityPubBoardTopic.fromNativeTopic(topic, context))
 				.withActorFragmentID("deleteTopic"+topic.getIdString());
 
-		submitActivityForMembers(delete, group);
+		sendActivityForBoardTopic(delete, topic, group);
 	}
 
 	// endregion
