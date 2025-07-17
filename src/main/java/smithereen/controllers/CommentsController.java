@@ -468,6 +468,33 @@ public class CommentsController{
 		}
 	}
 
+	public Set<URI> getObjectCommentIDs(CommentableContentObject obj, Collection<URI> filter){
+		if(filter.isEmpty())
+			return Set.of();
+		try{
+			Set<URI> foreignIDs=filter.stream().filter(id->!Config.isLocal(id)).collect(Collectors.toSet());
+			Set<Long> localIDs=filter.stream()
+					.filter(Config::isLocal)
+					.map(ObjectLinkResolver::getObjectIdFromLocalURL)
+					.filter(id->id!=null && id.type()==ObjectLinkResolver.ObjectType.COMMENT)
+					.map(ObjectLinkResolver.ObjectTypeAndID::id)
+					.collect(Collectors.toSet());
+			HashSet<URI> res=new HashSet<>();
+			if(!foreignIDs.isEmpty()){
+				res.addAll(CommentStorage.getObjectForeignComments(obj.getCommentParentID(), foreignIDs));
+			}
+			if(!localIDs.isEmpty()){
+				CommentStorage.getObjectLocalComments(obj.getCommentParentID(), localIDs)
+						.stream()
+						.map(id->Config.localURI("/comments/"+XTEA.encodeObjectID(id, ObfuscatedObjectIDType.COMMENT)))
+						.forEach(res::add);
+			}
+			return res;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public PaginatedList<Comment> getCommentReplies(CommentableContentObject parent, Comment comment, int offset, int count){
 		try{
 			return CommentStorage.getCommentReplies(parent.getCommentParentID(), comment!=null ? comment.getReplyKeyForReplies() : null, offset, count);

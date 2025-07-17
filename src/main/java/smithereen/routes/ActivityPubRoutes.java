@@ -1255,6 +1255,11 @@ public class ActivityPubRoutes{
 					if(album.ownerID!=owner.getOwnerID())
 						throw new BadRequestException("This photo album is not owned by this actor");
 					filteredItems=ctx.getPhotosController().getAlbumPhotosActivityPubIDs(album, items);
+				}else if(type==ObjectLinkResolver.ObjectType.BOARD_TOPIC){
+					BoardTopic topic=ctx.getBoardController().getTopicIgnoringPrivacy(id);
+					if(!(owner instanceof Group group) || group.id!=topic.groupID)
+						throw new ObjectNotFoundException();
+					filteredItems=ctx.getCommentsController().getObjectCommentIDs(topic, items);
 				}else{
 					throw new BadRequestException("Unknown collection ID");
 				}
