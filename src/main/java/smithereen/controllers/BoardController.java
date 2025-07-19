@@ -165,11 +165,13 @@ public class BoardController{
 					context.getCommentsController().deleteCommentsForObject(topic);
 					throw new UserErrorException(x.getMessage(), x);
 				}
+				topicCache.remove(id);
 				topic=getTopicIgnoringPrivacy(id); // To make sure all fields are set after Accept{TopicCreationRequest}
 			}else{
 				context.getActivityPubWorker().sendCreateBoardTopic(group, topic, comment);
 			}
 
+			topicCache.put(id, topic);
 			return topic;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -191,6 +193,9 @@ public class BoardController{
 			BoardStorage.setTopicFirstCommentID(id, nativeComment.id);
 			topic.firstCommentID=nativeComment.id;
 			topic.numComments=1;
+
+			context.getNewsfeedController().putFriendsFeedEntry(self, id, NewsfeedEntry.Type.BOARD_TOPIC);
+			context.getNewsfeedController().putGroupsFeedEntry(group, id, NewsfeedEntry.Type.BOARD_TOPIC);
 
 			return topic;
 		}catch(SQLException x){
@@ -236,9 +241,16 @@ public class BoardController{
 		}else if(context.getPrivacyController().isUserBlocked(self, group)){
 			throw new UserActionNotAllowedException();
 		}
+		deleteTopicWithFederation(group, topic);
+	}
+
+	void deleteTopicWithFederation(Group group, BoardTopic topic){
 		if(group instanceof ForeignGroup){
 			Comment firstComment=context.getCommentsController().getCommentIgnoringPrivacy(topic.firstCommentID);
-			context.getActivityPubWorker().sendDeleteComment(self, firstComment, topic);
+			User author=context.getUsersController().getUserOrThrow(firstComment.authorID);
+			if(!(author instanceof ForeignUser)){
+				context.getActivityPubWorker().sendDeleteComment(author, firstComment, topic);
+			}
 		}else{
 			context.getActivityPubWorker().sendDeleteBoardTopic(group, topic);
 		}

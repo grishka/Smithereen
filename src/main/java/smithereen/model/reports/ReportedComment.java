@@ -7,6 +7,8 @@ import smithereen.model.comments.Comment;
 
 public final class ReportedComment extends Comment{
 	public int reportID;
+	public String topicTitle;
+	public boolean isFirstInTopic;
 
 	@Override
 	public String getPhotoListID(){
@@ -16,6 +18,10 @@ public final class ReportedComment extends Comment{
 	@Override
 	public void fillFromReport(int reportID, JsonObject jo){
 		this.reportID=reportID;
+		if(jo.has("topicTitle")){
+			topicTitle=jo.get("topicTitle").getAsString();
+			isFirstInTopic=jo.has("isFirst") && jo.get("isFirst").getAsBoolean();
+		}
 		super.fillFromReport(reportID, jo);
 	}
 }

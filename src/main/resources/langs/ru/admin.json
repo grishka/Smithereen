@@ -286,5 +286,6 @@
   "admin_users_ban_status_suspended": "Заблокированные",
   "admin_users_ban_status_hidden": "Скрытые",
   "admin_users_ban_status_self_deactivated": "Удалившие свою страницу",
-  "admin_users_ban_status_remote_suspended": "Заблокированные на своём сервере"
+  "admin_users_ban_status_remote_suspended": "Заблокированные на своём сервере",
+  "admin_report_content_topic": "Обсуждение \"{title}\""
 }

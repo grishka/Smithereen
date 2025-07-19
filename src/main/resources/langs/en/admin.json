@@ -286,5 +286,6 @@
   "admin_users_ban_status_suspended": "Suspended",
   "admin_users_ban_status_hidden": "Hidden",
   "admin_users_ban_status_self_deactivated": "Self-deactivated",
-  "admin_users_ban_status_remote_suspended": "Suspended on remote server"
+  "admin_users_ban_status_remote_suspended": "Suspended on remote server",
+  "admin_report_content_topic": "Topic \"{title}\""
 }

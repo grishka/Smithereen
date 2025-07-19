@@ -59,7 +59,9 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.Server;
@@ -74,6 +76,7 @@ import smithereen.model.ViolationReport;
 import smithereen.model.ViolationReportAction;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.reports.ReportedComment;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
 import smithereen.storage.FederationStorage;
@@ -124,10 +127,17 @@ public class ModerationController{
 			JsonArray contentJson;
 			if(content!=null && !content.isEmpty()){
 				JsonArrayBuilder ab=new JsonArrayBuilder();
-				for(ReportableContentObject obj: content){
+				for(ReportableContentObject obj:content){
 					JsonObject jo=obj.serializeForReport(targetID, contentFileIDs);
-					if(jo!=null)
+					if(jo!=null){
+						if(obj instanceof Comment c && c.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
+							BoardTopic topic=context.getBoardController().getTopicIgnoringPrivacy(c.parentObjectID.id());
+							jo.addProperty("topicTitle", topic.title);
+							if(topic.firstCommentID==c.id)
+								jo.addProperty("isFirst", true);
+						}
 						ab.add(jo);
+					}
 				}
 				contentJson=ab.build();
 			}else{
@@ -632,7 +642,19 @@ public class ModerationController{
 							context.getPhotosController().deletePhoto(context.getGroupsController().getGroupOrThrow(-photo.ownerID), photo);
 						}
 					}
-					case Comment comment -> context.getCommentsController().deleteComment(context.getWallController().getContentAuthorAndOwner(comment).owner(), comment);
+					case Comment comment -> {
+						if(comment instanceof ReportedComment rc && rc.isFirstInTopic){
+							try{
+								BoardTopic topic=context.getBoardController().getTopicIgnoringPrivacy(comment.parentObjectID.id());
+								context.getBoardController().deleteTopicWithFederation(context.getGroupsController().getGroupOrThrow(topic.groupID), topic);
+							}catch(ObjectNotFoundException x){
+								LOG.debug("Board topic {} already deleted", rc.parentObjectID.id());
+								continue;
+							}
+						}else{
+							context.getCommentsController().deleteComment(context.getWallController().getContentAuthorAndOwner(comment).owner(), comment);
+						}
+					}
 				}
 				actuallyDeletedAnything=true;
 			}

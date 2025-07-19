@@ -76,6 +76,8 @@
 			{%- endif %}
 			{%- if cont.type=='photo' %}
 			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" onclick="return openPhotoViewer(this)" data-pv="{{ json(cont.pvData) }}" data-pv-url="/photos/ajaxViewerInfoForReport">{{ L(langKey, {'id': cont.id}) }}</a>
+			{%- elseif cont.type=='actualComment' and cont.firstInTopic %}
+			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" data-ajax-box>{{ L('admin_report_content_topic', {'title': cont.topicTitle}) }}</a>
 			{%- else %}
 			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" data-ajax-box>{{ L(langKey, {'id': cont.id}) }}</a>
 			{% endif %}

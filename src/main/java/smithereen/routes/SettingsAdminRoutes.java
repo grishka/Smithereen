@@ -58,6 +58,7 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.model.comments.Comment;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportedComment;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.AuditLogEntryViewModel;
 import smithereen.model.viewmodel.UserContentMetrics;
@@ -581,7 +582,15 @@ public class SettingsAdminRoutes{
 				}
 				case Comment comment -> {
 					needComments.add(comment.id);
-					contentForTemplate.add(Map.of("type", "actualComment", "id", comment.id, "url", "/settings/admin/reports/"+id+"/content/"+i));
+					Map<String, Object> content=new HashMap<>();
+					content.put("type", "actualComment");
+					content.put("id", comment.id);
+					content.put("url", "/settings/admin/reports/"+id+"/content/"+i);
+					if(comment instanceof ReportedComment rc){
+						content.put("firstInTopic", rc.isFirstInTopic);
+						content.put("topicTitle", rc.topicTitle);
+					}
+					contentForTemplate.add(content);
 				}
 			}
 			i++;
