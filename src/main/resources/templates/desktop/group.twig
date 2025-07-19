@@ -40,7 +40,7 @@
 			{% endfor %}
 		</div>
 		{% if canAccessContent %}
-		{% if group.boardState!='DISABLED' %}
+		{% if group.boardState!='DISABLED' and (canCreateTopics or boardTopics.list is not empty) %}
 		{% include "profile_module_board" with {'group': group, 'topics': boardTopics.list, 'headerTitle': L('group_board'), 'headerHref': "/groups/#{group.id}/board", 'subheaderTitle': L('board_X_topics', {'count': boardTopics.total}), 'subheaderLink': canCreateTopics ? L('board_create_topic') : null, 'subheaderLinkHref': "/groups/#{group.id}/createTopic"} %}
 		{% endif %}
 		{% if group.wallState!='DISABLED' %}

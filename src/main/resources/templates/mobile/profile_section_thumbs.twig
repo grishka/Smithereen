@@ -1,5 +1,5 @@
 {# @pebvariable name="actor" type="smithereen.activitypub.objects.Actor" #}
-{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or actor.followingCount>0 or groups is not empty or (actor.ownerID<0 and actor.boardState!='DISABLED') %}
+{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or actor.followingCount>0 or groups is not empty or (actor.ownerID<0 and actor.boardState!='DISABLED' and (canCreateTopics or boardTopics.list is not empty)) %}
 <div class="card profileSectionThumbs">
 {% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) and (actor.ownerID>0 or actor.photosState!='DISABLED') %}
 	<a href="{{ actor.typeAndIdForURL }}/albums">
@@ -42,7 +42,7 @@
 		</div>
 	</a>
 {% endif %}
-{% if actor.ownerID<0 and actor.boardState!='DISABLED' %}
+{% if actor.ownerID<0 and actor.boardState!='DISABLED' and (canCreateTopics or boardTopics.list is not empty) %}
 	<a href="{{ actor.typeAndIdForURL }}/board">
 		<div class="titleW">
 			<div class="title">{{ L('group_board') }}</div>
