@@ -272,9 +272,11 @@ public class ActivityPubWorker{
 					Collection<User> mentionedUsers=context.getUsersController().getUsers(comment.mentionedUserIDs).values();
 					inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
 					if(group.accessType==Group.AccessType.OPEN){
-						mentionedUsers.stream().map(this::actorInbox).forEach(inboxes::add);
+						mentionedUsers.stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).forEach(inboxes::add);
 					}else{
 						for(User mentionedUser:mentionedUsers){
+							if(!(mentionedUser instanceof ForeignUser))
+								continue;
 							URI inbox=actorInbox(mentionedUser);
 							if(inboxes.contains(inbox))
 								continue;

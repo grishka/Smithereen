@@ -22,9 +22,14 @@
 	<h1>{{ headerText }}</h1>
 	<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 560px">
 		<tr>
-			<td valign="top" width="100">{% include 'actor_avatar' with {'actor': users[parent.authorID], 'size': 'b'} %}</td>
+		{% if useOwnerID %}
+		{% set parentActor=(parent.ownerID<0 ? groups[-parent.ownerID] : users[parent.ownerID]) %}
+		{% else %}
+		{% set parentActor=users[parent.authorID] %}
+		{% endif %}
+			<td valign="top" width="100">{% include 'actor_avatar' with {'actor': parentActor, 'size': 'b'} %}</td>
 			<td valign="top" style="padding-left: 10px">
-				<div style="padding-bottom: 5px; font-size: 120%"><b><a href="{{ users[parent.authorID].absoluteProfileURL }}">{{ users[parent.authorID] | name }}</a></b></div>
+				<div style="padding-bottom: 5px; font-size: 120%"><b><a href="{{ parentActor.absoluteProfileURL }}">{{ parentActor | name }}</a></b></div>
 				{% block commentParent %}{% endblock %}
 				{% if comment1 is not null %}{{ renderComment(_context, comment1) }}{% endif %}
 				{% if comment2 is not null %}{{ renderComment(_context, comment2) }}{% endif %}

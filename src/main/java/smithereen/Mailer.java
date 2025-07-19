@@ -44,6 +44,7 @@ import smithereen.model.PostLikeObject;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.notifications.EmailNotificationType;
@@ -346,7 +347,7 @@ public class Mailer{
 			}
 			case COMMENT_REPLY -> {
 				PostLikeObject plo=(PostLikeObject) object;
-				HashSet<Integer> needUsers=new HashSet<>();
+				HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 				params.put("headerText", l.get("notification_title_reply"));
 				params.put("comment2", object);
 				needUsers.add(plo.authorID);
@@ -367,12 +368,18 @@ public class Mailer{
 						needUsers.add(replyTo.authorID);
 						yield switch(comment.parentObjectID.type()){
 							case PHOTO -> "photo_comment";
-							case BOARD_TOPIC -> "board_comment";
+							case BOARD_TOPIC -> {
+								BoardTopic topic=(BoardTopic)relatedObject;
+								needGroups.add(topic.groupID);
+								params.put("useOwnerID", true);
+								yield "board_comment";
+							}
 						};
 					}
 				};
 				subject=l.get("email_comment_reply_subject", Map.of("name", actor.getFullName(), "gender", actor.gender));
 				params.put("users", ctx.getUsersController().getUsers(needUsers));
+				params.put("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 				plaintext+=l.get("email_photo_comment_plaintext", Map.of(
 						"name", actor.getCompleteName(),
 						"gender", actor.gender,
@@ -381,7 +388,7 @@ public class Mailer{
 			}
 			case MENTION -> {
 				PostLikeObject plo=(PostLikeObject) object;
-				HashSet<Integer> needUsers=new HashSet<>();
+				HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 				params.put("headerText", l.get("notification_title_mention"));
 				needUsers.add(plo.authorID);
 				boolean isComment=plo instanceof Comment || plo.getReplyLevel()>0;
@@ -410,11 +417,17 @@ public class Mailer{
 						needUsers.add(parent.getAuthorID());
 						yield switch(comment.parentObjectID.type()){
 							case PHOTO -> "photo_comment";
-							case BOARD_TOPIC -> "board_comment";
+							case BOARD_TOPIC -> {
+								BoardTopic topic=(BoardTopic)relatedObject;
+								needGroups.add(topic.groupID);
+								params.put("useOwnerID", true);
+								yield "board_comment";
+							}
 						};
 					}
 				};
 				params.put("users", ctx.getUsersController().getUsers(needUsers));
+				params.put("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 			}
 			case GROUP_INVITE -> {
 				Group group=(Group) object;

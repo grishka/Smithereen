@@ -296,7 +296,7 @@ public class NotificationsController{
 						}else if(plo instanceof Comment comment){
 							yield switch(comment.parentObjectID.type()){
 								case PHOTO -> EmailNotificationType.PHOTO_COMMENT;
-								case BOARD_TOPIC -> null; // TODO
+								case BOARD_TOPIC -> EmailNotificationType.COMMENT_REPLY;
 							};
 						}else{
 							throw new IllegalStateException("Unreachable");
