@@ -5103,6 +5103,7 @@ label.largeAccented{
 	margin: 0 10px;
 	border-bottom: solid 1px $wallPostSeparator;
 	display: flex;
+	align-items: flex-start;
 	.mainW{
 		padding: 7px 15px 0;
 		flex-grow: 1;
