@@ -18,6 +18,8 @@ class PhotoAlbumUploader{
 	private uploading:boolean;
 	private uploadedFileCount=0;
 
+	private static pasteEventListener:(this:PhotoAlbumUploader, e:ClipboardEvent)=>void|undefined;
+
 	public constructor(uploadURL:string){
 		this.uploadURL=uploadURL;
 		this.uploadEl=ge("photoAlbumUpload");
@@ -39,6 +41,16 @@ class PhotoAlbumUploader{
 			this.dropText.innerText=lang("drop_files_here");
 			this.handleFiles(ev.dataTransfer.files);
 		}, false);
+
+		// It is important that this event listener is not added more than once, otherwise pasting a single image
+		// will result in multiple copies of it being uploaded.
+		document.body.removeEventListener("paste", PhotoAlbumUploader.pasteEventListener, false);
+		PhotoAlbumUploader.pasteEventListener=this.onInputPaste.bind(this);
+		document.body.addEventListener("paste", PhotoAlbumUploader.pasteEventListener, false);
+		ajaxNavCallbacks.push(()=>{
+			document.body.removeEventListener("paste", PhotoAlbumUploader.pasteEventListener, false);
+		});
+
 		this.uploadEl.addEventListener("dragenter", (ev)=>{
 			if(dragCount==0){
 				this.dropText.innerText=lang("release_files_to_upload");
@@ -75,6 +87,18 @@ class PhotoAlbumUploader{
 				this.uploadOuterEl.classList.add("isFloating");
 			}
 		}, {rootMargin: "-1px 0px 0px 0px", threshold: [1]}).observe(this.uploadOuterEl);
+	}
+
+	private onInputPaste(ev:ClipboardEvent):void{
+		if(LayerManager.getMediaInstance().getTopLayer()!=null){
+			// Don't upload to an album if the user is pasting an image to the comment form
+			// in a photo layer.
+			return;
+		}
+		if(ev.clipboardData.files.length){
+			ev.preventDefault();
+			this.handleFiles(ev.clipboardData.files);
+		}
 	}
 
 	private handleFiles(files:FileList){
@@ -317,4 +341,3 @@ function initMobileAlbumUploader(uploadURL:string){
 		}
 	});
 }
-
