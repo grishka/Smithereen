@@ -25,6 +25,7 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.controllers.FriendsController;
+import smithereen.controllers.PhotosController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -332,11 +333,24 @@ public class PhotosRoutes{
 
 	public static Object deletePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
 		Photo photo=getPhotoForRequest(req);
-		ctx.getPhotosController().deletePhoto(self.user, photo);
+		PhotosController.PhotoDeletionResult deletionResult=ctx.getPhotosController().deletePhoto(self.user, photo);
 		if(isAjax(req)){
 			String from=req.queryParams("from");
 			if("edit".equals(from)){
-				return new WebDeltaResponse(resp).remove("photoEditRow_"+photo.getIdString());
+				WebDeltaResponse response=new WebDeltaResponse(resp).remove("photoEditRow_"+photo.getIdString());
+				if(deletionResult.noPhotosRemainingInAlbum()){
+					response.remove("editPhotosBlock");
+				}
+				if(deletionResult.newAlbumCoverID()==0){
+					response.setContent("photoAlbumCover", "");
+				}else if(deletionResult.newAlbumCoverID()>0){
+					Photo cover=ctx.getPhotosController().getPhotoIgnoringPrivacy(deletionResult.newAlbumCoverID());
+					var type=SizedImage.Type.PHOTO_THUMB_MEDIUM;
+					SizedImage.Dimensions size=cover.image.getDimensionsForSize(type);
+					String html=cover.image.generateHTML(type, null, null, size.width, size.height, false, null);
+					response.setContent("photoAlbumCover", html);
+				}
+				return response;
 			}else if("viewer".equals(from)){
 				return new WebDeltaResponse(resp)
 						.runScript("LayerManager.getMediaInstance().getTopLayer().dismiss();")
