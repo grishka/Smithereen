@@ -155,6 +155,7 @@ import smithereen.model.Server;
 import smithereen.model.StatsType;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.board.BoardTopic;
+import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.groups.GroupFeatureState;
@@ -665,7 +666,7 @@ public class ActivityPubRoutes{
 		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
 		if(group.boardState==GroupFeatureState.DISABLED)
 			throw new UserActionNotAllowedException("Discussion board is disabled in this group");
-		PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, offset, count);
+		PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, offset, count, BoardTopicsSortOrder.CREATED_ASC);
 		return ActivityPubCollectionPageResponse.forObjects(new PaginatedList<>(topics, topics.list.stream().map(t->ActivityPubBoardTopic.fromNativeTopic(t, ctx)).toList()));
 	}
 

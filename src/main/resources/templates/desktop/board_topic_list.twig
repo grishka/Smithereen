@@ -2,8 +2,17 @@
 {% block content %}
 {% set postsPerPage=20 %}
 {% include "board_tabbar" with {'tab': 'all'} %}
+<div class="gray borderBottom searchWithTabs">
+	<div class="searchFieldWrap singleColumn">
+	</div>
+	<div class="secondaryTabBar">
+		<a href="/groups/{{ group.id }}/board?sort=updated_desc" class="{{ sortOrder=='UPDATED_DESC' or sortOrder=='UPDATED_ASC' ? 'selected' : '' }}">{{ L('board_sort_date_updated') }}</a>
+		<a href="/groups/{{ group.id }}/board?sort=created_desc" class="{{ sortOrder=='CREATED_DESC' or sortOrder=='CREATED_ASC' ? 'selected' : '' }}">{{ L('board_sort_date_created') }}</a>
+	</div>
+</div>
 <div class="summaryWrap">
 	<div class="summary">{{ L('board_topic_list_summary', {'count': totalItems}) }}</div>
+	<a href="/groups/{{ group.id }}/board?sort={{ sortOrder.reverse | lower }}" class="flR order{{ sortOrder=='UPDATED_ASC' or sortOrder=='CREATED_ASC' ? ' reverse' : '' }}" data-tooltip="{{ L('reverse_order') }}"></a>
 	{% include "pagination" %}
 </div>
 <div>

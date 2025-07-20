@@ -44,6 +44,7 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.board.BoardTopic;
+import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
@@ -282,7 +283,7 @@ public class GroupsRoutes{
 
 			// Board topics
 			if(group.boardState!=GroupFeatureState.DISABLED){
-				PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, 0, 3);
+				PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, 0, 3, BoardTopicsSortOrder.UPDATED_DESC);
 				for(BoardTopic t:topics.list){
 					needUsers.add(t.lastCommentAuthorID);
 				}

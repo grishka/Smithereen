@@ -12,13 +12,14 @@ import java.util.stream.Collectors;
 
 import smithereen.model.PaginatedList;
 import smithereen.model.board.BoardTopic;
+import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.Pair;
 
 public class BoardStorage{
-	public static PaginatedList<BoardTopic> getGroupTopics(int groupID, int offset, int count) throws SQLException{
+	public static PaginatedList<BoardTopic> getGroupTopics(int groupID, int offset, int count, BoardTopicsSortOrder order) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("board_topics")
@@ -27,7 +28,12 @@ public class BoardStorage{
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(count);
-			String orderBy="updated_at DESC"; // TODO
+			String orderBy=switch(order){
+				case CREATED_ASC -> "created_at ASC";
+				case CREATED_DESC -> "created_at DESC";
+				case UPDATED_ASC -> "updated_at ASC";
+				case UPDATED_DESC -> "updated_at DESC";
+			};
 			List<BoardTopic> topics=new SQLQueryBuilder(conn)
 					.selectFrom("board_topics")
 					.allColumns()

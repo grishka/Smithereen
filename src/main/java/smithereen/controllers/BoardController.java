@@ -33,6 +33,7 @@ import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.board.BoardTopic;
+import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.comments.Comment;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.groups.GroupFeatureState;
@@ -49,9 +50,9 @@ public class BoardController{
 		this.context=context;
 	}
 
-	public PaginatedList<BoardTopic> getTopicsIgnoringPrivacy(Group group, int offset, int count){
+	public PaginatedList<BoardTopic> getTopicsIgnoringPrivacy(Group group, int offset, int count, BoardTopicsSortOrder order){
 		try{
-			return BoardStorage.getGroupTopics(group.id, offset, count);
+			return BoardStorage.getGroupTopics(group.id, offset, count, order);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

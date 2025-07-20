@@ -20,6 +20,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.board.BoardTopic;
+import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.templates.RenderedTemplateResponse;
@@ -132,7 +133,10 @@ public class BoardRoutes{
 	public static Object groupTopics(Request req, Response resp){
 		Group group=getGroup(req);
 		ApplicationContext ctx=context(req);
-		PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, offset(req), 40);
+		BoardTopicsSortOrder order=enumValueOpt(req.queryParams("sort") instanceof String s ? s.toUpperCase() : null, BoardTopicsSortOrder.class);
+		if(order==null)
+			order=BoardTopicsSortOrder.UPDATED_DESC;
+		PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, offset(req), 40, order);
 		Account self=currentUserAccount(req);
 		Group.AdminLevel adminLevel=Group.AdminLevel.REGULAR;
 		if(self!=null)
@@ -143,6 +147,7 @@ public class BoardRoutes{
 				.mobileToolbarTitle(l.get("group_board"))
 				.headerBack(group)
 				.paginate(topics)
+				.with("sortOrder", order)
 				.with("group", group)
 				.with("users", ctx.getUsersController().getUsers(topics.list.stream().map(t->t.lastCommentAuthorID).collect(Collectors.toSet())))
 				.with("canCreateTopics", self!=null && (group.boardState==GroupFeatureState.ENABLED_OPEN || (group.boardState==GroupFeatureState.ENABLED_RESTRICTED && adminLevel.isAtLeast(Group.AdminLevel.MODERATOR))));

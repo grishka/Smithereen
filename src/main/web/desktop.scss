@@ -5158,3 +5158,29 @@ label.largeAccented{
 	}
 }
 
+.summaryWrap .order{
+	background: svg-load('img/photoorder.svg', fill: $lightIconColor);
+	display: block;
+	width: 15px;
+	height: 11px;
+	margin-top: 3px;
+	&.reverse{
+		background-position: 0 -14px;
+	}
+}
+
+.searchWithTabs{
+	display: flex;
+	.searchFieldWrap{
+		flex-grow: 1;
+	}
+	.secondaryTabBar{
+		flex: none;
+		border: none;
+		padding-left: 0;
+		>a:last-child{
+			margin-right: 0;
+		}
+	}
+}
+
