@@ -223,9 +223,7 @@ public class MailRoutes{
 			model.with("to", Set.of(to));
 			model.with("users", ctx.getUsersController().getUsers(Set.of(to)));
 		}
-		if(isMobile(req)){
-			jsLangKey(req, "attach_menu_photo");
-		}
+		Templates.addJsLangForNewPostForm(req);
 		return model;
 	}
 
