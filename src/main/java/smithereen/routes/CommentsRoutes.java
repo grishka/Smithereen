@@ -443,8 +443,13 @@ public class CommentsRoutes{
 		ApplicationContext ctx=context(req);
 		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
 		CommentableContentObject parent=context(req).getCommentsController().getCommentParent(self, comment);
-		// TODO do this more correctly to make sure the right page of a long comment thread is shown
-		resp.redirect(parent.getURL()+"#comment"+comment.getIDString());
+		if(parent instanceof BoardTopic){
+			int index=ctx.getCommentsController().getCommentIndexForFlatView(comment);
+			resp.redirect(parent.getURL()+"?offset="+(index-(index%20))+"#comment"+comment.getIDString());
+		}else{
+			// TODO do this more correctly to make sure the right page of a long comment thread is shown
+			resp.redirect(parent.getURL()+"#comment"+comment.getIDString());
+		}
 		return "";
 	}
 }

@@ -42,5 +42,16 @@
 {% if canComment %}
 	{% include "comment_form" with {'id': "comment_#{photo.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=topic&parentID="+topic.idString, 'showReplyBar': true} %}
 {% endif %}
+{% script %}
+(function(){
+	if(window.location.hash && window.location.hash.indexOf("comment")==1){
+		var el=document.getElementById(window.location.hash.replace("#", ""));
+		if(el){
+			el.classList.add("highlight");
+			el.scrollIntoView();
+		}
+	}
+})();
+{% endscript %}
 {% endblock %}
 

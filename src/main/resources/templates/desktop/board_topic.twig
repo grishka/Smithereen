@@ -35,5 +35,16 @@
 })();
 {% endscript %}
 {% endif %}
+{% script %}
+(function(){
+	if(window.location.hash && window.location.hash.indexOf("comment")==1){
+		var el=document.getElementById(window.location.hash.replace("#", ""));
+		if(el){
+			el.classList.add("highlight");
+			el.scrollIntoView();
+		}
+	}
+})();
+{% endscript %}
 {% endblock %}
 

@@ -539,4 +539,12 @@ public class CommentsController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public int getCommentIndexForFlatView(Comment comment){
+		try{
+			return CommentStorage.getCommentIndex(comment.parentObjectID, comment.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

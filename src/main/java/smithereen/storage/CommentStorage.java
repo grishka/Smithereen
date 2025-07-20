@@ -605,6 +605,16 @@ public class CommentStorage{
 				.collect(Collectors.toSet());
 	}
 
+	public static int getCommentIndex(CommentParentObjectID parentID, long id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.selectExpr("ROW_NUMBER() OVER(ORDER BY created_at ASC) AS rownum")
+				.where("parent_object_type=? AND parent_object_id=?", parentID.type(), parentID.id())
+				.orderBy("(id="+id+") DESC")
+				.limit(1, 0)
+				.executeAndGetInt();
+	}
+
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{
 		Set<Long> needFileIDs=posts.stream()
 				.filter(p->p.attachments!=null && !p.attachments.isEmpty())
