@@ -357,7 +357,7 @@ public class PhotosRoutes{
 						.remove("photo"+photo.getIdString());
 			}
 		}
-		return ajaxAwareRedirect(req, resp, back(req));
+		return ajaxAwareRedirect(req, resp, "/albums/"+XTEA.encodeObjectID(photo.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM));
 	}
 
 	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User self, User author, Instant createdAt, AttachmentHostContentObject parent, int index, EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions){
