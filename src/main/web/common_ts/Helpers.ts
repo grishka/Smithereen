@@ -1645,6 +1645,10 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 			setGlobalLoading(false);
 			LayerManager.getInstance().dismissEverything();
 			LayerManager.getMediaInstance().dismissEverything();
+			for(var cb of ajaxNavCallbacks){
+				cb();
+			}
+			ajaxNavCallbacks=[];
 			cur={};
 			if(addToHistory){
 				window.history.pushState({type: "al"}, "", xhr.response.url || url);
