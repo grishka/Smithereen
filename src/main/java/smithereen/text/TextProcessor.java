@@ -525,7 +525,7 @@ public class TextProcessor{
 	public static String transliterate(String in){
 		if(in==null)
 			return null;
-		return unidecode.decode(in.trim()).replaceAll(Pattern.quote("[?]"), "");
+		return unidecode.decode(in.trim().replace('ё', 'е')).replaceAll(Pattern.quote("[?]"), "");
 	}
 
 	public static String substituteLinks(String str, Map<String, Object> links){
