@@ -848,11 +848,13 @@ CREATE TABLE `reports` (
   `server_domain` varchar(100) DEFAULT NULL,
   `content` json DEFAULT NULL,
   `state` tinyint unsigned NOT NULL DEFAULT '0',
+  `has_file_refs` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   KEY `reporter_id` (`reporter_id`),
   KEY `moderator_id` (`moderator_id`),
   KEY `state` (`state`),
-  KEY `target_id` (`target_id`)
+  KEY `target_id` (`target_id`),
+  KEY `has_file_refs` (`has_file_refs`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -1095,4 +1097,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-07-01  1:56:31
+-- Dump completed on 2025-07-21  5:22:39

@@ -353,8 +353,10 @@ public class UsersController{
 			throw new IllegalArgumentException();
 		try{
 			Account acc=SessionStorage.getAccountByUserID(user.id);
-			if(acc==null)
+			if(acc==null){
+				LOG.error("Database inconsistency, local user {} does not have an account", user.id);
 				return;
+			}
 			context.getActivityPubWorker().sendUserDeleteSelf(user);
 			UserStorage.deleteAccount(acc);
 			SmithereenApplication.invalidateAllSessionsForAccount(acc.id);

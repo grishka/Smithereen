@@ -32,6 +32,7 @@ import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.controllers.MailController;
+import smithereen.controllers.ModerationController;
 import smithereen.controllers.UsersController;
 import smithereen.debug.DebugLog;
 import smithereen.exceptions.BadRequestException;
@@ -1099,11 +1100,12 @@ public class SmithereenApplication{
 			FloodControl.PASSWORD_RESET.gc();
 			TopLevelDomainList.updateIfNeeded();
 			PublicSuffixList.updateIfNeeded();
+			UsersController.doPendingAccountDeletions(context);
+			ModerationController.deleteResolvedViolationReportFiles();
 		});
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(MediaStorageUtils::deleteAbandonedFiles, 1, TimeUnit.HOURS);
-		MaintenanceScheduler.runPeriodically(()->UsersController.doPendingAccountDeletions(context), 1, TimeUnit.DAYS);
 		context.getUsersController().loadPresenceFromDatabase();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{

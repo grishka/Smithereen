@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=74;
+	public static final int SCHEMA_VERSION=75;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -992,6 +992,7 @@ public class DatabaseSchemaUpdater{
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
 			case 74 -> createApIdIndexTriggersForBoardTopics(conn);
+			case 75 -> conn.createStatement().execute("ALTER TABLE reports ADD has_file_refs tinyint(1) NOT NULL DEFAULT 1, ADD KEY has_file_refs (has_file_refs)");
 		}
 	}
 

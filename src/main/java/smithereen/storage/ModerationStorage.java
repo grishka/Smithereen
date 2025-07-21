@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -33,19 +34,21 @@ import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.IntPair;
+import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.InetAddressRange;
 import spark.utils.StringUtils;
 
 public class ModerationStorage{
-	public static int createViolationReport(int reporterID, int targetID, String comment, String otherServerDomain, String contentJson) throws SQLException{
+	public static int createViolationReport(int reporterID, int targetID, String comment, String otherServerDomain, String contentJson, boolean hasFileRefs) throws SQLException{
 		SQLQueryBuilder bldr=new SQLQueryBuilder()
 				.insertInto("reports")
 				.value("reporter_id", reporterID!=0 ? reporterID : null)
 				.value("target_id", targetID)
 				.value("comment", comment)
 				.value("server_domain", otherServerDomain)
-				.value("content", contentJson);
+				.value("content", contentJson)
+				.value("has_file_refs", hasFileRefs);
 		return bldr.executeAndGetID();
 	}
 
@@ -70,6 +73,34 @@ public class ModerationStorage{
 				.executeAsStream(ViolationReport::fromResultSet)
 				.toList();
 		return new PaginatedList<>(reports, total, offset, count);
+	}
+
+	public static List<ViolationReport> getResolvedViolationReportsWithFiles() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("reports")
+				.allColumns()
+				.where("state<>? AND has_file_refs=1", ViolationReport.State.OPEN)
+				.executeAsStream(ViolationReport::fromResultSet)
+				.toList();
+	}
+
+	public static void setViolationReportHasFileRefs(int id, boolean hasRefs) throws SQLException{
+		new SQLQueryBuilder()
+				.update("reports")
+				.where("id=?", id)
+				.value("has_file_refs", hasRefs)
+				.executeNoResult();
+	}
+
+	public static Map<Integer, Instant> getViolationReportLastActionTimes(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("report_actions")
+				.selectExpr("report_id, MAX(time) AS t")
+				.whereIn("report_id", ids)
+				.andWhere("action_type<>?", ViolationReportAction.ActionType.COMMENT)
+				.groupBy("report_id")
+				.executeAsStream(r->new Pair<>(r.getInt(1), DatabaseUtils.getInstant(r, "t")))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}
 
 	public static PaginatedList<ViolationReport> getViolationReportsOfActor(int actorID, int offset, int count) throws SQLException{

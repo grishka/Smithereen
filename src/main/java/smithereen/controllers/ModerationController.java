@@ -94,6 +94,7 @@ import spark.utils.StringUtils;
 
 public class ModerationController{
 	private static final Logger LOG=LoggerFactory.getLogger(ModerationController.class);
+	private static final int REPORT_FILE_RETENTION_DAYS=7;
 
 	private final ApplicationContext context;
 	private final LruCache<String, Server> serversByDomainCache=new LruCache<>(500);
@@ -144,7 +145,7 @@ public class ModerationController{
 				contentJson=null;
 			}
 
-			int id=ModerationStorage.createViolationReport(self!=null ? self.id : 0, targetID, comment, otherServerDomain, contentJson==null ? null : contentJson.toString());
+			int id=ModerationStorage.createViolationReport(self!=null ? self.id : 0, targetID, comment, otherServerDomain, contentJson==null ? null : contentJson.toString(), !contentFileIDs.isEmpty());
 			updateReportsCounter();
 			for(long fid: contentFileIDs){
 				// ownerID set to 0 because reports aren't owned by any particular actor
@@ -231,6 +232,25 @@ public class ModerationController{
 			return report;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public static void deleteResolvedViolationReportFiles(){
+		try{
+			List<ViolationReport> reports=ModerationStorage.getResolvedViolationReportsWithFiles();
+			if(reports.isEmpty())
+				return;
+			Map<Integer, Instant> lastActions=ModerationStorage.getViolationReportLastActionTimes(reports.stream().map(r->r.id).toList());
+			Instant deleteBefore=Instant.now().plus(REPORT_FILE_RETENTION_DAYS, ChronoUnit.DAYS);
+			for(ViolationReport report:reports){
+				Instant lastAction=lastActions.get(report.id);
+				if(lastAction!=null && lastAction.isAfter(deleteBefore))
+					continue;
+				MediaStorage.deleteMediaFileReferences(report.id, MediaFileReferenceType.REPORT_OBJECT);
+				ModerationStorage.setViolationReportHasFileRefs(report.id, false);
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to delete file refs for resolved reports", x);
 		}
 	}
 

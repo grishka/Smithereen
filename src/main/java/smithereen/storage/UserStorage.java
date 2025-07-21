@@ -1465,6 +1465,7 @@ public class UserStorage{
 				.selectFrom("users")
 				.columns("id")
 				.whereIn("ban_status", UserBanStatus.SELF_DEACTIVATED, UserBanStatus.SUSPENDED)
+				.andWhere("ap_id IS NULL")
 				.executeAndGetIntList());
 	}
 
