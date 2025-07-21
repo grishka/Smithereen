@@ -91,15 +91,18 @@ public class GroupsRoutes{
 	public static Object userGroups(Request req, Response resp, User user){
 		jsLangKey(req, "cancel", "create");
 		ApplicationContext ctx=context(req);
-		SessionInfo info=sessionInfo(req);
-		ctx.getPrivacyController().enforceUserProfileAccess(info!=null && info.account!=null ? info.account.user : null, user);
+		Account self=currentUserAccount(req);
+		ctx.getPrivacyController().enforceUserProfileAccess(self!=null ? self.user : null, user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "groups").with("title", lang(req).get("groups"));
 		String query=req.queryParams("q");
 		model.with("query", query);
+		if(self==null || user.id!=self.user.id){
+			model.headerBack(user);
+		}
 		if(StringUtils.isNotEmpty(query))
-			model.paginate(ctx.getSearchController().searchGroups(info!=null && info.account!=null ? info.account.user : null, query, false, user, offset(req), 100));
+			model.paginate(ctx.getSearchController().searchGroups(self!=null ? self.user : null, query, false, user, offset(req), 100));
 		else
-			model.paginate(ctx.getGroupsController().getUserGroups(user, info!=null && info.account!=null ? info.account.user : null, offset(req), 100));
+			model.paginate(ctx.getGroupsController().getUserGroups(user, self!=null ? self.user : null, offset(req), 100));
 		model.with("owner", user);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp)

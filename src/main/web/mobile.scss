@@ -56,17 +56,18 @@ span.wideOnly{
 			vertical-align: top;
 			margin-top: 8px;
 		}
-		label{
-			font-size: 0;
+		label, .back{
 			display: block;
 			width: 100%;
 			height: 100%;
-			background-image: svg-load('img/material/ic_menu.svg', fill: $iconColor);
 			background-position: center;
 			background-repeat: no-repeat;
-			span{
-				visibility: hidden;
-			}
+		}
+		label{
+			background-image: svg-load('img/material/ic_menu.svg', fill: $iconColor);
+		}
+		.back{
+			background-image: svg-load('img/material/ic_arrow_back.svg', fill: $iconColor);
 		}
 	}
 	.title{

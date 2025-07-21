@@ -187,6 +187,8 @@ public class FriendsRoutes{
 			));
 			model.addNavBarItem(group.name, group.getProfileURL()).addNavBarItem(lang(req).get("invite_friends_title"));
 			model.pageTitle(lang(req).get("invite_friends_title"));
+		}else if(self==null || user.id!=self.user.id){
+			model.headerBack(user);
 		}
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
@@ -254,6 +256,7 @@ public class FriendsRoutes{
 		model.pageTitle(lang(req).get("friends"));
 		model.with("tab", "mutual");
 		model.with("mutualCount", friends.total);
+		model.headerBack(user);
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
 		jsLangKey(req, "remove_friend", "yes", "no");
@@ -307,6 +310,9 @@ public class FriendsRoutes{
 			int mutualCount=ctx.getFriendsController().getMutualFriends(self.user, user, 0, 0, FriendsController.SortOrder.ID_ASCENDING).total;
 			model.with("mutualCount", mutualCount);
 		}
+		if(self==null || user.id!=self.user.id){
+			model.headerBack(user);
+		}
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
 		if(!isMobile(req)){
@@ -359,6 +365,9 @@ public class FriendsRoutes{
 		if(self!=null && user.id!=self.user.id){
 			int mutualCount=ctx.getFriendsController().getMutualFriendsCount(self.user, user);
 			model.with("mutualCount", mutualCount);
+		}
+		if(self==null || user.id!=self.user.id){
+			model.headerBack(user);
 		}
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);

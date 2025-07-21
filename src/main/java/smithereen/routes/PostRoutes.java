@@ -568,7 +568,8 @@ public class PostRoutes{
 			model.with("noindex", true);
 
 		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
-				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.headerBack(owner);
 		return model;
 	}
 
@@ -713,7 +714,8 @@ public class PostRoutes{
 				.with("isGroup", owner instanceof Group)
 				.with("ownOnly", ownOnly)
 				.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, u, UserPrivacySettingKey.WALL_OTHERS_POSTS))
-				.with("tab", ownOnly ? "own" : "all");
+				.with("tab", ownOnly ? "own" : "all")
+				.headerBack(owner);
 
 		preparePostList(ctx, wall.list, model, self);
 
@@ -766,7 +768,8 @@ public class PostRoutes{
 				.with("otherUser", otherUser)
 				.with("canSeeOthersPosts", ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, user, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", "wall2wall")
-				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
+				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())))
+				.headerBack(user);
 		preparePostList(ctx, wall.list, model, self);
 		return model;
 	}
