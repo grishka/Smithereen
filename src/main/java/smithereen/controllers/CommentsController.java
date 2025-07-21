@@ -27,6 +27,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.activitypub.objects.activities.Like;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -48,6 +49,7 @@ import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.storage.CommentStorage;
+import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.utils.Pair;
@@ -287,12 +289,12 @@ public class CommentsController{
 			if(comment.isLocal() && comment.attachments!=null){
 				MediaStorage.deleteMediaFileReferences(comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT);
 			}
+			LikeStorage.deleteAllLikesForObject(comment.id, Like.ObjectType.COMMENT);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 
 		context.getNotificationsController().deleteNotificationsForObject(comment);
-		// TODO delete likes
 
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(comment);
 		if(self.getOwnerID()==comment.authorID){ // User deleted their own comment, send as Delete
@@ -308,7 +310,7 @@ public class CommentsController{
 			CommentParentObjectID parentID=parent.getCommentParentID();
 			for(List<Long> commentIDs=CommentStorage.getCommentIDsForDeletion(parentID);!commentIDs.isEmpty();commentIDs=CommentStorage.getCommentIDsForDeletion(parentID)){
 				MediaStorage.deleteMediaFileReferences(commentIDs, MediaFileReferenceType.COMMENT_ATTACHMENT);
-				// TODO delete likes
+				LikeStorage.deleteAllLikesForObjects(commentIDs, Like.ObjectType.COMMENT);
 				CommentStorage.deleteComments(commentIDs);
 			}
 			CommentStorage.deleteCommentBookmarks(parentID);
