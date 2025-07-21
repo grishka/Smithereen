@@ -23,6 +23,9 @@ new PhotoAlbumUploader("{{ album.url }}/upload");
 	{{- L('summary_album_X_photos', {'count': totalItems}) }}
 	{%- endif %}
 	</div>
+	{% if items is not empty %}
+	<a href="{{ album.url }}{{ reverseOrder ? '' : '?rev' }}" class="flR order{{ reverseOrder ? ' reverse' : '' }}" data-tooltip="{{ L('reverse_order') }}"></a>
+	{% endif %}
 </div>
 {% if items is empty %}
 <div class="singleColumn"><div class="emptyState">{{ L('no_photos_in_album') }}</div></div>

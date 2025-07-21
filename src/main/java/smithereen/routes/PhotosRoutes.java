@@ -193,13 +193,15 @@ public class PhotosRoutes{
 			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
 		model.with("owner", owner).headerBack(owner).pageTitle(album.getLocalizedTitle(lang(req), self, owner));
 		int offset=offset(req);
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100, false);
-		model.paginate(photos);
+		boolean reverse=req.queryParams("rev")!=null;
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100, reverse);
+		model.paginate(photos)
+				.with("reverseOrder", reverse);
 
 		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
 		int i=0;
 		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString(), p.image.getURLsForPhotoViewer()));
+			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString()+(reverse ? "/rev" : ""), p.image.getURLsForPhotoViewer()));
 			i++;
 		}
 		model.with("photoViewerData", pvData);
@@ -630,7 +632,7 @@ public class PhotosRoutes{
 			case "albums" -> {
 				long albumID=XTEA.deobfuscateObjectID(decodeLong(listParts[1]), ObfuscatedObjectIDType.PHOTO_ALBUM);
 				PhotoAlbum album=ctx.getPhotosController().getAlbum(albumID, self);
-				PaginatedList<Photo> _photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 10, false);
+				PaginatedList<Photo> _photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 10, listParts.length>2 && listParts[2].equals("rev"));
 				total=_photos.total;
 				title=album.getLocalizedTitle(lang(req), self, ctx.getWallController().getContentAuthorAndOwner(album).owner());
 				yield makePhotoInfosForPhotoList(req, _photos.list, ctx, selfAccount, Map.of(album.id, album));
