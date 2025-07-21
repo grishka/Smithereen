@@ -49,6 +49,7 @@ public class MailRoutes{
 		}
 		model.with("tab", "inbox").pageTitle(lang(req).get("mail_inbox_title")).paginate(list).with("users", ctx.getUsersController().getUsers(needUsers));
 		model.with("toolbarTitle", lang(req).get("messages_title"));
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(needUsers));
 		return model;
 	}
 
@@ -58,6 +59,7 @@ public class MailRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("mail_message_list", req);
 		model.with("tab", "outbox").pageTitle(lang(req).get("mail_outbox_title")).paginate(list).with("users", ctx.getUsersController().getUsers(needUsers));
 		model.with("toolbarTitle", lang(req).get("messages_title"));
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(needUsers));
 		return model;
 	}
 
@@ -122,6 +124,7 @@ public class MailRoutes{
 				.collect(Collectors.toSet())
 				.isEmpty();
 		model.with("canReply", canReply);
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(List.of(msg.senderID)));
 		return model;
 	}
 

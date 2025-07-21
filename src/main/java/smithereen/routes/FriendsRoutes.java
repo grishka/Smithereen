@@ -201,6 +201,9 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
+
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(friends.list.stream().map(u->u.id).toList()));
+
 		if(isAjax(req)){
 			String baseURL=getRequestPathAndQuery(req);
 			String paginationID=req.queryParams("pagination");
@@ -268,6 +271,9 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
+
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(friends.list.stream().map(u->u.id).toList()));
+
 		if(isAjax(req)){
 			String baseURL=getRequestPathAndQuery(req);
 			String paginationID=req.queryParams("pagination");
@@ -323,6 +329,9 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
+
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(followers.list.stream().map(u->u.id).toList()));
+
 		if(isAjax(req)){
 			String baseURL=getRequestPathAndQuery(req);
 			String paginationID=req.queryParams("pagination");
@@ -380,6 +389,9 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
+
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(follows.list.stream().map(u->u.id).toList()));
+
 		if(isAjax(req)){
 			String baseURL=getRequestPathAndQuery(req);
 			String paginationID=req.queryParams("pagination");
@@ -402,6 +414,7 @@ public class FriendsRoutes{
 		PaginatedList<FriendRequest> requests=ctx.getFriendsController().getIncomingFriendRequests(self.user, offset(req), 20);
 		model.paginate(requests);
 		model.with("title", lang(req).get("friend_requests")).with("toolbarTitle", lang(req).get("friends")).with("owner", self.user);
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(requests.list.stream().map(r->r.from.id).toList()));
 		if(!isMobile(req)){
 			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(requests.list.stream().map(r->r.from).toList());
 			model.with("avatarPhotos", userPhotos)

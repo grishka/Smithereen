@@ -20,6 +20,7 @@
 					<div class="grayText">{{ L('server') }}:</div>
 					<div><a href="{{ friend.url }}" target="_blank">{{ friend.domain }}</a></div>
 				{% endif %}
+				{% if onlines contains friend.id and onlines[friend.id].isOnline %}<div></div><div class="onlineText">{{ L('user_online') }}{% if onlines[friend.id].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>{% endif %}
 				{% if userLists is not null and userLists contains friend.id and userLists[friend.id] is not empty %}
 				<div></div>
 				<div id="frowLists{{ friend.id }}" class="lists">

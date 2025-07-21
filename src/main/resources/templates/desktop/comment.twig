@@ -37,6 +37,7 @@
 	{% if currentUser is not null or not users[realPost.authorID].suspended %}
 	<div class="postAvaWrap"{% if users[realPost.authorID].suspended %} id="commentAvaWrap{{ realPost.idString }}_{{ randomID }}" style="display: none"{% endif %}>
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 32) }}</a>
+		{% if board and onlines contains realPost.authorID and onlines[realPost.authorID].isOnline %}<div class="onlineText">{{ L('user_online') }}{% if onlines[realPost.authorID].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>{% endif %}
 	</div>
 	<div class="postContentWrap"{% if users[realPost.authorID].suspended %} id="commentContentWrap{{ realPost.idString }}_{{ randomID }}" style="display: none"{% endif %}>
 		<a name="comment{{realPost.idString}}"></a>

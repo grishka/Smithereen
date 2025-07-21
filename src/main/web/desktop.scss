@@ -1191,6 +1191,12 @@ select, .comboBoxW input{
 	.lists{
 		padding-top: 8px;
 	}
+	.onlineText+.lists{
+		padding-top: 5px;
+	}
+	.onlineText{
+		padding-top: 1px;
+	}
 }
 
 .form{
@@ -3300,6 +3306,9 @@ label.pretendLink{
 		color: $auxiliaryGrey;
 		font-size: 9px;
 	}
+	.onlineText{
+		padding: 4px 0;
+	}
 	.msgInfo{
 		padding-left: 10px;
 	}
@@ -4751,7 +4760,7 @@ label.largeAccented{
 	color: #aaa;
 }
 
-.postAvaWrap .onlineText{
+.postAvaWrap .onlineText, .messageViewHeader .onlineText{
 	text-align: center;
 	margin: 7px -10px 0;
 }

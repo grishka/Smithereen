@@ -773,6 +773,8 @@ public class UsersController{
 	}
 
 	public Map<Integer, UserPresence> getUserPresencesOnlineOnly(Collection<Integer> userIDs){
+		if(userIDs.isEmpty())
+			return Map.of();
 		HashMap<Integer, UserPresence> result=new HashMap<>();
 		for(int id:userIDs){
 			CachedUserPresence presence=onlineLocalUsersByID.get(id);

@@ -32,6 +32,7 @@
 	<a href="{{ profileURL(userID) }}" class="avaW">{{ user | pictureForAvatar('a') }}</a>
 	<a href="/my/mail/messages/{{ msg.encodedID }}" class="msgInfo">
 		<div class="name ellipsize">{{ user | name }}{% if msg.senderID==currentUser.id and (msg.to | length)>1 %} +{{ (msg.to | length)-1 }}{% endif %}</div>
+		{% if onlines contains user.id and onlines[user.id].isOnline %}<div class="onlineText">{{ L('user_online') }}{% if onlines[user.id].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>{% endif %}
 		<div class="time">{{ LD(msg.createdAt) }}</div>
 	</a>
 	<a href="/my/mail/messages/{{ msg.encodedID }}" class="msgContent">

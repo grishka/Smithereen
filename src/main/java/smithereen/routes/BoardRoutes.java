@@ -106,6 +106,7 @@ public class BoardRoutes{
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("board_topic", req)
 				.with("users", ctx.getUsersController().getUsers(needUsers))
+				.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(needUsers))
 				.paginate(comments)
 				.with("commentInteractions", commentsInteractions)
 				.with("commentViewType", CommentViewType.FLAT)
