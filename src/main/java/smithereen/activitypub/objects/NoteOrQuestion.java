@@ -91,7 +91,11 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		}
 
 		// fix for Lemmy (and possibly something else)
-		boolean hasBogusURL=url!=null && !Utils.uriHostMatches(url, activityPubID);
+		// If the domain in `url` doesn't match `id`, a link will be appended to the text and `id` will be used instead of `url`
+		// for the purpose of opening this post on its origin server.
+		boolean hasBogusURL=url!=null && !Utils.uriHostMatches(url, activityPubID)
+				// Special case: Threads moved their web app from .net to .com in April 2025, but AP IDs remained on threads.net
+				&& !(activityPubID.getHost().equals("threads.net") && url.getHost().equals("www.threads.com"));
 
 		String text=content==null ? "" : content;
 		if(hasBogusURL)
