@@ -1,4 +1,4 @@
-package smithereen.model;
+package smithereen.model.notifications;
 
 import java.time.Instant;
 import java.time.LocalDate;

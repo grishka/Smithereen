@@ -6,7 +6,7 @@ import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Block;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.User;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.storage.UserStorage;

@@ -7,7 +7,7 @@ import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.User;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.storage.UserStorage;

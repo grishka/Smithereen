@@ -18,16 +18,14 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import javax.swing.SortOrder;
-
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendRequest;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendRequest;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.feed.NewsfeedEntry;

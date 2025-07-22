@@ -39,7 +39,7 @@ import smithereen.model.PostLikeObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
-import smithereen.model.UserNotifications;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPresence;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;

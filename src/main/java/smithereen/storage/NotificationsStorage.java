@@ -9,7 +9,7 @@ import java.util.List;
 
 import smithereen.LruCache;
 import smithereen.model.PaginatedList;
-import smithereen.model.UserNotifications;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.notifications.Notification;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;

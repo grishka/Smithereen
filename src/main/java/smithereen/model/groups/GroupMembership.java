@@ -1,4 +1,4 @@
-package smithereen.model;
+package smithereen.model.groups;
 
 public class GroupMembership{
 }

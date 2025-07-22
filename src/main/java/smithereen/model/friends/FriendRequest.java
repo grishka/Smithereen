@@ -1,9 +1,10 @@
-package smithereen.model;
+package smithereen.model.friends;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+import smithereen.model.User;
 import smithereen.storage.UserStorage;
 
 public class FriendRequest{

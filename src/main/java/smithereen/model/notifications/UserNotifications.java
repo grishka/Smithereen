@@ -1,4 +1,4 @@
-package smithereen.model;
+package smithereen.model.notifications;
 
 public class UserNotifications{
 	private int newFriendRequests=0;

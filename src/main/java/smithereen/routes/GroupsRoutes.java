@@ -35,7 +35,7 @@ import smithereen.model.ActorWithDescription;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
-import smithereen.model.GroupAdmin;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;

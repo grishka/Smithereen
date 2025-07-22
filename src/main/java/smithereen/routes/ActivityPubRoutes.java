@@ -140,7 +140,7 @@ import smithereen.model.CommentViewType;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.NodeInfo;
 import smithereen.model.ObfuscatedObjectIDType;

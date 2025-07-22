@@ -11,13 +11,13 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Objects;
 
-import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Event;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.exceptions.BadRequestException;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.storage.DatabaseUtils;
 import smithereen.text.TextProcessor;

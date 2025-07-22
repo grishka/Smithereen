@@ -35,7 +35,7 @@ import io.pebbletemplates.pebble.template.PebbleTemplate;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
-import smithereen.model.FriendRequest;
+import smithereen.model.friends.FriendRequest;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.OwnedContentObject;

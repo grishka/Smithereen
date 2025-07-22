@@ -29,7 +29,7 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;

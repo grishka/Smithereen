@@ -1,4 +1,4 @@
-package smithereen.model;
+package smithereen.model.friends;
 
 public enum FriendshipStatus{
 	NONE,

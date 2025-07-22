@@ -1,4 +1,7 @@
-package smithereen.model;
+package smithereen.model.groups;
+
+import smithereen.model.Group;
+import smithereen.model.User;
 
 public class GroupInvitation{
 	public Group group;

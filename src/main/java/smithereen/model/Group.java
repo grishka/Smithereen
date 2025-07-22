@@ -16,6 +16,7 @@ import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Event;
 import smithereen.jsonld.JLD;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.storage.DatabaseUtils;
 import smithereen.util.JsonObjectBuilder;

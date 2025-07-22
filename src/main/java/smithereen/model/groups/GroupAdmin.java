@@ -1,9 +1,11 @@
-package smithereen.model;
+package smithereen.model.groups;
 
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import smithereen.model.Group;
+import smithereen.model.User;
 import smithereen.storage.UserStorage;
 
 public class GroupAdmin{
