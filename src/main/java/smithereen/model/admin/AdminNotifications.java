@@ -1,4 +1,4 @@
-package smithereen.model;
+package smithereen.model.admin;
 
 import org.jetbrains.annotations.Nullable;
 

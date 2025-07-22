@@ -20,7 +20,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
-import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
@@ -47,7 +46,7 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
-import smithereen.model.ViolationReport;
+import smithereen.model.admin.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;

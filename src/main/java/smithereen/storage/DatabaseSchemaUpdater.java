@@ -27,7 +27,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.ObfuscatedObjectIDType;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.media.MediaFileType;

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.model.admin.UserRole;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.photos.Photo;

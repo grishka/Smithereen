@@ -20,7 +20,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.EmailCode;
-import smithereen.model.EmailDomainBlockRule;
+import smithereen.model.admin.EmailDomainBlockRule;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.User;

@@ -1,4 +1,4 @@
-package smithereen.model;
+package smithereen.model.admin;
 
 import com.google.gson.reflect.TypeToken;
 

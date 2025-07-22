@@ -1,4 +1,4 @@
-package smithereen.model;
+package smithereen.model.admin;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

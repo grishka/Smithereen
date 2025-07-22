@@ -49,7 +49,7 @@ import smithereen.model.UserBanStatus;
 import smithereen.model.UserNotifications;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.admin.UserActionLogAction;
 import smithereen.model.friends.FollowRelationship;
 import smithereen.model.friends.FriendList;

@@ -54,7 +54,7 @@ import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPresence;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.fasp.FASPCapability;
 import smithereen.routes.ActivityPubRoutes;

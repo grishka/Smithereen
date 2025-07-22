@@ -36,8 +36,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.model.ObfuscatedObjectIDType;
-import smithereen.model.UserPermissions;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;

@@ -55,7 +55,7 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;

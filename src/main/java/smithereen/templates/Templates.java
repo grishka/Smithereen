@@ -34,7 +34,7 @@ import smithereen.BuildInfo;
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.model.Account;
-import smithereen.model.AdminNotifications;
+import smithereen.model.admin.AdminNotifications;
 import smithereen.model.BirthdayReminder;
 import smithereen.model.EventReminder;
 import smithereen.model.SessionInfo;

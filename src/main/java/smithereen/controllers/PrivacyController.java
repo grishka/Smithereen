@@ -45,7 +45,7 @@ import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
