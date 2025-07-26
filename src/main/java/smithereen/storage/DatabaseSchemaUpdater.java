@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=75;
+	public static final int SCHEMA_VERSION=76;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -993,6 +993,18 @@ public class DatabaseSchemaUpdater{
 			}
 			case 74 -> createApIdIndexTriggersForBoardTopics(conn);
 			case 75 -> conn.createStatement().execute("ALTER TABLE reports ADD has_file_refs tinyint(1) NOT NULL DEFAULT 1, ADD KEY has_file_refs (has_file_refs)");
+			case 76 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `rules` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `title` varchar(300) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+						  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+						  `translations` json NOT NULL,
+						  `priority` int NOT NULL DEFAULT '0',
+						  `is_deleted` tinyint(1) NOT NULL DEFAULT '0',
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
 		}
 	}
 
