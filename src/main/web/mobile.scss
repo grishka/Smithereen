@@ -143,6 +143,12 @@ h4{
 	padding: 0 8px;
 }
 
+h5{
+	font-size: 15px;
+	font-weight: bold;
+	margin: 8px 0;
+}
+
 .singleColumn{
 	padding: $contentPadding;
 }
@@ -2925,5 +2931,34 @@ input.searchField{
 	.feedIcon{
 		margin-right: 6px;
 	}
+}
+
+ol.largeNumbers{
+	list-style-type: none;
+	padding-left: 44px;
+	margin: 16px 0;
+	li{
+		margin-bottom: 15px;
+		&:last-child{
+			margin-bottom: 0;
+		}
+	}
+	.number{
+		float: left;
+		display: block;
+		width: 32px;
+		line-height: 32px;
+		background: $blockBackground;
+		margin: -7px 0 0 -44px;
+		font-weight: bold;
+		text-align: center;
+		color: $boldHeaders;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+}
+
+.singleColumn ol.largeNumbers:last-child{
+	margin-bottom: 0;
 }
 

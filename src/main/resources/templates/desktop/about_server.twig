@@ -37,9 +37,26 @@
 		</td>
 	</tr>
 </table>
+{% if serverPolicy is not empty %}
 <div class="singleColumn">
-	{{ serverPolicy | raw }}
+	<div class="textByItself">{{ serverPolicy | raw }}</div>
 </div>
+{% endif %}
+{% if serverRules is not empty %}
+<div class="singleColumn">
+	<h2>{{ L('about_server_rules') }}</h2>
+	<ol class="largeNumbers">
+	{% for rule in serverRules %}
+		<li>
+			<span class="number" aria-hidden="true">{{ loop.index+1 }}</span>
+			<h5>{{ rule.getTranslatedTitle(getLocale()) }}</h5>
+			{% set description=rule.getTranslatedDescription(getLocale()) %}
+			{% if description is not empty %}<div>{{ description | nl2br }}</div>{% endif %}
+		</li>
+	{% endfor %}
+	</ol>
+</div>
+{% endif %}
 {% if restrictedServers is not empty %}
 <div class="singleColumn">
 	<h2>{{ L('about_server_federation_restrictions') }}</h2>

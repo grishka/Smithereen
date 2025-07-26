@@ -216,5 +216,6 @@
   "account_deactivated_redirect_reactivate": "Убрать перенаправление и восстановить страницу",
   "account_deactivated_redirect_delete": "Удалить эту страницу",
   "suspended_user": "Заблокированный пользователь",
-  "reverse_order": "В обратном порядке"
+  "reverse_order": "В обратном порядке",
+  "about_server_rules": "Правила сервера"
 }

@@ -56,6 +56,12 @@ h4{
 	font-size: 11px;
 }
 
+h5{
+	font-weight: bold;
+	margin: 4px 0;
+	font-size: 11px;
+}
+
 small{
 	font-size: 10px;
 }
@@ -5199,5 +5205,34 @@ label.largeAccented{
 			margin-right: 0;
 		}
 	}
+}
+
+ol.largeNumbers{
+	list-style-type: none;
+	padding-left: 30px;
+	margin: 10px 0;
+	li{
+		margin-bottom: 15px;
+		&:last-child{
+			margin-bottom: 0;
+		}
+	}
+	.number{
+		float: left;
+		display: block;
+		width: 20px;
+		line-height: 20px;
+		background: $blockBackground;
+		margin: -3px 0 0 -30px;
+		font-weight: bold;
+		text-align: center;
+		color: $boldHeaders;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+}
+
+.singleColumn ol.largeNumbers:last-child{
+	margin-bottom: 0;
 }
 

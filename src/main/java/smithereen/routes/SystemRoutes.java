@@ -416,7 +416,8 @@ public class SystemRoutes{
 				.with("totalPosts", PostStorage.getLocalPostCount(false))
 				.with("totalGroups", GroupStorage.getLocalGroupCount())
 				.with("serverVersion", BuildInfo.VERSION)
-				.with("restrictedServers", ctx.getModerationController().getAllServers(0, 10000, null, true, null).list);
+				.with("restrictedServers", ctx.getModerationController().getAllServers(0, 10000, null, true, null).list)
+				.with("serverRules", ctx.getModerationController().getServerRules());
 
 		return model;
 	}

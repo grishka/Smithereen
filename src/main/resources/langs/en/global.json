@@ -220,5 +220,6 @@
   "account_deactivated_redirect_reactivate": "Remove the redirection and restore the profile",
   "account_deactivated_redirect_delete": "Delete this profile",
   "suspended_user": "Suspended user",
-  "reverse_order": "Reverse order"
+  "reverse_order": "Reverse order",
+  "about_server_rules": "Server rules"
 }
