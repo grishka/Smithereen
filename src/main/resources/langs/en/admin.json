@@ -305,5 +305,8 @@
   "admin_server_rule_updated": "Changes to the rule were successfully saved",
   "admin_server_rule_deletion": "Delete server rule",
   "admin_server_rule_delete_confirm": "Are you sure you want to delete this rule?",
-  "admin_server_rules_edit": "Edit rule"
+  "admin_server_rules_edit": "Edit rule",
+  "admin_audit_log_created_server_rule": "<a id=\"adminUser\">{name}</a> created server rule \"{title}\":",
+  "admin_audit_log_updated_server_rule": "<a id=\"adminUser\">{name}</a> updated server rule \"{title}\":",
+  "admin_audit_log_deleted_server_rule": "<a id=\"adminUser\">{name}</a> deleted server rule \"{title}\":"
 }

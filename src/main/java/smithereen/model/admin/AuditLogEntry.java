@@ -36,6 +36,11 @@ public record AuditLogEntry(int id, int adminID, Action action, Instant time, in
 
 		// Invites
 		DELETE_SIGNUP_INVITE,
+
+		// Server rules
+		CREATE_SERVER_RULE,
+		UPDATE_SERVER_RULE,
+		DELETE_SERVER_RULE
 	}
 
 	public enum ObjectType{

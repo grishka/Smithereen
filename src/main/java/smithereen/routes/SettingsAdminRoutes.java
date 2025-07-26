@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import com.google.gson.reflect.TypeToken;
+
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -12,6 +14,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -996,6 +999,19 @@ public class SettingsAdminRoutes{
 					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
 					yield l.get("admin_audit_log_deleted_invite", langArgs);
 				}
+
+				case CREATE_SERVER_RULE -> {
+					langArgs.put("title", le.extra().get("title"));
+					yield l.get("admin_audit_log_created_server_rule", langArgs);
+				}
+				case UPDATE_SERVER_RULE -> {
+					langArgs.put("title", le.extra().get("oldTitle"));
+					yield l.get("admin_audit_log_updated_server_rule", langArgs);
+				}
+				case DELETE_SERVER_RULE -> {
+					langArgs.put("title", le.extra().get("title"));
+					yield l.get("admin_audit_log_deleted_server_rule", langArgs);
+				}
 			};
 			String extraText=switch(le.action()){
 				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD, DELETE_USER -> null;
@@ -1100,6 +1116,56 @@ public class SettingsAdminRoutes{
 					if(le.extra().containsKey("name"))
 						r+="<br/>"+l.get("name")+": "+TextProcessor.escapeHTML(le.extra().get("name").toString());
 					yield r;
+				}
+
+				case CREATE_SERVER_RULE, DELETE_SERVER_RULE -> {
+					String r="<i>";
+					String description=le.extra().get("description").toString();
+					if(!description.isEmpty())
+						r+=l.get("admin_server_rule_description")+": "+TextProcessor.escapeHTML(description)+"<br/>";
+					r+=l.get("admin_server_rule_priority")+": "+((Number)le.extra().get("priority")).intValue();
+					Map<String, ServerRule.Translation> translations=gson.fromJson(le.extra().get("translations").toString(), new TypeToken<>(){});
+					for(Map.Entry<String, ServerRule.Translation> translation:translations.entrySet()){
+						Locale locale=Locale.forLanguageTag(translation.getKey());
+						ServerRule.Translation t=translation.getValue();
+						r+="<br/>"+l.get("admin_server_rule_title")+" ("+locale.getDisplayLanguage(l.getLocale())+"): "+t.title();
+						if(StringUtils.isNotEmpty(t.description()))
+							r+="<br/>"+l.get("admin_server_rule_description")+" ("+locale.getDisplayLanguage(l.getLocale())+"): "+t.description();
+					}
+					yield r+"</i>";
+				}
+				case UPDATE_SERVER_RULE -> {
+					ArrayList<String> lines=new ArrayList<>();
+					String oldTitle=le.extra().get("oldTitle").toString();
+					String newTitle=le.extra().get("newTitle").toString();
+					if(!oldTitle.equals(newTitle))
+						lines.add(l.get("admin_server_rule_title")+": "+TextProcessor.escapeHTML(oldTitle)+" &rarr; "+TextProcessor.escapeHTML(newTitle));
+					String oldDescription=le.extra().get("oldDescription").toString();
+					String newDescription=le.extra().get("newDescription").toString();
+					if(!oldDescription.equals(newDescription))
+						lines.add(l.get("admin_server_rule_description")+": "+TextProcessor.escapeHTML(oldDescription)+" &rarr; "+TextProcessor.escapeHTML(newDescription));
+					int oldPriority=((Number) le.extra().get("oldPriority")).intValue();
+					int newPriority=((Number) le.extra().get("newPriority")).intValue();
+					if(oldPriority!=newPriority)
+						lines.add(l.get("admin_server_rule_priority")+": "+oldPriority+" &rarr; "+newPriority);
+					Map<String, ServerRule.Translation> oldTranslations=gson.fromJson(le.extra().get("oldTranslations").toString(), new TypeToken<>(){});
+					Map<String, ServerRule.Translation> newTranslations=gson.fromJson(le.extra().get("newTranslations").toString(), new TypeToken<>(){});
+					if(!Objects.equals(oldTranslations, newTranslations)){
+						HashSet<String> allLocales=new HashSet<>(oldTranslations.keySet());
+						allLocales.addAll(newTranslations.keySet());
+						for(String lang:allLocales){
+							Locale locale=Locale.forLanguageTag(lang);
+							ServerRule.Translation old=oldTranslations.get(lang);
+							ServerRule.Translation new_=newTranslations.get(lang);
+							if(Objects.equals(old, new_))
+								continue;
+							if(old==null || new_==null || !old.title().equals(new_.title()))
+								lines.add(l.get("admin_server_rule_title")+" ("+locale.getDisplayLanguage(l.getLocale())+"): "+(old==null ? "" : old.title())+" &rarr; "+(new_==null ? "" : new_.title()));
+							if(old==null || new_==null || !old.description().equals(new_.description()))
+								lines.add(l.get("admin_server_rule_description")+" ("+locale.getDisplayLanguage(l.getLocale())+"): "+(old==null ? "" : old.description())+" &rarr; "+(new_==null ? "" : new_.description()));
+						}
+					}
+					yield "<i>"+String.join("<br/>", lines)+"</i>";
 				}
 			};
 			return new AuditLogEntryViewModel(le, TextProcessor.substituteLinks(mainText, links), extraText);

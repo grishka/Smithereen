@@ -305,5 +305,8 @@
   "admin_server_rule_updated": "Изменения успешно сохранены",
   "admin_server_rule_deletion": "Удаление правила сервера",
   "admin_server_rule_delete_confirm": "Вы действительно хотите удалить это правило?",
-  "admin_server_rules_edit": "Редактирование правила"
+  "admin_server_rules_edit": "Редактирование правила",
+  "admin_audit_log_created_server_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {создала} other {создал}} правило сервера \"{title}\":",
+  "admin_audit_log_updated_server_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} правило сервера \"{title}\":",
+  "admin_audit_log_deleted_server_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалила}} правило сервера \"{title}\":"
 }

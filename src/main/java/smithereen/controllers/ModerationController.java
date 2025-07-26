@@ -1000,10 +1000,14 @@ public class ModerationController{
 
 	public void createServerRule(User admin, String title, String description, int priority, Map<String, ServerRule.Translation> translations){
 		try{
-			ModerationStorage.createServerRule(title, description, priority, Utils.gson.toJson(translations));
-
-			// TODO audit log
-
+			String translationsJson=Utils.gson.toJson(translations);
+			ModerationStorage.createServerRule(title, description, priority, translationsJson);
+			ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.CREATE_SERVER_RULE, 0, 0, null, Map.of(
+					"title", title,
+					"description", description,
+					"priority", priority,
+					"translations", translationsJson
+			));
 			invalidateServerRuleCache();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -1011,11 +1015,22 @@ public class ModerationController{
 	}
 
 	public void updateServerRule(User admin, ServerRule rule, String title, String description, int priority, Map<String, ServerRule.Translation> translations){
+		if(rule.title().equals(title) && rule.description().equals(description) && rule.priority()==priority && rule.translations().equals(translations))
+			return;
 		try{
-			ModerationStorage.updateServerRule(rule.id(), title, description, priority, Utils.gson.toJson(translations));
+			String translationsJson=Utils.gson.toJson(translations);
+			ModerationStorage.updateServerRule(rule.id(), title, description, priority, translationsJson);
+			ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.UPDATE_SERVER_RULE, 0, 0, null, Map.of(
+					"newTitle", title,
+					"newDescription", description,
+					"newPriority", priority+"",
+					"newTranslations", translationsJson,
 
-			// TODO audit log
-
+					"oldTitle", rule.title(),
+					"oldDescription", rule.description(),
+					"oldPriority", rule.priority(),
+					"oldTranslations", Utils.gson.toJson(rule.translations())
+			));
 			invalidateServerRuleCache();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -1036,9 +1051,12 @@ public class ModerationController{
 	public void deleteServerRule(User admin, ServerRule rule){
 		try{
 			ModerationStorage.deleteServerRule(rule.id());
-
-			// TODO audit log
-
+			ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.DELETE_SERVER_RULE, 0, 0, null, Map.of(
+					"title", rule.title(),
+					"description", rule.description(),
+					"priority", rule.priority(),
+					"translations", Utils.gson.toJson(rule.translations())
+			));
 			invalidateServerRuleCache();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
