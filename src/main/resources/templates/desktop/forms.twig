@@ -89,9 +89,11 @@
 			{%endif%}
 		</td>
 	</tr>
+{% if not options.noAutoSize %}
 {% script %}
 autoSizeTextArea(ge("{{ name }}"));
 {% endscript %}
+{% endif %}
 {%endmacro%}
 
 {%macro select(name, label, selectOptions, options)%}

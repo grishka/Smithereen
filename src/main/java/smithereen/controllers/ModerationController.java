@@ -44,6 +44,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.ServerRule;
 import smithereen.model.admin.ActorStaffNote;
 import smithereen.model.admin.AdminNotifications;
 import smithereen.model.admin.AuditLogEntry;
@@ -100,10 +101,13 @@ public class ModerationController{
 	private final LruCache<String, Server> serversByDomainCache=new LruCache<>(500);
 	private List<EmailDomainBlockRule> emailDomainRules;
 	private List<IPBlockRule> ipRules;
+	private List<ServerRule> serverRules;
 
 	public ModerationController(ApplicationContext context){
 		this.context=context;
 	}
+
+	// region Reporting
 
 	public void createViolationReport(User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, boolean forward){
 		int reportID=createViolationReportInternal(self, target, content, comment, null);
@@ -254,314 +258,6 @@ public class ModerationController{
 		}
 	}
 
-	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean onlyRestricted, String query){
-		try{
-			if(StringUtils.isNotEmpty(query)){
-				query=Utils.convertIdnToAsciiIfNeeded(query);
-			}
-			return FederationStorage.getAllServers(offset, count, availability, onlyRestricted, query);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public Server getServerByDomain(String domain){
-		domain=domain.toLowerCase();
-		Server server=serversByDomainCache.get(domain);
-		if(server!=null)
-			return server;
-
-		try{
-			server=FederationStorage.getServerByDomain(domain);
-			if(server==null)
-				throw new ObjectNotFoundException();
-			serversByDomainCache.put(domain, server);
-			return server;
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void setServerRestriction(Server server, FederationRestriction restriction){
-		try{
-			ModerationStorage.setServerRestriction(server.id(), restriction!=null ? Utils.gson.toJson(restriction) : null);
-			serversByDomainCache.remove(server.host());
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public Server getOrAddServer(String domain){
-		domain=domain.toLowerCase();
-		Server server=serversByDomainCache.get(domain);
-		if(server!=null)
-			return server;
-
-		try{
-			server=FederationStorage.getServerByDomain(domain);
-			if(server==null){
-				int id=FederationStorage.addServer(domain);
-				server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
-			}
-			serversByDomainCache.put(domain, server);
-			return server;
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void addServerFeatures(String domain, EnumSet<Server.Feature> features){
-		Server server=getOrAddServer(domain);
-		if(server.features().containsAll(features))
-			return;
-		server.features().addAll(features);
-		try{
-			FederationStorage.setServerFeatures(server.id(), server.features());
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void resetServerAvailability(Server server){
-		try{
-			FederationStorage.setServerAvailability(server.id(), null, 0, true);
-			serversByDomainCache.remove(server.host());
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void recordFederationFailure(Server server){
-		try{
-			LocalDate today=LocalDate.now(ZoneId.systemDefault());
-			if(!today.equals(server.lastErrorDay())){
-				int dayCount=server.errorDayCount()+1;
-				FederationStorage.setServerAvailability(server.id(), today, dayCount, dayCount<7);
-				serversByDomainCache.remove(server.host());
-			}
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void setAccountRole(Account self, Account account, int roleID){
-		UserRole ownRole=Config.userRoles.get(self.roleID);
-		UserRole targetRole=null;
-		if(roleID>0){
-			targetRole=Config.userRoles.get(roleID);
-			if(targetRole==null)
-				throw new BadRequestException();
-		}
-		// If not an owner and the user already has a role, can only change roles for someone you promoted yourself
-		if(account.roleID>0 && !ownRole.permissions().contains(UserRole.Permission.SUPERUSER)){
-			if(account.promotedBy!=self.id)
-				throw new UserActionNotAllowedException();
-		}
-		// Can only assign one's own role or a lesser one
-		if(targetRole!=null && !ownRole.permissions().contains(UserRole.Permission.SUPERUSER) && !ownRole.permissions().containsAll(targetRole.permissions()))
-			throw new UserActionNotAllowedException();
-		try{
-			UserStorage.setAccountRole(account, roleID, targetRole==null ? 0 : self.id);
-			ModerationStorage.createAuditLogEntry(self.user.id, AuditLogEntry.Action.ASSIGN_ROLE, account.user.id, roleID, AuditLogEntry.ObjectType.ROLE, null);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public List<UserRoleViewModel> getRoles(UserPermissions ownPermissions){
-		try{
-			Map<Integer, Integer> roleCounts=ModerationStorage.getRoleAccountCounts();
-			boolean canEditAll=ownPermissions.hasPermission(UserRole.Permission.SUPERUSER);
-			return Config.userRoles.values()
-					.stream()
-					.sorted(Comparator.comparingInt(UserRole::id))
-					.map(r->new UserRoleViewModel(r, roleCounts.getOrDefault(r.id(), 0), canEditAll || ownPermissions.role.permissions().containsAll(r.permissions())))
-					.toList();
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void updateRole(User self, UserPermissions ownPermissions, UserRole role, String name, EnumSet<UserRole.Permission> permissions){
-		try{
-			// Can only use permissions they have themselves
-			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(permissions))
-				throw new UserActionNotAllowedException();
-			// Can't make role #1 not be superuser role
-			if(role.id()==1 && !permissions.contains(UserRole.Permission.SUPERUSER))
-				throw new UserActionNotAllowedException();
-			// Can't change permissions on user's own role but can change settings and name
-			if(ownPermissions.role.id()==role.id()){
-				EnumSet<UserRole.Permission> actualPermissions=EnumSet.copyOf(permissions);
-				actualPermissions.removeIf(UserRole.Permission::isActuallySetting);
-				if(!permissions.containsAll(actualPermissions))
-					throw new UserActionNotAllowedException();
-			}
-			if(permissions.isEmpty())
-				throw new BadRequestException();
-			// Nothing changed
-			if(role.name().equals(name) && role.permissions().equals(permissions))
-				return;
-			ModerationStorage.updateRole(role.id(), name, permissions);
-			UserStorage.resetAccountsCache();
-			SessionStorage.resetPermissionsCache();
-			Config.reloadRoles();
-
-			HashMap<String, Object> extra=new HashMap<>();
-			if(!role.name().equals(name)){
-				extra.put("oldName", role.name());
-				extra.put("newName", name);
-			}
-			if(!role.permissions().equals(permissions)){
-				extra.put("oldPermissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(role.permissions())));
-				extra.put("newPermissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(permissions)));
-			}
-			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.EDIT_ROLE, 0, role.id(), AuditLogEntry.ObjectType.ROLE, extra);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public UserRole createRole(User self, UserPermissions ownPermissions, String name, EnumSet<UserRole.Permission> permissions){
-		try{
-			// Can only use permissions they have themselves
-			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(permissions))
-				throw new UserActionNotAllowedException();
-			if(permissions.isEmpty())
-				throw new BadRequestException();
-			int id=ModerationStorage.createRole(name, permissions);
-			Config.reloadRoles();
-			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CREATE_ROLE, 0, id, AuditLogEntry.ObjectType.ROLE, Map.of(
-					"name", name,
-					"permissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(permissions))
-			));
-			return Config.userRoles.get(id);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void deleteRole(User self, UserPermissions ownPermissions, UserRole role){
-		try{
-			// Can only delete roles with same or lesser permissions as their own role
-			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(role.permissions()))
-				throw new UserActionNotAllowedException();
-			// Can't delete the superuser role
-			if(role.id()==1)
-				throw new UserActionNotAllowedException();
-			// Can't delete their own role because that would be a stupid thing to do
-			if(role.id()==ownPermissions.role.id())
-				throw new UserActionNotAllowedException();
-			ModerationStorage.deleteRole(role.id());
-			UserStorage.resetAccountsCache();
-			SessionStorage.resetPermissionsCache();
-			Config.reloadRoles();
-			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.DELETE_ROLE, 0, role.id(), AuditLogEntry.ObjectType.ROLE, Map.of(
-					"name", role.name(),
-					"permissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(role.permissions()))
-			));
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public PaginatedList<AuditLogEntry> getGlobalAuditLog(int offset, int count){
-		try{
-			return ModerationStorage.getGlobalAuditLog(offset, count);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public PaginatedList<AuditLogEntry> getUserAuditLog(User user, int offset, int count){
-		try{
-			return ModerationStorage.getUserAuditLog(user.id, offset, count);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public PaginatedList<AdminUserViewModel> getAllUsers(int offset, int count, String query, Boolean localOnly, String emailDomain, String ipSubnet, int roleID, UserBanStatus banStatus, boolean remoteSuspended){
-		try{
-			InetAddressRange subnet=ipSubnet!=null ? InetAddressRange.parse(ipSubnet) : null;
-			return ModerationStorage.getUsers(query, localOnly, emailDomain, subnet, roleID, banStatus, remoteSuspended, offset, count);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public Map<Integer, Account> getAccounts(Collection<Integer> ids){
-		if(ids.isEmpty())
-			return Map.of();
-		try{
-			return UserStorage.getAccounts(ids);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void setUserEmail(User self, Account account, String newEmail){
-		try{
-			String oldEmail=account.email;
-			SessionStorage.updateActivationInfo(account.id, null);
-			SessionStorage.updateEmail(account.id, newEmail);
-			account.email=newEmail;
-			account.activationInfo=null;
-			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.SET_USER_EMAIL, account.user.id, 0, null, Map.of("oldEmail", oldEmail, "newEmail", newEmail));
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void terminateUserSession(User self, Account account, OtherSession session){
-		try{
-			SessionStorage.deleteSession(account.id, session.fullID());
-			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.END_USER_SESSION, account.user.id, 0, null, Map.of("ip", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeInetAddress(session.ip()))));
-			SmithereenApplication.invalidateAllSessionsForAccount(account.id);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void setUserBanStatus(User self, User target, Account targetAccount, UserBanStatus status, UserBanInfo info){
-		try{
-			if(self.id==target.id && status!=UserBanStatus.NONE)
-				throw new UserErrorException("You can't ban yourself");
-			UserBanStatus prevStatus=target.banStatus;
-			UserStorage.setUserBanStatus(target, targetAccount, status, status!=UserBanStatus.NONE ? Utils.gson.toJson(info) : null);
-			target.banStatus=status;
-			target.banInfo=info;
-			HashMap<String, Object> auditLogArgs=new HashMap<>();
-			auditLogArgs.put("status", status);
-			if(info!=null){
-				if(info.expiresAt()!=null)
-					auditLogArgs.put("expiresAt", info.expiresAt().toEpochMilli());
-				if(StringUtils.isNotEmpty(info.message()))
-					auditLogArgs.put("message", info.message());
-				if(info.reportID()>0)
-					auditLogArgs.put("report", info.reportID());
-			}
-			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.BAN_USER, target.id, 0, null, auditLogArgs);
-			if(!(target instanceof ForeignUser) && (status==UserBanStatus.FROZEN || status==UserBanStatus.SUSPENDED)){
-				Account account=SessionStorage.getAccountByUserID(target.id);
-				Mailer.getInstance().sendAccountBanNotification(account, status, info);
-			}
-			if(!(target instanceof ForeignUser) && (status==UserBanStatus.SUSPENDED || prevStatus==UserBanStatus.SUSPENDED)){
-				context.getActivityPubWorker().sendUpdateUserActivity(target);
-			}
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void clearUserBanStatus(Account self){
-		try{
-			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.NONE, null);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
 	private void updateReportsCounter(){
 		AdminNotifications an=AdminNotifications.getInstance(null);
 		if(an!=null){
@@ -691,6 +387,329 @@ public class ModerationController{
 		}
 	}
 
+	// endregion
+	// region Federation & federation restrictions
+
+	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean onlyRestricted, String query){
+		try{
+			if(StringUtils.isNotEmpty(query)){
+				query=Utils.convertIdnToAsciiIfNeeded(query);
+			}
+			return FederationStorage.getAllServers(offset, count, availability, onlyRestricted, query);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Server getServerByDomain(String domain){
+		domain=domain.toLowerCase();
+		Server server=serversByDomainCache.get(domain);
+		if(server!=null)
+			return server;
+
+		try{
+			server=FederationStorage.getServerByDomain(domain);
+			if(server==null)
+				throw new ObjectNotFoundException();
+			serversByDomainCache.put(domain, server);
+			return server;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setServerRestriction(Server server, FederationRestriction restriction){
+		try{
+			ModerationStorage.setServerRestriction(server.id(), restriction!=null ? Utils.gson.toJson(restriction) : null);
+			serversByDomainCache.remove(server.host());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Server getOrAddServer(String domain){
+		domain=domain.toLowerCase();
+		Server server=serversByDomainCache.get(domain);
+		if(server!=null)
+			return server;
+
+		try{
+			server=FederationStorage.getServerByDomain(domain);
+			if(server==null){
+				int id=FederationStorage.addServer(domain);
+				server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
+			}
+			serversByDomainCache.put(domain, server);
+			return server;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void addServerFeatures(String domain, EnumSet<Server.Feature> features){
+		Server server=getOrAddServer(domain);
+		if(server.features().containsAll(features))
+			return;
+		server.features().addAll(features);
+		try{
+			FederationStorage.setServerFeatures(server.id(), server.features());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void resetServerAvailability(Server server){
+		try{
+			FederationStorage.setServerAvailability(server.id(), null, 0, true);
+			serversByDomainCache.remove(server.host());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void recordFederationFailure(Server server){
+		try{
+			LocalDate today=LocalDate.now(ZoneId.systemDefault());
+			if(!today.equals(server.lastErrorDay())){
+				int dayCount=server.errorDayCount()+1;
+				FederationStorage.setServerAvailability(server.id(), today, dayCount, dayCount<7);
+				serversByDomainCache.remove(server.host());
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Account roles
+
+	public void setAccountRole(Account self, Account account, int roleID){
+		UserRole ownRole=Config.userRoles.get(self.roleID);
+		UserRole targetRole=null;
+		if(roleID>0){
+			targetRole=Config.userRoles.get(roleID);
+			if(targetRole==null)
+				throw new BadRequestException();
+		}
+		// If not an owner and the user already has a role, can only change roles for someone you promoted yourself
+		if(account.roleID>0 && !ownRole.permissions().contains(UserRole.Permission.SUPERUSER)){
+			if(account.promotedBy!=self.id)
+				throw new UserActionNotAllowedException();
+		}
+		// Can only assign one's own role or a lesser one
+		if(targetRole!=null && !ownRole.permissions().contains(UserRole.Permission.SUPERUSER) && !ownRole.permissions().containsAll(targetRole.permissions()))
+			throw new UserActionNotAllowedException();
+		try{
+			UserStorage.setAccountRole(account, roleID, targetRole==null ? 0 : self.id);
+			ModerationStorage.createAuditLogEntry(self.user.id, AuditLogEntry.Action.ASSIGN_ROLE, account.user.id, roleID, AuditLogEntry.ObjectType.ROLE, null);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<UserRoleViewModel> getRoles(UserPermissions ownPermissions){
+		try{
+			Map<Integer, Integer> roleCounts=ModerationStorage.getRoleAccountCounts();
+			boolean canEditAll=ownPermissions.hasPermission(UserRole.Permission.SUPERUSER);
+			return Config.userRoles.values()
+					.stream()
+					.sorted(Comparator.comparingInt(UserRole::id))
+					.map(r->new UserRoleViewModel(r, roleCounts.getOrDefault(r.id(), 0), canEditAll || ownPermissions.role.permissions().containsAll(r.permissions())))
+					.toList();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateRole(User self, UserPermissions ownPermissions, UserRole role, String name, EnumSet<UserRole.Permission> permissions){
+		try{
+			// Can only use permissions they have themselves
+			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(permissions))
+				throw new UserActionNotAllowedException();
+			// Can't make role #1 not be superuser role
+			if(role.id()==1 && !permissions.contains(UserRole.Permission.SUPERUSER))
+				throw new UserActionNotAllowedException();
+			// Can't change permissions on user's own role but can change settings and name
+			if(ownPermissions.role.id()==role.id()){
+				EnumSet<UserRole.Permission> actualPermissions=EnumSet.copyOf(permissions);
+				actualPermissions.removeIf(UserRole.Permission::isActuallySetting);
+				if(!permissions.containsAll(actualPermissions))
+					throw new UserActionNotAllowedException();
+			}
+			if(permissions.isEmpty())
+				throw new BadRequestException();
+			// Nothing changed
+			if(role.name().equals(name) && role.permissions().equals(permissions))
+				return;
+			ModerationStorage.updateRole(role.id(), name, permissions);
+			UserStorage.resetAccountsCache();
+			SessionStorage.resetPermissionsCache();
+			Config.reloadRoles();
+
+			HashMap<String, Object> extra=new HashMap<>();
+			if(!role.name().equals(name)){
+				extra.put("oldName", role.name());
+				extra.put("newName", name);
+			}
+			if(!role.permissions().equals(permissions)){
+				extra.put("oldPermissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(role.permissions())));
+				extra.put("newPermissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(permissions)));
+			}
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.EDIT_ROLE, 0, role.id(), AuditLogEntry.ObjectType.ROLE, extra);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public UserRole createRole(User self, UserPermissions ownPermissions, String name, EnumSet<UserRole.Permission> permissions){
+		try{
+			// Can only use permissions they have themselves
+			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(permissions))
+				throw new UserActionNotAllowedException();
+			if(permissions.isEmpty())
+				throw new BadRequestException();
+			int id=ModerationStorage.createRole(name, permissions);
+			Config.reloadRoles();
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CREATE_ROLE, 0, id, AuditLogEntry.ObjectType.ROLE, Map.of(
+					"name", name,
+					"permissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(permissions))
+			));
+			return Config.userRoles.get(id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteRole(User self, UserPermissions ownPermissions, UserRole role){
+		try{
+			// Can only delete roles with same or lesser permissions as their own role
+			if(!ownPermissions.hasPermission(UserRole.Permission.SUPERUSER) && !ownPermissions.role.permissions().containsAll(role.permissions()))
+				throw new UserActionNotAllowedException();
+			// Can't delete the superuser role
+			if(role.id()==1)
+				throw new UserActionNotAllowedException();
+			// Can't delete their own role because that would be a stupid thing to do
+			if(role.id()==ownPermissions.role.id())
+				throw new UserActionNotAllowedException();
+			ModerationStorage.deleteRole(role.id());
+			UserStorage.resetAccountsCache();
+			SessionStorage.resetPermissionsCache();
+			Config.reloadRoles();
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.DELETE_ROLE, 0, role.id(), AuditLogEntry.ObjectType.ROLE, Map.of(
+					"name", role.name(),
+					"permissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(role.permissions()))
+			));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Audit log
+
+	public PaginatedList<AuditLogEntry> getGlobalAuditLog(int offset, int count){
+		try{
+			return ModerationStorage.getGlobalAuditLog(offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<AuditLogEntry> getUserAuditLog(User user, int offset, int count){
+		try{
+			return ModerationStorage.getUserAuditLog(user.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region User management
+
+	public PaginatedList<AdminUserViewModel> getAllUsers(int offset, int count, String query, Boolean localOnly, String emailDomain, String ipSubnet, int roleID, UserBanStatus banStatus, boolean remoteSuspended){
+		try{
+			InetAddressRange subnet=ipSubnet!=null ? InetAddressRange.parse(ipSubnet) : null;
+			return ModerationStorage.getUsers(query, localOnly, emailDomain, subnet, roleID, banStatus, remoteSuspended, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, Account> getAccounts(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return UserStorage.getAccounts(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setUserEmail(User self, Account account, String newEmail){
+		try{
+			String oldEmail=account.email;
+			SessionStorage.updateActivationInfo(account.id, null);
+			SessionStorage.updateEmail(account.id, newEmail);
+			account.email=newEmail;
+			account.activationInfo=null;
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.SET_USER_EMAIL, account.user.id, 0, null, Map.of("oldEmail", oldEmail, "newEmail", newEmail));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void terminateUserSession(User self, Account account, OtherSession session){
+		try{
+			SessionStorage.deleteSession(account.id, session.fullID());
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.END_USER_SESSION, account.user.id, 0, null, Map.of("ip", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeInetAddress(session.ip()))));
+			SmithereenApplication.invalidateAllSessionsForAccount(account.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setUserBanStatus(User self, User target, Account targetAccount, UserBanStatus status, UserBanInfo info){
+		try{
+			if(self.id==target.id && status!=UserBanStatus.NONE)
+				throw new UserErrorException("You can't ban yourself");
+			UserBanStatus prevStatus=target.banStatus;
+			UserStorage.setUserBanStatus(target, targetAccount, status, status!=UserBanStatus.NONE ? Utils.gson.toJson(info) : null);
+			target.banStatus=status;
+			target.banInfo=info;
+			HashMap<String, Object> auditLogArgs=new HashMap<>();
+			auditLogArgs.put("status", status);
+			if(info!=null){
+				if(info.expiresAt()!=null)
+					auditLogArgs.put("expiresAt", info.expiresAt().toEpochMilli());
+				if(StringUtils.isNotEmpty(info.message()))
+					auditLogArgs.put("message", info.message());
+				if(info.reportID()>0)
+					auditLogArgs.put("report", info.reportID());
+			}
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.BAN_USER, target.id, 0, null, auditLogArgs);
+			if(!(target instanceof ForeignUser) && (status==UserBanStatus.FROZEN || status==UserBanStatus.SUSPENDED)){
+				Account account=SessionStorage.getAccountByUserID(target.id);
+				Mailer.getInstance().sendAccountBanNotification(account, status, info);
+			}
+			if(!(target instanceof ForeignUser) && (status==UserBanStatus.SUSPENDED || prevStatus==UserBanStatus.SUSPENDED)){
+				context.getActivityPubWorker().sendUpdateUserActivity(target);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void clearUserBanStatus(Account self){
+		try{
+			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.NONE, null);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region User staff notes
+
 	public int getUserStaffNoteCount(User user){
 		try{
 			return ModerationStorage.getUserStaffNoteCount(user.id);
@@ -733,6 +752,9 @@ public class ModerationController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	// endregion
+	// region Email blocking
 
 	public List<EmailDomainBlockRule> getEmailDomainBlockRules(){
 		try{
@@ -822,6 +844,9 @@ public class ModerationController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	// endregion
+	// region IP blocking
 
 	public List<IPBlockRule> getIPBlockRules(){
 		try{
@@ -913,6 +938,9 @@ public class ModerationController{
 		}
 	}
 
+	// endregion
+	// region Signup invite management
+
 	public Config.SignupMode getEffectiveSignupMode(Request req){
 		InetAddress ip=Utils.getRequestIP(req);
 		IPBlockRule rule=matchIPBlockRule(ip);
@@ -951,4 +979,71 @@ public class ModerationController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	// endregion
+	// region Server rules
+
+	public List<ServerRule> getServerRules(){
+		if(serverRules==null){
+			try{
+				serverRules=Collections.unmodifiableList(ModerationStorage.getServerRules(false));
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+		return serverRules;
+	}
+
+	private void invalidateServerRuleCache(){
+		serverRules=null;
+	}
+
+	public void createServerRule(User admin, String title, String description, int priority, Map<String, ServerRule.Translation> translations){
+		try{
+			ModerationStorage.createServerRule(title, description, priority, Utils.gson.toJson(translations));
+
+			// TODO audit log
+
+			invalidateServerRuleCache();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateServerRule(User admin, ServerRule rule, String title, String description, int priority, Map<String, ServerRule.Translation> translations){
+		try{
+			ModerationStorage.updateServerRule(rule.id(), title, description, priority, Utils.gson.toJson(translations));
+
+			// TODO audit log
+
+			invalidateServerRuleCache();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public ServerRule getServerRuleByID(int id){
+		try{
+			List<ServerRule> rules=ModerationStorage.getServerRulesByIDs(List.of(id));
+			if(rules.isEmpty() || rules.getFirst().isDeleted())
+				throw new ObjectNotFoundException();
+			return rules.getFirst();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteServerRule(User admin, ServerRule rule){
+		try{
+			ModerationStorage.deleteServerRule(rule.id());
+
+			// TODO audit log
+
+			invalidateServerRuleCache();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
 }

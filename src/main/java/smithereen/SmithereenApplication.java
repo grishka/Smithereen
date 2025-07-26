@@ -466,6 +466,17 @@ public class SmithereenApplication{
 						});
 					});
 				});
+				path("/rules", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_RULES, SettingsAdminRoutes::rules);
+					getRequiringPermission("/createForm", UserRole.Permission.MANAGE_SERVER_RULES, SettingsAdminRoutes::createRuleForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_SERVER_RULES, SettingsAdminRoutes::createRule);
+					path("/:id", ()->{
+						getRequiringPermission("/edit", UserRole.Permission.MANAGE_SERVER_RULES, SettingsAdminRoutes::editRuleForm);
+						postRequiringPermissionWithCSRF("/update", UserRole.Permission.MANAGE_SERVER_RULES, SettingsAdminRoutes::updateRule);
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_SERVER_RULES, SettingsAdminRoutes::confirmDeleteRule);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_SERVER_RULES, SettingsAdminRoutes::deleteRule);
+					});
+				});
 			});
 		});
 

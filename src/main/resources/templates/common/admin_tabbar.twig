@@ -3,6 +3,9 @@
 	{% if userPermissions.hasPermission('MANAGE_SERVER_SETTINGS') %}
 	<a href="/settings/admin" class="{% if tab=='general' %}selected{% endif %}">{{L('admin_server_settings')}}</a>
 	{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_SERVER_RULES') %}
+	<a href="/settings/admin/rules" class="{% if tab=='rules' %}selected{% endif %}">{{ L('admin_server_rules') }}</a>
+	{% endif %}
 	{% if userPermissions.hasPermission('MANAGE_ROLES') %}
 	<a href="/settings/admin/roles" class="{% if tab=='roles' %}selected{% endif %}">{{L('admin_roles')}}</a>
 	{% endif %}

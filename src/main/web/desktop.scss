@@ -1225,6 +1225,14 @@ select, .comboBoxW input{
 	.footer td{
 		padding-top: 5px;
 	}
+	.controlWithExtraLink{
+		display: flex;
+		align-items: center;
+		a{
+			flex: none;
+			margin-left: 5px;
+		}
+	}
 }
 
 .formExplanation{

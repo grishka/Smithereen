@@ -16,6 +16,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
+import smithereen.model.ServerRule;
 import smithereen.model.admin.ActorStaffNote;
 import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.EmailDomainBlockRule;
@@ -529,4 +530,54 @@ public class ModerationStorage{
 				.value("info", Utils.gson.toJson(info))
 				.executeNoResult();
 	}
+
+	// region Server rules
+
+	public static List<ServerRule> getServerRules(boolean includeDeleted) throws SQLException{
+		SQLQueryBuilder b=new SQLQueryBuilder()
+				.selectFrom("rules")
+				.orderBy("priority DESC, id ASC");
+		if(!includeDeleted)
+			b.where("is_deleted=0");
+		return b.executeAsStream(ServerRule::fromResultSet)
+				.toList();
+	}
+
+	public static int createServerRule(String title, String description, int priority, String translationsJson) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("rules")
+				.value("title", title)
+				.value("description", description)
+				.value("priority", priority)
+				.value("translations", translationsJson)
+				.executeAndGetID();
+	}
+
+	public static void updateServerRule(int id, String title, String description, int priority, String translationsJson) throws SQLException{
+		new SQLQueryBuilder()
+				.update("rules")
+				.value("title", title)
+				.value("description", description)
+				.value("priority", priority)
+				.value("translations", translationsJson)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static List<ServerRule> getServerRulesByIDs(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("rules")
+				.whereIn("id", ids)
+				.executeAsStream(ServerRule::fromResultSet)
+				.toList();
+	}
+
+	public static void deleteServerRule(int id) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("rules")
+				.where("id=?", id)
+				.executeNoResult();;
+	}
+
+	// endregion
 }
