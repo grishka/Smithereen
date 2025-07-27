@@ -1026,7 +1026,7 @@ public class ModerationController{
 			ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.UPDATE_SERVER_RULE, 0, 0, null, Map.of(
 					"newTitle", title,
 					"newDescription", description,
-					"newPriority", priority+"",
+					"newPriority", priority,
 					"newTranslations", translationsJson,
 
 					"oldTitle", rule.title(),
