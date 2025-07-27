@@ -109,8 +109,8 @@ public class ModerationController{
 
 	// region Reporting
 
-	public void createViolationReport(User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, boolean forward){
-		int reportID=createViolationReportInternal(self, target, content, comment, null);
+	public void createViolationReport(User self, Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, boolean forward){
+		int reportID=createViolationReportInternal(self, target, content, reason, rules, comment, null);
 		if(forward && (target instanceof ForeignGroup || target instanceof ForeignUser)){
 			ArrayList<URI> objectIDs=new ArrayList<>();
 			objectIDs.add(target.activityPubID);
@@ -121,10 +121,10 @@ public class ModerationController{
 	}
 
 	public void createViolationReport(@Nullable User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, String otherServerDomain){
-		createViolationReportInternal(self, target, content, comment, otherServerDomain);
+		createViolationReportInternal(self, target, content, ViolationReport.Reason.OTHER, null, comment, otherServerDomain);
 	}
 
-	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, String otherServerDomain){
+	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, String otherServerDomain){
 		try{
 			int targetID=target.getOwnerID();
 
@@ -149,7 +149,10 @@ public class ModerationController{
 				contentJson=null;
 			}
 
-			int id=ModerationStorage.createViolationReport(self!=null ? self.id : 0, targetID, comment, otherServerDomain, contentJson==null ? null : contentJson.toString(), !contentFileIDs.isEmpty());
+			if(reason!=ViolationReport.Reason.SERVER_RULES)
+				rules=Set.of();
+
+			int id=ModerationStorage.createViolationReport(self!=null ? self.id : 0, targetID, comment, otherServerDomain, contentJson==null ? null : contentJson.toString(), !contentFileIDs.isEmpty(), reason, rules);
 			updateReportsCounter();
 			for(long fid: contentFileIDs){
 				// ownerID set to 0 because reports aren't owned by any particular actor
@@ -1043,6 +1046,14 @@ public class ModerationController{
 			if(rules.isEmpty() || rules.getFirst().isDeleted())
 				throw new ObjectNotFoundException();
 			return rules.getFirst();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<ServerRule> getServerRulesByIDs(Collection<Integer> ids){
+		try{
+			return ModerationStorage.getServerRulesByIDs(ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

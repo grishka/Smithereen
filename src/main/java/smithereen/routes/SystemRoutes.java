@@ -77,6 +77,8 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.ServerRule;
+import smithereen.model.admin.ViolationReport;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.reports.ReportableContentObject;
@@ -107,6 +109,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
+import spark.QueryParamsMap;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -554,7 +557,7 @@ public class SystemRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("report_form", req);
 		String rawID=req.queryParams("id");
 		Actor actorForAvatar;
-		String title, subtitle, boxTitle, textareaPlaceholder, titleText, otherServerDomain;
+		String title, subtitle, boxTitle, titleText, otherServerDomain;
 		Lang l=lang(req);
 		String type=req.queryParams("type");
 		switch(type){
@@ -566,7 +569,6 @@ public class SystemRoutes{
 				title=postAuthor.getCompleteName();
 				subtitle=TextProcessor.truncateOnWordBoundary(post.text, 200);
 				boxTitle=l.get(post.getReplyLevel()>0 ? "report_title_comment" : "report_title_post");
-				textareaPlaceholder=l.get("report_placeholder_content");
 				titleText=l.get(post.getReplyLevel()>0 ? "report_text_comment" : "report_text_post");
 				otherServerDomain=Config.isLocal(post.getActivityPubID()) ? null : post.getActivityPubID().getHost();
 			}
@@ -578,7 +580,6 @@ public class SystemRoutes{
 				subtitle="";
 				boxTitle=l.get("report_title_user");
 				titleText=l.get("report_text_user");
-				textareaPlaceholder=l.get("report_placeholder_profile");
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
 			case "group" -> {
@@ -589,7 +590,6 @@ public class SystemRoutes{
 				subtitle="";
 				boxTitle=l.get(group.isEvent() ? "report_title_event" : "report_title_group");
 				titleText=l.get(group.isEvent() ? "report_text_event" : "report_text_group");
-				textareaPlaceholder=l.get("report_placeholder_profile");
 				otherServerDomain=group instanceof ForeignGroup fg ? fg.domain : null;
 			}
 			case "message" -> {
@@ -601,7 +601,6 @@ public class SystemRoutes{
 				subtitle=TextProcessor.truncateOnWordBoundary(msg.text, 200);
 				boxTitle=l.get("report_title_message");
 				titleText=l.get("report_text_message");
-				textareaPlaceholder=l.get("report_placeholder_content");
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
 			case "photo" -> {
@@ -614,7 +613,6 @@ public class SystemRoutes{
 				subtitle=photo.description;
 				boxTitle=l.get("report_title_photo");
 				titleText=l.get("report_text_photo");
-				textareaPlaceholder=l.get("report_placeholder_content");
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
 			case "comment" -> {
@@ -626,7 +624,6 @@ public class SystemRoutes{
 				title=user.getCompleteName();
 				subtitle=TextProcessor.truncateOnWordBoundary(comment.text, 200);
 				boxTitle=l.get("report_title_comment");
-				textareaPlaceholder=l.get("report_placeholder_content");
 				titleText=l.get("report_text_comment");
 				otherServerDomain=Config.isLocal(comment.getActivityPubID()) ? null : comment.getActivityPubID().getHost();
 			}
@@ -635,18 +632,40 @@ public class SystemRoutes{
 		model.with("actorForAvatar", actorForAvatar)
 				.with("reportTitle", title)
 				.with("reportSubtitle", subtitle)
-				.with("textAreaPlaceholder", textareaPlaceholder)
 				.with("reportTitleText", titleText)
-				.with("otherServerDomain", otherServerDomain);
+				.with("otherServerDomain", otherServerDomain)
+				.with("serverRules", ctx.getModerationController().getServerRules());
 		return wrapForm(req, resp, "report_form", "/system/submitReport?type="+type+"&id="+rawID, boxTitle, "send", model);
 	}
 
 	public static Object submitReport(Request req, Response resp, Account self, ApplicationContext ctx){
-		requireQueryParams(req, "type", "id");
+		requireQueryParams(req, "type", "id", "reason");
 		String rawID=req.queryParams("id");
 		String type=req.queryParams("type");
 		String comment=req.queryParamOrDefault("reportText", "");
+		ViolationReport.Reason reason=enumValue(req.queryParams("reason"), ViolationReport.Reason.class);
 		boolean forward="on".equals(req.queryParams("forward"));
+		Set<Integer> rules;
+		if(reason==ViolationReport.Reason.SERVER_RULES){
+			QueryParamsMap rulesMap=req.queryMap("rules");
+			if(rulesMap==null)
+				throw new BadRequestException();
+			Set<Integer> validRuleIDs=ctx.getModerationController()
+					.getServerRules()
+					.stream()
+					.map(ServerRule::id)
+					.collect(Collectors.toSet());
+			rules=rulesMap.toMap()
+					.keySet()
+					.stream()
+					.map(Utils::safeParseInt)
+					.filter(validRuleIDs::contains)
+					.collect(Collectors.toSet());
+			if(rules.isEmpty())
+				throw new BadRequestException();
+		}else{
+			rules=Set.of();
+		}
 
 		Actor target;
 		List<ReportableContentObject> content;
@@ -691,7 +710,7 @@ public class SystemRoutes{
 			default -> throw new BadRequestException("invalid type");
 		}
 
-		ctx.getModerationController().createViolationReport(self.user, target, content, comment, forward);
+		ctx.getModerationController().createViolationReport(self.user, target, content, reason, rules, comment, forward);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).showSnackbar(lang(req).get("report_submitted"));
 		}

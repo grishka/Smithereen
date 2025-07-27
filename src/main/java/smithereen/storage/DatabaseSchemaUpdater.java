@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=76;
+	public static final int SCHEMA_VERSION=77;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -1005,6 +1005,7 @@ public class DatabaseSchemaUpdater{
 						  PRIMARY KEY (`id`)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
+			case 77 -> conn.createStatement().execute("ALTER TABLE reports ADD `rules` tinyblob, ADD `reason` int unsigned NOT NULL DEFAULT '0'");
 		}
 	}
 

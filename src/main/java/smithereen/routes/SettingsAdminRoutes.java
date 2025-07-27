@@ -670,6 +670,9 @@ public class SettingsAdminRoutes{
 		model.with("content", contentForTemplate);
 		model.with("isLocalTarget", target!=null && StringUtils.isEmpty(target.domain));
 		model.with("toolbarTitle", l.get("menu_reports"));
+		if(!report.rules.isEmpty()){
+			model.with("rules", ctx.getModerationController().getServerRulesByIDs(report.rules));
+		}
 		return model;
 	}
 

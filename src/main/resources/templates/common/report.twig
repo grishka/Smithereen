@@ -37,6 +37,9 @@
 	<div class="ellipsize">
 		<span class="grayText">{{ L('report_sent_at') }}:</span> {{ LD(report.time) }}
 	</div>
+	<div class="ellipsize">
+		<span class="grayText">{{ L('admin_report_reason') }}:</span> {{ L(report.reason.langKey) }}
+	</div>
 	{% if report.serverDomain is not empty %}
 	<div class="ellipsize">
 		<span class="grayText">{{ L('server') }}:</span> {{ report.serverDomain }}
@@ -45,6 +48,20 @@
 	{% if report.actionTime is not null %}
 	<div class="ellipsize">
 		<span class="grayText">{{ L('report_resolved_at') }}:</span> {{ LD(report.actionTime) }}
+	</div>
+	{% endif %}
+	{% if report.rules is not empty %}
+	<div class="spanAll">
+		<div class="grayText">{{ L('admin_report_violated_rules') }}:</div>
+		<ul class="actualList">
+		{% for rule in rules %}
+			{% if rule.deleted %}
+			<li><span><s>{{ rule.getTranslatedTitle(getLocale()) }}</s></span></li>
+			{% else %}
+			<li><span>{{ rule.getTranslatedTitle(getLocale()) }}</span></li>
+			{% endif %}
+		{% endfor %}
+		</ul>
 	</div>
 	{% endif %}
 	{% if report.comment is not empty %}

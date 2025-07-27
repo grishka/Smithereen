@@ -308,5 +308,11 @@
   "admin_server_rules_edit": "Edit rule",
   "admin_audit_log_created_server_rule": "<a id=\"adminUser\">{name}</a> created server rule \"{title}\":",
   "admin_audit_log_updated_server_rule": "<a id=\"adminUser\">{name}</a> updated server rule \"{title}\":",
-  "admin_audit_log_deleted_server_rule": "<a id=\"adminUser\">{name}</a> deleted server rule \"{title}\":"
+  "admin_audit_log_deleted_server_rule": "<a id=\"adminUser\">{name}</a> deleted server rule \"{title}\":",
+  "admin_report_reason": "Reason",
+  "admin_report_reason_spam": "Spam",
+  "admin_report_reason_rules": "Content violates server rules",
+  "admin_report_reason_illegal": "Illegal content",
+  "admin_report_reason_other": "Other",
+  "admin_report_violated_rules": "Violated rules"
 }

@@ -849,6 +849,8 @@ CREATE TABLE `reports` (
   `content` json DEFAULT NULL,
   `state` tinyint unsigned NOT NULL DEFAULT '0',
   `has_file_refs` tinyint(1) NOT NULL DEFAULT '1',
+  `rules` tinyblob,
+  `reason` int unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `reporter_id` (`reporter_id`),
   KEY `moderator_id` (`moderator_id`),
@@ -1111,4 +1113,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-07-26  7:57:31
+-- Dump completed on 2025-07-26  9:06:24

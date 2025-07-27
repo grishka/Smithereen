@@ -10,13 +10,17 @@
   "report_text_user": "What's wrong with this profile?",
   "report_text_group": "What's wrong with this group?",
   "report_text_event": "What's wrong with this event?",
-  "report_placeholder_profile": "For example: explicit profile picture",
-  "report_placeholder_content": "For example: spam",
   "report_sent": "Report sent",
   "report_forward_to_domain": "Anonymously forward to <b>{domain}</b>",
   "report_submitted": "Your report was submitted to the server staff.",
   "report_title_message": "Report a message",
   "report_text_message": "What's wrong with this message?",
   "report_title_photo": "Report a photo",
-  "report_text_photo": "What's wrong with this photo?"
+  "report_text_photo": "What's wrong with this photo?",
+  "report_reason_spam": "It's spam",
+  "report_reason_rules": "It violates server rules",
+  "report_reason_illegal": "It's illegal",
+  "report_reason_other": "Something else",
+  "report_comment_placeholder": "Comment (optional)",
+  "report_select_rules": "Which rules are being violated?"
 }

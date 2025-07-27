@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -41,7 +42,7 @@ import smithereen.util.InetAddressRange;
 import spark.utils.StringUtils;
 
 public class ModerationStorage{
-	public static int createViolationReport(int reporterID, int targetID, String comment, String otherServerDomain, String contentJson, boolean hasFileRefs) throws SQLException{
+	public static int createViolationReport(int reporterID, int targetID, String comment, String otherServerDomain, String contentJson, boolean hasFileRefs, ViolationReport.Reason reason, Set<Integer> rules) throws SQLException{
 		SQLQueryBuilder bldr=new SQLQueryBuilder()
 				.insertInto("reports")
 				.value("reporter_id", reporterID!=0 ? reporterID : null)
@@ -49,7 +50,9 @@ public class ModerationStorage{
 				.value("comment", comment)
 				.value("server_domain", otherServerDomain)
 				.value("content", contentJson)
-				.value("has_file_refs", hasFileRefs);
+				.value("has_file_refs", hasFileRefs)
+				.value("reason", reason)
+				.value("rules", Utils.serializeIntList(rules));
 		return bldr.executeAndGetID();
 	}
 
@@ -574,9 +577,10 @@ public class ModerationStorage{
 
 	public static void deleteServerRule(int id) throws SQLException{
 		new SQLQueryBuilder()
-				.deleteFrom("rules")
+				.update("rules")
+				.value("is_deleted", true)
 				.where("id=?", id)
-				.executeNoResult();;
+				.executeNoResult();
 	}
 
 	// endregion

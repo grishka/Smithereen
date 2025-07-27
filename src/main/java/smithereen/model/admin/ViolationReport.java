@@ -10,13 +10,16 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
+import smithereen.Utils;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.reports.ReportedComment;
 import smithereen.model.reports.ReportedMailMessage;
 import smithereen.model.reports.ReportedPhoto;
 import smithereen.model.reports.ReportedPost;
 import smithereen.storage.DatabaseUtils;
+import smithereen.util.TranslatableEnum;
 import spark.utils.StringUtils;
 
 public class ViolationReport{
@@ -30,6 +33,8 @@ public class ViolationReport{
 	public String serverDomain;
 	public State state;
 	public List<ReportableContentObject> content=List.of();
+	public Reason reason;
+	public Set<Integer> rules;
 
 	public static ViolationReport fromResultSet(ResultSet res) throws SQLException{
 		ViolationReport r=new ViolationReport();
@@ -49,6 +54,10 @@ public class ViolationReport{
 				r.content.add(deserializeContentObject(r.id, e.getAsJsonObject()));
 			}
 		}
+		byte[] rules=res.getBytes("rules");
+		if(rules!=null)
+			r.rules=Utils.deserializeIntSet(rules);
+		r.reason=Reason.values()[res.getInt("reason")];
 		return r;
 	}
 
@@ -69,5 +78,22 @@ public class ViolationReport{
 		OPEN,
 		CLOSED_REJECTED,
 		CLOSED_ACTION_TAKEN
+	}
+
+	public enum Reason implements TranslatableEnum<Reason>{
+		OTHER,
+		SPAM,
+		SERVER_RULES,
+		ILLEGAL;
+
+		@Override
+		public String getLangKey(){
+			return "admin_report_reason_"+switch(this){
+				case OTHER -> "other";
+				case SPAM -> "spam";
+				case SERVER_RULES -> "rules";
+				case ILLEGAL -> "illegal";
+			};
+		}
 	}
 }
