@@ -311,7 +311,7 @@
   "admin_audit_log_deleted_server_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалила}} правило сервера \"{title}\":",
   "admin_report_reason": "Причина",
   "admin_report_reason_spam": "Спам",
-  "admin_report_reason_rules": "Контент нарушает правила сервера",
+  "admin_report_reason_rules": "Нарушение правил",
   "admin_report_reason_illegal": "Незаконный контент",
   "admin_report_reason_other": "Другое",
   "admin_report_violated_rules": "Нарушенные правила"
