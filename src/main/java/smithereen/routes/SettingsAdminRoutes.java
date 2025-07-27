@@ -642,7 +642,7 @@ public class SettingsAdminRoutes{
 					User targetUser=users.get(report.targetID);
 					String statusStr=switch(UserBanStatus.valueOf(a.extra().get("status").getAsString())){
 						case NONE -> l.get("admin_user_state_no_restrictions");
-						case FROZEN -> l.get("admin_user_state_frozen", Map.of("expirationTime", l.formatDate(Instant.ofEpochMilli(a.extra().get("expiresAt").getAsLong()), timeZoneForRequest(req), false)));
+						case FROZEN -> l.get("admin_user_state_frozen", Map.of("expirationTime", a.extra().has("expiresAt") ? l.formatDate(Instant.ofEpochMilli(a.extra().get("expiresAt").getAsLong()), timeZoneForRequest(req), false) : l.get("email_account_frozen_until_first_login")));
 						case SUSPENDED -> {
 							if(targetUser instanceof ForeignUser)
 								yield l.get("admin_user_state_suspended_foreign");
@@ -670,7 +670,7 @@ public class SettingsAdminRoutes{
 		model.with("content", contentForTemplate);
 		model.with("isLocalTarget", target!=null && StringUtils.isEmpty(target.domain));
 		model.with("toolbarTitle", l.get("menu_reports"));
-		if(!report.rules.isEmpty()){
+		if(report.rules!=null && !report.rules.isEmpty()){
 			model.with("rules", ctx.getModerationController().getServerRulesByIDs(report.rules));
 		}
 		return model;

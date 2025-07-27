@@ -5,6 +5,7 @@
 {% if postInteractions is not null %}
 {% set interactions=postInteractions[realPost.getIDForInteractions()] %}
 {% endif %}
+{% set suspended=not ignoreSuspension and users[realPost.authorID].suspended %}
 {% if post.matchedFilter is not null %}
 <input type="checkbox" id="postFilteredToggler{{ realPost.id }}_{{ randomID }}" class="postFilteredToggler"/>
 <div class="filteredPostNotice">
@@ -12,7 +13,7 @@
 </div>
 {% endif %}
 <div class="post{{ standalone ? ' standalone' : '' }}{{ post.matchedFilter is null ? '' : ' filtered' }}" id="post{{ realPost.id }}_{{ randomID }}">
-	{% if users[realPost.authorID].suspended %}
+	{% if suspended %}
 	<div class="postAvaWrap" id="postSuspendedAvaWrap{{ realPost.id }}_{{ randomID }}">
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}><span class="ava avaPlaceholder sizeA suspended" style="width: 50px; height: 50px;"></span></a>
 	</div>
@@ -35,12 +36,13 @@
 		</div>
 	</div>
 	{% endif %}
-	{% if currentUser is not null or not users[realPost.authorID].suspended %}
-	<div class="postAvaWrap"{% if users[realPost.authorID].suspended %} id="postAvaWrap{{ realPost.id }}_{{ randomID }}" style="display: none"{% endif %}>
+	{% if currentUser is not null or not suspended %}
+	<div class="postAvaWrap"{% if suspended %} id="postAvaWrap{{ realPost.id }}_{{ randomID }}" style="display: none"{% endif %}>
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a') }}</a>
 		{% if onlines contains realPost.authorID and onlines[realPost.authorID].isOnline %}<div class="onlineText">{{ L('user_online') }}{% if onlines[realPost.authorID].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>{% endif %}
 	</div>
-	<div class="postContentWrap"{% if users[realPost.authorID].suspended %} id="postContentWrap{{ realPost.id }}_{{ randomID }}" style="display: none"{% endif %}>
+	<div class="postContentWrap"{% if suspended %} id="postContentWrap{{ realPost.id }}_{{ randomID }}" style="display: none"{% endif %}>
+		{% if not hideActions %}
 		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.id }}_{{ randomID }}">
 			{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
 			<a href="{{ realPost.internalURL }}/confirmDelete" data-confirm-title="{{ L('delete_post') }}" data-confirm-message="{{ L('delete_post_confirm') }}" data-confirm-action="{{ realPost.internalURL }}/delete?rid={{ randomID }}" class="flR postIconAction actionDelete" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}"></a>
@@ -52,6 +54,7 @@
 			<a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box class="flR postIconAction actionReport" data-tooltip="{{ L('report') }}" aria-label="{{ L('report') }}"></a>
 			{% endif %}
 		</div>
+		{% endif %}
 		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.id }}_{{ randomID }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
 		{%- if realPost.privacy!='PUBLIC' -%}
 		<span class="privatePostLockIcon" data-tooltip="{{ L(realPost.privacy.langKey, {'name': users[realPost.authorID].firstAndGender}) }}"></span>

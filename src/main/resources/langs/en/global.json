@@ -221,5 +221,13 @@
   "account_deactivated_redirect_delete": "Delete this profile",
   "suspended_user": "Suspended user",
   "reverse_order": "Reverse order",
-  "about_server_rules": "Server rules"
+  "about_server_rules": "Server rules",
+  "account_ban_violated_rules": "This account was blocked for violation of the following server rules:",
+  "account_ban_violated_rules_with_content": "Server rules you've violated:",
+  "account_ban_message_with_rules_or_content": "Moderator comment:",
+  "account_ban_content": "This account was blocked for <b>{contentType}</b> being published on your behalf:",
+  "account_ban_content_messages": "This account was blocked for <b>such messages</b> being sent on your behalf:",
+  "account_ban_content_posts": "such posts",
+  "account_ban_content_comments": "such comments",
+  "account_ban_content_photos": "such photos"
 }

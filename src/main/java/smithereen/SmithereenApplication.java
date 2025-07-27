@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -49,6 +50,8 @@ import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.MailMessage;
+import smithereen.model.Post;
 import smithereen.model.SessionInfo;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
@@ -56,7 +59,12 @@ import smithereen.model.UserBanStatus;
 import smithereen.model.UserPresence;
 import smithereen.model.admin.UserRole;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.ViolationReport;
+import smithereen.model.comments.Comment;
 import smithereen.model.fasp.FASPCapability;
+import smithereen.model.photos.Photo;
+import smithereen.model.viewmodel.CommentViewModel;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.BoardRoutes;
 import smithereen.routes.FaspApiRoutes;
@@ -1236,6 +1244,55 @@ public class SmithereenApplication{
 						}
 					}
 					case SUSPENDED, SELF_DEACTIVATED -> model.with("deletionTime", acc.user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
+				}
+				if(acc.user.banInfo.reportID()!=0){
+					try{
+						ViolationReport report=context.getModerationController().getViolationReportByID(acc.user.banInfo.reportID(), true);
+						model.with("report", report);
+						if(report.rules!=null && !report.rules.isEmpty()){
+							model.with("rules", context.getModerationController().getServerRulesByIDs(report.rules));
+						}
+						if(report.content!=null && !report.content.isEmpty()){
+							HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+							model.with("contentType", switch(report.content.getFirst()){
+								case Post post -> post.getReplyLevel()>0 ? "comment" : "post";
+								case Comment comment -> "comment";
+								case Photo photo -> "photo";
+								case MailMessage msg -> "message";
+							});
+							model.with("content", switch(report.content.getFirst()){
+								case Post post -> {
+									PostViewModel pvm=new PostViewModel(post);
+									context.getWallController().populateReposts(acc.user, List.of(pvm), 2);
+									PostViewModel.collectActorIDs(List.of(pvm), needUsers, needGroups);
+									yield pvm;
+								}
+								case Comment comment -> {
+									needUsers.add(comment.authorID);
+									CommentViewModel cvm=new CommentViewModel(comment);
+									CommentViewModel.collectUserIDs(List.of(cvm), needUsers);
+									yield cvm;
+								}
+								case Photo photo -> {
+									needUsers.add(photo.authorID);
+									if(photo.ownerID>0)
+										needUsers.add(photo.ownerID);
+									else
+										needGroups.add(-photo.ownerID);
+									yield photo;
+								}
+								case MailMessage msg -> {
+									needUsers.add(msg.senderID);
+									needUsers.addAll(msg.to);
+									if(msg.cc!=null)
+										needUsers.addAll(msg.cc);
+									yield msg;
+								}
+							});
+							model.with("users", context.getUsersController().getUsers(needUsers))
+									.with("groups", context.getGroupsController().getGroupsByIdAsMap(needGroups));
+						}
+					}catch(ObjectNotFoundException ignore){}
 				}
 				halt(model.renderToString());
 				return;

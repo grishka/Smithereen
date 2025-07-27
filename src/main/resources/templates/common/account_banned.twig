@@ -1,5 +1,6 @@
 {# @pebvariable name="status" type="smithereen.model.UserBanStatus" #}
 {# @pebvariable name="banInfo" type="smithereen.model.UserBanInfo" #}
+{# @pebvariable name="report" type="smithereen.model.admin.ViolationReport" #}
 {% extends "page" %}
 {% block leftMenu %}
 {% if isMobile %}
@@ -9,7 +10,7 @@
 {% endif %}
 {% endblock %}
 {% block content %}
-<div class="notMuchContent textByItself">
+<div class="notMuchContent textByItself userBanPage">
 	{% if status=='FROZEN' %}
 	<h2 class="marginAfter">{{ L('account_frozen') }}</h2>
 	<p>{{ L('account_frozen_info', {'name': currentUser | name('first')}) }}</p>
@@ -23,8 +24,43 @@
 	<h2 class="marginAfter">{{ L('account_deactivated') }}</h2>
 	<p>{{ L('account_deactivated_info', {'deletionTime': LD(deletionTime)}) }}</p>
 	{% endif %}
+	{% if content is not null %}
+	{% if contentType=="message" %}
+	<p>{{ L('account_ban_content_messages') }}</p>
+	{% set message=content %}
+	<div class="post">
+		<blockquote>
+			{{ message.text | postprocessHTML }}
+			{% if message.attachments is not empty %}
+				{{ renderAttachments(message, null) }}
+			{% endif %}
+		</blockquote>
+	</div>
+	{% elseif contentType=="post" %}
+	<p>{{ L('account_ban_content', {'contentType': L('account_ban_content_posts')}) }}</p>
+	{% include "wall_post" with {'post': content, 'ignoreSuspension': true, 'hideActions': true} %}
+	{% elseif contentType=="comment" %}
+	<p>{{ L('account_ban_content', {'contentType': L('account_ban_content_comments')}) }}</p>
+	{% include "wall_post" with {'post': content, 'ignoreSuspension': true, 'hideActions': true} %}
+	{% elseif contentType=="photo" %}
+	<p>{{ L('account_ban_content', {'contentType': L('account_ban_content_photos')}) }}</p>
+	<p>{{ content.image | pictureForPhoto('m', false) }}</p>
+	{% endif %}
+	{% endif %}
+	{% if rules is not empty %}
+	<p>{{ L(content is null ? 'account_ban_violated_rules' : 'account_ban_violated_rules_with_content') }}</p>
+	<ul class="actualList">
+	{% for rule in rules %}
+		<li><span>
+			<h5>{{ rule.getTranslatedTitle(getLocale()) }}</h5>
+			{% set descr=rule.getTranslatedDescription(getLocale()) %}
+			{% if descr is not empty %}<div>{{ descr | nl2br }}</div>{% endif %}
+		</span></li>
+	{% endfor %}
+	</ul>
+	{% endif %}
 	{% if banInfo.message is not empty %}
-	<p>{{ L('account_ban_message') }}</p>
+	<p>{{ L(content is not null or rules is not empty ? 'account_ban_message_with_rules_or_content' : 'account_ban_message') }}</p>
 	<p><div class="settingsMessage">{{ banInfo.message }}</div></p>
 	{% endif %}
 	{% if status!='SELF_DEACTIVATED' and contactEmail is not empty %}

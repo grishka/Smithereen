@@ -217,5 +217,13 @@
   "account_deactivated_redirect_delete": "Удалить эту страницу",
   "suspended_user": "Заблокированный пользователь",
   "reverse_order": "В обратном порядке",
-  "about_server_rules": "Правила сервера"
+  "about_server_rules": "Правила сервера",
+  "account_ban_violated_rules": "Эта страница была заблокирована за нарушение следующих правил:",
+  "account_ban_violated_rules_with_content": "Правила сервера, которые вы нарушили:",
+  "account_ban_message_with_rules_or_content": "Комментарий модератора:",
+  "account_ban_content": "Эта страница была заблокирована за публикацию от вашего имени <b>{contentType}</b>:",
+  "account_ban_content_messages": "Эта страница была заблокирована за рассылку от вашего имени <b>таких сообщений</b>:",
+  "account_ban_content_posts": "таких записей",
+  "account_ban_content_comments": "таких комментариев",
+  "account_ban_content_photos": "таких фотографий"
 }
