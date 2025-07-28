@@ -142,3 +142,22 @@ td.grayText{
 	border-bottom: solid 1px #ededed;
 	margin: 10px 0;
 }
+
+ul.actualList{
+	list-style-type: square;
+	color: $normalLink;
+	padding: 0;
+	padding-left: 15px;
+	li{
+		margin-bottom: 5px;
+		span{
+			color: $text;
+		}
+	}
+}
+
+blockquote{
+	margin: 1em;
+	padding: 2px 0 2px 8px;
+	border-left: solid 2px $textAreaBorder;
+}

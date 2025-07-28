@@ -690,9 +690,12 @@ public class ModerationController{
 					auditLogArgs.put("report", info.reportID());
 			}
 			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.BAN_USER, target.id, 0, null, auditLogArgs);
-			if(!(target instanceof ForeignUser) && (status==UserBanStatus.FROZEN || status==UserBanStatus.SUSPENDED)){
+			if(!(target instanceof ForeignUser) && (status==UserBanStatus.FROZEN || status==UserBanStatus.SUSPENDED) && info!=null){
 				Account account=SessionStorage.getAccountByUserID(target.id);
-				Mailer.getInstance().sendAccountBanNotification(account, status, info);
+				ViolationReport report=info.reportID()!=0 ? getViolationReportByID(info.reportID(), true) : null;
+				if(report!=null && report.reason!=ViolationReport.Reason.SPAM){
+					Mailer.getInstance().sendAccountBanNotification(account, status, info, report, report==null || report.rules==null || report.rules.isEmpty() ? null : getServerRulesByIDs(report.rules));
+				}
 			}
 			if(!(target instanceof ForeignUser) && (status==UserBanStatus.SUSPENDED || prevStatus==UserBanStatus.SUSPENDED)){
 				context.getActivityPubWorker().sendUpdateUserActivity(target);

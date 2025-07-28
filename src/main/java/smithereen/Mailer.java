@@ -13,6 +13,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +36,8 @@ import io.pebbletemplates.pebble.template.PebbleTemplate;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.ServerRule;
+import smithereen.model.admin.ViolationReport;
 import smithereen.model.friends.FriendRequest;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
@@ -208,8 +211,9 @@ public class Mailer{
 		), l.getLocale());
 	}
 
-	public void sendAccountBanNotification(Account self, UserBanStatus banStatus, UserBanInfo banInfo){
+	public void sendAccountBanNotification(Account self, UserBanStatus banStatus, UserBanInfo banInfo, ViolationReport report, List<ServerRule> rules){
 		Lang l=Lang.get(self.prefs.locale);
+		HashMap<String, Object> args=new HashMap<>();
 		String header=switch(banStatus){
 			case FROZEN -> l.get("email_account_frozen_header");
 			case SUSPENDED -> l.get("email_account_suspended_header");
@@ -230,19 +234,30 @@ public class Mailer{
 			));
 			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
 		};
+		String plainText=header+"\n\n"+TextProcessor.stripHTML(htmlText, true);
+		args.put("text", htmlText);
+		args.put("header", header);
+		args.put("banInfo", banInfo);
+		if(report!=null){
+			args.put("report", report);
+			if(rules!=null && !rules.isEmpty()){
+				args.put("rules", rules);
+				plainText+="\n\n"+l.get("account_ban_violated_rules");
+				for(ServerRule rule:rules){
+					plainText+="\n- "+rule.getTranslatedTitle(l.getLocale());
+				}
+			}
+		}
 		String subject=switch(banStatus){
 			case FROZEN -> l.get("email_account_frozen_subject", Map.of("serverName", Config.serverDisplayName));
 			case SUSPENDED -> l.get("email_account_suspended_subject", Map.of("serverName", Config.serverDisplayName));
 			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
 		};
-		String plainText=header+"\n\n"+TextProcessor.stripHTML(htmlText, true);
-		htmlText="<h1>"+header+"</h1>\n\n"+htmlText;
 		if(StringUtils.isNotEmpty(banInfo.message())){
 			String messageFromStaff=l.get("message_from_staff", Map.of("message", banInfo.message()));
-			htmlText+="<br/><br/>"+messageFromStaff;
 			plainText+="\n\n"+TextProcessor.stripHTML(messageFromStaff, true);
 		}
-		send(self.email, subject, plainText, "generic", Map.of("text", htmlText), self.prefs.locale);
+		send(self.email, subject, plainText, "account_ban", args, self.prefs.locale);
 	}
 
 	public void sendActionConfirmationCode(Request req, Account self, String action, String code){

@@ -1,0 +1,22 @@
+{% extends "page" %}
+{% block content %}
+	<h1>{{ header }}</h1>
+	<div>{{ text | raw }}</div>
+	{% if rules is not empty %}
+	<p>{{ L('account_ban_violated_rules') }}</p>
+	<ul class="actualList">
+	{% for rule in rules %}
+		<li><span>
+			<div><b>{{ rule.getTranslatedTitle(getLocale()) }}</b></div>
+			{% set descr=rule.getTranslatedDescription(getLocale()) %}
+			{% if descr is not empty %}<p>{{ descr | nl2br }}</p>{% endif %}
+		</span></li>
+	{% endfor %}
+	</ul>
+	{% endif %}
+	{% if banInfo.message is not empty %}
+	<p>{{ L(rules is not empty ? 'account_ban_message_with_rules_or_content' : 'account_ban_message') }}</p>
+	<blockquote>{{ banInfo.message }}</blockquote>
+	{% endif %}
+{% endblock %}
+
