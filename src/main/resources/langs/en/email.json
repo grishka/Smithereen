@@ -71,5 +71,9 @@
   "email_group_invite_plaintext": "{name} invites you to join \"{groupName}\". See all your group invitations here: {url}",
   "email_event_invite_plaintext": "{name} invites you to attend \"{groupName}\". See all your event invitations here: {url}",
   "email_go_to_group_invites": "Go to group invitations",
-  "email_go_to_event_invites": "Go to event invitations"
+  "email_go_to_event_invites": "Go to event invitations",
+  "email_content_removal_subject": "{serverName}: content removed",
+  "email_content_removal_header": "Server staff removed something you shared",
+  "email_content_removal_body": "What was removed:",
+  "email_content_removal_rules": "This happened because you didn't follow these rules:"
 }

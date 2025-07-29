@@ -1,0 +1,38 @@
+{% extends "page" %}
+{% block content %}
+<h1>{{ L('email_content_removal_header') }}</h1>
+<div>{{ L('email_content_removal_body') }}</div>
+{% for item in content %}
+<div class="sep"></div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+	<tr>
+		<td valign="top" width="50">{% include "actor_avatar" with {'actor': users[item.authorID], 'size': 'a', 'domain': domain} %}</td>
+		<td valign="top" style="padding-left: 10px">
+			<div style="padding-bottom: 5px"><b><a href="{{ users[item.authorID].absoluteProfileURL }}">{{ users[item.authorID] | name }}</a></b></div>
+			<div style="padding-bottom: 5px">
+				{% if contentTypes[loop.index]=='photo' %}
+				{{ item.image | pictureForPhoto('s') }}
+				{% else %}
+				{% if item.text is not empty %}<div style="margin: -1em 0">{{ item.text | postprocessHTML }}</div>{% endif %}
+				{% include "media_attachments_post" with {'attachments': item.processedAttachments} %}
+				{% endif %}
+			</div>
+			<span class="grayText">{{ LD(item.createdAt, format='fullyAbsolute') }}</span>
+		</td>
+	</tr>
+</table>
+{% endfor %}
+{% if rules is not empty %}
+<div class="sep"></div>
+<p>{{ L('email_content_removal_rules') }}</p>
+<ul class="actualList">
+{% for rule in rules %}
+	<li><span>
+		<div><b>{{ rule.getTranslatedTitle(getLocale()) }}</b></div>
+		{% set descr=rule.getTranslatedDescription(getLocale()) %}
+		{% if descr is not empty %}<p>{{ descr | nl2br }}</p>{% endif %}
+	</span></li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

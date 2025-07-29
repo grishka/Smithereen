@@ -71,5 +71,9 @@
   "email_group_invite_plaintext": "{name} приглашает вас в группу \"{groupName}\". Смотрите все ваши приглашения в группы здесь: {url}",
   "email_event_invite_plaintext": "{name} приглашает вас на встречу \"{groupName}\". Смотрите все ваши приглашения на встречи здесь: {url}",
   "email_go_to_group_invites": "Перейти к приглашениям в группы",
-  "email_go_to_event_invites": "Перейти к приглашениям на встречи"
+  "email_go_to_event_invites": "Перейти к приглашениям на встречи",
+  "email_content_removal_subject": "{serverName}: удаление контента",
+  "email_content_removal_header": "Администрация сервера удалила контент, которым вы делились",
+  "email_content_removal_body": "Что было удалено:",
+  "email_content_removal_rules": "Это произошло из-за нарушения следующих правил:"
 }

@@ -9,6 +9,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
@@ -52,6 +53,7 @@ import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.notifications.EmailNotificationType;
 import smithereen.model.photos.Photo;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
@@ -258,6 +260,69 @@ public class Mailer{
 			plainText+="\n\n"+TextProcessor.stripHTML(messageFromStaff, true);
 		}
 		send(self.email, subject, plainText, "account_ban", args, self.prefs.locale);
+	}
+
+	public void sendContentRemovalNotification(Account self, List<ReportableContentObject> content, List<ServerRule> rules){
+		Lang l=Lang.get(self.prefs.locale);
+		HashMap<String, Object> args=new HashMap<>();
+		StringBuilder plainText=new StringBuilder(l.get("email_content_removal_header"));
+		plainText.append("\n\n");
+		plainText.append(l.get("email_content_removal_body"));
+		plainText.append("\n");
+		ArrayList<String> contentTypes=new ArrayList<>();
+		if(content.size()>10)
+			content=content.subList(0, 10);
+		ZoneId timeZone=self.prefs.timeZone==null ? ZoneId.systemDefault() : self.prefs.timeZone;
+		for(ReportableContentObject co:content){
+			plainText.append("- ");
+			switch(co){
+				case Post post -> {
+					contentTypes.add("post");
+					plainText.append(post.getReplyLevel()>0 ? l.get("content_type_comment") : l.get("content_type_post"));
+					plainText.append(": ");
+					plainText.append(getContentShortTitle(post, l, timeZone));
+					plainText.append('\n');
+				}
+				case MailMessage msg -> {
+					contentTypes.add("message");
+					plainText.append(l.get("content_type_message"));
+					plainText.append(": ");
+					plainText.append(getContentShortTitle(msg, l, timeZone));
+					plainText.append('\n');
+				}
+				case Photo photo -> {
+					contentTypes.add("photo");
+					plainText.append(l.get("content_type_photo"));
+					plainText.append(": ");
+					plainText.append(l.formatDateFullyAbsolute(photo.createdAt, timeZone, false));
+					plainText.append('\n');
+				}
+				case Comment comment -> {
+					contentTypes.add("comment");
+					plainText.append(l.get("content_type_comment"));
+					plainText.append(": ");
+					plainText.append(getContentShortTitle(comment, l, timeZone));
+					plainText.append('\n');
+				}
+			}
+		}
+		if(rules!=null && !rules.isEmpty()){
+			plainText.append('\n');
+			plainText.append(l.get("email_content_removal_rules"));
+			plainText.append('\n');
+			for(ServerRule rule:rules){
+				plainText.append("- ");
+				plainText.append(rule.getTranslatedTitle(l.getLocale()));
+				plainText.append('\n');
+			}
+		}
+
+		args.put("contentTypes", contentTypes);
+		args.put("content", content);
+		args.put("rules", rules);
+		args.put("timeZone", timeZone);
+		args.put("users", Map.of(self.user.id, self.user));
+		send(self.email, l.get("email_content_removal_subject", Map.of("serverName", Config.serverDisplayName)), plainText.toString(), "content_removal", args, self.prefs.locale);
 	}
 
 	public void sendActionConfirmationCode(Request req, Account self, String action, String code){
@@ -526,6 +591,19 @@ public class Mailer{
 		}catch(ObjectNotFoundException x){
 			throw new IllegalArgumentException();
 		}
+	}
+
+	private static String getContentShortTitle(Object obj, Lang l, ZoneId timeZone){
+		String shortTitle=switch(obj){
+			case PostLikeObject plo -> plo.getShortTitle();
+			case MailMessage msg -> msg.getTextPreview();
+			default -> throw new IllegalArgumentException();
+		};
+		return StringUtils.isEmpty(shortTitle) ? l.formatDateFullyAbsolute(switch(obj){
+			case PostLikeObject plo -> plo.createdAt;
+			case MailMessage msg -> msg.createdAt;
+			default -> throw new IllegalArgumentException();
+		}, timeZone, false) : shortTitle;
 	}
 
 	public record UnsubscribeLinkData(Account account, EmailNotificationType type){}

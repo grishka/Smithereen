@@ -383,6 +383,15 @@ public class ModerationController{
 				if(markResolved){
 					ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_ACTION_TAKEN);
 					updateReportsCounter();
+					if(report.targetID>0 && report.reason!=ViolationReport.Reason.SPAM){
+						try{
+							User user=context.getUsersController().getUserOrThrow(report.targetID);
+							if(!(user instanceof ForeignUser)){
+								Account account=context.getUsersController().getAccountForUser(user);
+								Mailer.getInstance().sendContentRemovalNotification(account, report.content, report.rules!=null ? getServerRulesByIDs(report.rules) : null);
+							}
+						}catch(ObjectNotFoundException ignore){}
+					}
 				}
 			}
 		}catch(SQLException x){
@@ -1055,6 +1064,8 @@ public class ModerationController{
 	}
 
 	public List<ServerRule> getServerRulesByIDs(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return List.of();
 		try{
 			return ModerationStorage.getServerRulesByIDs(ids);
 		}catch(SQLException x){
