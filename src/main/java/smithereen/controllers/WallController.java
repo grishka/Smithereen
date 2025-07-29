@@ -157,7 +157,7 @@ public class WallController{
 
 			if(repost!=null){
 				// If we're reposting a repost, use the original post if it's an Announce or there's no comment
-				if(repost.isMastodonStyleRepost() || (repost.repostOf!=0 && TextProcessor.stripHTML(repost.text, false).trim().isEmpty())){
+				if(repost.isMastodonStyleRepost() || (repost.repostOf!=0 && TextProcessor.stripHTML(repost.text, false).trim().isEmpty() && (repost.attachments==null || repost.attachments.isEmpty()) && repost.poll==null)){
 					repost=getPostOrThrow(repost.repostOf);
 				}
 				// Can't repost wall posts
