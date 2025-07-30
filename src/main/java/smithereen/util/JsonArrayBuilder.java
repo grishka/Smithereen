@@ -100,18 +100,18 @@ public class JsonArrayBuilder{
 	}
 
 	public static JsonArray fromCollection(Collection<?> list){
+		if(list==null)
+			return null;
 		JsonArray arr=new JsonArray();
 		for(Object o:list){
-			if(o instanceof JsonElement el)
-				arr.add(el);
-			else if(o instanceof String s)
-				arr.add(s);
-			else if(o instanceof Number n)
-				arr.add(n);
-			else if(o instanceof Boolean b)
-				arr.add(b);
-			else
-				throw new UnsupportedOperationException("object has unsupported type: "+o.getClass());
+			switch(o){
+				case null -> arr.add((JsonElement) null);
+				case JsonElement el -> arr.add(el);
+				case String s -> arr.add(s);
+				case Number n -> arr.add(n);
+				case Boolean b -> arr.add(b);
+				default -> throw new UnsupportedOperationException("object has unsupported type: "+o.getClass());
+			}
 		}
 		return arr;
 	}

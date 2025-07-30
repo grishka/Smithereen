@@ -37,8 +37,52 @@
 	<div class="ellipsize">
 		<span class="grayText">{{ L('report_sent_at') }}:</span> {{ LD(report.time) }}
 	</div>
-	<div class="ellipsize">
-		<span class="grayText">{{ L('admin_report_reason') }}:</span> {{ L(report.reason.langKey) }}
+	<div style="overflow-x: visible">
+		<span class="grayText">{{ L('admin_report_reason') }}:</span>
+		{% if isMobile %}
+
+		<a href="javascript:void(0)" onclick="showOptions(this)" data-options="{{ json([
+			{'type': 'post', 'label': L('admin_report_reason_spam').toString(), 'href': "/settings/admin/reports/#{report.id}/setReason?reason=SPAM", 'ajax': 'box'},
+			{'type': 'post', 'label': L('admin_report_reason_rules').toString(), 'href': "/settings/admin/reports/#{report.id}/setReason?reason=SERVER_RULES", 'ajax': 'box'},
+			{'type': 'post', 'label': L('admin_report_reason_illegal').toString(), 'href': "/settings/admin/reports/#{report.id}/setReason?reason=ILLEGAL", 'ajax': 'box'},
+			{'type': 'post', 'label': L('admin_report_reason_other').toString(), 'href': "/settings/admin/reports/#{report.id}/setReason?reason=OTHER", 'ajax': 'box'}
+		]) }}">{{ L(report.reason.langKey) }}</a>
+		{% else %}
+		<span class="popupMenuW" id="reasonSelector">
+			<a href="javascript:void(0)" class="opener" onclick="cur.showReasonMenu(this)">{{ L(report.reason.langKey) }}</a>
+			<div class="popupMenu compact" style="display: none">
+				<ul>
+					<li data-act="SPAM">{{ L('admin_report_reason_spam') }}</li>
+					<li data-act="SERVER_RULES">{{ L('admin_report_reason_rules') }}</li>
+					<li data-act="ILLEGAL">{{ L('admin_report_reason_illegal') }}</li>
+					<li data-act="OTHER">{{ L('admin_report_reason_other') }}</li>
+				</ul>
+			</div>
+		</span>
+		<span class="inlineLoader" style="display: none" id="reasonLoader"></span>
+{% script %}
+cur.selectedReason="{{ report.reason }}";
+cur.showReasonMenu=function(el){
+	showSimplePopupMenuWithoutInput(el, cur.selectedReason, function(newReason){
+		if(cur.selectedReason==newReason)
+			return;
+		cur.selectedReason=newReason;
+		if(cur.selectedReason=="SERVER_RULES"){
+			LayerManager.getInstance().showBoxLoader();
+		}else{
+			ge("reasonSelector").hide();
+			ge("reasonLoader").show();
+		}
+		ajaxPostAndApplyActions("/settings/admin/reports/{{ report.id }}/setReason", {reason: newReason}, null, function(){
+			if(newReason!="SERVER_RULES"){
+				ge("reasonSelector").show();
+				ge("reasonLoader").hide();
+			}
+		}, true);
+	});
+};
+{% endscript %}
+		{% endif %}
 	</div>
 	{% if report.serverDomain is not empty %}
 	<div class="ellipsize">
@@ -52,7 +96,7 @@
 	{% endif %}
 	{% if report.rules is not empty %}
 	<div class="spanAll">
-		<div class="grayText">{{ L('admin_report_violated_rules') }}:</div>
+		<div class="grayText">{{ L('admin_report_violated_rules') }}: [ <a href="/settings/admin/reports/{{ report.id }}/rulesForm" data-ajax-box>{{ L('edit') }}</a> ]</div>
 		<ul class="actualList">
 		{% for rule in rules %}
 			{% if rule.deleted %}

@@ -1,5 +1,6 @@
 package smithereen.routes;
 
+import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 
 import java.net.URLEncoder;
@@ -26,6 +27,7 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
+import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -621,7 +623,6 @@ public class SettingsAdminRoutes{
 			langArgs.put("name", adminUser!=null ? adminUser.getFullName() : "DELETED");
 			langArgs.put("gender", adminUser!=null ? adminUser.gender : User.Gender.UNKNOWN);
 			String mainText=switch(a.actionType()){
-				default -> null;
 				case REOPEN -> l.get("report_log_reopened", langArgs);
 				case RESOLVE_REJECT -> l.get("report_log_rejected", langArgs);
 				case COMMENT -> l.get("report_log_commented", langArgs);
@@ -634,9 +635,12 @@ public class SettingsAdminRoutes{
 					yield l.get("admin_audit_log_changed_user_restrictions", langArgs);
 				}
 				case DELETE_CONTENT -> l.get("report_log_deleted_content", langArgs);
+				case CHANGE_REASON -> l.get("report_log_changed_reason", langArgs);
+				case CHANGE_RULES -> l.get("report_log_changed_rules", langArgs);
+				case ADD_CONTENT -> null; // TODO
+				case REMOVE_CONTENT -> null;
 			};
 			return new ViolationReportActionViewModel(a, TextProcessor.substituteLinks(mainText, links), switch(a.actionType()){
-				default -> null;
 				case COMMENT -> TextProcessor.postprocessPostHTMLForDisplay(a.text(), false, false);
 				case RESOLVE_WITH_ACTION -> {
 					User targetUser=users.get(report.targetID);
@@ -657,6 +661,39 @@ public class SettingsAdminRoutes{
 					}
 					yield statusStr;
 				}
+				case CHANGE_REASON -> {
+					ViolationReport.Reason oldReason=enumValue(a.extra().get("oldReason").getAsString(), ViolationReport.Reason.class);
+					ViolationReport.Reason newReason=enumValue(a.extra().get("newReason").getAsString(), ViolationReport.Reason.class);
+					yield l.get(oldReason.getLangKey())+" &rarr; "+l.get(newReason.getLangKey());
+				}
+				case CHANGE_RULES -> {
+					Set<Integer> oldRules;
+					if(a.extra().get("oldRules")!=null && !a.extra().get("oldRules").isJsonNull())
+						oldRules=a.extra().getAsJsonArray("oldRules").asList().stream().map(JsonElement::getAsInt).collect(Collectors.toSet());
+					else
+						oldRules=Set.of();
+					Set<Integer> newRules=a.extra().getAsJsonArray("newRules").asList().stream().map(JsonElement::getAsInt).collect(Collectors.toSet());
+					Set<Integer> allRuleIDs=new HashSet<>(oldRules);
+					allRuleIDs.addAll(newRules);
+					List<ServerRule> allRules=ctx.getModerationController().getServerRules();
+					if(!allRules.stream().map(ServerRule::id).collect(Collectors.toSet()).containsAll(allRuleIDs)){
+						allRules=ctx.getModerationController().getServerRulesByIDs(allRuleIDs);
+					}
+					ArrayList<String> lines=new ArrayList<>();
+					for(ServerRule rule:allRules){
+						if(oldRules.contains(rule.id())==newRules.contains(rule.id()))
+							continue;
+						String line;
+						if(oldRules.contains(rule.id()))
+							line="- ";
+						else
+							line="+ ";
+						line+=TextProcessor.escapeHTML(rule.getTranslatedTitle(l.getLocale()));
+						lines.add(line);
+					}
+					yield String.join("<br>", lines);
+				}
+				default -> null;
 			});
 		}).toList();
 
@@ -1740,5 +1777,68 @@ public class SettingsAdminRoutes{
 			return new WebDeltaResponse(resp).remove("rule"+id);
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object setReportReason(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "reason");
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, false);
+		ViolationReport.Reason newReason=enumValue(req.queryParams("reason"), ViolationReport.Reason.class);
+		if(newReason!=report.reason){
+			if(newReason==ViolationReport.Reason.SERVER_RULES){
+				RenderedTemplateResponse model=new RenderedTemplateResponse("admin_report_choose_rules", req)
+						.with("serverRules", ctx.getModerationController().getServerRules())
+						.with("selectedRules", Set.of());
+				return wrapForm(req, resp, "admin_report_choose_rules", "/settings/admin/reports/"+report.id+"/setRules", lang(req).get("admin_report_change_rules_title"), "save", model);
+			}else{
+				ctx.getModerationController().setViolationReportReason(self.user, report, newReason);
+			}
+		}
+
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object setReportRules(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, false);
+
+		Set<Integer> rules;
+		QueryParamsMap rulesMap=req.queryMap("rules");
+		if(rulesMap==null)
+			throw new BadRequestException();
+		Set<Integer> validRuleIDs=ctx.getModerationController()
+				.getServerRules()
+				.stream()
+				.map(ServerRule::id)
+				.collect(Collectors.toSet());
+		rules=rulesMap.toMap()
+				.keySet()
+				.stream()
+				.map(Utils::safeParseInt)
+				.filter(validRuleIDs::contains)
+				.collect(Collectors.toSet());
+		if(rules.isEmpty())
+			throw new BadRequestException();
+
+		if(report.reason!=ViolationReport.Reason.SERVER_RULES)
+			ctx.getModerationController().setViolationReportReason(self.user, report, ViolationReport.Reason.SERVER_RULES);
+		ctx.getModerationController().setViolationReportRules(self.user, report, rules);
+
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object reportRulesForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, false);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_report_choose_rules", req)
+				.with("serverRules", ctx.getModerationController().getServerRules())
+				.with("selectedRules", report.rules);
+		return wrapForm(req, resp, "admin_report_choose_rules", "/settings/admin/reports/"+report.id+"/setRules", lang(req).get("admin_report_change_rules_title"), "save", model);
 	}
 }

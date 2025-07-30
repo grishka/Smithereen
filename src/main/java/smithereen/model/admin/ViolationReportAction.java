@@ -32,5 +32,7 @@ public record ViolationReportAction(int id, int reportID, int userID, ActionType
 		RESOLVE_WITH_ACTION,
 		RESOLVE_REJECT,
 		REOPEN,
+		CHANGE_REASON,
+		CHANGE_RULES,
 	}
 }

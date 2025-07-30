@@ -157,6 +157,23 @@ public class ModerationStorage{
 				.executeAndGetSingleObject(ViolationReport::fromResultSet);
 	}
 
+	public static void setViolationReportReason(int id, ViolationReport.Reason reason) throws SQLException{
+		new SQLQueryBuilder()
+				.update("reports")
+				.value("reason", reason)
+				.value("rules", null)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static void setViolationReportRules(int id, Set<Integer> rules) throws SQLException{
+		new SQLQueryBuilder()
+				.update("reports")
+				.value("rules", Utils.serializeIntList(rules))
+				.where("id=?", id)
+				.executeNoResult();;
+	}
+
 	public static void setServerRestriction(int id, String restrictionJson) throws SQLException{
 		new SQLQueryBuilder()
 				.update("servers")

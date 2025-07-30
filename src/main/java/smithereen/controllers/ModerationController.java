@@ -89,6 +89,7 @@ import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
 import smithereen.util.InetAddressRange;
 import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.utils.StringUtils;
@@ -394,6 +395,26 @@ public class ModerationController{
 					}
 				}
 			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setViolationReportReason(User admin, ViolationReport report, ViolationReport.Reason reason){
+		try{
+			ModerationStorage.setViolationReportReason(report.id, reason);
+			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.CHANGE_REASON, null,
+					new JsonObjectBuilder().add("oldReason", report.reason.toString()).add("newReason", reason.toString()).build());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setViolationReportRules(User admin, ViolationReport report, Set<Integer> rules){
+		try{
+			ModerationStorage.setViolationReportRules(report.id, rules);
+			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.CHANGE_RULES, null,
+					new JsonObjectBuilder().add("oldRules", JsonArrayBuilder.fromCollection(report.rules)).add("newRules", JsonArrayBuilder.fromCollection(rules)).build());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

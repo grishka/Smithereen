@@ -314,5 +314,8 @@
   "admin_report_reason_rules": "Нарушение правил",
   "admin_report_reason_illegal": "Незаконный контент",
   "admin_report_reason_other": "Другое",
-  "admin_report_violated_rules": "Нарушенные правила"
+  "admin_report_violated_rules": "Нарушенные правила",
+  "report_log_changed_reason": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} причину жалобы",
+  "report_log_changed_rules": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} список нарушенных правил",
+  "admin_report_change_rules_title": "Изменение нарушенных правил"
 }
