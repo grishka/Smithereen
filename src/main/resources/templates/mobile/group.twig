@@ -67,9 +67,9 @@
 		{% endif %}
 		{% endif %}
 			{% if group.accessType!='OPEN' %}
-			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'confirm', 'title': L(group.event ? 'leave_event' : 'leave_group').toString(), 'msg':  L(group.event ? 'confirm_leave_event' : 'confirm_leave_group', {'type': group.accessType}).toString() | replace({"\n": '<br/>'}), 'href': "/groups/#{group.id}/leave", 'url': "/groups/#{group.id}/leave"}) %}
+			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'confirm', 'title': L(group.event ? 'leave_event' : 'leave_group').toString(), 'msg':  L(group.event ? 'confirm_leave_event' : 'confirm_leave_group', {'type': group.accessType}).toString() | replace({"\n": '<br/>'}), 'href': "/groups/#{group.id}/leave?csrf=#{csrf}", 'url': "/groups/#{group.id}/leave?csrf=#{csrf}"}) %}
 			{% else %}
-			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'link', 'ajax': 'box', 'href': "/groups/#{group.id}/leave"}) %}
+			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'link', 'ajax': 'box', 'href': "/groups/#{group.id}/leave?csrf=#{csrf}"}) %}
 			{% endif %}
 		{% endif %}
 
