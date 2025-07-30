@@ -155,6 +155,13 @@ class Notifier{
 				var el=ge("notifierNotification_"+m.id);
 				if(el){
 					Notifier.dismissNotification(el, false, false);
+				}else if(Notifier.notificationQueue.length){
+					for(var n of Notifier.notificationQueue){
+						if(n.id==m.id){
+							Notifier.notificationQueue.remove(n);
+							break;
+						}
+					}
 				}
 				break;
 			}
