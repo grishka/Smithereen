@@ -677,30 +677,38 @@ class FormBox extends Box{
 	public constructor(title:string, c:string, btn:string, act:string){
 		super(title, [btn, lang("cancel")], function(idx:number){
 			if(idx==0){
-				if(this.form.reportValidity()){
-					var btn=this.getButton(0);
-					btn.setAttribute("disabled", "");
-					this.getButton(1).setAttribute("disabled", "");
-					this.showButtonLoading(0, true);
-					ajaxSubmitForm(this.form, (resp)=>{
-						if(resp){
-							this.dismiss();
-						}else{
-							var btn=this.getButton(0);
-							btn.removeAttribute("disabled");
-							this.getButton(1).removeAttribute("disabled");
-							this.showButtonLoading(0, false);
-						}
-					});
-				}
+				this.submitForm();
 			}else{
 				this.dismiss();
 			}
 		});
 		var content:HTMLDivElement=ce("div", {}, [
-			this.form=ce("form", {innerHTML: c, action: act})
+			this.form=ce("form", {innerHTML: c, action: act, method: "post"})
 		]);
+		this.form.onsubmit=(ev)=>{
+			ev.preventDefault();
+			this.submitForm();
+		};
 		this.setContent(content);
+	}
+
+	public submitForm(){
+		if(this.form.reportValidity()){
+			var btn=this.getButton(0);
+			btn.setAttribute("disabled", "");
+			this.getButton(1).setAttribute("disabled", "");
+			this.showButtonLoading(0, true);
+			ajaxSubmitForm(this.form, (resp)=>{
+				if(resp){
+					this.dismiss();
+				}else{
+					var btn=this.getButton(0);
+					btn.removeAttribute("disabled");
+					this.getButton(1).removeAttribute("disabled");
+					this.showButtonLoading(0, false);
+				}
+			});
+		}
 	}
 
 	protected onCreateContentView():HTMLElement{
