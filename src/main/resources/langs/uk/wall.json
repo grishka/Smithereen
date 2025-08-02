@@ -1,1 +1,4 @@
-{}
+{
+  "comment_repost_title": "<a id=\"originalComment\">{time}</a> до запису <a id=\"topLevelPost\">{postSnippet}</a>",
+  "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> до віддаленого запису"
+}
