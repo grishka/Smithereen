@@ -47,6 +47,7 @@
   "birthday_descr_past": "wordt {age, plural, one {# jaar} other {# jaar}}",
   "birthday_descr_today": "word {age, plural, one {# jaar} other {# jaar}}",
   "birthday_descr_future": "word {age, plural, one {# jaar} other {# jaar}}",
+  "friend_req_accepted": "Vriendschapsverzoek geaccepteerd",
   "friend_req_declined": "Vriendschapsverzoek geweigerd",
   "select_friends_title": "Vrienden selecteren",
   "friends_search_placeholder": "Begin met het typen van een vriend zijn naam",
