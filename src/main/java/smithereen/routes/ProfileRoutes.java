@@ -14,10 +14,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
@@ -54,6 +57,8 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class ProfileRoutes{
+	private static final Pattern ID_PATTERN=Pattern.compile("^(id|club|event)(\\d+)$");
+
 	public static Object profile(Request req, Response resp){
 		ApplicationContext ctx=context(req);
 		String username=req.params(":username");
@@ -61,6 +66,19 @@ public class ProfileRoutes{
 		try{
 			ur=ctx.getObjectLinkResolver().resolveUsernameLocally(username);
 		}catch(ObjectNotFoundException x){
+			Matcher matcher=ID_PATTERN.matcher(username);
+			if(matcher.find()){
+				int id=safeParseInt(matcher.group(2));
+				try{
+					Actor actor=switch(matcher.group(1)){
+						case "id" -> ctx.getUsersController().getUserOrThrow(id);
+						case "club", "event" -> ctx.getGroupsController().getGroupOrThrow(id);
+						default -> throw new IllegalStateException("Unexpected value: "+matcher.group(1));
+					};
+					resp.redirect("/"+actor.getFullUsername());
+					return "";
+				}catch(ObjectNotFoundException ignore){}
+			}
 			throw new ObjectNotFoundException("err_user_not_found", x);
 		}
 		return switch(ur.type()){
