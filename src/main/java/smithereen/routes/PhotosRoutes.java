@@ -265,6 +265,8 @@ public class PhotosRoutes{
 		PhotoAlbum album=ctx.getPhotosController().getAlbum(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), info.account.user);
 		if(!info.permissions.canEditPhotoAlbum(album))
 			throw new UserActionNotAllowedException();
+		if(album.systemType!=null && isMobile(req))
+			throw new UserActionNotAllowedException();
 		RenderedTemplateResponse model=new RenderedTemplateResponse("photo_album_edit", req)
 				.with("album", album)
 				.pageTitle(album.title+" | "+lang(req).get("editing_photo_album"));

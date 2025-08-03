@@ -1,6 +1,6 @@
 {% extends "page" %}
 {% block headerActionButtons %}
-	{% if userPermissions.canEditPhotoAlbum(album) %}
+	{% if userPermissions.canEditPhotoAlbum(album) and album.systemType is null %}
 	    <a title="{{ L('edit_photo_album') }}" class="actionButton iconEdit" href="{{ album.url }}/edit"></a>
 	{% endif %}
 {% endblock %}

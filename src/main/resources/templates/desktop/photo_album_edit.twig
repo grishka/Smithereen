@@ -1,6 +1,8 @@
+{# @pebvariable name="album" type="smithereen.model.photos.PhotoAlbum" #}
 {% extends "page" %}
 {% block content %}
 {% include "photos_tabbar" with {'tab': 'edit'} %}
+{% if album.systemType is null %}
 <div class="gray{% if items is not empty %} borderBottom{% endif %} photoAlbumEdit">
 	<div class="settingsMessage" id="albumEditMessage" style="display: none"></div>
 	<div class="inner">
@@ -17,6 +19,7 @@
 		</form>
 	</div>
 </div>
+{% endif %}
 {% if items is not empty %}
 <div id="editPhotosBlock" class="summaryWrap">
 	<div class="summary">{{ L('edit_photos') }}</div>
