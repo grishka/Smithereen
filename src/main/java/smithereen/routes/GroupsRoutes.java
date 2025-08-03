@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -173,6 +174,8 @@ public class GroupsRoutes{
 
 			try{
 				Instant eventStart=instantFromDateAndTime(req, eventDate, eventTime);
+				if(eventStart.isBefore(Instant.now()) || eventStart.atZone(ZoneId.of("Z")).getYear()>=2038) // TODO temporary fix
+					throw new BadRequestException();
 				group=ctx.getGroupsController().createEvent(self.user, name, description, eventStart, null);
 			}catch(DateTimeParseException x){
 				throw new BadRequestException(x);
@@ -416,6 +419,10 @@ public class GroupsRoutes{
 				}
 				if(eventEnd!=null && eventStart.isAfter(eventEnd))
 					throw new BadRequestException(lang(req).get("err_event_end_time_before_start"));
+				if(!eventStart.equals(group.startTime) && (eventStart.isBefore(Instant.now()) || eventStart.atZone(ZoneId.of("Z")).getYear()>=2038))
+					throw new BadRequestException();
+				if(eventEnd!=null && eventEnd.atZone(ZoneId.of("Z")).getYear()>=2038)
+					throw new BadRequestException();
 			}
 
 			if(StringUtils.isEmpty(about))
