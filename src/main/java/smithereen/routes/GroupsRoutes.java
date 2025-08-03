@@ -709,7 +709,7 @@ public class GroupsRoutes{
 		}
 
 		int month=safeParseInt(req.queryParams("month"));
-		int year=safeParseInt(req.queryParams("year"));
+		int year=Math.min(Math.max(safeParseInt(req.queryParams("year")), today.getYear()-25), today.getYear()+25);
 		LocalDate monthStart;
 		if(month<1 || month>12 || year==0){
 			monthStart=LocalDate.now(timeZone).withDayOfMonth(1);
@@ -754,62 +754,6 @@ public class GroupsRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).setContent("eventsCalendarW", model.renderToString());
 		}
-
-		return model;
-	}
-
-	public static Object eventCalendarMobile(Request req, Response resp, Account self, ApplicationContext ctx){
-		RenderedTemplateResponse model=new RenderedTemplateResponse("events_calendar", req);
-		Lang l=lang(req);
-		Instant now=Instant.now();
-		ZoneId timeZone=timeZoneForRequest(req);
-		LocalDate today=LocalDate.now(timeZone);
-		int month=safeParseInt(req.queryParams("month"));
-		int year=safeParseInt(req.queryParams("year"));
-		LocalDate monthStart;
-		if(month<1 || month>12 || year==0){
-			monthStart=LocalDate.now(timeZone).withDayOfMonth(1);
-			month=monthStart.getMonthValue();
-			year=monthStart.getYear();
-		}else{
-			monthStart=LocalDate.of(year, month, 1);
-		}
-		model.with("month", month).with("year", year);
-		ArrayList<Actor> eventsInMonth=new ArrayList<>();
-		eventsInMonth.addAll(ctx.getUsersController().getFriendsWithBirthdaysInMonth(self.user, month));
-		eventsInMonth.addAll(ctx.getGroupsController().getUserEventsInMonth(self.user, year, month, timeZone));
-		List<ActorWithDescription> actors=eventsInMonth.stream().sorted((a1, a2)->{
-			LocalDate date1, date2;
-			if(a1 instanceof User u)
-				date1=u.birthDate;
-			else if(a1 instanceof Group g)
-				date1=g.eventStartTime.atZone(timeZone).toLocalDate();
-			else
-				throw new IllegalStateException();
-			if(a2 instanceof User u)
-				date2=u.birthDate;
-			else if(a2 instanceof Group g)
-				date2=g.eventStartTime.atZone(timeZone).toLocalDate();
-			else
-				throw new IllegalStateException();
-			if(date1.equals(date2)){
-				if(a1 instanceof User && a2 instanceof Group){
-					return -1;
-				}else if(a1 instanceof Group && a2 instanceof User){
-					return 1;
-				}else if(a1 instanceof User u1 && a2 instanceof User u2){
-					return Integer.compare(u1.id, u2.id);
-				}else if(a1 instanceof Group g1 && a2 instanceof Group g2){
-					return g1.eventStartTime.compareTo(g2.eventStartTime);
-				}else{
-					throw new IllegalStateException();
-				}
-			}else{
-				return date1.compareTo(date2);
-			}
-		}).map(a->new ActorWithDescription(a, getActorCalendarDescription(a, l, today, monthStart, now, timeZone))).toList();
-		model.with("actors", actors);
-		model.pageTitle(lang(req).get("events_calendar_title"));
 
 		return model;
 	}
