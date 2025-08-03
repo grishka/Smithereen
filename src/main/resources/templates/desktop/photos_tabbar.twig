@@ -12,7 +12,7 @@
 		{{- L('group_photo_albums') }}
 	{%- endif %}
 	</a>
-	{%- if currentUser is not null and owner.ownerID==currentUser.id and (userNotifications.newPhotoTagCount>0 or tab=='tags') %}
+	{%- if currentUser is not null and owner.ownerID==currentUser.id and ((userNotifications.newPhotoTagCount>0 and tab=='albums') or tab=='tags') %}
 	<a href="/photos/newTags" class="{{ tab=='tags' ? 'selected' : '' }}">{{ L('new_photos_of_me') }}{% if userNotifications.newPhotoTagCount>0 %} (<b>{{ userNotifications.newPhotoTagCount | numberformat }}</b>){% endif %}</a>
 	{% endif %}
 	{% if album is not null %}<a href="{{ album.url }}" class="{{ tab=='album' ? 'selected' : '' }}">{{ photoAlbumTitle(_context, album) }}</a>{% endif %}
