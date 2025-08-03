@@ -1252,7 +1252,9 @@ function showMailFormBox(el:HTMLAnchorElement){
 		box.show();
 		var button=box.getButton(0);
 		button.id="mailMessageFormSubmit";
-		postForm=new PostForm(ge("wallPostForm_mailMessage"));
+		var formEl=ge("wallPostForm_mailMessage");
+		postForm=new PostForm(formEl);
+		formEl.customData={postForm: postForm};
 		postForm.onSendDone=(success)=>{
 			if(success)
 				box.dismiss();
