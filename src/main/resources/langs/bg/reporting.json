@@ -10,8 +10,6 @@
   "report_text_user": "Какво не е наред с профила?",
   "report_text_group": "Какво не е наред с тази група?",
   "report_text_event": "Какво не е наред с това събитие?",
-  "report_placeholder_profile": "Пример: смущаваща профилна снимка",
-  "report_placeholder_content": "Пример: спам",
   "report_sent": "Жалбата е изпратена",
   "report_forward_to_domain": "Анонимно изпрати до <b>{domain}</b>",
   "report_submitted": "Жалбата бе изпратена до администрацията на сървъра.",
