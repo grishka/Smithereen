@@ -10,8 +10,6 @@
   "report_text_user": "Qu'est-ce qui ne va pas avec ce profil?",
   "report_text_group": "Qu'est-ce qui ne va pas avec ce groupe?",
   "report_text_event": "Qu'est-ce qui ne va pas avec cet événement ?",
-  "report_placeholder_profile": "Par exemple : photo de profil explicite",
-  "report_placeholder_content": "Par exemple : spam",
   "report_sent": "Signalement envoyé",
   "report_forward_to_domain": "Transférer de manière anonyme à <b>{domain}</b>",
   "report_submitted": "Votre rapport a été soumis au personnel du serveur.",
