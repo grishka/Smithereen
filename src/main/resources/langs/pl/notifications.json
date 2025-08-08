@@ -9,6 +9,7 @@
   "notification_reposted_comment": "{gender, select, female {udostępniła} other {udostępnił}} Twój komentarz",
   "notification_posted_on_wall": "{gender, select, female {opublikowała} other {opublikował}} na Twojej tablicy",
   "notification_invite_signup": "{gender, select, female {zarejestrowała} other {zarejestrował}} się z Twojego zaproszenia",
+  "notification_follow": "{gender, select, female {zaobserwowała} other {zaobserwował}} Cię",
   "notification_friend_req_accept": "{gender, select, female {zaakceptowała} other {zaakceptował}} Twoje zaproszenie do znajomych",
   "no_notifications": "Nie masz jeszcze żadnych zaproszeń do znajomych",
   "notifications": "Powiadomienia"
