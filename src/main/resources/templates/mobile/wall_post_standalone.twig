@@ -47,7 +47,7 @@
 	{%if realPost.replyLevel>0%}
 		<li><a href="/posts/{{ realPost.replyKey[0] }}">Top-level</a></li>
 	{%endif%}
-	{% if realPost.ownerID!=realPost.authorID %}
+	{% if realPost.ownerID!=realPost.authorID and realPost.ownerID>0 %}
 		<li><a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}">{{ L('wall_to_wall') }}</a></li>
 	{% endif %}
 	{% if userPermissions is not null and userPermissions.canReport(realPost) %}
