@@ -1,5 +1,5 @@
 {
-  "write_on_X_wall": "Написать на стене {name, inflect, genitive}…",
+  "write_on_X_wall": "Написать на стене {name, inflect, genitive}...",
   "birthday": "День рождения",
   "write_on_own_wall": "Что у ваc нового?",
   "profile_about": "О себе",
@@ -110,8 +110,8 @@
   "profile_unmute": "Показывать новости {name, inflect, genitive}",
   "profile_user_muted": "Новости {name, inflect, genitive} больше не будут показываться в вашей ленте",
   "profile_user_unmuted": "Новости {name, inflect, genitive} будут показываться в вашей ленте",
-  "user_online": "Онлайн",
-  "user_last_seen": "{gender, select, female {Заходила} other {Заходил}} {date}",
+  "user_online": "Online",
+  "user_last_seen": "{gender, select, female {заходила} other {заходил}} {date}",
   "profile_update_status": "изменить статус",
   "profile_status_hint": "Введите здесь текст вашего статуса.",
   "update_status": "Изменить статус"
