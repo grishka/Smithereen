@@ -10,8 +10,6 @@
   "report_text_user": "Was ist falsch an diesem Profil?",
   "report_text_group": "Was ist falsch an dieser Gruppe?",
   "report_text_event": "Was ist falsch an diesem Ereignis / dieser Veranstaltung?",
-  "report_placeholder_profile": "Zum Beispiel: ein explizites Profilbild",
-  "report_placeholder_content": "Zum Beispiel: Spam",
   "report_sent": "Meldungsbericht gesendet",
   "report_forward_to_domain": "Anonym weitergeleitet an <b>{domain}</b>",
   "report_submitted": "Dein Meldungsbericht wurde an die Serververwalter übermittelt.",
