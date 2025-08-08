@@ -73,7 +73,7 @@
   "server_restrictions": "Restricciones",
   "server_restrictions_none": "Este servidor no está restringido de ninguna manera.",
   "server_restrictions_suspended": "La federación con este servidor está suspendida. Sus usuarios no podrán interactuar con los tuyos y viceversa.",
-  "server_restrictions_change": "Editar restricciones...",
+  "server_restrictions_change": "Editar restricciones…",
   "server_availability": "Disponibilidad",
   "server_availability_explain": "Si la entrega de actividad a este servidor falla en <b>7 días diferentes</b>, será marcado como no disponible y la federación será pausada. La federación se resumirá automáticamente al recibir cualquier actividad de este servidor.",
   "server_availability_up": "El servidor está disponible.",
