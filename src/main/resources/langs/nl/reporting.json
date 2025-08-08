@@ -10,8 +10,6 @@
   "report_text_user": "Wat is er mis met dit profiel?",
   "report_text_group": "Wat is er mis met dit groep?",
   "report_text_event": "Wat is er mis met dit evenement?",
-  "report_placeholder_profile": "Bijvoorbeeld: expliciete profielfoto",
-  "report_placeholder_content": "Bijvoorbeeld: spam",
   "report_sent": "Rapport verzonden",
   "report_forward_to_domain": "Anoniem doorsturen naar <b>{domain}</b>",
   "report_submitted": "Jouw rapport is verzonden naar de server medewerkers.",
