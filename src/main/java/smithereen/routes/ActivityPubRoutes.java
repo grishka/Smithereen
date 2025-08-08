@@ -898,6 +898,10 @@ public class ActivityPubRoutes{
 			resp.status(403);
 			return "This actor is suspended from this server";
 		}
+		if(actor instanceof ForeignUser fu && fu.isServiceActor){
+			resp.status(403);
+			return "This is a service actor and it's not supposed to send activities";
+		}
 		if(fa.needUpdate() && canUpdate){
 			try{
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
