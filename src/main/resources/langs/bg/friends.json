@@ -47,6 +47,7 @@
   "birthday_descr_past": "Стана на {age, plural,one {# година}other {# години}}",
   "birthday_descr_today": "Става на {age, plural,one {# година} other {# години}}",
   "birthday_descr_future": "Ще стане на {age, plural,one {# година}other {# години}}",
+  "friend_req_accepted": "Поканата за приятелство е приета",
   "friend_req_declined": "Поканата за приятелство е отхвърлена",
   "select_friends_title": "Избери приятели",
   "friends_search_placeholder": "Започни да вписваш името на приятел",
