@@ -342,6 +342,7 @@ public class NewsfeedController{
 						Map<Long, Photo> photos=context.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
 						Set<Long> needAlbums=photos.values().stream().map(p->p.albumID).collect(Collectors.toSet());
 						Map<Long, PhotoAlbum> albums=context.getPhotosController().getAlbumsIgnoringPrivacy(needAlbums);
+						newPage.removeIf(e->(e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG) && photos.get(e.objectID)==null);
 						for(NewsfeedEntry e:newPage){
 							if(e.type==NewsfeedEntry.Type.ADD_PHOTO || e.type==NewsfeedEntry.Type.PHOTO_TAG){
 								e.extraData=Map.of("album", albums.get(photos.get(e.objectID).albumID));
