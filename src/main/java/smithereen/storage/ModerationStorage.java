@@ -174,6 +174,22 @@ public class ModerationStorage{
 				.executeNoResult();;
 	}
 
+	public static void updateViolationReportContent(int id, String contentJson, boolean hasFileRefs) throws SQLException{
+		new SQLQueryBuilder()
+				.update("reports")
+				.value("content", contentJson)
+				.value("has_file_refs", hasFileRefs)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static ViolationReportAction getViolationReportActionByID(int reportID, int actionID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("report_actions")
+				.where("report_id=? AND id=?", reportID, actionID)
+				.executeAndGetSingleObject(ViolationReportAction::fromResultSet);
+	}
+
 	public static void setServerRestriction(int id, String restrictionJson) throws SQLException{
 		new SQLQueryBuilder()
 				.update("servers")

@@ -64,6 +64,8 @@ import smithereen.model.admin.ViolationReportAction;
 import smithereen.model.comments.Comment;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportableContentObjectID;
+import smithereen.model.reports.ReportableContentObjectType;
 import smithereen.model.reports.ReportedComment;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.AuditLogEntryViewModel;
@@ -638,7 +640,7 @@ public class SettingsAdminRoutes{
 				case CHANGE_REASON -> l.get("report_log_changed_reason", langArgs);
 				case CHANGE_RULES -> l.get("report_log_changed_rules", langArgs);
 				case ADD_CONTENT -> null; // TODO
-				case REMOVE_CONTENT -> null;
+				case REMOVE_CONTENT -> l.get("report_log_excluded_content", langArgs);
 			};
 			return new ViolationReportActionViewModel(a, TextProcessor.substituteLinks(mainText, links), switch(a.actionType()){
 				case COMMENT -> TextProcessor.postprocessPostHTMLForDisplay(a.text(), false, false);
@@ -692,6 +694,28 @@ public class SettingsAdminRoutes{
 						lines.add(line);
 					}
 					yield String.join("<br>", lines);
+				}
+				case REMOVE_CONTENT -> {
+					List<ReportableContentObject> removedContent=a.extra().getAsJsonArray("content").asList().stream()
+							.map(el->ViolationReport.deserializeContentObject(report.id, el.getAsJsonObject())).toList();
+					yield removedContent.stream()
+							.map(co->{
+								String langKey=switch(co){
+									case Post post -> post.getReplyLevel()>0 ? "admin_report_content_comment" : "admin_report_content_post";
+									case MailMessage msg -> "admin_report_content_message";
+									case Photo photo -> "admin_report_content_photo";
+									case Comment comment -> "admin_report_content_comment";
+								};
+								String extraAttrs;
+								if(co instanceof Photo photo){
+									extraAttrs=" data-pv=\""+TextProcessor.escapeHTML(gson.toJson(photo.getSinglePhotoViewerData()))+"\"";
+								}else{
+									extraAttrs="";
+								}
+								return "<a href=\"/settings/admin/reports/"+report.id+"/pastContent/"+a.id()+"/"+co.getReportableObjectID().type()+"/"+co.getReportableObjectID().id()
+										+"\""+extraAttrs+" data-ajax-box>"+l.get(langKey, Map.of("id", co.getReportableObjectID().id()))+"</a>";
+							})
+							.collect(Collectors.joining("<br/>"));
 				}
 				default -> null;
 			});
@@ -756,6 +780,27 @@ public class SettingsAdminRoutes{
 		if(index<0 || index>=report.content.size())
 			throw new BadRequestException();
 		ReportableContentObject cobj=report.content.get(index);
+		return reportShowContent(req, resp, ctx, cobj, id);
+	}
+
+	public static Object reportShowPastContent(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, true);
+		int actionID=safeParseInt(req.params(":actionID"));
+		ReportableContentObjectID objID=new ReportableContentObjectID(enumValue(req.params(":contentType"), ReportableContentObjectType.class), safeParseLong(req.params(":contentID")));
+		ViolationReportAction action=ctx.getModerationController().getViolationReportAction(report, actionID);
+		if(action.actionType()!=ViolationReportAction.ActionType.REMOVE_CONTENT && action.actionType()!=ViolationReportAction.ActionType.ADD_CONTENT)
+			throw new ObjectNotFoundException();
+		List<ReportableContentObject> content=action.extra().getAsJsonArray("content").asList().stream()
+				.map(el->ViolationReport.deserializeContentObject(report.id, el.getAsJsonObject())).toList();
+		for(ReportableContentObject obj:content){
+			if(obj.getReportableObjectID().equals(objID))
+				return reportShowContent(req, resp, ctx, obj, id);
+		}
+		throw new ObjectNotFoundException();
+	}
+
+	private static Object reportShowContent(Request req, Response resp, ApplicationContext ctx, ReportableContentObject cobj, int id){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("report_content", req);
 		Lang l=lang(req);
 		String title;
@@ -1840,5 +1885,19 @@ public class SettingsAdminRoutes{
 				.with("serverRules", ctx.getModerationController().getServerRules())
 				.with("selectedRules", report.rules);
 		return wrapForm(req, resp, "admin_report_choose_rules", "/settings/admin/reports/"+report.id+"/setRules", lang(req).get("admin_report_change_rules_title"), "save", model);
+	}
+
+	public static Object removeReportContent(Request req, Response resp, Account self, ApplicationContext ctx){
+		int id=safeParseInt(req.params(":id"));
+		requireQueryParams(req, "id", "type");
+		long contentID=safeParseLong(req.queryParams("id"));
+		ReportableContentObjectType contentType=enumValue(req.queryParams("type").toUpperCase(), ReportableContentObjectType.class);
+
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(id, true);
+		ctx.getModerationController().removeContentFromViolationReport(self.user, report, List.of(new ReportableContentObjectID(contentType, contentID)));
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
 	}
 }

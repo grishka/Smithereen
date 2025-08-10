@@ -317,5 +317,7 @@
   "admin_report_violated_rules": "Violated rules",
   "report_log_changed_reason": "<a id=\"adminUser\">{name}</a> changed the report reason",
   "report_log_changed_rules": "<a id=\"adminUser\">{name}</a> changed the list of violated rules",
-  "admin_report_change_rules_title": "Change violated rules"
+  "admin_report_change_rules_title": "Change violated rules",
+  "admin_report_exclude_content": "Exclude",
+  "report_log_excluded_content": "<a id=\"adminUser\">{name}</a> excluded this from report:"
 }

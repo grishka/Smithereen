@@ -14,6 +14,7 @@ import java.util.Set;
 
 import smithereen.Utils;
 import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportableContentObjectType;
 import smithereen.model.reports.ReportedComment;
 import smithereen.model.reports.ReportedMailMessage;
 import smithereen.model.reports.ReportedPhoto;
@@ -61,14 +62,12 @@ public class ViolationReport{
 		return r;
 	}
 
-	private static ReportableContentObject deserializeContentObject(int id, JsonObject jo){
-		String type=jo.get("type").getAsString();
-		ReportableContentObject obj=switch(type){
-			case "post" -> new ReportedPost();
-			case "message" -> new ReportedMailMessage();
-			case "photo" -> new ReportedPhoto();
-			case "comment" -> new ReportedComment();
-			default -> throw new IllegalStateException("Unexpected value: " + type);
+	public static ReportableContentObject deserializeContentObject(int id, JsonObject jo){
+		ReportableContentObject obj=switch(Utils.enumValue(jo.get("type").getAsString().toUpperCase(), ReportableContentObjectType.class)){
+			case POST -> new ReportedPost();
+			case MESSAGE -> new ReportedMailMessage();
+			case PHOTO -> new ReportedPhoto();
+			case COMMENT -> new ReportedComment();
 		};
 		obj.fillFromReport(id, jo);
 		return obj;

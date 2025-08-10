@@ -406,6 +406,8 @@ public class SmithereenApplication{
 						postRequiringPermissionWithCSRF("/setReason", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::setReportReason);
 						postRequiringPermissionWithCSRF("/setRules", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::setReportRules);
 						getRequiringPermission("/rulesForm", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportRulesForm);
+						getRequiringPermissionWithCSRF("/removeContent", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::removeReportContent);
+						getRequiringPermission("/pastContent/:actionID/:contentType/:contentID", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportShowPastContent);
 					});
 				});
 				path("/federation", ()->{

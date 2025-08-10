@@ -77,6 +77,7 @@ import smithereen.model.admin.ViolationReport;
 import smithereen.model.admin.ViolationReportAction;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.reports.ReportableContentObjectID;
 import smithereen.model.reports.ReportedComment;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
@@ -415,6 +416,42 @@ public class ModerationController{
 			ModerationStorage.setViolationReportRules(report.id, rules);
 			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.CHANGE_RULES, null,
 					new JsonObjectBuilder().add("oldRules", JsonArrayBuilder.fromCollection(report.rules)).add("newRules", JsonArrayBuilder.fromCollection(rules)).build());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void removeContentFromViolationReport(User admin, ViolationReport report, Collection<ReportableContentObjectID> contentIDs){
+		if(report.state!=ViolationReport.State.OPEN)
+			throw new UserActionNotAllowedException();
+		List<ReportableContentObject> removedObjects=report.content.stream().filter(o->contentIDs.contains(o.getReportableObjectID())).toList();
+		if(removedObjects.isEmpty())
+			return;
+		try{
+			HashSet<Long> contentFileIDs=new HashSet<>();
+			JsonArray removedContentJson=removedObjects.stream().map(o->o.serializeForReport(report.targetID, contentFileIDs)).collect(JsonArrayBuilder.COLLECTOR);
+			for(long fid:contentFileIDs){
+				MediaStorage.deleteMediaFileReference(report.id, MediaFileReferenceType.REPORT_OBJECT, fid);
+			}
+
+			report.content=report.content.stream().filter(o->!removedObjects.contains(o)).toList();
+			contentFileIDs.clear();
+			JsonArray newContent=report.content.stream().map(o->o.serializeForReport(report.targetID, contentFileIDs)).collect(JsonArrayBuilder.COLLECTOR);
+			ModerationStorage.updateViolationReportContent(report.id, newContent.toString(), !contentFileIDs.isEmpty());
+
+			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.REMOVE_CONTENT, null,
+					new JsonObjectBuilder().add("content", removedContentJson).build());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public ViolationReportAction getViolationReportAction(ViolationReport report, int actionID){
+		try{
+			ViolationReportAction action=ModerationStorage.getViolationReportActionByID(report.id, actionID);
+			if(action==null)
+				throw new ObjectNotFoundException();
+			return action;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

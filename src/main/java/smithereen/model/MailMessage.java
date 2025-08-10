@@ -20,6 +20,8 @@ import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportableContentObjectID;
+import smithereen.model.reports.ReportableContentObjectType;
 import smithereen.model.reports.ReportedMailMessage;
 import smithereen.storage.DatabaseUtils;
 import smithereen.text.TextProcessor;
@@ -161,6 +163,11 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 			}
 		}
 		encodedID=String.valueOf(id);
+	}
+
+	@Override
+	public ReportableContentObjectID getReportableObjectID(){
+		return new ReportableContentObjectID(ReportableContentObjectType.MESSAGE, XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE));
 	}
 
 	public enum ParentObjectType{

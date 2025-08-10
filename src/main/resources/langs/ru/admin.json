@@ -317,5 +317,7 @@
   "admin_report_violated_rules": "Нарушенные правила",
   "report_log_changed_reason": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} причину жалобы",
   "report_log_changed_rules": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} список нарушенных правил",
-  "admin_report_change_rules_title": "Изменение нарушенных правил"
+  "admin_report_change_rules_title": "Изменение нарушенных правил",
+  "admin_report_exclude_content": "Исключить",
+  "report_log_excluded_content": "<a id=\"adminUser\">{name}</a> {gender, select, female {исключила} other {исключил}} из жалобы:"
 }

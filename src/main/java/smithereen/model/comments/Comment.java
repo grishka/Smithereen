@@ -23,6 +23,8 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PostLikeObject;
 import smithereen.model.notifications.Notification;
 import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportableContentObjectID;
+import smithereen.model.reports.ReportableContentObjectType;
 import smithereen.model.reports.ReportedComment;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
@@ -153,6 +155,11 @@ public sealed class Comment extends PostLikeObject implements ActivityPubReprese
 		}
 		if(jo.has("cw"))
 			contentWarning=jo.get("cw").getAsString();
+	}
+
+	@Override
+	public ReportableContentObjectID getReportableObjectID(){
+		return new ReportableContentObjectID(ReportableContentObjectType.PHOTO, id);
 	}
 
 	public List<String> getReplyKeyAsStrings(){

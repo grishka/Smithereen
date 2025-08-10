@@ -18,6 +18,7 @@ import smithereen.util.JsonArrayBuilder;
 public sealed interface ReportableContentObject permits Post, MailMessage, Photo, Comment{
 	JsonObject serializeForReport(int targetID, Set<Long> outFileIDs);
 	void fillFromReport(int reportID, JsonObject jo);
+	ReportableContentObjectID getReportableObjectID();
 
 	static JsonArray serializeMediaAttachments(List<ActivityPubObject> attachments, Set<Long> outFileIDs){
 		JsonArrayBuilder jb=new JsonArrayBuilder();

@@ -142,6 +142,7 @@ cur.showReasonMenu=function(el){
 			{%- else %}
 			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" data-ajax-box>{{ L(langKey, {'id': cont.id}) }}</a>
 			{% endif %}
+			{% if report.state=='OPEN' %}[ <a href="/settings/admin/reports/{{ report.id }}/removeContent?id={{ cont.id }}&type={{ cont.type }}&csrf={{ csrf }}" id="removeContentLink_{{ cont.type }}{{ cont.id }}" data-ajax data-ajax-show="removeContentLoader_{{ cont.type }}{{ cont.id }}" data-ajax-hide="removeContentLink_{{ cont.type }}{{ cont.id }}">{{ L('admin_report_exclude_content') }}</a><span class="inlineLoader" id="removeContentLoader_{{ cont.type }}{{ cont.id }}" style="display: none"></span> ]{% endif %}
 		</div>
 		{% endfor %}
 	</div>
