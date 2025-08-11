@@ -337,7 +337,13 @@ public class Utils{
 			throw new IllegalArgumentException("Even-length string required");
 		byte[] res=new byte[hex.length()/2];
 		for(int i=0;i<res.length;i++){
-			res[i]=(byte)((Character.digit(hex.charAt(i*2), 16) << 4) | (Character.digit(hex.charAt(i*2+1), 16)));
+			int hi=Character.digit(hex.charAt(i*2), 16);
+			int lo=Character.digit(hex.charAt(i*2+1), 16);
+			if(hi==-1)
+				throw new IllegalArgumentException("Character at offset "+(i*2)+" is not a valid hex digit");
+			if(lo==-1)
+				throw new IllegalArgumentException("Character at offset "+(i*2+1)+" is not a valid hex digit");
+			res[i]=(byte)((hi << 4) | lo);
 		}
 		return res;
 	}

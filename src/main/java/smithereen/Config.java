@@ -137,8 +137,18 @@ public class Config{
 		imgproxyUrl=props.getProperty("imgproxy.url_prefix");
 		imgproxyLocalUploads=props.getProperty("imgproxy.local_uploads");
 		imgproxyLocalMediaCache=props.getProperty("imgproxy.local_media_cache");
-		imgproxyKey=Utils.hexStringToByteArray(props.getProperty("imgproxy.key"));
-		imgproxySalt=Utils.hexStringToByteArray(props.getProperty("imgproxy.salt"));
+		String imgproxyKeyStr=props.getProperty("imgproxy.key");
+		try{
+			imgproxyKey=Utils.hexStringToByteArray(imgproxyKeyStr);
+		}catch(IllegalArgumentException x){
+			throw new RuntimeException("imgproxy key '"+imgproxyKeyStr+"' is not valid", x);
+		}
+		String imgproxySaltStr=props.getProperty("imgproxy.salt");
+		try{
+			imgproxySalt=Utils.hexStringToByteArray(imgproxySaltStr);
+		}catch(IllegalArgumentException x){
+			throw new RuntimeException("imgproxy salt '"+imgproxySaltStr+"' is not valid", x);
+		}
 		if(imgproxyUrl.charAt(0)!='/')
 			imgproxyUrl='/'+imgproxyUrl;
 
