@@ -39,6 +39,9 @@
   "statistics": "Статистика",
   "gender_other": "інший",
   "menu_mail": "Мої Повідомлення",
+  "share_content": "Поділитися",
+  "do_share_post": "Поділитися записом",
+  "do_share_comment": "Поділитися коментарем",
   "menu_bookmarks": "Мої Закладки",
   "menu_photos": "Мої Фото"
 }
