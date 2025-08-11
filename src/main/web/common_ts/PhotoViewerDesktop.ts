@@ -445,7 +445,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		if(this.loading)
 			throw new Error("already loading");
 		this.loading=true;
-		ajaxGet(this.listURL+"?list="+this.listID+"&offset="+offset, (_r)=>{
+		ajaxGet(addParamsToURL(this.listURL, {list: this.listID, offset: offset.toString()}), (_r)=>{
 			var r=_r as PhotoViewerInfoAjaxResponse;
 			this.total=r.total;
 			this.updateTitle();

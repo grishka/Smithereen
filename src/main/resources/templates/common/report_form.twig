@@ -6,6 +6,7 @@
 {# @pebvariable name="textAreaPlaceholder" type="String" #}
 {# @pebvariable name="reportTitleText" type="String" #}
 {# @pebvariable name="serverRules" type="smithereen.model.ServerRule[]" #}
+{% if reportTitle is not empty %}
 <h2>{{ reportTitleText }}</h2>
 <div class="reportFormHeader">
 	<div class="flL">{{ actorForAvatar | pictureForAvatar('a') }}</div>
@@ -13,6 +14,7 @@
 	<div class="ellipsize">{{ reportSubtitle }}</div>
 	<div class="clear"></div>
 </div>
+{% endif %}
 <div onchange="var rules=ge('reportSelectRules'); var checkboxes=rules.querySelectorAll('input'); if(this.qs('input:checked').value=='SERVER_RULES'){rules.show();for(var i=0;i<checkboxes.length;i++){checkboxes[i].required=!rules.querySelectorAll('input:checked').length;}}else{rules.hide();for(var i=0;i<checkboxes.length;i++){checkboxes[i].required=false;}}">
 	<div class="radioButtonWrap">
 		<input type="radio" name="reason" value="SPAM" id="reportReasonSpam" class="flL" required/>

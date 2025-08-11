@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -111,7 +112,7 @@ public class ModerationController{
 
 	// region Reporting
 
-	public void createViolationReport(User self, Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, boolean forward){
+	public int createViolationReport(User self, Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, boolean forward){
 		int reportID=createViolationReportInternal(self, target, content, reason, rules, comment, null);
 		if(forward && (target instanceof ForeignGroup || target instanceof ForeignUser)){
 			ArrayList<URI> objectIDs=new ArrayList<>();
@@ -120,6 +121,7 @@ public class ModerationController{
 				objectIDs.add(apr.getActivityPubID());
 			context.getActivityPubWorker().sendViolationReport(reportID, comment, objectIDs, target);
 		}
+		return reportID;
 	}
 
 	public void createViolationReport(@Nullable User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, String otherServerDomain){
@@ -199,44 +201,52 @@ public class ModerationController{
 		}
 	}
 
+	public void populateFilesInReportableContent(List<ReportableContentObject> content){
+		HashSet<LocalImage> localImages=new HashSet<>();
+		List<Photo> photos=new ArrayList<>();
+		for(ReportableContentObject rco:content){
+			List<ActivityPubObject> attachments=switch(rco){
+				case Post p -> p.getAttachments();
+				case MailMessage m -> m.getAttachments();
+				case Photo p -> {
+					photos.add(p);
+					yield null;
+				}
+				case Comment c -> c.getAttachments();
+			};
+			if(attachments==null)
+				continue;
+			for(ActivityPubObject att: attachments){
+				if(att instanceof LocalImage li){
+					localImages.add(li);
+				}
+			}
+		}
+		try{
+			Set<Long> fileIDs=localImages.stream().map(li->li.fileID).collect(Collectors.toSet());
+			if(!fileIDs.isEmpty()){
+				Map<Long, MediaFileRecord> files=MediaStorage.getMediaFileRecords(fileIDs);
+				for(LocalImage li: localImages){
+					MediaFileRecord mfr=files.get(li.fileID);
+					if(mfr!=null)
+						li.fillIn(mfr);
+				}
+			}
+			if(!photos.isEmpty()){
+				PhotoStorage.postprocessPhotos(photos);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public ViolationReport getViolationReportByID(int id, boolean needFiles){
 		try{
 			ViolationReport report=ModerationStorage.getViolationReportByID(id);
 			if(report==null)
 				throw new ObjectNotFoundException();
 			if(needFiles && !report.content.isEmpty()){
-				HashSet<LocalImage> localImages=new HashSet<>();
-				List<Photo> photos=new ArrayList<>();
-				for(ReportableContentObject rco: report.content){
-					List<ActivityPubObject> attachments=switch(rco){
-						case Post p -> p.getAttachments();
-						case MailMessage m -> m.getAttachments();
-						case Photo p -> {
-							photos.add(p);
-							yield null;
-						}
-						case Comment c -> c.getAttachments();
-					};
-					if(attachments==null)
-						continue;
-					for(ActivityPubObject att: attachments){
-						if(att instanceof LocalImage li){
-							localImages.add(li);
-						}
-					}
-				}
-				Set<Long> fileIDs=localImages.stream().map(li->li.fileID).collect(Collectors.toSet());
-				if(!fileIDs.isEmpty()){
-					Map<Long, MediaFileRecord> files=MediaStorage.getMediaFileRecords(fileIDs);
-					for(LocalImage li: localImages){
-						MediaFileRecord mfr=files.get(li.fileID);
-						if(mfr!=null)
-							li.fillIn(mfr);
-					}
-				}
-				if(!photos.isEmpty()){
-					PhotoStorage.postprocessPhotos(photos);
-				}
+				populateFilesInReportableContent(report.content);
 			}
 			return report;
 		}catch(SQLException x){
@@ -272,7 +282,8 @@ public class ModerationController{
 
 	public List<ViolationReportAction> getViolationReportActions(ViolationReport report){
 		try{
-			return ModerationStorage.getViolationReportActions(report.id);
+			List<ViolationReportAction> actions=ModerationStorage.getViolationReportActions(report.id);
+			return actions;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -441,6 +452,34 @@ public class ModerationController{
 
 			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.REMOVE_CONTENT, null,
 					new JsonObjectBuilder().add("content", removedContentJson).build());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void addContentToViolationReport(User admin, ViolationReport report, List<ReportableContentObject> content){
+		if(report.state!=ViolationReport.State.OPEN)
+			throw new UserActionNotAllowedException();
+
+		Set<ReportableContentObjectID> existingObjectIDs=report.content.stream().map(ReportableContentObject::getReportableObjectID).collect(Collectors.toSet());
+		content=content.stream().filter(o->!existingObjectIDs.contains(o.getReportableObjectID())).toList();
+		if(content.isEmpty())
+			return;
+
+		HashSet<Long> oldFileIDs=new HashSet<>(), newFileIDs=new HashSet<>();
+		JsonArray serializedContent=report.content.stream().map(o->o.serializeForReport(report.targetID, oldFileIDs)).collect(JsonArrayBuilder.COLLECTOR);
+		JsonArray newContent=content.stream().map(o->o.serializeForReport(report.targetID, newFileIDs)).collect(JsonArrayBuilder.COLLECTOR);
+		serializedContent.addAll(newContent);
+		newFileIDs.removeAll(oldFileIDs);
+		try{
+			ModerationStorage.updateViolationReportContent(report.id, serializedContent.toString(), !oldFileIDs.isEmpty() || !newFileIDs.isEmpty());
+
+			for(long fid:newFileIDs){
+				MediaStorage.createMediaFileReference(fid, report.id, MediaFileReferenceType.REPORT_OBJECT, 0);
+			}
+
+			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.ADD_CONTENT, null,
+					new JsonObjectBuilder().add("content", newContent).build());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

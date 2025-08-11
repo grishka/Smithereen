@@ -1,0 +1,105 @@
+{# @pebvariable name="user" type="smithereen.model.User" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_users_info_tabbar" with {'tab': 'content'} %}
+<div class="secondaryTabBar">
+	<a href="/users/{{ user.id }}/meminfo/content?type=wall{% if reportID is not null %}&report={{ reportID }}{% endif %}" class="{{ contentType=='wall' ? 'selected' : '' }}">{{ L('admin_user_content_wall') }}</a>
+	<a href="/users/{{ user.id }}/meminfo/content?type=comments{% if reportID is not null %}&report={{ reportID }}{% endif %}" class="{{ contentType=='comments' ? 'selected' : '' }}">{{ L('admin_user_content_comments') }}</a>
+	<a href="/users/{{ user.id }}/meminfo/content?type=photos{% if reportID is not null %}&report={{ reportID }}{% endif %}" class="{{ contentType=='photos' ? 'selected' : '' }}">{{ L('admin_user_content_photos') }}</a>
+</div>
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">{{ summary }}</div>
+	{% include "pagination" %}
+</div>
+{% endif %}
+<div onchange="cur.onCheckboxChange(event)" id="itemsCont">
+	{% for item in items %}
+	<label class="clickableListItem checkable">
+		<input type="checkbox" name="{{ contentType=='photos' ? item.id : item.post.id }}"/>
+		{% set randomID=randomString() %}
+		{% if contentType=='photos' %}
+		<div>
+			<div class="adminInfoGrid">
+				<div class="vSpanAll">{{ item.image | pictureForPhoto('s', false) }}</div>
+				<div class="span2">
+					<div class="marginAfter">{{ L('photo_album_label') }}: <a href="{{ albums[item.albumID].url }}">{{ albums[item.albumID].title }}</a></div>
+					{% if item.description is not empty %}<div>{{ item.description | postprocessHTML }}</div>{% endif %}
+				</div>
+			</div>
+			<div class="grayText smallMarginBefore">
+				<a href="{{ item.url }}" class="grayText" onclick="return openPhotoViewer(this)" data-pv="{{ json(item.singlePhotoViewerData) }}">{{ LD(item.createdAt) }}</a>
+				{% if item.ownerID!=item.authorID %}&raquo; <a href="{{ profileURL(item.ownerID) }}">{{ (item.ownerID>0 ? users[item.ownerID] : groups[-item.ownerID]) | name }}</a>{% endif %}
+			</div>
+		</div>
+		{% else %}
+		<div>
+			<div class="post standalone"><div class="postContentWrap" style="padding: 0">{% include "wall_post_inner" with {'post': item, 'repostDepth': 0, 'repostParent': item, 'randomID': randomID} %}</div></div>
+			<div class="grayText smallMarginBefore">
+				{% if item.post.replyLevel>0 and contentType=='wall' %}{{ L('content_type_comment') }}{% endif %}
+				<a href="{{ item.post.internalURL }}" class="grayText">{{ LD(item.post.createdAt) }}</a>
+				{% if item.post.ownerID!=item.post.authorID %}&raquo; <a href="{{ profileURL(item.post.ownerID) }}">{{ (item.post.ownerID>0 ? users[item.post.ownerID] : groups[-item.post.ownerID]) | name }}</a>{% endif %}
+			</div>
+		</div>
+		{% endif %}
+	</label>
+	{% else %}
+	<div class="singleColumn"><div class="emptyState">{{ L('admin_user_content_empty') }}</div></div>
+	{% endfor %}
+	<div class="boxButtonBar bottomActionBar" style="display: none; margin-top: -1px;" id="actionBar">
+		<div class="buttonBarAux"><a href="javascript:void(0)" onclick="cur.resetSelection()" class="deleteButton flL" data-tooltip="{{ L('clear_selection') }}" aria-label="{{ L('clear_selection') }}"></a><span id="selectedCount" class="actionBarTitle"></span></div>
+		{% if reportID is not null %}
+		<button onclick="cur.submitAddContent()" id="addContentBtn">{{ L('admin_content_add_to_report', {'id': reportID}) }}</button>
+		{% else %}
+		<button onclick="cur.showCreateReportForm()">{{ L('admin_content_create_report') }}</button>
+		{% endif %}
+	</div>
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% script %}
+(function(){
+	var itemType="{{ contentType }}";
+	var itemsCont=ge("itemsCont");
+	var actionBar=ge("actionBar");
+	var selectedCount=ge("selectedCount");
+
+	cur.onCheckboxChange=function(ev){
+		var numChecked=itemsCont.querySelectorAll("input:checked").length;
+		if(numChecked){
+			actionBar.show();
+			selectedCount.innerText=lang("{{ countKey }}", {count: numChecked});
+		}else{
+			actionBar.hide();
+		}
+	};
+	cur.resetSelection=function(){
+		var checkboxes=itemsCont.querySelectorAll("input:checked");
+		for(var i=0;i<checkboxes.length;i++){
+			checkboxes[i].checked=false;
+		}
+		actionBar.hide();
+	};
+
+	function getSelectedIDs(){
+		var ids=[];
+		var checkboxes=itemsCont.querySelectorAll("input:checked");
+		for(var i=0;i<checkboxes.length;i++){
+			ids.push(checkboxes[i].name);
+		}
+		return ids;
+	}
+
+	{% if reportID is not null %}
+	cur.submitAddContent=function(){
+		ge("addContentBtn").classList.add("loading");
+		ajaxPostAndApplyActions("/settings/admin/reports/{{ reportID }}/addContent", {type: "{{ contentType }}", ids: getSelectedIDs().join(",")});
+	};
+	{% else %}
+	cur.showCreateReportForm=function(){
+		LayerManager.getInstance().showBoxLoader();
+		ajaxGetAndApplyActions("/settings/admin/createReportForm?type={{ contentType }}&ids="+getSelectedIDs().join(",")+"&uid={{ user.id }}");
+	};
+	{% endif %}
+})();
+{% endscript %}
+{% endblock %}

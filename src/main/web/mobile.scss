@@ -376,6 +376,9 @@ select{
 		margin: 0 5px;
 		top: 1px;
 	}
+	&.standalone{
+		padding: 0;
+	}
 }
 
 .post.comment{
@@ -1868,6 +1871,16 @@ input.searchField{
 	&:last-child{
 		border-bottom: none;
 	}
+	&.checkable{
+		display: flex;
+		>input{
+			flex: none;
+			margin-right: 10px;
+		}
+		>*{
+			flex-grow: 1;
+		}
+	}
 }
 
 .aBunchOfButtons{
@@ -2960,5 +2973,30 @@ ol.largeNumbers{
 
 .singleColumn ol.largeNumbers:last-child{
 	margin-bottom: 0;
+}
+
+.deleteButton{
+	display: inline-block;
+	width: 32px;
+	height: 32px;
+	background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+	opacity: .7;
+}
+
+.bottomActionBar{
+	position: sticky;
+	bottom: 0;
+	background: $bgGrey;
+	border-top: solid 1px $wallPostSeparator;
+	padding: 8px 16px 16px;
+	.buttonBarAux{
+		height: 32px;
+		display: flex;
+		margin-bottom: 8px;
+		align-items: center;
+		.deleteButton{
+			flex: none;
+		}
+	}
 }
 

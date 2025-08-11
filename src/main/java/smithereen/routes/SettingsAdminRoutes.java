@@ -3,6 +3,7 @@ package smithereen.routes;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -14,6 +15,7 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,6 +30,7 @@ import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.SmithereenApplication;
 import smithereen.Utils;
+import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -69,6 +72,8 @@ import smithereen.model.reports.ReportableContentObjectType;
 import smithereen.model.reports.ReportedComment;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.AuditLogEntryViewModel;
+import smithereen.model.viewmodel.CommentViewModel;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.model.viewmodel.UserRoleViewModel;
@@ -639,7 +644,7 @@ public class SettingsAdminRoutes{
 				case DELETE_CONTENT -> l.get("report_log_deleted_content", langArgs);
 				case CHANGE_REASON -> l.get("report_log_changed_reason", langArgs);
 				case CHANGE_RULES -> l.get("report_log_changed_rules", langArgs);
-				case ADD_CONTENT -> null; // TODO
+				case ADD_CONTENT -> l.get("report_log_added_content", langArgs);
 				case REMOVE_CONTENT -> l.get("report_log_excluded_content", langArgs);
 			};
 			return new ViolationReportActionViewModel(a, TextProcessor.substituteLinks(mainText, links), switch(a.actionType()){
@@ -698,6 +703,7 @@ public class SettingsAdminRoutes{
 				case REMOVE_CONTENT -> {
 					List<ReportableContentObject> removedContent=a.extra().getAsJsonArray("content").asList().stream()
 							.map(el->ViolationReport.deserializeContentObject(report.id, el.getAsJsonObject())).toList();
+					ctx.getModerationController().populateFilesInReportableContent(removedContent);
 					yield removedContent.stream()
 							.map(co->{
 								String langKey=switch(co){
@@ -708,12 +714,27 @@ public class SettingsAdminRoutes{
 								};
 								String extraAttrs;
 								if(co instanceof Photo photo){
-									extraAttrs=" data-pv=\""+TextProcessor.escapeHTML(gson.toJson(photo.getSinglePhotoViewerData()))+"\"";
+									extraAttrs=" data-pv=\""+TextProcessor.escapeHTML(gson.toJson(photo.getSinglePhotoViewerData()))+"\" onclick=\"return openPhotoViewer(this)\" data-pv-url=\"/photos/ajaxViewerInfoForReport?action="+a.id()+"\"";
 								}else{
-									extraAttrs="";
+									extraAttrs=" data-ajax-box";
 								}
 								return "<a href=\"/settings/admin/reports/"+report.id+"/pastContent/"+a.id()+"/"+co.getReportableObjectID().type()+"/"+co.getReportableObjectID().id()
-										+"\""+extraAttrs+" data-ajax-box>"+l.get(langKey, Map.of("id", co.getReportableObjectID().id()))+"</a>";
+										+"\""+extraAttrs+">"+l.get(langKey, Map.of("id", co.getReportableObjectID().id()))+"</a>";
+							})
+							.collect(Collectors.joining("<br/>"));
+				}
+				case ADD_CONTENT -> {
+					List<ReportableContentObject> addedContent=a.extra().getAsJsonArray("content").asList().stream()
+							.map(el->ViolationReport.deserializeContentObject(report.id, el.getAsJsonObject())).toList();
+					yield addedContent.stream()
+							.map(co->{
+								String langKey=switch(co){
+									case Post post -> post.getReplyLevel()>0 ? "admin_report_content_comment" : "admin_report_content_post";
+									case MailMessage msg -> "admin_report_content_message";
+									case Photo photo -> "admin_report_content_photo";
+									case Comment comment -> "admin_report_content_comment";
+								};
+								return l.get(langKey, Map.of("id", co.getReportableObjectID().id()));
 							})
 							.collect(Collectors.joining("<br/>"));
 				}
@@ -734,6 +755,7 @@ public class SettingsAdminRoutes{
 		if(report.rules!=null && !report.rules.isEmpty()){
 			model.with("rules", ctx.getModerationController().getServerRulesByIDs(report.rules));
 		}
+		model.addMessage(req, "reportMessage"+report.id, "message");
 		return model;
 	}
 
@@ -793,6 +815,7 @@ public class SettingsAdminRoutes{
 			throw new ObjectNotFoundException();
 		List<ReportableContentObject> content=action.extra().getAsJsonArray("content").asList().stream()
 				.map(el->ViolationReport.deserializeContentObject(report.id, el.getAsJsonObject())).toList();
+		ctx.getModerationController().populateFilesInReportableContent(content);
 		for(ReportableContentObject obj:content){
 			if(obj.getReportableObjectID().equals(objID))
 				return reportShowContent(req, resp, ctx, obj, id);
@@ -1294,7 +1317,8 @@ public class SettingsAdminRoutes{
 		UserRelationshipMetrics relMetrics=ctx.getUsersController().getRelationshipMetrics(user);
 		UserContentMetrics contentMetrics=ctx.getUsersController().getContentMetrics(user);
 		model.with("relationshipMetrics", relMetrics).with("contentMetrics", contentMetrics);
-		model.pageTitle(lang(req).get("admin_manage_user")+" | "+user.getFullName());
+		model.pageTitle(lang(req).get("admin_manage_user")+" | "+user.getFullName())
+				.headerBack(user);
 		model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
 		return model;
 	}
@@ -1519,7 +1543,8 @@ public class SettingsAdminRoutes{
 
 		model.with("users", ctx.getUsersController().getUsers(userIDs))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(groupIDs))
-				.with("filteredByUser", user);
+				.with("filteredByUser", user)
+				.headerBack(user);
 		model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
 
 		return model;
@@ -1531,7 +1556,7 @@ public class SettingsAdminRoutes{
 		PaginatedList<ActorStaffNote> notes=ctx.getModerationController().getUserStaffNotes(user, offset(req), 50);
 		model.paginate(notes);
 		model.with("users", ctx.getUsersController().getUsers(notes.list.stream().map(ActorStaffNote::authorID).collect(Collectors.toSet())));
-		model.with("user", user).with("staffNoteCount", notes.total);
+		model.with("user", user).with("staffNoteCount", notes.total).headerBack(user);
 		return model;
 	}
 
@@ -1899,5 +1924,193 @@ public class SettingsAdminRoutes{
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object userContent(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_user_content", req)
+				.with("user", user);
+
+		Lang l=lang(req);
+		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+
+		String rawType=req.queryParamOrDefault("type", "wall");
+		String type;
+		String countKey;
+		if("photos".equals(rawType)){
+			type="photos";
+			PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotosByAuthor(user, offset(req), 50);
+			HashSet<Long> needAlbums=new HashSet<>();
+			for(Photo p:photos.list){
+				if(p.ownerID>0)
+					needUsers.add(p.ownerID);
+				else
+					needGroups.add(-p.ownerID);
+				needAlbums.add(p.albumID);
+			}
+			model.paginate(photos);
+			model.with("summary", l.get("content_type_X_photos", Map.of("count", photos.total)));
+			countKey="content_type_X_photos";
+			model.with("albums", ctx.getPhotosController().getAlbumsIgnoringPrivacy(needAlbums));
+		}else if("comments".equals(rawType)){
+			type="comments";
+			PaginatedList<CommentViewModel> comments=ctx.getCommentsController().getAllCommentsByAuthor(user, offset(req), 50);
+			CommentViewModel.collectUserIDs(comments.list, needUsers);
+			for(CommentViewModel cvm:comments.list){
+				if(cvm.post.ownerID>0)
+					needUsers.add(cvm.post.ownerID);
+				else
+					needGroups.add(-cvm.post.ownerID);
+			}
+			model.paginate(comments);
+			model.with("summary", l.get("X_comments", Map.of("count", comments.total)));
+			countKey="X_comments";
+		}else{
+			type="wall";
+			PaginatedList<PostViewModel> posts=ctx.getWallController().getAllPostsByAuthor(user, offset(req), 50);
+			ctx.getWallController().populateReposts(user, posts.list, 2);
+			PostViewModel.collectActorIDs(posts.list, needUsers, needGroups);
+			model.paginate(posts);
+			model.with("summary", l.get("X_posts", Map.of("count", posts.total)));
+			countKey="X_posts";
+		}
+
+		model.with("countKey", countKey);
+		jsLangKey(req, countKey);
+		model.with("contentType", type);
+		model.pageTitle(l.get("admin_report_content")+" | "+user.getFullName())
+				.headerBack(user);
+		model.with("users", ctx.getUsersController().getUsers(needUsers))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+		model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
+
+		int reportID=safeParseInt(req.queryParams("report"));
+		if(reportID>0)
+			model.with("reportID", reportID);
+
+		return model;
+	}
+
+	public static Object createReportForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "type", "ids", "uid");
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.queryParams("uid")));
+		String type=req.queryParams("type");
+		String ids=req.queryParams("ids");
+		Lang l=lang(req);
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("report_form", req);
+		model.with("actorForAvatar", user)
+				.with("otherServerDomain", user instanceof ForeignUser fu ? fu.domain : null)
+				.with("serverRules", ctx.getModerationController().getServerRules());
+		return wrapForm(req, resp, "report_form", "/settings/admin/createReport?type="+type+"&ids="+ids+"&uid="+user.id, l.get("admin_create_report_title"), "create", model);
+	}
+
+	private static List<ReportableContentObject> getReportableObjects(Request req, User user, ApplicationContext ctx){
+		List<Long> ids=Arrays.stream(req.queryParams("ids").split(",")).map(Utils::safeParseLong).filter(id->id!=0).toList();
+		String type=req.queryParams("type");
+		List<ReportableContentObject> content=switch(type){
+			case "wall" -> ctx.getWallController().getPosts(ids.stream().map(Long::intValue).collect(Collectors.toSet())).values().stream().map(p->(ReportableContentObject)p).toList();
+			case "comments" -> ctx.getCommentsController().getCommentsIgnoringPrivacy(ids).values().stream().map(p->(ReportableContentObject)p).toList();
+			case "photos" -> ctx.getPhotosController().getPhotosIgnoringPrivacy(ids).values().stream().map(p->(ReportableContentObject)p).toList();
+			default -> throw new IllegalStateException("Unexpected value: " + type);
+		};
+
+		for(ReportableContentObject obj:content){
+			int authorID=switch(obj){
+				case Post p -> p.authorID;
+				case Comment c -> c.authorID;
+				case MailMessage m -> m.senderID;
+				case Photo p -> p.authorID;
+			};
+			if(authorID!=user.id)
+				throw new BadRequestException("Author ID "+authorID+" for "+obj.getReportableObjectID()+" does not match expected "+user.id);
+		}
+		return content;
+	}
+
+	public static Object createReport(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "type", "ids", "uid", "reason");
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.queryParams("uid")));
+		String comment=req.queryParamOrDefault("reportText", "");
+		ViolationReport.Reason reason=enumValue(req.queryParams("reason"), ViolationReport.Reason.class);
+		boolean forward="on".equals(req.queryParams("forward"));
+		Set<Integer> rules;
+		if(reason==ViolationReport.Reason.SERVER_RULES){
+			QueryParamsMap rulesMap=req.queryMap("rules");
+			if(rulesMap==null)
+				throw new BadRequestException();
+			Set<Integer> validRuleIDs=ctx.getModerationController()
+					.getServerRules()
+					.stream()
+					.map(ServerRule::id)
+					.collect(Collectors.toSet());
+			rules=rulesMap.toMap()
+					.keySet()
+					.stream()
+					.map(Utils::safeParseInt)
+					.filter(validRuleIDs::contains)
+					.collect(Collectors.toSet());
+			if(rules.isEmpty())
+				throw new BadRequestException();
+		}else{
+			rules=Set.of();
+		}
+
+		List<ReportableContentObject> content=getReportableObjects(req, user, ctx);
+
+		int reportID=ctx.getModerationController().createViolationReport(self.user, user, content, reason, rules, comment, forward);
+		return ajaxAwareRedirect(req, resp, "/settings/admin/reports/"+reportID);
+	}
+
+	public static Object addContentToReport(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "type", "ids");
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.params(":id")), true);
+		User user=ctx.getUsersController().getUserOrThrow(report.targetID);
+
+		List<ReportableContentObject> content=getReportableObjects(req, user, ctx);
+		ctx.getModerationController().addContentToViolationReport(self.user, report, content);
+		return ajaxAwareRedirect(req, resp, "/settings/admin/reports/"+report.id);
+	}
+
+	public static Object addLinksToReportForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		return wrapForm(req, resp, "report_add_urls_form", "/settings/admin/reports/"+req.params(":id")+"/addLinks",
+				lang(req).get("admin_report_add_content_link"), "save", "report_add_urls", List.of(), s->null, null);
+	}
+
+	public static Object addLinksToReport(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "urls");
+		ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(req.params(":id")), true);
+		User user=ctx.getUsersController().getUserOrThrow(report.targetID);
+		List<URI> urls=Arrays.stream(req.queryParams("urls").split("\n"))
+				.map(String::trim)
+				.filter(s->!s.isEmpty())
+				.map(URI::create)
+				.toList();
+		ArrayList<ReportableContentObject> content=new ArrayList<>();
+		ArrayList<String> errors=new ArrayList<>();
+		for(URI uri:urls){
+			try{
+				ReportableContentObject obj=ctx.getObjectLinkResolver().resolveNative(uri, ReportableContentObject.class, true, true, false, user, true);
+				int authorID=switch(obj){
+					case Post p -> p.authorID;
+					case Comment c -> c.authorID;
+					case MailMessage m -> m.senderID;
+					case Photo p -> p.authorID;
+				};
+				if(authorID!=user.id)
+					errors.add(uri+": "+lang(req).get("admin_report_link_wrong_author"));
+				else
+					content.add(obj);
+			}catch(ObjectNotFoundException x){
+				errors.add(uri+": "+lang(req).get("err_not_found"));
+			}
+		}
+		if(!content.isEmpty()){
+			ctx.getModerationController().addContentToViolationReport(self.user, report, content);
+		}
+		if(!errors.isEmpty()){
+			req.session().attribute("reportMessage"+report.id, String.join("\n", errors));
+		}
+		return ajaxAwareRedirect(req, resp, "/settings/admin/reports/"+report.id);
 	}
 }

@@ -1867,17 +1867,6 @@ select, .comboBoxW input{
 		font-size: 11px;
 		color: $boldHeaders;
 	}
-	.attachDelete{
-		display: inline-block;
-		width: 16px;
-		height: 16px;
-		background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
-		opacity: .7;
-		transition: opacity .2s ease;
-		&:hover{
-			opacity: 1;
-		}
-	}
 	&.postFormCW input, &.postFormPoll input[type=text]{
 		width: 100%;
 	}
@@ -1895,6 +1884,18 @@ select, .comboBoxW input{
 	}
 	.pollSetting{
 		display: block;
+	}
+}
+
+.postFormNonThum .attachDelete, .deleteButton{
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+	opacity: .7;
+	transition: opacity .2s ease;
+	&:hover{
+		opacity: 1;
 	}
 }
 
@@ -2952,10 +2953,20 @@ label.pretendLink{
 	>.spanAll{
 		grid-column-start: span 3;
 	}
+	>.span2{
+		grid-column-start: span 2;
+	}
+	>.vSpanAll{
+		grid-row: 1/-1;
+	}
 }
 
 .borderBottom{
 	border-bottom: solid 1px $wallPostSeparator;
+}
+
+.borderTop{
+	border-top: solid 1px $wallPostSeparator;
 }
 
 .searchFieldWrap{
@@ -3548,6 +3559,16 @@ h2, h3, h4{
 	color: $text;
 	&:last-child{
 		border-bottom: none;
+	}
+	&.checkable{
+		display: flex;
+		>input{
+			flex: none;
+			margin-right: 10px;
+		}
+		>*{
+			flex-grow: 1;
+		}
 	}
 }
 
@@ -5244,5 +5265,19 @@ ol.largeNumbers{
 
 .userBanPage .post{
 	border-bottom: none;
+}
+
+.bottomActionBar{
+	position: sticky;
+	bottom: 0;
+	.buttonBarAux{
+		padding-left: 10px;
+	}
+}
+
+.actionBarTitle{
+	color: $normalLink;
+	margin-left: 5px;
+	font-weight: bold;
 }
 

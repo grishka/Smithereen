@@ -2,6 +2,7 @@
 {% extends "page" %}
 {% block content %}
 {% include "reports_tabbar" with {'tab': 'view'} %}
+{% if message is not empty %}<div class="singleColumn"><div class="settingsMessage">{{ message | nl2br }}</div></div>{% endif %}
 <div class="singleColumn adminInfoGrid borderBottom" id="report{{ report.id }}">
 	<div class="spanAll">
 		{% if report.state=='OPEN' %}
@@ -114,9 +115,9 @@ cur.showReasonMenu=function(el){
 		{{ report.comment }}
 	</div>
 	{% endif %}
-	{% if content is not empty %}
+	{% if content is not empty or (report.state=='OPEN' and report.targetID>0) %}
 	<div class="spanAll">
-		<div class="grayText">{{ L('admin_report_content') }}:</div>
+		<div class="grayText">{{ L('admin_report_content') }}:{% if report.targetID>0 %} [ <a href="/users/{{ report.targetID }}/meminfo/content?report={{ report.id }}">{{ L('admin_report_add_content_list') }}</a> ] [ <a href="/settings/admin/reports/{{ report.id }}/addLinksForm" data-ajax-box>{{ L('admin_report_add_content_link') }}</a> ]</div>{% endif %}
 		{% for cont in content %}
 		<div>
 			{%- if cont.type=='post' %}

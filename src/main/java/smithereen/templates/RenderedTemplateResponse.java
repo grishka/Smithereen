@@ -110,6 +110,7 @@ public class RenderedTemplateResponse{
 		queryKeys.remove("_ajax");
 		queryKeys.remove("pagination");
 		queryKeys.remove("last");
+		queryKeys.remove("_al");
 		if(!queryKeys.isEmpty()){
 			 pathWithQuery+='?'+queryKeys.stream().map(k->k+'='+URLEncoder.encode(req.queryParams(k), StandardCharsets.UTF_8)).collect(Collectors.joining("&"));
 		}

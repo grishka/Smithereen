@@ -764,4 +764,27 @@ public class PhotoStorage{
 				.boxed()
 				.collect(Collectors.toSet());
 	}
+
+	public static PaginatedList<Photo> getAllPhotosByAuthor(int userID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("photos")
+					.count()
+					.where("author_id=?", userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<Photo> photos=new SQLQueryBuilder(conn)
+					.selectFrom("photos")
+					.where("author_id=?", userID)
+					.limit(count, offset)
+					.orderBy("created_at DESC")
+					.executeAsStream(Photo::fromResultSet)
+					.toList();
+			postprocessPhotos(photos);
+
+			return new PaginatedList<>(photos, total, offset, count);
+		}
+	}
 }

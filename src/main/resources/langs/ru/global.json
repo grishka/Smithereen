@@ -225,5 +225,6 @@
   "account_ban_content_messages": "Эта страница была заблокирована за рассылку от вашего имени <b>таких сообщений</b>:",
   "account_ban_content_posts": "таких записей",
   "account_ban_content_comments": "таких комментариев",
-  "account_ban_content_photos": "таких фотографий"
+  "account_ban_content_photos": "таких фотографий",
+  "clear_selection": "Сбросить выбор"
 }

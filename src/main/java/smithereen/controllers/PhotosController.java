@@ -1530,4 +1530,12 @@ public class PhotosController{
 
 		return getPhotosIgnoringPrivacy(needPhotos).values().stream().collect(Collectors.toMap(ph->ph.ownerID, Function.identity()));
 	}
+
+	public PaginatedList<Photo> getAllPhotosByAuthor(User author, int offset, int count){
+		try{
+			return PhotoStorage.getAllPhotosByAuthor(author.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

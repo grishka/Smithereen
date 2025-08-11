@@ -615,6 +615,28 @@ public class CommentStorage{
 				.executeAndGetInt();
 	}
 
+	public static PaginatedList<Comment> getAllCommentsByAuthor(int userID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.count()
+					.where("author_id=?", userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<Comment> comments=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.where("author_id=?", userID)
+					.limit(count, offset)
+					.orderBy("created_at DESC")
+					.executeAsStream(Comment::fromResultSet)
+					.toList();
+			postprocessComments(comments);
+			return new PaginatedList<>(comments, total, offset, count);
+		}
+	}
+
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{
 		Set<Long> needFileIDs=posts.stream()
 				.filter(p->p.attachments!=null && !p.attachments.isEmpty())

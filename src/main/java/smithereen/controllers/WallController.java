@@ -972,4 +972,13 @@ public class WallController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public PaginatedList<PostViewModel> getAllPostsByAuthor(User user, int offset, int count){
+		try{
+			PaginatedList<Post> posts=PostStorage.getAllPostsByAuthor(user.id, offset, count);
+			return PostViewModel.wrap(posts);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

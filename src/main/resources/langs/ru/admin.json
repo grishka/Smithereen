@@ -319,5 +319,18 @@
   "report_log_changed_rules": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} список нарушенных правил",
   "admin_report_change_rules_title": "Изменение нарушенных правил",
   "admin_report_exclude_content": "Исключить",
-  "report_log_excluded_content": "<a id=\"adminUser\">{name}</a> {gender, select, female {исключила} other {исключил}} из жалобы:"
+  "report_log_excluded_content": "<a id=\"adminUser\">{name}</a> {gender, select, female {исключила} other {исключил}} из жалобы:",
+  "admin_user_content_wall": "Записи и комментарии на стенах",
+  "admin_user_content_comments": "Другие комментарии",
+  "admin_user_content_photos": "Фотографии",
+  "admin_user_content_empty": "Нет контента этого типа",
+  "admin_content_add_to_report": "Добавить к жалобе <b>№{id}</b>",
+  "admin_content_create_report": "Создать жалобу",
+  "admin_create_report_title": "Создание жалобы",
+  "admin_report_add_content_list": "Добавить из списка",
+  "admin_report_add_content_link": "Добавить по ссылке",
+  "report_log_added_content": "<a id=\"adminUser\">{name}</a> {gender, select, female {добавила} other {добавил}} к жалобе:",
+  "admin_report_add_links": "Ссылки на контент",
+  "admin_report_add_links_one_per_line": "По одной на строку",
+  "admin_report_link_wrong_author": "Этот объект не был добавлен в жалобу, так как он создан не тем пользователем, на которого эта жалоба."
 }

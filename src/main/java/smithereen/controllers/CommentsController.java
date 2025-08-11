@@ -549,4 +549,13 @@ public class CommentsController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public PaginatedList<CommentViewModel> getAllCommentsByAuthor(User author, int offset, int count){
+		try{
+			PaginatedList<Comment> comments=CommentStorage.getAllCommentsByAuthor(author.id, offset, count);
+			return CommentViewModel.wrap(comments);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

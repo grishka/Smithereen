@@ -382,6 +382,9 @@ public class SmithereenApplication{
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::index);
 				postRequiringPermissionWithCSRF("/updateServerInfo", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::updateServerInfo);
+				getRequiringPermission("/createReportForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::createReportForm);
+				postRequiringPermissionWithCSRF("/createReport", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::createReport);
+
 				path("/users", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::users);
 					getRequiringPermission("/roleForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::roleForm);
@@ -408,6 +411,9 @@ public class SmithereenApplication{
 						getRequiringPermission("/rulesForm", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportRulesForm);
 						getRequiringPermissionWithCSRF("/removeContent", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::removeReportContent);
 						getRequiringPermission("/pastContent/:actionID/:contentType/:contentID", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::reportShowPastContent);
+						postRequiringPermissionWithCSRF("/addContent", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::addContentToReport);
+						getRequiringPermission("/addLinksForm", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::addLinksToReportForm);
+						postRequiringPermissionWithCSRF("/addLinks", UserRole.Permission.MANAGE_REPORTS, SettingsAdminRoutes::addLinksToReport);
 					});
 				});
 				path("/federation", ()->{
@@ -608,6 +614,7 @@ public class SmithereenApplication{
 			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncContentCollections);
 			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncProfile);
 			getRequiringPermission("/meminfo", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userInfo);
+			getRequiringPermission("/meminfo/content", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::userContent);
 			getRequiringPermission("/banForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUserForm);
 			postRequiringPermissionWithCSRF("/ban", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::banUser);
 			getRequiringPermission("/deleteImmediatelyForm", UserRole.Permission.DELETE_USERS_IMMEDIATE, SettingsAdminRoutes::deleteAccountImmediatelyForm);

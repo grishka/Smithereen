@@ -48,6 +48,7 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.admin.ViolationReport;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.ViolationReportAction;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
@@ -783,30 +784,40 @@ public class PhotosRoutes{
 			throw new BadRequestException();
 		ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(listParts[1]), true);
 		long objID=safeParseLong(listParts[3]);
+		List<ReportableContentObject> content=report.content;
+		int action=safeParseInt(req.queryParams("action"));
+		if(action>0){
+			ViolationReportAction act=ctx.getModerationController().getViolationReportAction(report, action);
+			if(act.actionType()==ViolationReportAction.ActionType.ADD_CONTENT || act.actionType()==ViolationReportAction.ActionType.REMOVE_CONTENT){
+				content=act.extra().getAsJsonArray("content").asList().stream()
+						.map(el->ViolationReport.deserializeContentObject(report.id, el.getAsJsonObject())).toList();
+				ctx.getModerationController().populateFilesInReportableContent(content);
+			}
+		}
 		ReportableContentObject obj=switch(listParts[2]){
 			case "posts" -> {
-				for(ReportableContentObject co:report.content){
+				for(ReportableContentObject co:content){
 					if(co instanceof Post post && post.id==objID)
 						yield co;
 				}
 				throw new ObjectNotFoundException();
 			}
 			case "messages" -> {
-				for(ReportableContentObject co:report.content){
+				for(ReportableContentObject co:content){
 					if(co instanceof MailMessage msg && msg.id==objID)
 						yield co;
 				}
 				throw new ObjectNotFoundException();
 			}
 			case "photos" -> {
-				for(ReportableContentObject co:report.content){
+				for(ReportableContentObject co:content){
 					if(co instanceof Photo photo && photo.getIdString().equals(listParts[3]))
 						yield co;
 				}
 				throw new ObjectNotFoundException();
 			}
 			case "comments" -> {
-				for(ReportableContentObject co:report.content){
+				for(ReportableContentObject co:content){
 					if(co instanceof Comment comment && comment.id==XTEA.decodeObjectID(listParts[3], ObfuscatedObjectIDType.COMMENT))
 						yield co;
 				}
