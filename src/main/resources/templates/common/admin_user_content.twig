@@ -14,6 +14,7 @@
 </div>
 {% endif %}
 <div onchange="cur.onCheckboxChange(event)" id="itemsCont">
+	<div>
 	{% for item in items %}
 	<label class="clickableListItem checkable">
 		<input type="checkbox" name="{{ contentType=='photos' ? item.id : item.post.id }}"/>
@@ -46,6 +47,7 @@
 	{% else %}
 	<div class="singleColumn"><div class="emptyState">{{ L('admin_user_content_empty') }}</div></div>
 	{% endfor %}
+	</div>
 	<div class="boxButtonBar bottomActionBar" style="display: none; margin-top: -1px;" id="actionBar">
 		<div class="buttonBarAux"><a href="javascript:void(0)" onclick="cur.resetSelection()" class="deleteButton flL" data-tooltip="{{ L('clear_selection') }}" aria-label="{{ L('clear_selection') }}"></a><span id="selectedCount" class="actionBarTitle"></span></div>
 		{% if reportID is not null %}
