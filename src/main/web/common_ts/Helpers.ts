@@ -751,10 +751,20 @@ function applyServerCommand(cmd:any){
 		}
 		break;
 		case "refresh":
-			location.reload();
+		{
+			if(mobile)
+				location.reload();
+			else
+				ajaxNavigate(location.href, false);
+		}
 			break;
 		case "location":
-			location.href=cmd.l;
+		{
+			if(mobile)
+				location.href=cmd.l;
+			else
+				ajaxNavigate(cmd.l, cmd.l!=location.href);
+		}
 			break;
 		case "run":
 			eval(cmd.s);
