@@ -1,4 +1,4 @@
-package smithereen.routes;
+package smithereen.routes.admin;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -17,7 +17,7 @@ import spark.Response;
 
 import static smithereen.Utils.*;
 
-public class SettingsAdminFaspRoutes{
+public class AdminFaspRoutes{
 	public static Object activeFasps(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_fasp_active", req)
 				.pageTitle(lang(req).get("admin_fasps"));
