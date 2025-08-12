@@ -74,6 +74,14 @@ public class CryptoUtils{
 		}
 	}
 
+	public static byte[] sha1(byte[] input){
+		try{
+			return MessageDigest.getInstance("SHA1").digest(input);
+		}catch(NoSuchAlgorithmException x){
+			throw new RuntimeException(x);
+		}
+	}
+
 	public static byte[] aesGcmEncrypt(byte[] input, byte[] key){
 		try{
 			byte[] iv=new byte[12];

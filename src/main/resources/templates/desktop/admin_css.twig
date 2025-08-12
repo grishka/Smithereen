@@ -1,0 +1,77 @@
+{% extends "page" %}
+{% block content %}
+{% include "admin_tabbar" with {'tab': 'css'} %}
+<div class="gray singleColumn">
+	{{ L('admin_css_explanation') }}
+	<h3 class="marginBefore marginAfter">{{ L('admin_css_resources') }}</h3>
+	<div id="cssFiles">
+		{% block files %}
+		{% for file in files %}
+		<div class="smallMarginAfter" id="cssFile_{{ file }}">
+			<a href="{{ filesUrlPath }}/{{ file }}" onclick="cur.insertFileURL('{{ file }}'); return false;">{{ file }}</a>
+			<a href="/settings/admin/deleteCssFile?csrf={{ csrf }}&file={{ file }}" class="deleteButton" id="cssDeleteFile_{{ file }}" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}" data-ajax data-ajax-show="cssFileDeleteLoader_{{ file }}" data-ajax-hide="cssDeleteFile_{{ file }}"></a>
+			<span class="inlineLoader" id="cssFileDeleteLoader_{{ file }}" style="display: none"></span>
+		</div>
+		{% endfor %}
+		{% endblock %}
+	</div>
+	<div class="marginBefore">{{ L('admin_css_resources_explanation') }}</div>
+	<div class="marginBefore">
+		<input type="file" onchange="cur.uploadFile()" id="cssFileField" accept="image/*" style="display: none"/>
+		<label class="button" for="cssFileField" id="cssFileButton">{{ L('admin_css_add_file') }}</label>
+	</div>
+</div>
+<div>
+	<div class="lightTabBar">
+		<a href="javascript:void(0)" onclick="cur.showTab(0)" class="selected">{{ L('admin_css_common') }}</a>
+		<a href="javascript:void(0)" onclick="cur.showTab(1)">{{ L('admin_css_desktop') }}</a>
+		<a href="javascript:void(0)" onclick="cur.showTab(2)">{{ L('admin_css_mobile') }}</a>
+	</div>
+	<form action="/settings/admin/saveCSS?csrf={{ csrf }}" method="post" class="singleColumn">
+		<textarea name="common" id="commonCSS" style="font-family: monospace; width: 100%">{{ commonCSS }}</textarea>
+		<textarea name="desktop" id="desktopCSS" style="font-family: monospace; width: 100%; display: none">{{ desktopCSS }}</textarea>
+		<textarea name="mobile" id="mobileCSS" style="font-family: monospace; width: 100%; display: none">{{ mobileCSS }}</textarea>
+		<div class="marginBefore"><input type="submit" value="{{ L('save') }}"/></div>
+	</form>
+</div>
+{% script %}
+(function(){
+	var textAreas=[ge("commonCSS"), ge("desktopCSS"), ge("mobileCSS")];
+	var tabs=document.querySelectorAll(".lightTabBar a").unfuck();
+	var activeTab=0;
+	for(var i=0;i<textAreas.length;i++){
+		autoSizeTextArea(textAreas[i]);
+	}
+
+	cur.showTab=function(index){
+		activeTab=index;
+		for(var i=0;i<textAreas.length;i++){
+			if(i==index){
+				tabs[i].classList.add("selected");
+				textAreas[i].show();
+			}else{
+				tabs[i].classList.remove("selected");
+				textAreas[i].hide();
+			}
+		}
+	};
+
+	cur.uploadFile=function(){
+		var field=ge("cssFileField");
+		var btn=ge("cssFileButton");
+
+		btn.classList.add("loading");
+		var file=field.files[0];
+		field.value="";
+
+		ajaxUpload("/settings/admin/uploadFileForCSS", "file", file);
+	};
+
+	cur.insertFileURL=function(name){
+		var ta=textAreas[activeTab];
+		ta.setRangeText("url({{ filesUrlPath }}/"+name+")", ta.selectionStart, ta.selectionEnd, "end");
+		ta.focus();
+	};
+})();
+{% endscript %}
+{% endblock %}

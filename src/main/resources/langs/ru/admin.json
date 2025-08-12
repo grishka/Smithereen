@@ -332,5 +332,13 @@
   "report_log_added_content": "<a id=\"adminUser\">{name}</a> {gender, select, female {добавила} other {добавил}} к жалобе:",
   "admin_report_add_links": "Ссылки на контент",
   "admin_report_add_links_one_per_line": "По одной на строку",
-  "admin_report_link_wrong_author": "Этот объект не был добавлен в жалобу, так как он создан не тем пользователем, на которого эта жалоба."
+  "admin_report_link_wrong_author": "Этот объект не был добавлен в жалобу, так как он создан не тем пользователем, на которого эта жалоба.",
+  "admin_custom_css": "Стили",
+  "admin_css_explanation": "Здесь вы можете придать индивидуальности веб-интерфейсу вашего сервера.",
+  "admin_css_resources": "Ресурсы",
+  "admin_css_resources_explanation": "Загрузите изображения, чтобы использовать их в своих стилях.",
+  "admin_css_add_file": "Загрузить файл",
+  "admin_css_common": "Общий",
+  "admin_css_desktop": "Десктопный",
+  "admin_css_mobile": "Мобильный"
 }

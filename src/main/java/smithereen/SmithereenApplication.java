@@ -384,6 +384,10 @@ public class SmithereenApplication{
 				postRequiringPermissionWithCSRF("/updateServerInfo", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::updateServerInfo);
 				getRequiringPermission("/createReportForm", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::createReportForm);
 				postRequiringPermissionWithCSRF("/createReport", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::createReport);
+				getRequiringPermission("/css", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::customCSS);
+				postRequiringPermissionWithCSRF("/saveCSS", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::saveCustomCSS);
+				postRequiringPermissionWithCSRF("/uploadFileForCSS", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::uploadFileForCSS);
+				getRequiringPermissionWithCSRF("/deleteCssFile", UserRole.Permission.MANAGE_SERVER_SETTINGS, SettingsAdminRoutes::deleteCssFile);
 
 				path("/users", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_USERS, SettingsAdminRoutes::users);
@@ -547,6 +551,16 @@ public class SmithereenApplication{
 			getLoggedIn("/simpleUserCompletions", SystemRoutes::simpleUserCompletions);
 			get("/privacyPolicy", SystemRoutes::privacyPolicy);
 			get("/languageChooser", SystemRoutes::languageChooser);
+			get("/custom_desktop.css", (req, resp)->{
+				resp.type("text/css");
+				resp.header("cache-control", "private, max-age=604800");
+				return Config.combinedDesktopCSS;
+			});
+			get("/custom_mobile.css", (req, resp)->{
+				resp.type("text/css");
+				resp.header("cache-control", "private, max-age=604800");
+				return Config.combinedMobileCSS;
+			});
 
 			if(Config.DEBUG){
 				path("/debug", ()->{

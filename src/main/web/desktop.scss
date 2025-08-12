@@ -1887,13 +1887,14 @@ select, .comboBoxW input{
 	}
 }
 
-.postFormNonThum .attachDelete, .deleteButton{
+.postFormNonThumb .attachDelete, .deleteButton{
 	display: inline-block;
 	width: 16px;
 	height: 16px;
 	background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
 	opacity: .7;
 	transition: opacity .2s ease;
+	vertical-align: middle;
 	&:hover{
 		opacity: 1;
 	}
@@ -5279,5 +5280,31 @@ ol.largeNumbers{
 	color: $normalLink;
 	margin-left: 5px;
 	font-weight: bold;
+}
+
+.lightTabBar{
+	background: $bgGrey;
+	padding: 12px 0 0 10px;
+	display: flex;
+	flex-wrap: wrap;
+	border-bottom: solid 1px $wallPostSeparator;
+	a{
+		padding: 4px 10px 6px;
+		border: solid 1px $lightTabBorder;
+		border-bottom: none;
+		margin-right: 6px;
+		background: $lightTabBackground;
+		box-shadow: 0 -2px 0 inset rgba(0,0,0,0.03);
+		&:hover{
+			text-decoration: none;
+			background: $bg;
+		}
+		&.selected{
+			margin-bottom: -1px;
+			padding-bottom: 7px;
+			background: $bg;
+			box-shadow: none;
+		}
+	}
 }
 

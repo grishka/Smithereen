@@ -332,5 +332,13 @@
   "report_log_added_content": "<a id=\"adminUser\">{name}</a> added this to report:",
   "admin_report_add_links": "Content URLs",
   "admin_report_add_links_one_per_line": "One per line",
-  "admin_report_link_wrong_author": "This content was not added to this report because it was not created by the user this report is about."
+  "admin_report_link_wrong_author": "This content was not added to this report because it was not created by the user this report is about.",
+  "admin_custom_css": "Styles",
+  "admin_css_explanation": "You can customize the appearance of your server's web interface here.",
+  "admin_css_resources": "Resources",
+  "admin_css_resources_explanation": "Upload images to use in your stylesheets.",
+  "admin_css_add_file": "Upload a file",
+  "admin_css_common": "Common",
+  "admin_css_desktop": "Desktop",
+  "admin_css_mobile": "Mobile"
 }

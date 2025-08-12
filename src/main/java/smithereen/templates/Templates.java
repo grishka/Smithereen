@@ -149,13 +149,16 @@ public class Templates{
 				continue;
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 		}
-		if(req.attribute("mobile")!=null){
+		boolean mobile=req.attribute("mobile")!=null;
+		if(mobile){
 			for(String key:List.of("search", "qsearch_hint", "more_actions", "photo_open_original", "like", "add_comment",
 					"object_X_of_Y", "delete", "delete_photo", "delete_photo_confirm", "set_photo_as_album_cover", "open_on_server_X", "report", "photo_save_to_album")){
 				if(k!=null && k.contains(key))
 					continue;
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
+			if(Config.mobileCSSCacheHash!=null && req.queryParams("_nocss")==null)
+				model.with("customCSSHash", Config.mobileCSSCacheHash);
 		}else{
 			for(String key:List.of("photo_tagging_info", "photo_tagging_done", "photo_tag_myself", "photo_tag_select_friend", "photo_tag_not_found", "photo_delete_tag",
 					"photo_add_tag_submit", "photo_tag_name_search")){
@@ -163,6 +166,8 @@ public class Templates{
 					continue;
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
+			if(Config.desktopCSSCacheHash!=null && req.queryParams("_nocss")==null)
+				model.with("customCSSHash", Config.desktopCSSCacheHash);
 		}
 		model.with("timeZone", tz!=null ? tz : ZoneId.systemDefault()).with("jsConfig", jsConfig.toString())
 				.with("jsLangKeys", "{"+String.join(",", jsLang)+"}")
@@ -171,7 +176,7 @@ public class Templates{
 				.with("serverDomain", Config.domain)
 				.with("serverVersion", BuildInfo.VERSION)
 				.with("langName", lang.name)
-				.with("isMobile", req.attribute("mobile")!=null)
+				.with("isMobile", mobile)
 				.with("isAjax", Utils.isAjax(req))
 				.with("_request", req);
 	}

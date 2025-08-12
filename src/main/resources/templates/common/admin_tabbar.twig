@@ -2,6 +2,7 @@
 <div class="tabbar">
 	{% if userPermissions.hasPermission('MANAGE_SERVER_SETTINGS') %}
 	<a href="/settings/admin" class="{% if tab=='general' %}selected{% endif %}">{{L('admin_server_settings')}}</a>
+	{% if not isMobile %}<a href="/settings/admin/css" class="{% if tab=='css' %}selected{% endif %}">{{ L('admin_custom_css') }}</a>{% endif %}
 	{% endif %}
 	{% if userPermissions.hasPermission('MANAGE_SERVER_RULES') %}
 	<a href="/settings/admin/rules" class="{% if tab=='rules' %}selected{% endif %}">{{ L('admin_server_rules') }}</a>

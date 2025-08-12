@@ -3,6 +3,7 @@
 <head>
 	<title>{{ title }}</title>
 	<link rel="stylesheet" type="text/css" href="/res/mobile.css?{{ staticHashes['mobile.css'] }}"/>
+	{% if customCSSHash is not empty %}<link rel="stylesheet" type="text/css" href="/system/custom_mobile.css?{{ customCSSHash }}"/>{% endif %}
     {% if activityPubURL is not null %}
 	<link rel="alternate" type="application/activity+json" href="{{ activityPubURL }}"/>
 	{% endif %}
