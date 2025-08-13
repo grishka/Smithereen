@@ -82,6 +82,9 @@ autoSizeTextArea(ge("{{ name }}"));
 				{%- if options.required %} required{% endif -%}
 			/>
 		</div>
+		{%if options.explanation is not null%}
+		<span class="formExplanation">{{options.explanation}}</span>
+		{%endif%}
 	</div>
 {% endmacro %}
 

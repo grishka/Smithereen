@@ -1,0 +1,33 @@
+{# @pebvariable name="items" type="smithereen.model.ServerAnnouncement[]" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_tabbar" with {'tab': 'announcements'} %}
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">
+		{{ L('admin_announcements_summary', {'count': totalItems}) }}
+		<span class="auxText"> | <a href="/settings/admin/announcements/createForm">{{ L('admin_create_announcement') }}</a></span>
+	</div>
+	{% include "pagination" %}
+</div>
+{% else %}
+<a href="/settings/admin/announcements/createForm" class="fab iconAdd" title="{{ L('admin_create_announcement') }}"></a>
+{% endif %}
+<div class="singleColumn">
+	{% if message is not empty %}<div class="settingsMessage">{{ message }}</div>{% endif %}
+{% for announcement in items %}
+	<div class="listItemWithDivider" id="announcement{{ announcement.id }}" style="{% if announcement.showTo.isBefore(now) %}opacity: 0.5{% endif %}">
+		{% if announcement.title is not empty %}<div class="smallMarginAfter"><b>{{ announcement.title }}</b></div>{% endif %}
+		<div class="smallMarginAfter">{{ announcement.description }}</div>
+		<div class="smallVMargin">{{ LD(announcement.showFrom, forceAbsolute=true) }} — {{ LD(announcement.showTo, forceAbsolute=true) }}</div>
+		<div class="smallVMargin">
+			<a href="/settings/admin/announcements/{{ announcement.id }}/edit">{{ L('edit') }}</a>
+			| <a href="/settings/admin/announcements/{{ announcement.id }}/confirmDelete" data-confirm-title="{{ L('admin_announcement_deletion') }}" data-confirm-message="{{ L('admin_announcement_delete_confirm') }}" data-confirm-button="{{ L('delete') }}" data-confirm-action="/settings/admin/announcements/{{ announcement.id }}/delete">{{ L('delete') }}</a>
+		</div>
+	</div>
+{% else %}
+	<div class="emptyState">{{ L('admin_announcements_empty') }}</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}

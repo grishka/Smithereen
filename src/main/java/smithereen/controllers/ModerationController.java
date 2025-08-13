@@ -45,6 +45,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.ServerAnnouncement;
 import smithereen.model.ServerRule;
 import smithereen.model.admin.ActorStaffNote;
 import smithereen.model.admin.AdminNotifications;
@@ -105,6 +106,7 @@ public class ModerationController{
 	private List<EmailDomainBlockRule> emailDomainRules;
 	private List<IPBlockRule> ipRules;
 	private List<ServerRule> serverRules;
+	private List<ServerAnnouncement> currentAndFutureAnnouncements;
 
 	public ModerationController(ApplicationContext context){
 		this.context=context;
@@ -1180,6 +1182,67 @@ public class ModerationController{
 					"translations", Utils.gson.toJson(rule.translations())
 			));
 			invalidateServerRuleCache();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Announcements
+
+	public void createAnnouncement(String title, String description, String linkTitle, String linkUrl, Instant showFrom, Instant showTo, Map<String, ServerAnnouncement.Translation> translations){
+		try{
+			ModerationStorage.createAnnouncement(title, description, linkTitle, linkUrl, showFrom, showTo, Utils.gson.toJson(translations));
+			currentAndFutureAnnouncements=null;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateAnnouncement(ServerAnnouncement announcement, String title, String description, String linkTitle, String linkUrl, Instant showFrom, Instant showTo, Map<String, ServerAnnouncement.Translation> translations){
+		try{
+			ModerationStorage.updateAnnouncement(announcement.id(), title, description, linkTitle, linkUrl, showFrom, showTo, Utils.gson.toJson(translations));
+			currentAndFutureAnnouncements=null;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<ServerAnnouncement> getCurrentAndFutureAnnouncements(){
+		if(currentAndFutureAnnouncements!=null)
+			return currentAndFutureAnnouncements;
+
+		try{
+			currentAndFutureAnnouncements=Collections.unmodifiableList(ModerationStorage.getCurrentAndFutureAnnouncements());
+			return currentAndFutureAnnouncements;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<ServerAnnouncement> getAllAnnouncements(int offset, int count){
+		try{
+			return ModerationStorage.getAllAnnouncements(offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public ServerAnnouncement getAnnouncement(int id){
+		try{
+			ServerAnnouncement announcement=ModerationStorage.getAnnouncement(id);
+			if(announcement==null)
+				throw new ObjectNotFoundException();
+			return announcement;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteAnnouncement(ServerAnnouncement announcement){
+		try{
+			ModerationStorage.deleteAnnouncement(announcement.id());
+			currentAndFutureAnnouncements=null;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

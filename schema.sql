@@ -38,6 +38,22 @@ CREATE TABLE `accounts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `announcements`
+--
+
+CREATE TABLE `announcements` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `title` varchar(300) DEFAULT NULL,
+  `description` text NOT NULL,
+  `link_text` varchar(300) DEFAULT NULL,
+  `link_url` varchar(300) DEFAULT NULL,
+  `show_from` timestamp NOT NULL,
+  `show_to` timestamp NOT NULL,
+  `translations` json NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `ap_id_index`
 --
 
@@ -1113,4 +1129,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-07-26  9:06:24
+-- Dump completed on 2025-08-13  8:02:21

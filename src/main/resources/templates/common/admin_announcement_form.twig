@@ -1,0 +1,127 @@
+{# @pebvariable name="announcement" type="smithereen.model.ServerAnnouncement" #}
+{# @pebvariable name="languages" type="smithereen.lang.Lang[]" #}
+{% import "forms" as form %}
+{% extends "page" %}
+{% block content %}
+<div class="gray singleColumn">
+	<form action="/settings/admin/announcements/{{ announcement is null ? 'create' : "#{announcement.id}/update" }}" method="post" data-ajax>
+	{{ form.start('adminAnnouncement') }}
+		{{ form.textInput('title', L('admin_announcement_title'), announcement.title, {'maxlength': 300, 'explanation': L('admin_announcement_title_explanation')}) }}
+		{{ form.textArea('description', L('admin_announcement_description'), announcement.description, {'required': true}) }}
+		{{ form.textInput('linkTitle', L('admin_announcement_link_text'), announcement.linkText, {'maxlength': 300}) }}
+		{{ form.textInput('linkURL', L('admin_announcement_link_url'), announcement.linkUrl, {'maxlength': 300, 'explanation': L('admin_announcement_link_explanation')}) }}
+		{{ form.dateTimeInput('showFrom', L('admin_announcement_show_from'), announcement.showFrom | default(now), {'required': true}) }}
+		{{ form.dateTimeInput('showTo', L('admin_announcement_show_to'), announcement.showTo, {'required': true, 'explanation': L('admin_announcement_time_explanation')}) }}
+	{{ form.end() }}
+	<hr/>
+	<div id="ruleFormTranslations">
+	{%- for translation in announcement.translations %}
+		<div class="announcementTranslation">
+		{{- form.start() }}
+			{{ form.customControlStart("translations[#{loop.index}][lang]") }}<label for="translations[{{ loop.index }}][lang]">{{ L('admin_server_rule_translation_language') }}</label>{{ form.customControlAfterLabel() }}
+			<div class="controlWithExtraLink">
+				<select name="translations[{{ loop.index }}][lang]" id="translations[{{ loop.index }}][lang]" class="control" onchange="cur.updateDisabledLanguages()" required>
+					<option value="">- {{ L('admin_server_rule_choose_language') }} -</option>
+					{% for lang in languages %}
+					<option value="{{ lang.locale.toLanguageTag() }}"{% if translation.key==lang.locale.toLanguageTag() %} selected{% endif %}>{{ lang.name }}</option>
+					{% endfor %}
+				</select>
+				<a href="javascript:void(0)" onclick="cur.removeTranslation(this)">{{ L('admin_server_rule_remove_translation') }}</a>
+			</div>
+			{{ form.customControlEnd() }}
+			{{ form.textInput("translations[#{loop.index}][title]", L('admin_announcement_title'), translation.value.title, {'maxlength': 300}) }}
+			{{ form.textArea("translations[#{loop.index}][description]", L('admin_announcement_description'), translation.value.description) }}
+			{{ form.textInput("translations[#{loop.index}][linkText]", L('admin_announcement_link_text'), translation.value.linkText, {'maxlength': 300}) }}
+			{{ form.textInput("translations[#{loop.index}][linkUrl]", L('admin_announcement_link_url'), translation.value.linkUrl, {'maxlength': 300}) }}
+		{{ form.end() }}
+		<hr/>
+		</div>
+	{%- endfor %}
+	</div>
+	{{ form.start() }}
+		{{ form.customControlStart('addTranslation') }}{{ form.customControlAfterLabel() }}<a href="javascript:void(0)" onclick="cur.addTranslation()">{{ L('admin_server_rule_add_translation') }}</a>{{ form.customControlEnd() }}
+	{{ form.end() }}
+	<hr/>
+	{{ form.start() }}
+		{{ form.footer(L('save')) }}
+	{{ form.end() }}
+	</form>
+</div>
+<script type="text/template" id="translationTemplate">
+<div class="announcementTranslation">
+{{- form.start() }}
+	{{ form.customControlStart("translations[0][lang]") }}<label for="translations[0][lang]">{{ L('admin_server_rule_translation_language') }}:</label>{{ form.customControlAfterLabel() }}
+	<div class="controlWithExtraLink">
+		<select name="translations[0][lang]" id="translations[0][lang]" class="control" onchange="cur.updateDisabledLanguages()" required>
+			<option value="">- {{ L('admin_server_rule_choose_language') }} -</option>
+			{% for lang in languages %}
+			<option value="{{ lang.locale.toLanguageTag() }}">{{ lang.name }}</option>
+			{% endfor %}
+		</select>
+		<a href="javascript:void(0)" onclick="cur.removeTranslation(this)">{{ L('admin_server_rule_remove_translation') }}</a>
+	</div>
+	{{ form.customControlEnd() }}
+	{{ form.textInput("translations[0][title]", L('admin_server_rule_title'), translation.title, {'maxlength': 300}) }}
+	{{ form.textArea("translations[0][description]", L('admin_server_rule_description'), translation.description, {'noAutoSize': true}) }}
+	{{ form.textInput("translations[0][linkText]", L('admin_announcement_link_text'), translation.linkText, {'maxlength': 300}) }}
+	{{ form.textInput("translations[0][linkUrl]", L('admin_announcement_link_url'), translation.linkUrl, {'maxlength': 300}) }}
+{{ form.end() }}
+<hr/>
+</div>
+</script>
+{% script %}
+cur.addTranslation=function(){
+	ge("ruleFormTranslations").insertAdjacentHTML("beforeend", ge("translationTemplate").innerHTML);
+	cur.updateTranslationIndexes();
+	autoSizeTextArea(document.body.qs(".announcementTranslation:last-child textarea"));
+	cur.updateDisabledLanguages();
+};
+
+cur.updateTranslationIndexes=function(){
+	var translations=document.querySelectorAll(".announcementTranslation");
+	for(var i=0;i < translations.length;i++){
+		var el=translations[i];
+		var elementsWithIDs=el.querySelectorAll("*[id]");
+		for(var j=0;j < elementsWithIDs.length;j++){
+			var ce=elementsWithIDs[j];
+			ce.id=ce.id.replace(/\[\d+\]/, "["+i+"]");
+		}
+		var elementsWithNames=el.querySelectorAll("*[name]");
+		for(var j=0;j < elementsWithNames.length;j++){
+			var ce=elementsWithNames[j];
+			ce.name=ce.name.replace(/\[\d+\]/, "["+i+"]");
+		}
+		var elementsWithFor=el.querySelectorAll("*[for]");
+		for(var j=0;j < elementsWithFor.length;j++){
+			var ce=elementsWithFor[j];
+			ce.htmlFor=ce.htmlFor.replace(/\[\d+\]/, "["+i+"]");
+		}
+	}
+};
+
+cur.removeTranslation=function(el){
+	el.closest(".announcementTranslation").remove();
+	cur.updateTranslationIndexes();
+	cur.updateDisabledLanguages();
+};
+
+cur.updateDisabledLanguages=function(){
+	var selects=document.querySelectorAll(".announcementTranslation select");
+	var langs=[];
+	for(var i=0;i < selects.length;i++){
+		var sel=selects[i];
+		if(sel.value){
+			langs.push(sel.value);
+		}
+	}
+	for(var i=0;i < selects.length;i++){
+		var sel=selects[i];
+		for(var j=0;j < sel.options.length;j++){
+			var opt=sel.options[j];
+			if(sel.value!=opt.value)
+				opt.disabled=langs.indexOf(opt.value)!=-1;
+		}
+	}
+};
+{% endscript %}
+{% endblock %}

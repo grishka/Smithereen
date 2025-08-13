@@ -81,6 +81,7 @@ import smithereen.routes.PhotosRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
+import smithereen.routes.admin.AdminAnnouncementsRoutes;
 import smithereen.routes.admin.AdminFaspRoutes;
 import smithereen.routes.admin.AdminCustomCSSRoutes;
 import smithereen.routes.SettingsRoutes;
@@ -507,6 +508,17 @@ public class SmithereenApplication{
 						postRequiringPermissionWithCSRF("/update", UserRole.Permission.MANAGE_SERVER_RULES, AdminServerRulesRoutes::updateRule);
 						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_SERVER_RULES, AdminServerRulesRoutes::confirmDeleteRule);
 						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_SERVER_RULES, AdminServerRulesRoutes::deleteRule);
+					});
+				});
+				path("/announcements", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_ANNOUNCEMENTS, AdminAnnouncementsRoutes::announcements);
+					getRequiringPermission("/createForm", UserRole.Permission.MANAGE_ANNOUNCEMENTS, AdminAnnouncementsRoutes::createAnnouncementForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_ANNOUNCEMENTS, AdminAnnouncementsRoutes::createAnnouncement);
+					path("/:id", ()->{
+						getRequiringPermission("/confirmDelete", UserRole.Permission.MANAGE_ANNOUNCEMENTS, AdminAnnouncementsRoutes::confirmDeleteAnnouncement);
+						postRequiringPermissionWithCSRF("/delete", UserRole.Permission.MANAGE_ANNOUNCEMENTS, AdminAnnouncementsRoutes::deleteAnnouncement);
+						getRequiringPermission("/edit", UserRole.Permission.MANAGE_ANNOUNCEMENTS, AdminAnnouncementsRoutes::editAnnouncement);
+						postRequiringPermissionWithCSRF("/update", UserRole.Permission.MANAGE_ANNOUNCEMENTS, AdminAnnouncementsRoutes::updateAnnouncement);
 					});
 				});
 			});

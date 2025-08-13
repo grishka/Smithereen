@@ -957,5 +957,10 @@ public class Utils{
 				.with("allLists", Stream.of(lists, publicLists).flatMap(List::stream).collect(Collectors.toMap(FriendList::id, Function.identity())));
 	}
 
+	public static boolean isWithinDatabaseLimits(Instant instant){
+		int year=instant.atZone(ZoneId.of("Z")).getYear();
+		return year<2038 && year>=1970; // TODO temporary fix
+	}
+
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}
 }

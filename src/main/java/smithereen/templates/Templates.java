@@ -3,20 +3,15 @@ package smithereen.templates;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.pebbletemplates.pebble.PebbleEngine;
-import io.pebbletemplates.pebble.loader.ClasspathLoader;
-import io.pebbletemplates.pebble.loader.DelegatingLoader;
-import io.pebbletemplates.pebble.template.EvaluationContext;
-import io.pebbletemplates.pebble.template.EvaluationContextImpl;
-import io.pebbletemplates.pebble.template.PebbleTemplate;
-import io.pebbletemplates.pebble.template.Scope;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -29,22 +24,31 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import io.pebbletemplates.pebble.PebbleEngine;
+import io.pebbletemplates.pebble.loader.ClasspathLoader;
+import io.pebbletemplates.pebble.loader.DelegatingLoader;
+import io.pebbletemplates.pebble.template.EvaluationContext;
+import io.pebbletemplates.pebble.template.EvaluationContextImpl;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.template.Scope;
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.ServerAnnouncement;
+import smithereen.model.SessionInfo;
 import smithereen.model.admin.AdminNotifications;
 import smithereen.model.notifications.BirthdayReminder;
 import smithereen.model.notifications.EventReminder;
-import smithereen.model.SessionInfo;
 import smithereen.model.notifications.UserNotifications;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.lang.Lang;
 import smithereen.storage.UserStorage;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import spark.Request;
+import spark.utils.StringUtils;
 
 public class Templates{
 	private static final PebbleEngine desktopEngine=makeEngineInstance("desktop", "common");
@@ -89,6 +93,7 @@ public class Templates{
 		JsonObject jsConfig=new JsonObject();
 		ZoneId tz=Utils.timeZoneForRequest(req);
 		ApplicationContext ctx=Utils.context(req);
+		Lang lang=Utils.lang(req);
 		if(req.session(false)!=null){
 			SessionInfo info=req.session().attribute("info");
 			if(info==null){
@@ -130,12 +135,31 @@ public class Templates{
 					model.with("serverSignupMode", Config.signupMode);
 					model.with("adminNotifications", AdminNotifications.getInstance(req));
 				}
+
+				List<ServerAnnouncement> announcements=ctx.getModerationController().getCurrentAndFutureAnnouncements();
+				if(!announcements.isEmpty()){
+					Instant now=Instant.now();
+					Locale locale=lang.getLocale();
+					model.with("announcements", announcements.stream()
+							.filter(a->a.showFrom().isBefore(now) && a.showTo().isAfter(now))
+							.map(a->{
+								String url=a.getTranslatedLinkURL(locale);
+								URI uri=StringUtils.isNotEmpty(url) ? URI.create(url) : null;
+								return Map.of(
+										"title", a.getTranslatedTitle(locale),
+										"description", a.getTranslatedDescription(locale),
+										"linkText", a.getTranslatedLinkText(locale),
+										"linkURL", url,
+										"linkTargetBlank", uri!=null && uri.isAbsolute() && !Config.isLocal(uri)
+								);
+							})
+							.toList());
+				}
 			}
 		}
 		jsConfig.addProperty("timeZone", tz!=null ? tz.getId() : null);
 		ArrayList<String> jsLang=new ArrayList<>();
 		Set<String> k=req.attribute("jsLang");
-		Lang lang=Utils.lang(req);
 		jsConfig.addProperty("locale", lang.getLocale().toLanguageTag());
 		jsConfig.addProperty("langPluralRulesName", lang.getPluralRulesName());
 		if(k!=null){

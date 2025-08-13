@@ -230,5 +230,6 @@
   "account_ban_content_posts": "such posts",
   "account_ban_content_comments": "such comments",
   "account_ban_content_photos": "such photos",
-  "clear_selection": "Clear selection"
+  "clear_selection": "Clear selection",
+  "announcement": "Announcement"
 }

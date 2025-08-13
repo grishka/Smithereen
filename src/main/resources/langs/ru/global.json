@@ -226,5 +226,6 @@
   "account_ban_content_posts": "таких записей",
   "account_ban_content_comments": "таких комментариев",
   "account_ban_content_photos": "таких фотографий",
-  "clear_selection": "Сбросить выбор"
+  "clear_selection": "Сбросить выбор",
+  "announcement": "Объявление"
 }

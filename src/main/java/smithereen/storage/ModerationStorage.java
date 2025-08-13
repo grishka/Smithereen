@@ -17,6 +17,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
+import smithereen.model.ServerAnnouncement;
 import smithereen.model.ServerRule;
 import smithereen.model.admin.ActorStaffNote;
 import smithereen.model.admin.AuditLogEntry;
@@ -612,6 +613,77 @@ public class ModerationStorage{
 		new SQLQueryBuilder()
 				.update("rules")
 				.value("is_deleted", true)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	// endregion
+	// region Announcements
+
+	public static List<ServerAnnouncement> getCurrentAndFutureAnnouncements() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("announcements")
+				.where("show_to>CURRENT_TIMESTAMP()")
+				.executeAsStream(ServerAnnouncement::fromResultSet)
+				.toList();
+	}
+
+	public static PaginatedList<ServerAnnouncement> getAllAnnouncements(int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("announcements")
+					.count()
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<ServerAnnouncement> announcements=new SQLQueryBuilder(conn)
+					.selectFrom("announcements")
+					.limit(count, offset)
+					.orderBy("id DESC")
+					.executeAsStream(ServerAnnouncement::fromResultSet)
+					.toList();
+			return new PaginatedList<>(announcements, total, offset, count);
+		}
+	}
+
+	public static ServerAnnouncement getAnnouncement(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("announcements")
+				.where("id=?", id)
+				.executeAndGetSingleObject(ServerAnnouncement::fromResultSet);
+	}
+
+	public static void createAnnouncement(String title, String description, String linkTitle, String linkUrl, Instant showFrom, Instant showTo, String translationsJson) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("announcements")
+				.value("title", title)
+				.value("description", description)
+				.value("link_text", linkTitle)
+				.value("link_url", linkUrl)
+				.value("show_from", showFrom)
+				.value("show_to", showTo)
+				.value("translations", translationsJson)
+				.executeNoResult();
+	}
+
+	public static void updateAnnouncement(int id, String title, String description, String linkTitle, String linkUrl, Instant showFrom, Instant showTo, String translationsJson) throws SQLException{
+		new SQLQueryBuilder()
+				.update("announcements")
+				.where("id=?", id)
+				.value("title", title)
+				.value("description", description)
+				.value("link_text", linkTitle)
+				.value("link_url", linkUrl)
+				.value("show_from", showFrom)
+				.value("show_to", showTo)
+				.value("translations", translationsJson)
+				.executeNoResult();
+	}
+
+	public static void deleteAnnouncement(int id) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("announcements")
 				.where("id=?", id)
 				.executeNoResult();
 	}
