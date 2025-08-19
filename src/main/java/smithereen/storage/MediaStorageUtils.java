@@ -9,7 +9,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -24,6 +29,7 @@ import jakarta.servlet.http.Part;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LocalImage;
@@ -33,6 +39,7 @@ import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
 import smithereen.model.CachedRemoteImage;
+import smithereen.model.Group;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
@@ -235,7 +242,7 @@ public class MediaStorageUtils{
 			try{
 				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
 				int[] outSize={0,0};
-				MediaStorageUtils.writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
+				writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
 				MediaFileMetadata meta=new ImageMetadata(outSize[0], outSize[1], BlurHash.encode(img, 4, 4), null);
 				fileRecord=MediaStorage.createMediaFileRecord(isGraffiti ? MediaFileType.IMAGE_GRAFFITI : MediaFileType.IMAGE_PHOTO, resizedFile.length(), self.user.id, meta);
 				photo.fileID=fileRecord.id().id();
@@ -280,5 +287,60 @@ public class MediaStorageUtils{
 		li.fillIn(fileRecord);
 		MediaFileStorageDriver.getInstance().storeFile(file, fileRecord.id(), true);
 		return li;
+	}
+
+	public static LocalImage downloadRemoteImageForGroupLink(@NotNull Group group, @NotNull URI url) throws SQLException, IOException{
+		File tmp=File.createTempFile("SmithereenDownloadedImage", null);
+		VipsImage img=null;
+		try{
+			HttpRequest req=HttpRequest.newBuilder(url)
+					.timeout(Duration.ofSeconds(10))
+					.build();
+			HttpResponse<InputStream> resp;
+			try{
+				resp=ActivityPub.httpClient.send(req, HttpResponse.BodyHandlers.ofInputStream());
+			}catch(InterruptedException e){
+				throw new RuntimeException(e);
+			}
+			String contentType=resp.headers().firstValue("content-type").orElse(null);
+			if(StringUtils.isEmpty(contentType) || !contentType.startsWith("image/"))
+				throw new IOException("Content-Type isn't an image: "+contentType);
+			try(InputStream in=resp.body(); FileOutputStream out=new FileOutputStream(tmp)){
+				Utils.copyBytes(in, out, 5*1024*1024);
+			}
+			img=new VipsImage(tmp.getAbsolutePath());
+			if(img.hasAlpha()){
+				VipsImage flat=img.flatten(255, 255, 255);
+				img.release();
+				img=flat;
+			}
+			int w=img.getWidth(), h=img.getHeight();
+			if(w!=h){
+				VipsImage cropped;
+				if(w>h){
+					cropped=img.crop(w/2-h/2, 0, h, h);
+				}else{
+					cropped=img.crop(0, 0, w, w);
+				}
+				img.release();
+				img=cropped;
+			}
+
+			File resizedFile=File.createTempFile("SmithereenDownloadedResized", ".webp");
+			int[] outSize={0,0};
+			writeResizedWebpImage(img, 400, 0, 93, resizedFile, outSize);
+			MediaFileMetadata meta=new ImageMetadata(outSize[0], outSize[1], BlurHash.encode(img, 4, 4), null);
+			MediaFileRecord fileRecord=MediaStorage.createMediaFileRecord(MediaFileType.IMAGE_GROUP_LINK_THUMB, resizedFile.length(), -group.id, meta);
+			LocalImage li=new LocalImage();
+			li.fileID=fileRecord.id().id();
+			li.fillIn(fileRecord);
+			MediaFileStorageDriver.getInstance().storeFile(resizedFile, fileRecord.id(), false);
+			return li;
+		}finally{
+			if(tmp.exists())
+				tmp.delete();
+			if(img!=null)
+				img.release();
+		}
 	}
 }

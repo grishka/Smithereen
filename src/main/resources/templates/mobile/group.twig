@@ -133,12 +133,26 @@
 </div>
 
 <div class="showWhenOn">
+	{% if profileFields is not empty %}
 	<div class="card profileFields">
 	{% for fld in profileFields %}
 		<div class="profileFieldName">{{ fld.name }}</div>
 		<div class="profileFieldValue">{{ fld.value | postprocessHTML }}</div>
 	{% endfor %}
 	</div>
+	{% endif %}
+	{% if links is not empty or canEditGroup %}
+	<div class="card profileFields">
+		<div class="sectionHeader"><h4>{{ L('group_links') }}</h4></div>
+		{% if links is empty %}
+		<div class="singleColumn" style="text-align: center">
+			<div style="padding-bottom: 16px"><a href="/groups/{{ group.id }}/editLinks">{{ L('group_add_link') }}</a></div>
+		</div>
+		{% else %}
+		{% include "group_links_content" with {'extraClasses': ' noPadding', 'extraAttrs': ' style="padding-bottom: 16px;"' | raw} %}
+		{% endif %}
+	</div>
+	{% endif %}
 	<div class="card profileFields">
 		<div class="sectionHeader"><h4>{{ L(group.event ? 'event_organizers' : 'group_admins') }}</h4></div>
 		<div class="userList noPadding" style="padding-bottom: 16px;">

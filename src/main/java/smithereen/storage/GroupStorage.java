@@ -38,12 +38,14 @@ import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupInvitation;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
+import smithereen.model.groups.GroupLink;
 import smithereen.model.notifications.UserNotifications;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
@@ -1197,4 +1199,120 @@ public class GroupStorage{
 			}
 		}
 	}
+
+	// region Links
+
+	public static long createLink(int groupID, String url, String title, ObjectLinkResolver.ObjectTypeAndID object, long imageID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int displayOrder=new SQLQueryBuilder(conn)
+					.selectFrom("group_links")
+					.selectExpr("IFNULL(MAX(display_order), -1)+1")
+					.where("group_id=?", groupID)
+					.executeAndGetInt();
+			return new SQLQueryBuilder(conn)
+					.insertInto("group_links")
+					.value("group_id", groupID)
+					.value("url", url)
+					.value("title", title)
+					.value("object_type", object==null ? null : object.type().id)
+					.value("object_id", object==null ? null : object.id())
+					.value("image_id", imageID==0 ? null : imageID)
+					.value("display_order", displayOrder)
+					.executeAndGetIDLong();
+		}
+	}
+
+	public static List<GroupLink> getGroupLinks(int groupID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			List<GroupLink> links=new SQLQueryBuilder(conn)
+					.selectFrom("group_links")
+					.where("group_id=?", groupID)
+					.orderBy("display_order ASC")
+					.executeAsStream(GroupLink::fromResultSet)
+					.toList();
+			Set<Long> needFiles=links.stream()
+					.map(l->l.image instanceof LocalImage li ? li : null)
+					.filter(Objects::nonNull)
+					.map(li->li.fileID)
+					.collect(Collectors.toSet());
+			if(!needFiles.isEmpty()){
+				Map<Long, MediaFileRecord> files=MediaStorage.getMediaFileRecords(needFiles);
+				for(GroupLink link:links){
+					if(link.image instanceof LocalImage li){
+						MediaFileRecord mfr=files.get(li.fileID);
+						if(mfr!=null)
+							li.fillIn(mfr);
+					}
+				}
+			}
+			return links;
+		}
+	}
+
+	public static GroupLink getGroupLink(int groupID, long linkID) throws SQLException{
+		GroupLink link=new SQLQueryBuilder()
+				.selectFrom("group_links")
+				.where("group_id=? AND id=?", groupID, linkID)
+				.executeAndGetSingleObject(GroupLink::fromResultSet);
+		if(link!=null){
+			if(link.image instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
+		}
+		return link;
+	}
+
+	public static void setLinkOrder(int groupID, long linkID, int newOrder) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+//			synchronized(adminUpdateLock){
+				int order=new SQLQueryBuilder(conn)
+						.selectFrom("group_links")
+						.columns("display_order")
+						.where("group_id=? AND id=?", groupID, linkID)
+						.executeAndGetInt();
+				if(order==-1 || order==newOrder)
+					return;
+				int count=new SQLQueryBuilder(conn).selectFrom("group_links").count().where("group_id=?", groupID).executeAndGetInt();
+				if(newOrder>=count)
+					return;
+				new SQLQueryBuilder(conn)
+						.update("group_links")
+						.where("group_id=? AND id=?", groupID, linkID)
+						.value("display_order", newOrder)
+						.executeNoResult();
+				if(newOrder<order){
+					new SQLQueryBuilder(conn)
+							.update("group_links")
+							.where("group_id=? AND display_order>=? AND display_order<? AND id<>?", groupID, newOrder, order, linkID)
+							.valueExpr("display_order", "display_order+1")
+							.executeNoResult();
+				}else{
+					new SQLQueryBuilder(conn)
+							.update("group_links")
+							.where("group_id=? AND display_order<=? AND display_order>? AND id<>?", groupID, newOrder, order, linkID)
+							.valueExpr("display_order", "display_order-1")
+							.executeNoResult();
+				}
+//			}
+		}
+	}
+
+	public static void updateLinkTitle(int groupID, long linkID, String title) throws SQLException{
+		new SQLQueryBuilder()
+				.update("group_links")
+				.where("group_id=? AND id=?", groupID, linkID)
+				.value("title", title)
+				.executeNoResult();
+	}
+
+	public static void deleteLink(int groupID, long linkID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("group_links")
+				.where("group_id=? AND id=?", groupID, linkID)
+				.executeNoResult();
+	}
+
+	// endregion
 }

@@ -736,6 +736,20 @@ public class SmithereenApplication{
 			getWithCSRF("/rejectJoinRequest", GroupsRoutes::rejectJoinRequest);
 			getLoggedIn("/editInvitations", GroupsRoutes::editInvitations);
 			getWithCSRF("/cancelInvite", GroupsRoutes::editCancelInvitation);
+			getLoggedIn("/editLinks", GroupsRoutes::editLinks);
+			postWithCSRF("/addLinkForm", GroupsRoutes::addLinkForm);
+			getLoggedIn("/addLinkForm", GroupsRoutes::addLinkURLForm);
+			postWithCSRF("/finishAddingLink", GroupsRoutes::finishAddingLink);
+			postWithCSRF("/editLinksReorder", GroupsRoutes::editLinksReorder);
+			path("/links", ()->{
+				get("", GroupsRoutes::groupLinks);
+				path("/:linkID", ()->{
+					getLoggedIn("/edit", GroupsRoutes::editLink);
+					postWithCSRF("/update", GroupsRoutes::updateLink);
+					getLoggedIn("/confirmDelete", GroupsRoutes::confirmDeleteLink);
+					postWithCSRF("/delete", GroupsRoutes::deleteLink);
+				});
+			});
 
 			get("/members", GroupsRoutes::members);
 			get("/tentativeMembers", GroupsRoutes::tentativeMembers);

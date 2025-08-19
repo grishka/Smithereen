@@ -81,6 +81,7 @@ public class ObjectLinkResolver{
 	private static final Pattern PHOTOS=Pattern.compile("^/photos/([a-zA-Z0-9_-]+)$");
 	private static final Pattern COMMENTS=Pattern.compile("^/comments/([a-zA-Z0-9_-]+)$");
 	private static final Pattern TOPICS=Pattern.compile("^/topics/([a-zA-Z0-9_-]+)$");
+	private static final Pattern LOCAL_USERNAME=Pattern.compile("^/([a-zA-Z][a-zA-Z0-9._-]+)$");
 
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
@@ -135,7 +136,7 @@ public class ObjectLinkResolver{
 				JsonObject token=ActivityPub.fetchActorToken(context, actor, fg);
 				if(token==null)
 					throw new FederationException();
-				return new ActorToken(token, Utils.parseISODate(token.getAsJsonPrimitive("validUntil").getAsString()));
+				return new ActorToken(token, parseISODate(token.getAsJsonPrimitive("validUntil").getAsString()));
 			}).token();
 		}catch(FederationException x){
 			return null;
@@ -253,7 +254,7 @@ public class ObjectLinkResolver{
 
 				matcher=MESSAGES.matcher(link.getPath());
 				if(matcher.find()){
-					long id=Utils.decodeLong(matcher.group(1));
+					long id=decodeLong(matcher.group(1));
 					List<MailMessage> msgs=MailStorage.getMessages(Set.of(id));
 					if(!msgs.isEmpty())
 						return ensureTypeAndCast(msgs.getFirst(), expectedType);
@@ -261,25 +262,35 @@ public class ObjectLinkResolver{
 
 				matcher=ALBUMS.matcher(link.getPath());
 				if(matcher.find()){
-					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM);
+					long id=XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM);
 					return ensureTypeAndCast(context.getPhotosController().getAlbumIgnoringPrivacy(id), expectedType);
 				}
 
 				matcher=PHOTOS.matcher(link.getPath());
 				if(matcher.find()){
-					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO);
+					long id=XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO);
 					return ensureTypeAndCast(context.getPhotosController().getPhotoIgnoringPrivacy(id), expectedType);
 				}
 
 				matcher=COMMENTS.matcher(link.getPath());
 				if(matcher.find()){
-					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT);
+					long id=XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT);
 					return ensureTypeAndCast(context.getCommentsController().getCommentIgnoringPrivacy(id), expectedType);
 				}
 
 				matcher=TOPICS.matcher(link.getPath());
 				if(matcher.find()){
 					return ensureTypeAndCast(context.getBoardController().getTopicIgnoringPrivacy(XTEA.decodeObjectID(matcher.group(1), ObfuscatedObjectIDType.BOARD_TOPIC)), expectedType);
+				}
+
+				matcher=LOCAL_USERNAME.matcher(link.getPath());
+				if(matcher.find()){
+					String username=matcher.group(1);
+					UsernameResolutionResult res=resolveUsernameLocally(username);
+					return ensureTypeAndCast(switch(res.type){
+						case USER -> context.getUsersController().getUserOrThrow(res.localID);
+						case GROUP -> context.getGroupsController().getGroupOrThrow(res.localID);
+					}, expectedType);
 				}
 			}else{
 				ObjectTypeAndID tid=FederationStorage.getObjectTypeAndID(link);
@@ -529,7 +540,7 @@ public class ObjectLinkResolver{
 	public boolean performCollectionQuery(@NotNull Actor collectionOwner, @NotNull URI collectionID, @NotNull URI objectID){
 		if(collectionOwner.collectionQueryEndpoint==null)
 			return true; // There's nothing we can do anyway
-		if(Utils.uriHostMatches(collectionID, objectID))
+		if(uriHostMatches(collectionID, objectID))
 			return true; // This collection is on the same server as the object. We trust that that server is sane.
 		CollectionQueryResult cqr=ActivityPub.performCollectionQuery(collectionOwner, collectionID, List.of(objectID));
 		List<LinkOrObject> res=cqr.items;
@@ -636,30 +647,59 @@ public class ObjectLinkResolver{
 
 		matcher=MESSAGES.matcher(path);
 		if(matcher.find()){
-			return new ObjectTypeAndID(ObjectType.MESSAGE, Utils.decodeLong(matcher.group(1)));
+			return new ObjectTypeAndID(ObjectType.MESSAGE, decodeLong(matcher.group(1)));
 		}
 
 		matcher=ALBUMS.matcher(path);
 		if(matcher.find()){
-			return new ObjectTypeAndID(ObjectType.PHOTO_ALBUM, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM));
+			return new ObjectTypeAndID(ObjectType.PHOTO_ALBUM, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM));
 		}
 
 		matcher=PHOTOS.matcher(path);
 		if(matcher.find()){
-			return new ObjectTypeAndID(ObjectType.PHOTO, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO));
+			return new ObjectTypeAndID(ObjectType.PHOTO, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO));
 		}
 
 		matcher=COMMENTS.matcher(path);
 		if(matcher.find()){
-			return new ObjectTypeAndID(ObjectType.COMMENT, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT));
+			return new ObjectTypeAndID(ObjectType.COMMENT, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT));
 		}
 
 		matcher=TOPICS.matcher(path);
 		if(matcher.find()){
-			return new ObjectTypeAndID(ObjectType.BOARD_TOPIC, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.BOARD_TOPIC));
+			return new ObjectTypeAndID(ObjectType.BOARD_TOPIC, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.BOARD_TOPIC));
 		}
 
 		return null;
+	}
+
+	public static URI getLocalURLForObjectID(ObjectTypeAndID id){
+		return switch(id.type){
+			case USER -> Config.localURI("/users/"+id.id);
+			case GROUP -> Config.localURI("/groups/"+id.id);
+			case POST -> Config.localURI("/posts/"+id.id);
+			case MESSAGE -> Config.localURI("/mail/messages/"+encodeLong(id.id));
+			case PHOTO_ALBUM -> Config.localURI("/albums/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.PHOTO_ALBUM));
+			case PHOTO -> Config.localURI("/photos/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.PHOTO));
+			case COMMENT -> Config.localURI("/comments/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.COMMENT));
+			case USER_STATUS -> null;
+			case GROUP_STATUS -> null;
+			case BOARD_TOPIC -> Config.localURI("/topics/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.BOARD_TOPIC));
+		};
+	}
+
+	public static ObjectTypeAndID getObjectIdFromObject(Object obj){
+		return switch(obj){
+			case User user -> new ObjectTypeAndID(ObjectType.USER, user.id);
+			case Group group -> new ObjectTypeAndID(ObjectType.GROUP, group.id);
+			case Post post -> new ObjectTypeAndID(ObjectType.POST, post.id);
+			case MailMessage msg -> new ObjectTypeAndID(ObjectType.MESSAGE, msg.id);
+			case PhotoAlbum album -> new ObjectTypeAndID(ObjectType.PHOTO_ALBUM, album.id);
+			case Photo photo -> new ObjectTypeAndID(ObjectType.PHOTO, photo.id);
+			case Comment comment -> new ObjectTypeAndID(ObjectType.COMMENT, comment.id);
+			case BoardTopic topic -> new ObjectTypeAndID(ObjectType.BOARD_TOPIC, topic.id);
+			default -> null;
+		};
 	}
 
 	private record ActorToken(JsonObject token, Instant validUntil){
@@ -700,7 +740,7 @@ public class ObjectLinkResolver{
 				if(t.id==id)
 					return t;
 			}
-			throw new IllegalArgumentException("Unknown object type ID '"+Utils.decodeFourCC(id)+"'");
+			throw new IllegalArgumentException("Unknown object type ID '"+decodeFourCC(id)+"'");
 		}
 	}
 

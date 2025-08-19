@@ -901,14 +901,18 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	}
 }
 
-.oneMemberRow{
-	td{
-		padding-top: 8px;
-		padding-left: 8px;
+.memberList{
+	display: grid;
+	grid-template-columns: 32px auto;
+	padding: 10px 8px;
+	grid-gap: 8px 6px;
+	.nameAndInfo{
+		align-self: center;
+		padding-bottom: 1px;
 	}
 	.info{
-		margin-top: 4px;
-		color: $grayText;
+		color: $auxiliaryGrey;
+		font-size: 10px;
 	}
 }
 
@@ -5225,13 +5229,16 @@ label.largeAccented{
 	.searchFieldWrap{
 		flex-grow: 1;
 	}
-	.secondaryTabBar{
+	.secondaryTabBar, .buttonW{
 		flex: none;
 		border: none;
 		padding-left: 0;
-		>a:last-child{
-			margin-right: 0;
-		}
+	}
+	.secondaryTabBar>a:last-child{
+		margin-right: 0;
+	}
+	.buttonW{
+		padding: 10px 10px 10px 0;
 	}
 }
 
@@ -5306,5 +5313,44 @@ ol.largeNumbers{
 			box-shadow: none;
 		}
 	}
+}
+
+.groupEditLink{
+	display: flex;
+	picture{
+		display: block;
+	}
+	.ava{
+		flex: none;
+		margin-right: 10px;
+	}
+	.linkContent{
+		flex-grow: 1;
+		a{
+			font-weight: bold;
+		}
+	}
+	.actionList{
+		flex: none;
+	}
+}
+
+.groupEditLink{
+	border-bottom: solid 1px $wallPostSeparator;
+	padding: 10px 0;
+}
+
+.groupEditLinkW:last-child .groupEditLink{
+	border-bottom: solid 1px transparent;
+}
+
+.groupEditLinkW.beingDragged .groupEditLink{
+	background: $bg;
+	border-bottom: solid 1px transparent;
+	box-shadow: -10px 0 0 $bg, 10px 0 0 $bg;
+}
+
+#groupLinksReorderable{
+	margin: -10px 0;
 }
 

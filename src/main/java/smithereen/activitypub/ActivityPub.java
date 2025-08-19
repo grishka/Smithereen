@@ -74,6 +74,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.ObjectNotFoundExceptionWithFallback;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.http.ExtendedHttpClient;
@@ -200,7 +201,7 @@ public class ActivityPub{
 
 		HttpRequest.Builder builder=HttpRequest.newBuilder(uri)
 				.timeout(Duration.ofSeconds(10))
-				.header("Accept", CONTENT_TYPE);
+				.header("Accept", CONTENT_TYPE+", text/html");
 		if(token!=null)
 			builder.header("Authorization", "Bearer "+token);
 		else if(actorToken!=null)
@@ -234,8 +235,8 @@ public class ActivityPub{
 		try(InputStream in=resp.body()){
 			if(tryHTML && contentType.matches("text/html")){
 				LOG.trace("Received HTML, trying to extract <link>");
-				org.jsoup.nodes.Document doc=Jsoup.parse(in, contentType.getCharset().name(), uri.toString());
-				for(Element el:doc.select("link[rel=alternate]")){
+				org.jsoup.nodes.Document htmlDocument=Jsoup.parse(in, contentType.getCharset().name(), uri.toString());
+				for(Element el:htmlDocument.select("link[rel=alternate]")){
 					LOG.trace("Candidate element: {}", el);
 					String type=el.attr("type");
 					if("application/activity+json".equals(type) || CONTENT_TYPE.equals(type)){
@@ -245,11 +246,12 @@ public class ActivityPub{
 							try{
 								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false);
 							}catch(URISyntaxException x){
-								throw new ObjectNotFoundException("Failed to parse URL from <link rel=\"alternate\"> on HTML page at "+uri, x);
+								throw new ObjectNotFoundExceptionWithFallback("Failed to parse URL from <link rel=\"alternate\"> on HTML page at "+uri, x, htmlDocument);
 							}
 						}
 					}
 				}
+				throw new ObjectNotFoundExceptionWithFallback("Received HTML that doesn't contain a <link>", htmlDocument);
 			}
 			// Allow "application/activity+json" or "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""
 			if(!contentType.matches("application/activity+json") && !contentType.matches(EXPECTED_CONTENT_TYPE)){

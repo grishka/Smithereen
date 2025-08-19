@@ -4,6 +4,7 @@ import java.net.URI;
 
 import smithereen.Utils;
 import smithereen.model.comments.Comment;
+import smithereen.model.groups.GroupLink;
 import smithereen.model.photos.Photo;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
@@ -133,6 +134,21 @@ public final class NonCachedRemoteImage extends RemoteImage{
 			builder.queryParam("type", "comment_photo");
 			builder.queryParam("comment_id", XTEA.encodeObjectID(comment.id, ObfuscatedObjectIDType.COMMENT));
 			builder.queryParam("index", index+"");
+		}
+	}
+
+	public static class GroupLinkArgs extends Args{
+		private final GroupLink link;
+
+		public GroupLinkArgs(GroupLink link){
+			this.link=link;
+		}
+
+		@Override
+		protected void addToUriBuilder(UriBuilder builder){
+			builder.queryParam("type", "group_link");
+			builder.queryParam("group", link.groupID+"");
+			builder.queryParam("link", link.id+"");
 		}
 	}
 }

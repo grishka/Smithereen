@@ -148,6 +148,9 @@
 			{% if group.event and group.tentativeMemberCount>0 %}
 			{% include "profile_module_user_grid" with {'users': tentativeMembers, 'headerTitle': L('tentative_members'), 'headerHref': "/groups/#{group.id}/tentativeMembers", 'subheaderTitle': L('X_people', {'count': group.tentativeMemberCount})} %}
 			{% endif %}
+			{% if links is not empty or canManageGroup %}
+			{% include "profile_module_group_links" with {'links': links, 'headerTitle': L('group_links'), 'headerHref': "/groups/#{group.id}/links", 'headerAjaxBox': true, 'subheaderTitle': L('group_links_X_pages', {'count': links | length})} %}
+			{% endif %}
 			{% if group.photosState!='DISABLED' and (albums is not empty or canManageGroup) %}
 				{% include "profile_module_photo_albums" with {'albums': albums, 'headerTitle': L('photo_albums'), 'headerHref': "/groups/#{group.id}/albums", 'subheaderTitle': L('X_photo_albums', {'count': photoAlbumCount}), 'ownerID': -group.id} %}
 			{% endif %}

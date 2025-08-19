@@ -27,6 +27,12 @@ public class LocalImage extends Image implements SizedImage{
 	public Rotation rotation;
 	public AvatarCropRects avaCropRects;
 
+	public LocalImage(){}
+
+	public LocalImage(long fileID){
+		this.fileID=fileID;
+	}
+
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);

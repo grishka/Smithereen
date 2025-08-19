@@ -1,0 +1,57 @@
+{# @pebvariable name="group" type="smithereen.model.Group" #}
+{# @pebvariable name="links" type="simthereen.model.groups.GroupLink[]" #}
+{% extends "page" %}
+{% block content %}
+{% include "group_admin_tabbar" with {'tab': 'links'} %}
+<a href="/groups/{{ group.id }}/addLinkForm" class="fab iconAdd" title="{{ L('group_add_link') }}" data-ajax-box></a>
+{% if links is not empty %}
+<div class="reorderableList groupEditMemberList" id="groupAdminsReorderable">
+	{% for link in links %}
+		{% set actor=null %}
+		{% if link.object is not null %}
+		{% if link.object.type=='USER' %}
+		{% set actor=users[link.object.id] %}
+		{% elseif link.object.type=='GROUP' %}
+		{% set actor=groups[link.object.id] %}
+		{% endif %}
+		{% endif %}
+		{% set image=link.image %}
+		<div class="reorderableItemWrap">
+			<div class="reorderableItem groupEditMember" data-reorder-id="{{ link.id }}">
+				<div class="draggyGrippyThing"></div>
+				{% if actor is not null %}
+				{{ actor | pictureForAvatar('a') }}
+				{% elseif image is not null %}
+				<span class="ava avaHasImage sizeA">{{ image | pictureForPhoto(size='a', addClasses=['avaImage']) }}</span>
+				{% else %}
+				<span class="ava avaHasImage sizeA"><img src="/res/lnkouter.svg" class="avaImage"/></span>
+				{% endif %}
+				{% set options=[{'type': 'link', 'href': "/groups/#{group.id}/editAdminForm?id=#{admin.user.id}", 'label': L('edit').toString(), 'ajax': 'box'}] %}
+				{% set _=options.add({'type': 'confirm', 'url': "/groups/#{group.id}/links/#{link.id}/delete", 'label': L('delete').toString(), 'title': L('group_delete_link_title').toString(), 'msg': L('group_delete_link_confirm').toString() }) %}
+				<a class="moreButton" onclick="return showOptions(this)" data-options="{{ json(options) }}"></a>
+				<div class="ellipsize nameWrap">
+					<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}>
+					{% if actor is not null %}
+					{{ actor | name }}
+					{% elseif link.object is not null %}
+					{{ L(link.titleLangKey) }}
+					{% else %}
+					{{ link.title }}
+					{% endif %}
+					</a>
+				</div>
+				{% if link.description is not empty %}
+					<div class="subtitle ellipsize">{{ link.description }}</div>
+				{% endif %}
+				<div class="clear"></div>
+			</div>
+		</div>
+	{% endfor %}
+</div>
+{% script %}
+new ReorderableList(ge("groupAdminsReorderable"), "/groups/{{ group.id }}/editLinksReorder");
+{% endscript %}
+{% else %}
+<div class="singleColumn"><div class="emptyState">{{ L('group_links_empty') }}</div></div>
+{% endif %}
+{% endblock %}

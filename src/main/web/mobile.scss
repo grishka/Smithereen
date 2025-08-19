@@ -2133,6 +2133,9 @@ input.searchField{
 		.iconBoard{
 			background: svg-load('img/material/forum_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $iconColor);
 		}
+		.iconPhoto{
+			background: svg-load('img/material/photo_camera_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $iconColor);
+		}
 		.thumbTitle{
 			margin: 6px 0 2px;
 			font-weight: $mediumWeight;

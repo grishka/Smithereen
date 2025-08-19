@@ -9,7 +9,7 @@ public interface MediaFileMetadata{
 
 	static Class<? extends MediaFileMetadata> classForType(MediaFileType type){
 		return switch(type){
-			case IMAGE_PHOTO, IMAGE_AVATAR, IMAGE_GRAFFITI -> ImageMetadata.class;
+			case IMAGE_PHOTO, IMAGE_AVATAR, IMAGE_GRAFFITI, IMAGE_GROUP_LINK_THUMB -> ImageMetadata.class;
 		};
 	}
 }

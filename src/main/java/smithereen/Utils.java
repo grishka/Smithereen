@@ -909,6 +909,18 @@ public class Utils{
 		}
 	}
 
+	public static void copyBytes(InputStream from, OutputStream to, long maxSize) throws IOException{
+		byte[] buffer=new byte[10240];
+		int read;
+		long totalRead=0;
+		while((read=from.read(buffer))>0){
+			totalRead+=read;
+			if(totalRead>maxSize)
+				throw new IOException("Maximum length of "+maxSize+" bytes exceeded");
+			to.write(buffer, 0, read);
+		}
+	}
+
 	public static Object ajaxAwareRedirect(Request req, Response resp, String destination){
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).replaceLocation(destination);

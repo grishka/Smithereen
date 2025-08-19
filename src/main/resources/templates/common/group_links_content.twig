@@ -1,0 +1,38 @@
+<div class="userList{{ extraClasses }}"{{ extraAttrs }}>
+{% for link in links %}
+	{% set actor=null %}
+	{% if link.object is not null %}
+	{% if link.object.type=='USER' %}
+	{% set actor=users[link.object.id] %}
+	{% elseif link.object.type=='GROUP' %}
+	{% set actor=groups[link.object.id] %}
+	{% endif %}
+	{% endif %}
+	{% set image=link.image %}
+	<div>
+		<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}>
+			{% if actor is not null %}
+			{{ actor | pictureForAvatar('a') }}
+			{% elseif image is not null %}
+			<span class="ava avaHasImage sizeA">{{ image | pictureForPhoto(size='a', addClasses=['avaImage']) }}</span>
+			{% else %}
+			<span class="ava avaHasImage sizeA"><img src="/res/lnkouter.svg" class="avaImage"/></span>
+			{% endif %}
+		</a>
+	</div>
+	<div class="info">
+		<b><a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}>
+		{% if actor is not null %}
+		{{ actor | name }}
+		{% elseif link.object is not null %}
+		{{ L(link.titleLangKey) }}
+		{% else %}
+		{{ link.title }}
+		{% endif %}
+		</a></b>
+		{% if link.description is not empty %}
+			<div class="subtitle">{{ link.description }}</div>
+		{% endif %}
+	</div>
+{% endfor %}
+</div>

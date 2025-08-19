@@ -1,0 +1,47 @@
+{% extends "profile_module" %}
+{% block moduleContent %}
+{% if links is empty %}
+<div style="padding: 15px 10px; text-align: center">
+	<a href="/groups/{{ group.id }}/editLinks">{{ L('group_add_link') }}</a>
+</div>
+{% else %}
+<div class="memberList">
+{% for link in (links | length>5 ? (links | slice(0, 5)) : links) %}
+	{% set actor=null %}
+	{% if link.object is not null %}
+	{% if link.object.type=='USER' %}
+	{% set actor=users[link.object.id] %}
+	{% elseif link.object.type=='GROUP' %}
+	{% set actor=groups[link.object.id] %}
+	{% endif %}
+	{% endif %}
+	{% set image=link.image %}
+	<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}>
+		{% if actor is not null %}
+		{{ actor | pictureForAvatar('a', 32) }}
+		{% elseif image is not null %}
+		<span class="ava avaHasImage sizeA" style="--ava-width: 32px; --ava-height: 32px;">{{ image | pictureForPhoto(size='a', addClasses=['avaImage']) }}</span>
+		{% else %}
+		<span class="ava avaHasImage sizeA" style="--ava-width: 32px; --ava-height: 32px;"><img src="/res/lnkouter.svg" width="32" height="32" class="avaImage"/></span>
+		{% endif %}
+	</a>
+	<div class="nameAndInfo">
+		<div>
+			<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}>
+			{% if actor is not null %}
+			{{ actor | name }}
+			{% elseif link.object is not null %}
+			{{ L(link.titleLangKey) }}
+			{% else %}
+			{{ link.title }}
+			{% endif %}
+			</a>
+		</div>
+		{% if link.description is not empty %}
+			<div class="info">{{ link.description }}</div>
+		{% endif %}
+	</div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

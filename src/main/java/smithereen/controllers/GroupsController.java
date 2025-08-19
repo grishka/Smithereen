@@ -1,10 +1,15 @@
 package smithereen.controllers;
 
+import com.google.gson.JsonObject;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -28,14 +33,20 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Join;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.ObjectNotFoundExceptionWithFallback;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
+import smithereen.model.OwnedContentObject;
+import smithereen.model.groups.GroupLink;
+import smithereen.model.groups.GroupLinkParseResult;
+import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.EventReminder;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -53,6 +64,8 @@ import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.FederationStorage;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.MediaStorage;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.utils.IntPair;
 import smithereen.storage.utils.Pair;
@@ -796,6 +809,130 @@ public class GroupsController{
 		}
 
 		return status;
+	}
+
+	public LocalImage downloadImageForLink(Group group, URI url){
+		try{
+			return MediaStorageUtils.downloadRemoteImageForGroupLink(group, url);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}catch(IOException x){
+			LOG.debug("Failed to download link image from {}", url, x);
+			return null;
+		}
+	}
+
+	public GroupLinkParseResult parseLink(URI url, User self, Group group){
+		ObjectLinkResolver.ObjectTypeAndID apObject;
+		try{
+			Object apObj=context.getObjectLinkResolver().resolveNative(url, Object.class, true, true, false, (JsonObject) null, false);
+			switch(apObj){
+				case OwnedContentObject oco -> context.getPrivacyController().enforceObjectPrivacy(self, oco);
+				case Group g -> context.getPrivacyController().enforceUserAccessToGroupProfile(self, g);
+				case User u -> context.getPrivacyController().enforceUserProfileAccess(self, u);
+				default -> {}
+			}
+			apObject=ObjectLinkResolver.getObjectIdFromObject(apObj);
+			if(apObject==null)
+				throw new UserErrorException("group_link_error");
+			return new GroupLinkParseResult(apObject, null, null, null);
+		}catch(ObjectNotFoundExceptionWithFallback x){
+			if(x.fallback instanceof Document htmlDoc){
+				String title=htmlDoc.title();
+				LocalImage image=null;
+				Element ogTitle=htmlDoc.selectFirst("meta[property=og:title]");
+				Element ogImage=htmlDoc.selectFirst("meta[property=og:image]");
+				if(ogTitle!=null){
+					String ogTitleValue=ogTitle.attr("content");
+					if(StringUtils.isNotEmpty(ogTitleValue))
+						title=ogTitleValue;
+				}
+				String imageURL=null;
+				if(ogImage!=null){
+					String _imageURL=ogImage.absUrl("content");
+					if(StringUtils.isNotEmpty(_imageURL))
+						imageURL=_imageURL;
+				}
+				if(StringUtils.isNotEmpty(imageURL)){
+					image=downloadImageForLink(group, URI.create(imageURL));
+				}
+				return new GroupLinkParseResult(null, title, imageURL, image);
+			}else{
+				throw new UserErrorException("group_link_error");
+			}
+		}catch(Exception x){
+			if(Config.isLocal(url)){ // Explicitly allow any local links
+				return new GroupLinkParseResult(null, url.toString(), null, null);
+			}
+			throw new UserErrorException("group_link_error", x);
+		}
+	}
+
+	public long addLink(User self, Group group, URI url, GroupLinkParseResult parseResult, String title){
+		try{
+			enforceUserAdminLevel(group, self, Group.AdminLevel.ADMIN);
+			long imageID=parseResult.image()!=null ? parseResult.image().fileID : 0;
+			long id=GroupStorage.createLink(group.id, url.toString(), title, parseResult.apObject(), imageID);
+			if(imageID!=0){
+				MediaStorage.createMediaFileReference(imageID, id, MediaFileReferenceType.GROUP_LINK_THUMB, -group.id);
+			}
+			// TODO Update{Group}
+			return id;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<GroupLink> getLinks(Group group){
+		try{
+			List<GroupLink> links=GroupStorage.getGroupLinks(group.id);
+			for(GroupLink l:links){
+				if(l.object!=null){
+					l.url=ObjectLinkResolver.getLocalURLForObjectID(l.object);
+				}
+			}
+			return links;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public GroupLink getLink(Group group, long linkID){
+		try{
+			GroupLink link=GroupStorage.getGroupLink(group.id, linkID);
+			if(link==null)
+				throw new ObjectNotFoundException();
+			return link;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setLinkOrder(Group group, GroupLink link, int order){
+		try{
+			GroupStorage.setLinkOrder(group.id, link.id, order);
+			// TODO Update{Group}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateLinkTitle(Group group, GroupLink link, String title){
+		try{
+			GroupStorage.updateLinkTitle(group.id, link.id, title);
+			// TODO Update{Group}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteLink(Group group, GroupLink link){
+		try{
+			GroupStorage.deleteLink(group.id, link.id);
+			// TODO Update{Group}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	public enum EventsType{

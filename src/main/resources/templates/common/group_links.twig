@@ -1,0 +1,8 @@
+{% extends "page" %}
+{% block content %}
+{% if links is not empty %}
+{% include "group_links_content" %}
+{% else %}
+<div class="singleColumn"><div class="emptyState">{{ L('group_links_empty') }}</div></div>
+{% endif %}
+{% endblock %}

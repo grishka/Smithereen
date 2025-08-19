@@ -6,10 +6,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -19,16 +19,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.Account;
@@ -47,6 +48,8 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.groups.GroupFeatureState;
+import smithereen.model.groups.GroupLink;
+import smithereen.model.groups.GroupLinkParseResult;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
@@ -192,7 +195,7 @@ public class GroupsRoutes{
 	}
 
 	public static RenderedTemplateResponse groupProfile(Request req, Response resp, Group group){
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
 
@@ -296,7 +299,20 @@ public class GroupsRoutes{
 				model.with("boardTopics", topics);
 				model.with("canCreateTopics", self!=null && (group.boardState==GroupFeatureState.ENABLED_OPEN || (group.boardState==GroupFeatureState.ENABLED_RESTRICTED && adminLevel.isAtLeast(Group.AdminLevel.MODERATOR))));
 			}
-			model.with("users", ctx.getUsersController().getUsers(needUsers));
+
+			List<GroupLink> links=ctx.getGroupsController().getLinks(group);
+			model.with("links", links);
+			for(GroupLink link:links){
+				if(link.object!=null){
+					if(link.object.type()==ObjectLinkResolver.ObjectType.USER)
+						needUsers.add(link.object.idInt());
+					else if(link.object.type()==ObjectLinkResolver.ObjectType.GROUP)
+						needGroups.add(link.object.idInt());
+				}
+			}
+
+			model.with("users", ctx.getUsersController().getUsers(needUsers))
+					.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 		}
 
 		if(group instanceof ForeignGroup)
@@ -392,7 +408,8 @@ public class GroupsRoutes{
 			model.with("groupEditMessage", s.attribute("settings.groupEditMessage"));
 			s.removeAttribute("settings.groupEditMessage");
 		}
-		return model;
+		return model
+				.headerBack(group);
 	}
 
 	public static Object saveGeneral(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -477,7 +494,8 @@ public class GroupsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
-		return model;
+		return model
+				.headerBack(group);
 	}
 
 	public static Object admins(Request req, Response resp){
@@ -502,7 +520,8 @@ public class GroupsRoutes{
 		model.with("subtab", "admins");
 		model.with("joinRequestCount", ctx.getGroupsController().getJoinRequestCount(self.user, group));
 		jsLangKey(req, "cancel", "group_admin_demote", "yes", "no");
-		return model;
+		return model
+				.headerBack(group);
 	}
 
 	public static Object editMembers(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -520,7 +539,8 @@ public class GroupsRoutes{
 		model.with("summaryKey", group.isEvent() ? "summary_event_X_members" : "summary_group_X_members");
 		model.with("joinRequestCount", ctx.getGroupsController().getJoinRequestCount(self.user, group));
 		jsLangKey(req, "cancel", "yes", "no");
-		return model;
+		return model
+				.headerBack(group);
 	}
 
 	public static Object editAdminForm(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -557,7 +577,7 @@ public class GroupsRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
-		resp.redirect(Utils.back(req));
+		resp.redirect(back(req));
 		return "";
 	}
 
@@ -565,8 +585,8 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		int userID=safeParseInt(req.queryParams("id"));
 		User user=ctx.getUsersController().getUserOrThrow(userID);
-		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("group_admin_demote_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", Config.localURI("/groups/"+group.id+"/removeAdmin?_redir="+URLEncoder.encode(back)+"&id="+userID)).with("back", back);
+		String back=back(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", lang(req).get("group_admin_demote_confirm", Map.of("name", user.getFirstLastAndGender()))).with("formAction", Config.localURI("/groups/"+group.id+"/removeAdmin?_redir="+URLEncoder.encode(back)+"&id="+userID)).with("back", back);
 	}
 
 	public static Object removeAdmin(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -579,7 +599,7 @@ public class GroupsRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
-		resp.redirect(Utils.back(req));
+		resp.redirect(back(req));
 		return "";
 	}
 
@@ -604,7 +624,8 @@ public class GroupsRoutes{
 		model.with("group", group);
 		model.with("adminLevel", level);
 		jsLangKey(req, "unblock", "yes", "no", "cancel");
-		return model;
+		return model
+				.headerBack(group);
 	}
 
 	public static Object blockDomainForm(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -626,8 +647,8 @@ public class GroupsRoutes{
 	public static Object confirmUnblockDomain(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		String domain=req.queryParams("domain");
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
+		Lang l=lang(req);
+		String back=back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", Map.of("domain", domain))).with("formAction", "/groups/"+group.id+"/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
@@ -649,16 +670,16 @@ public class GroupsRoutes{
 	public static Object confirmBlockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
+		Lang l=lang(req);
+		String back=back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_block_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/blockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
 	public static Object confirmUnblockUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
+		Lang l=lang(req);
+		String back=back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/unblockUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
@@ -881,8 +902,8 @@ public class GroupsRoutes{
 	public static Object confirmRemoveUser(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		User user=getUserOrThrow(req);
-		Lang l=Utils.lang(req);
-		String back=Utils.back(req);
+		Lang l=lang(req);
+		String back=back(req);
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_remove_user_X", Map.of("name", user.getFirstLastAndGender()))).with("formAction", "/groups/"+group.id+"/removeUser?id="+user.id+"&_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
@@ -912,7 +933,8 @@ public class GroupsRoutes{
 				Map.of("href", "/groups/"+group.id+"/rejectJoinRequest?csrf="+csrf+"&id=", "title", lang(req).get("group_reject_join_request"))
 		));
 		model.pageTitle(group.name);
-		return model;
+		return model
+				.headerBack(group);
 	}
 
 	public static Object acceptJoinRequest(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -955,7 +977,8 @@ public class GroupsRoutes{
 		));
 		model.pageTitle(group.name);
 		jsLangKey(req, "cancel");
-		return model;
+		return model
+				.headerBack(group);
 	}
 
 	public static Object editCancelInvitation(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -1019,5 +1042,214 @@ public class GroupsRoutes{
 			}
 			return wdr;
 		}
+	}
+
+	public static Object editLinks(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		List<GroupLink> links=ctx.getGroupsController().getLinks(group);
+		Set<Integer> needUsers=links.stream()
+				.map(l->l.object)
+				.filter(o->o!=null && o.type()==ObjectLinkResolver.ObjectType.USER)
+				.map(ObjectLinkResolver.ObjectTypeAndID::idInt)
+				.collect(Collectors.toSet());
+		Set<Integer> needGroups=links.stream()
+				.map(l->l.object)
+				.filter(o->o!=null && o.type()==ObjectLinkResolver.ObjectType.GROUP)
+				.map(ObjectLinkResolver.ObjectTypeAndID::idInt)
+				.collect(Collectors.toSet());
+		return new RenderedTemplateResponse("group_edit_links", req)
+				.with("group", group)
+				.with("links", links)
+				.with("users", ctx.getUsersController().getUsers(needUsers))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.pageTitle(group.name)
+				.headerBack(group);
+	}
+
+	public static Object addLinkURLForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_add_link_url_form", req);
+		return wrapForm(req, resp, "group_add_link_url_form", "/groups/"+req.params(":id")+"/addLinkForm", lang(req).get("group_add_link_title"), "next", model);
+	}
+
+	public static Object addLinkForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		requireQueryParams(req, "url");
+		String rawURL=req.queryParams("url");
+		if(!rawURL.startsWith("https:") && !rawURL.startsWith("http:"))
+			rawURL="https://"+rawURL;
+		URI url;
+		try{
+			url=new URI(rawURL);
+		}catch(URISyntaxException x){
+			throw new BadRequestException();
+		}
+		GroupLinkParseResult res=ctx.getGroupsController().parseLink(url, self.user, group);
+		req.session().attribute("groupAddLinkParsed_"+group.id+"_"+rawURL, res);
+		Lang l=lang(req);
+
+		Actor actor=null;
+		String objectTitle=null;
+		if(res.apObject() instanceof ObjectLinkResolver.ObjectTypeAndID(ObjectLinkResolver.ObjectType type, long id)){
+			actor=switch(type){
+				case USER -> ctx.getUsersController().getUserOrThrow((int)id);
+				case GROUP -> ctx.getGroupsController().getGroupOrThrow((int)id);
+				default -> null;
+			};
+			objectTitle=switch(type){
+				case USER, GROUP -> actor.getName();
+				case POST -> l.get("content_type_post");
+				case PHOTO_ALBUM -> l.get("photo_album");
+				case PHOTO -> l.get("content_type_photo");
+				case COMMENT -> l.get("content_type_comment");
+				case BOARD_TOPIC -> l.get("board_topic");
+				default -> null;
+			};
+		}
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_add_link_form", req)
+				.with("actor", actor)
+				.with("objectTitle", objectTitle)
+				.with("pageTitle", res.title())
+				.with("image", res.image())
+				.with("domain", url.getHost())
+				.with("url", url.toString());
+		Object responseObj=wrapForm(req, resp, "group_add_link_form", "/groups/"+group.id+"/finishAddingLink", l.get("group_add_link_title"), "group_do_add_link", model);
+		if(responseObj instanceof WebDeltaResponse wdr)
+			wdr.runScript("ge('linkTitleField').focus();");
+		return responseObj;
+	}
+
+	public static Object finishAddingLink(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		requireQueryParams(req, "url");
+		String rawURL=req.queryParams("url");
+		if(!rawURL.startsWith("https:") && !rawURL.startsWith("http:"))
+			throw new BadRequestException();
+		URI url=URI.create(rawURL);
+		GroupLinkParseResult res=req.session().attribute("groupAddLinkParsed_"+group.id+"_"+rawURL);
+		if(res==null)
+			res=ctx.getGroupsController().parseLink(url, self.user, group);
+
+		String title=req.queryParams("title");
+		if(StringUtils.isEmpty(title))
+			title=res.title();
+		ctx.getGroupsController().addLink(self.user, group, url, res, title);
+
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object editLinksReorder(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		long id=safeParseLong(req.queryParams("id"));
+		int order=parseIntOrDefault(req.queryParams("order"), 0);
+		if(order<0)
+			throw new BadRequestException();
+
+		ctx.getGroupsController().setLinkOrder(group, ctx.getGroupsController().getLink(group, id), order);
+
+		return "";
+	}
+
+	public static Object editLink(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		long id=safeParseLong(req.params(":linkID"));
+		GroupLink link=ctx.getGroupsController().getLink(group, id);
+		Lang l=lang(req);
+
+		Actor actor=null;
+		String objectTitle=null;
+		if(link.object!=null){
+			actor=switch(link.object.type()){
+				case USER -> ctx.getUsersController().getUserOrThrow(link.object.idInt());
+				case GROUP -> ctx.getGroupsController().getGroupOrThrow(link.object.idInt());
+				default -> null;
+			};
+			if(actor==null)
+				objectTitle=l.get(link.getTitleLangKey());
+			else
+				objectTitle=actor.getName();
+		}
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_add_link_form", req)
+				.with("actor", actor)
+				.with("objectTitle", objectTitle)
+				.with("pageTitle", link.title)
+				.with("image", actor!=null ? actor.getAvatar() : link.getImage())
+				.with("domain", link.url.getHost())
+				.with("url", link.url.toString())
+				.with("requireTitle", true);
+		Object responseObj=wrapForm(req, resp, "group_add_link_form", "/groups/"+group.id+"/links/"+id+"/update", l.get("group_edit_link_title"), "save", model);
+		if(responseObj instanceof WebDeltaResponse wdr)
+			wdr.runScript("ge('linkTitleField').focus();");
+		return responseObj;
+	}
+
+	public static Object updateLink(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "title");
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		long id=safeParseLong(req.params(":linkID"));
+		GroupLink link=ctx.getGroupsController().getLink(group, id);
+
+		ctx.getGroupsController().updateLinkTitle(group, link, req.queryParams("title"));
+
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object confirmDeleteLink(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		return wrapConfirmation(req, resp, l.get("group_delete_link_title"), l.get("group_delete_link_confirm"), "/groups/"+req.params(":id")+"/links/"+req.params(":linkID")+"/delete");
+	}
+
+	public static Object deleteLink(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
+		long id=safeParseLong(req.params(":linkID"));
+		GroupLink link=ctx.getGroupsController().getLink(group, id);
+
+		ctx.getGroupsController().deleteLink(group, link);
+
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object groupLinks(Request req, Response resp){
+		Group group=getGroup(req);
+		if(isMobile(req)){
+			resp.redirect(group.getProfileURL());
+			return "";
+		}
+		ApplicationContext ctx=context(req);
+		Account self=currentUserAccount(req);
+		context(req).getPrivacyController().enforceUserAccessToGroupProfile(self==null ? null : self.user, group);
+
+		List<GroupLink> links=ctx.getGroupsController().getLinks(group);
+		Set<Integer> needUsers=links.stream()
+				.map(l->l.object)
+				.filter(o->o!=null && o.type()==ObjectLinkResolver.ObjectType.USER)
+				.map(ObjectLinkResolver.ObjectTypeAndID::idInt)
+				.collect(Collectors.toSet());
+		Set<Integer> needGroups=links.stream()
+				.map(l->l.object)
+				.filter(o->o!=null && o.type()==ObjectLinkResolver.ObjectType.GROUP)
+				.map(ObjectLinkResolver.ObjectTypeAndID::idInt)
+				.collect(Collectors.toSet());
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_links", req);
+		model.with("links", links)
+				.with("users", ctx.getUsersController().getUsers(needUsers))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+		if(group instanceof ForeignGroup)
+			model.with("noindex", true);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp).box(lang(req).get("group_links"), model.renderContentBlock(), null, true);
+		}
+		return model;
 	}
 }

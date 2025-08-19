@@ -436,6 +436,27 @@ CREATE TABLE `group_invites` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `group_links`
+--
+
+CREATE TABLE `group_links` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `group_id` int unsigned NOT NULL,
+  `url` varchar(300) NOT NULL,
+  `title` varchar(300) NOT NULL,
+  `object_type` int unsigned DEFAULT NULL,
+  `object_id` bigint unsigned DEFAULT NULL,
+  `image_id` bigint DEFAULT NULL,
+  `ap_image_url` varchar(300) DEFAULT NULL,
+  `display_order` int unsigned NOT NULL DEFAULT '0',
+  `ap_id` varchar(300) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `group_id` (`group_id`),
+  CONSTRAINT `group_links_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `group_memberships`
 --
 
@@ -1129,4 +1150,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-08-13  8:02:21
+-- Dump completed on 2025-08-18 19:05:04

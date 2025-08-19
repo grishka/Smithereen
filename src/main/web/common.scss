@@ -879,3 +879,15 @@ h2+.textByItself{
 	}
 }
 
+.avaWithExtraContent{
+	display: flex;
+	.avaW{
+		flex: none;
+		width: 100px;
+		margin-right: $mediumPadding;
+	}
+	.contentW{
+		flex-grow: 1;
+	}
+}
+
