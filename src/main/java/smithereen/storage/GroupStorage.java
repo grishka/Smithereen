@@ -834,7 +834,7 @@ public class GroupStorage{
 	public static void blockUser(int selfID, int targetID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			new SQLQueryBuilder(conn)
-					.insertInto("blocks_group_user")
+					.insertIgnoreInto("blocks_group_user")
 					.value("owner_id", selfID)
 					.value("user_id", targetID)
 					.executeNoResult();
@@ -879,7 +879,7 @@ public class GroupStorage{
 
 	public static void blockDomain(int selfID, String domain) throws SQLException{
 		new SQLQueryBuilder()
-				.insertInto("blocks_group_domain")
+				.insertIgnoreInto("blocks_group_domain")
 				.value("owner_id", selfID)
 				.value("domain", domain)
 				.executeNoResult();

@@ -1137,7 +1137,7 @@ public class UserStorage{
 	public static void blockUser(int selfID, int targetID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			new SQLQueryBuilder(conn)
-					.insertInto("blocks_user_user")
+					.insertIgnoreInto("blocks_user_user")
 					.value("owner_id", selfID)
 					.value("user_id", targetID)
 					.executeNoResult();
@@ -1192,7 +1192,7 @@ public class UserStorage{
 
 	public static void blockDomain(int selfID, String domain) throws SQLException{
 		new SQLQueryBuilder()
-				.insertInto("blocks_user_domain")
+				.insertIgnoreInto("blocks_user_domain")
 				.value("owner_id", selfID)
 				.value("domain", domain)
 				.executeNoResult();
