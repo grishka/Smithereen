@@ -584,7 +584,8 @@ class MobileFriendListChoiceBox extends BaseScrollableBox{
 			ava=ce("span", {className: "ava avaListPlaceholder sizeA l"+((id-1)%8)}),
 			ce("div", {className: "name ellipsize", innerText: cur.friendLists[id]})
 		]);
-		ava.style.width=ava.style.height="32px";
+		ava.style.setProperty("--ava-width", "32px");
+		ava.style.setProperty("--ava-height", "32px");
 		row.dataset.uid=(-id)+"";
 		cbox.addEventListener("change", (ev)=>{
 			if(cbox.checked){
@@ -650,7 +651,8 @@ function initMobilePrivacyForm(valueField:HTMLInputElement, updateField:boolean=
 			ce("div", {className: "name ellipsize", innerText: cur.friendLists[id]}),
 			ce("a", {href: "javascript:void(0)", className: "remove actionIcon", title: lang("delete"), onclick: (ev)=>removeList(id)})
 		]);
-		ava.style.width=ava.style.height="32px";
+		ava.style.setProperty("--ava-width", "32px");
+		ava.style.setProperty("--ava-height", "32px");
 		row.dataset.lid=id+"";
 		return row;
 	}

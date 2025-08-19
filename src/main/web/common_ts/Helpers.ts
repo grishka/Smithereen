@@ -1224,7 +1224,8 @@ function makeAvatar(urls:string[], baseSize:string, customSize:number=0):HTMLEle
 		]);
 	}
 	if(customSize){
-		el.style.width=el.style.height=customSize+"px";
+		el.style.setProperty("--ava-width", customSize+"px");
+		el.style.setProperty("--ava-height", customSize+"px");
 	}
 	return el;
 }
