@@ -101,6 +101,7 @@ public class ModerationController{
 	private static final Logger LOG=LoggerFactory.getLogger(ModerationController.class);
 	private static final int REPORT_FILE_RETENTION_DAYS=7;
 
+	private final Object serverUpdateLock=new Object();
 	private final ApplicationContext context;
 	private final LruCache<String, Server> serversByDomainCache=new LruCache<>(500);
 	private List<EmailDomainBlockRule> emailDomainRules;
@@ -545,10 +546,12 @@ public class ModerationController{
 			return server;
 
 		try{
-			server=FederationStorage.getServerByDomain(domain);
-			if(server==null){
-				int id=FederationStorage.addServer(domain);
-				server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
+			synchronized(serverUpdateLock){
+				server=FederationStorage.getServerByDomain(domain);
+				if(server==null){
+					int id=FederationStorage.addServer(domain);
+					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
+				}
 			}
 			serversByDomainCache.put(domain, server);
 			return server;
