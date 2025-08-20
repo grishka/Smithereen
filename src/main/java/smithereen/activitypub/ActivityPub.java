@@ -168,11 +168,11 @@ public class ActivityPub{
 				.toFormatter();
 	}
 
-	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx) throws IOException{
-		return fetchRemoteObjectInternal(_uri, signer, actorToken, ctx, true);
+	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean acceptHTML) throws IOException{
+		return fetchRemoteObjectInternal(_uri, signer, actorToken, ctx, true, acceptHTML);
 	}
 
-	private static ActivityPubObject fetchRemoteObjectInternal(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean tryHTML) throws IOException{
+	private static ActivityPubObject fetchRemoteObjectInternal(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean tryHTML, boolean acceptHTML) throws IOException{
 		LOG.trace("Fetching remote object from {}", _uri);
 		URI uri;
 		String token;
@@ -199,9 +199,12 @@ public class ActivityPub{
 			}
 		}
 
+		String acceptHeader=CONTENT_TYPE;
+		if(acceptHTML)
+			acceptHeader+=",text/html;q=0.6,*/*;q=0.5";
 		HttpRequest.Builder builder=HttpRequest.newBuilder(uri)
 				.timeout(Duration.ofSeconds(10))
-				.header("Accept", CONTENT_TYPE+", text/html");
+				.header("Accept", acceptHeader);
 		if(token!=null)
 			builder.header("Authorization", "Bearer "+token);
 		else if(actorToken!=null)
@@ -244,7 +247,7 @@ public class ActivityPub{
 						LOG.trace("Will follow redirect: {}", url);
 						if(StringUtils.isNotEmpty(url)){
 							try{
-								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false);
+								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false, false);
 							}catch(URISyntaxException x){
 								throw new ObjectNotFoundExceptionWithFallback("Failed to parse URL from <link rel=\"alternate\"> on HTML page at "+uri, x, htmlDocument);
 							}

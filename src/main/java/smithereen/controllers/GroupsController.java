@@ -825,7 +825,7 @@ public class GroupsController{
 	public GroupLinkParseResult parseLink(URI url, User self, Group group){
 		ObjectLinkResolver.ObjectTypeAndID apObject;
 		try{
-			Object apObj=context.getObjectLinkResolver().resolveNative(url, Object.class, true, true, false, (JsonObject) null, false);
+			Object apObj=context.getObjectLinkResolver().resolveNative(url, Object.class, true, true, false, (JsonObject) null, false, true);
 			switch(apObj){
 				case OwnedContentObject oco -> context.getPrivacyController().enforceObjectPrivacy(self, oco);
 				case Group g -> context.getPrivacyController().enforceUserAccessToGroupProfile(self, g);

@@ -25,7 +25,6 @@ import java.util.regex.Pattern;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
-import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -170,6 +169,11 @@ public class ObjectLinkResolver{
 
 	@NotNull
 	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
+		return resolveNative(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck, false);
+	}
+
+	@NotNull
+	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck, boolean acceptHTML){
 		LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}, force refetch {}", _link, expectedType.getName(), allowStorage, forceRefetch);
 		URI link;
 		if("bear".equals(_link.getScheme())){
@@ -189,7 +193,7 @@ public class ObjectLinkResolver{
 		if(!Config.isLocal(link)){
 			if(allowFetching){
 				try{
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context);
+					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context, acceptHTML);
 					if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
 						User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
 						if(author.banStatus==UserBanStatus.SUSPENDED)
