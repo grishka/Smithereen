@@ -2502,8 +2502,14 @@ input.searchField{
 	.iconStatus{
 		background: svg-load('img/material/chat_bubble_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: #afafaf);
 	}
+	.iconLocation{
+		background: svg-load('img/material/location_on_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: #afafaf);
+	}
 	.iconMore{
 		background: svg-load('img/material/more_horiz_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $normalLink);
+	}
+	.iconLink{
+		background: svg-load('img/material/arrow_outward_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $normalLink);
 	}
 	.accessory{
 		flex: none;

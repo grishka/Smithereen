@@ -7,15 +7,17 @@
 	<form action="/groups/{{ group.id }}/saveGeneral" method="post" data-ajax>
 		{{ form.start('groupEdit', groupEditMessage) }}
 			{{ form.textInput('name', L('group_name'), group.name, {'maxlength': 200, 'required': true}) }}
-			{{ form.textArea('about', L(group.event ? 'about_event' : 'about_group'), group.aboutSource) }}
 			{{ form.textInput('username', L('group_username'), group.username, {'prefix': "#{serverDomain}/", 'autocomplete': false, 'maxlength': 50, 'required': true, 'pattern': '[a-zA-Z][a-zA-Z0-9\._\-]+', 'explanation': L('username_explain')}) }}
+			{{ form.textArea('about', L(group.event ? 'about_event' : 'about_group'), group.aboutSource) }}
+			{{ form.textInput('website', L('group_website'), group.website) }}
 			{% if group.event %}
 			{{ form.dateTimeInput('event_start', L('event_start_time'), group.eventStartTime) }}
 			{{ form.dateTimeInput('event_end', L('event_end_time'), group.eventEndTime) }}
+			{{ form.textInput('location', L('event_location'), group.location, {'placeholder': L('event_location_hint')}) }}
 			{% endif %}
 			{{ form.radioGroup(
 				'access',
-				L('group_access_type'),
+				L(group.event ? 'event_access_type' : 'group_access_type'),
 				group.event ? [
 					{'value': 'OPEN', 'label': L('group_access_open'), 'selected': group.accessType=='OPEN', 'explanation': L('event_access_open_explain')},
 					{'value': 'PRIVATE', 'label': L('group_access_private'), 'selected': group.accessType=='PRIVATE', 'explanation': L('event_access_private_explain')}

@@ -183,5 +183,8 @@
   "group_link_enter_title": "Введите название ссылки",
   "group_edit_link_title": "Редактирование ссылки",
   "group_delete_link_title": "Удаление ссылки",
-  "group_delete_link_confirm": "Вы действительно хотите удалить эту ссылку?"
+  "group_delete_link_confirm": "Вы действительно хотите удалить эту ссылку?",
+  "group_website": "Веб-сайт",
+  "event_location": "Место",
+  "event_location_hint": "Город, адрес, название места"
 }

@@ -357,6 +357,14 @@ public class GroupsRoutes{
 		ArrayList<PropertyValue> profileFields=new ArrayList<>();
 		if(StringUtils.isNotEmpty(group.summary))
 			profileFields.add(new PropertyValue(l.get(group.type==Group.Type.EVENT ? "about_event" : "about_group"), group.summary));
+		if(!isMobile(req)){
+			if(StringUtils.isNotEmpty(group.website)){
+				String escaped=TextProcessor.escapeHTML(group.website);
+				profileFields.add(new PropertyValue(l.get("group_website"), "<a href=\""+escaped+"\">"+escaped+"</a>"));
+			}
+			if(StringUtils.isNotEmpty(group.location))
+				profileFields.add(new PropertyValue(l.get("event_location"), group.location));
+		}
 		if(group.type==Group.Type.EVENT){
 			profileFields.add(new PropertyValue(l.get("event_start_time"), l.formatDate(group.eventStartTime, timeZoneForRequest(req), false)));
 			if(group.eventEndTime!=null)
@@ -436,7 +444,7 @@ public class GroupsRoutes{
 				}
 				if(eventEnd!=null && eventStart.isAfter(eventEnd))
 					throw new BadRequestException(lang(req).get("err_event_end_time_before_start"));
-				if(!eventStart.equals(group.startTime) && (eventStart.isBefore(Instant.now()) || !isWithinDatabaseLimits(eventStart)))
+				if(!eventStart.equals(group.eventStartTime) && (eventStart.isBefore(Instant.now()) || !isWithinDatabaseLimits(eventStart)))
 					throw new BadRequestException();
 				if(eventEnd!=null && !isWithinDatabaseLimits(eventEnd))
 					throw new BadRequestException();
@@ -448,10 +456,13 @@ public class GroupsRoutes{
 			GroupFeatureState wallState=enumValue(req.queryParams("wallState"), GroupFeatureState.class);
 			GroupFeatureState photosState=enumValue(req.queryParams("photosState"), GroupFeatureState.class);
 			GroupFeatureState boardState=enumValue(req.queryParams("boardState"), GroupFeatureState.class);
-			ctx.getGroupsController().updateGroupInfo(group, self.user, name, about, eventStart, eventEnd, username, accessType, wallState, photosState, boardState);
+			String website=req.queryParams("website");
+			String location=req.queryParams("location");
+			ctx.getGroupsController().updateGroupInfo(group, self.user, name, about, eventStart, eventEnd, username, accessType, wallState, photosState, boardState, website, location);
 
 			message=lang(req).get(group.isEvent() ? "event_info_updated" : "group_info_updated");
 		}catch(BadRequestException x){
+			LOG.debug("Bad request when saving group info", x);
 			message=x.getMessage();
 		}
 		if(isAjax(req)){
@@ -1057,13 +1068,22 @@ public class GroupsRoutes{
 				.filter(o->o!=null && o.type()==ObjectLinkResolver.ObjectType.GROUP)
 				.map(ObjectLinkResolver.ObjectTypeAndID::idInt)
 				.collect(Collectors.toSet());
-		return new RenderedTemplateResponse("group_edit_links", req)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_links", req)
 				.with("group", group)
 				.with("links", links)
 				.with("users", ctx.getUsersController().getUsers(needUsers))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
 				.pageTitle(group.name)
 				.headerBack(group);
+
+		if("added".equals(req.session().attribute("groupLinksMessage"+group.id))){
+			req.session().removeAttribute("groupLinksMessage"+group.id);
+			Lang l=lang(req);
+			model.with("message", l.get("group_link_added"))
+					.with("messageSubtitle", l.get("group_link_added_explanation"));
+		}
+
+		return model;
 	}
 
 	public static Object addLinkURLForm(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -1129,6 +1149,7 @@ public class GroupsRoutes{
 		GroupLinkParseResult res=req.session().attribute("groupAddLinkParsed_"+group.id+"_"+rawURL);
 		if(res==null)
 			res=ctx.getGroupsController().parseLink(url, self.user, group);
+		req.session().removeAttribute("groupAddLinkParsed_"+group.id+"_"+rawURL);
 
 		String title=req.queryParams("title");
 		if(StringUtils.isEmpty(title))
@@ -1137,6 +1158,7 @@ public class GroupsRoutes{
 			title="";
 		ctx.getGroupsController().addLink(self.user, group, url, res, title);
 
+		req.session().attribute("groupLinksMessage"+group.id, "added");
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));

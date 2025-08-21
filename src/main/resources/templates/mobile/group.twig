@@ -103,6 +103,12 @@
 			<span class="text">{{ group.statusText }}</span>
 		</div></li>
 		{% endif %}
+		{% if group.location is not empty %}
+		<li><div class="item">
+			<span class="icon iconLocation"></span>
+			<span class="text ellipsize">{{ group.location }}</span>
+		</div></li>
+		{% endif %}
 		{% if group.event %}
 		<li><div class="item">
 			<span class="icon iconTime"></span>
@@ -129,6 +135,12 @@
 			<span class="icon iconMore"></span>
 			<span class="text ellipsize">{{ L('profile_show_info') }}</span>
 		</label></li>
+		{% if group.website is not empty %}
+		<li><a class="item showMore" href="{{ group.website }}" target="_blank">
+			<span class="icon iconLink"></span>
+			<span class="text ellipsize">{{ group.website }}</span>
+		</a></li>
+		{% endif %}
 	</ul>
 </div>
 

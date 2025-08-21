@@ -17,6 +17,7 @@
 	{% if links is empty %}
 	<div class="emptyState">{{ L('group_links_empty') }}</div>
 	{% else %}
+	{% if message is not empty %}<div class="settingsMessage"><b>{{ message }}</b><div class="smallMarginBefore">{{ messageSubtitle }}</div></div>{% endif %}
 	<div class="reorderableList" id="groupLinksReorderable">
 	{% for link in links %}
 		<div class="reorderableItemWrap groupEditLinkW">

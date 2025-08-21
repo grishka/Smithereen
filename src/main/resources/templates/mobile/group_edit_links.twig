@@ -5,6 +5,7 @@
 {% include "group_admin_tabbar" with {'tab': 'links'} %}
 <a href="/groups/{{ group.id }}/addLinkForm" class="fab iconAdd" title="{{ L('group_add_link') }}" data-ajax-box></a>
 {% if links is not empty %}
+{% if message is not empty %}<div class="settingsMessage"><b>{{ message }}</b><div class="smallMarginBefore">{{ messageSubtitle }}</div></div>{% endif %}
 <div class="reorderableList groupEditMemberList" id="groupAdminsReorderable">
 	{% for link in links %}
 		{% set actor=null %}

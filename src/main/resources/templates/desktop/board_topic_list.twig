@@ -16,7 +16,7 @@
 	{% include "pagination" %}
 </div>
 <div>
-{% if message %}<div class="settingsMessage"><b>{{ message }}</b><br/>{{ messageSubtitle }}</div>{% endif %}
+{% if message is not empty %}<div class="settingsMessage"><b>{{ message }}</b><div class="smallMarginBefore">{{ messageSubtitle }}</div></div>{% endif %}
 {% for topic in items %}
 	<div class="boardTopicListItem">
 		<div class="mainW">

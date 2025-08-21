@@ -273,6 +273,30 @@ public class User extends Actor{
 		numFollowers=res.getLong("num_followers");
 		numFollowing=res.getLong("num_following");
 		numFriends=res.getLong("num_friends");
+
+		if(attachment==null)
+			attachment=new ArrayList<>();
+		if(StringUtils.isNotEmpty(website)){
+			String url=TextProcessor.escapeHTML(website);
+			PropertyValue pv=new PropertyValue();
+			pv.name="Website";
+			pv.value="<a href=\""+url+"\" rel=\"me\">"+url+"</a>";
+			attachment.add(pv);
+		}
+		for(ContactInfoKey key:ContactInfoKey.values()){
+			if(contacts.containsKey(key)){
+				String value=contacts.get(key);
+				String url=TextProcessor.getContactInfoValueURL(key, value);
+				PropertyValue pv=new PropertyValue();
+				pv.name=key.getFieldName();
+				if(url!=null){
+					pv.value="<a href=\""+TextProcessor.escapeHTML(url)+"\" rel=\"me\">"+TextProcessor.escapeHTML(value)+"</a>";
+				}else{
+					pv.value=TextProcessor.escapeHTML(value);
+				}
+				attachment.add(pv);
+			}
+		}
 	}
 
 	@Override
@@ -445,31 +469,6 @@ public class User extends Actor{
 
 		if(StringUtils.isNotEmpty(location))
 			obj.addProperty("vcard:Address", location);
-		JsonArrayBuilder attachment=new JsonArrayBuilder();
-		if(StringUtils.isNotEmpty(website)){
-			String url=TextProcessor.escapeHTML(website);
-			PropertyValue pv=new PropertyValue();
-			pv.name="Website";
-			pv.value="<a href=\""+url+"\" rel=\"me\">"+url+"</a>";
-			attachment.add(pv.asActivityPubObject(new JsonObject(), serializerContext));
-		}
-		for(ContactInfoKey key:ContactInfoKey.values()){
-			if(contacts.containsKey(key)){
-				String value=contacts.get(key);
-				String url=TextProcessor.getContactInfoValueURL(key, value);
-				PropertyValue pv=new PropertyValue();
-				pv.name=key.getFieldName();
-				if(url!=null){
-					pv.value="<a href=\""+TextProcessor.escapeHTML(url)+"\" rel=\"me\">"+TextProcessor.escapeHTML(value)+"</a>";
-				}else{
-					pv.value=TextProcessor.escapeHTML(value);
-				}
-				attachment.add(pv.asActivityPubObject(new JsonObject(), serializerContext));
-			}
-		}
-		JsonArray att=attachment.build();
-		if(!att.isEmpty())
-			obj.add("attachment", att);
 
 		if(StringUtils.isNotEmpty(hometown)){
 			serializerContext.addSmAlias("hometown");

@@ -250,7 +250,7 @@ public class GroupsController{
 	}
 
 	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd, String username, Group.AccessType accessType,
-								GroupFeatureState wallState, GroupFeatureState photosState, GroupFeatureState boardState){
+								GroupFeatureState wallState, GroupFeatureState photosState, GroupFeatureState boardState, String website, String location){
 		try{
 			enforceUserAdminLevel(group, admin, Group.AdminLevel.ADMIN);
 			String about=StringUtils.isNotEmpty(aboutSrc) ? TextProcessor.preprocessPostHTML(aboutSrc, null) : null;
@@ -271,13 +271,29 @@ public class GroupsController{
 				photosState=GroupFeatureState.ENABLED_RESTRICTED;
 			if(boardState==GroupFeatureState.ENABLED_CLOSED)
 				boardState=GroupFeatureState.ENABLED_RESTRICTED;
+			boolean needUpdateFields=false, needClearFeed=false;
 			if(group.wallState!=wallState || group.photosState!=photosState || group.boardState!=boardState){
 				group.wallState=wallState;
 				group.photosState=photosState;
 				group.boardState=boardState;
-				GroupStorage.updateProfileFields(group);
-				context.getNewsfeedController().clearGroupsFeedCache();
+				needUpdateFields=needClearFeed=true;
 			}
+
+			if(!group.isEvent())
+				location=null;
+			if(website!=null && !website.startsWith("https:") && !website.startsWith("http:"))
+				website="https://"+website;
+			if(!Objects.equals(group.website, website) || !Objects.equals(group.location, location)){
+				group.website=website;
+				group.location=location;
+				needUpdateFields=true;
+			}
+
+			if(needUpdateFields)
+				GroupStorage.updateProfileFields(group);
+			if(needClearFeed)
+				context.getNewsfeedController().clearGroupsFeedCache();
+
 			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 			if(group.isEvent()){
 				BackgroundTaskRunner.getInstance().submit(()->{

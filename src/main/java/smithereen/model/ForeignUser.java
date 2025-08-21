@@ -270,7 +270,7 @@ public class ForeignUser extends User implements ForeignActor{
 					// Get rid of Mastodon :emojis: and non-ASCII characters
 					String normalizedName=pv.name.toLowerCase().replaceAll(":[a-z0-9_]{2,}:", "").replaceAll("[^a-z0-9 -]", "").trim();
 					// Match against popular strings people use for these things
-					if(Set.of("website", "web", "web site", "blog", "homepage", "www", "site", "personal page", "personal website", "personal blog").contains(normalizedName)){
+					if(WEBSITE_FIELD_KEYS.contains(normalizedName)){
 						website=TextProcessor.stripHTML(pv.value, false);
 						continue;
 					}

@@ -11,8 +11,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
@@ -20,6 +22,7 @@ import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Event;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
 import smithereen.http.HttpContentType;
@@ -188,6 +191,21 @@ public class ForeignGroup extends Group implements ForeignActor{
 						}
 
 						linksFromActivityPub.add(gl);
+					}
+				}
+			}
+		}
+
+		location=optString(obj, "vcard:Address");
+		if(attachment!=null && !attachment.isEmpty()){
+			for(ActivityPubObject att:attachment){
+				if(att instanceof PropertyValue pv && pv.name!=null){
+					// Get rid of Mastodon :emojis: and non-ASCII characters
+					String normalizedName=pv.name.toLowerCase().replaceAll(":[a-z0-9_]{2,}:", "").replaceAll("[^a-z0-9 -]", "").trim();
+					// Match against popular strings people use for these things
+					if(WEBSITE_FIELD_KEYS.contains(normalizedName)){
+						website=TextProcessor.stripHTML(pv.value, false);
+						break;
 					}
 				}
 			}
