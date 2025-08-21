@@ -1361,5 +1361,15 @@ public class GroupStorage{
 				.executeNoResult();
 	}
 
+	public static void resolveLink(int groupID, long linkID, ObjectLinkResolver.ObjectTypeAndID obj) throws SQLException{
+		new SQLQueryBuilder()
+				.update("group_links")
+				.where("group_id=? AND id=?", groupID, linkID)
+				.value("is_unresolved_ap_object", false)
+				.value("object_type", obj.type().id)
+				.value("object_id", obj.id())
+				.executeNoResult();
+	}
+
 	// endregion
 }

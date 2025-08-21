@@ -935,6 +935,14 @@ public class GroupsController{
 		}
 	}
 
+	public void setLinkResolved(Group group, GroupLink link, ObjectLinkResolver.ObjectTypeAndID obj){
+		try{
+			GroupStorage.resolveLink(group.id, link.id, obj);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public enum EventsType{
 		FUTURE,
 		PAST,

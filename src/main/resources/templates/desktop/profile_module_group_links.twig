@@ -16,7 +16,7 @@
 	{% endif %}
 	{% endif %}
 	{% set image=link.image %}
-	<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}>
+	<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}{% if currentUser is not null and link.isUnresolvedActivityPubObject %} onclick="loadRemoteObject(this.href, {group: '{{ group.id }}', link: '{{ link.id }}'}); return false;"{% endif %}>
 		{% if actor is not null %}
 		{{ actor | pictureForAvatar('a', 32) }}
 		{% elseif image is not null %}
@@ -27,7 +27,7 @@
 	</a>
 	<div class="nameAndInfo">
 		<div>
-			<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}>
+			<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}{% if currentUser is not null and link.isUnresolvedActivityPubObject %} onclick="loadRemoteObject(this.href, {group: '{{ group.id }}', link: '{{ link.id }}'}); return false;"{% endif %}>
 			{% if actor is not null %}
 			{{ actor | name }}
 			{% elseif link.object is not null %}

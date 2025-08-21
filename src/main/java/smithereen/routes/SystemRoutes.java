@@ -56,6 +56,7 @@ import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -453,7 +454,17 @@ public class SystemRoutes{
 		resp.type("application/json");
 		Lang l=lang(req);
 		try{
-			return new JsonObjectBuilder().add("success", switch(ctx.getSearchController().loadRemoteObject(self.user, uri)){
+			Object obj=ctx.getSearchController().loadRemoteObject(self.user, uri);
+			if(req.queryParams("group")!=null && req.queryParams("link")!=null){
+				try{
+					Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.queryParams("group")));
+					GroupLink gl=ctx.getGroupsController().getLink(group, safeParseLong(req.queryParams("link")));
+					if(gl.isUnresolvedActivityPubObject && gl.url.toString().equals(uri)){
+						ctx.getGroupsController().setLinkResolved(group, gl, ObjectLinkResolver.getObjectIdFromObject(obj));
+					}
+				}catch(ObjectNotFoundException ignore){}
+			}
+			return new JsonObjectBuilder().add("success", switch(obj){
 				case Post post when post.getReplyLevel()>0 -> Config.localURI("/posts/"+post.replyKey.getFirst()+"#comment"+post.id).toString();
 				case Post post -> post.getInternalURL().toString();
 				case Actor actor -> actor.getProfileURL();
