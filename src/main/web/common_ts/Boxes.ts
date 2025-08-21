@@ -276,6 +276,8 @@ class LayerManager{
 	}
 
 	public dismissEverything(){
+		if(this.boxLoader)
+			this.boxLoader.hide();
 		for(var i=this.stack.length-1;i>=0;i--){
 			this.dismiss(this.stack[i]);
 		}
