@@ -80,6 +80,7 @@ import smithereen.model.Post;
 import smithereen.model.ServerRule;
 import smithereen.model.admin.ViolationReport;
 import smithereen.model.board.BoardTopic;
+import smithereen.model.groups.GroupLink;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
@@ -294,6 +295,20 @@ public class SystemRoutes{
 				SessionInfo sess=sessionInfo(req);
 				ctx.getPrivacyController().enforceObjectPrivacy(sess!=null && sess.account!=null ? sess.account.user : null, photo);
 				uri=photo.remoteSrc;
+				mime="image/webp";
+				itemType=MediaCache.ItemType.PHOTO;
+			}
+			case "group_link" -> {
+				requireQueryParams(req, "group", "link");
+				int groupID=safeParseInt(req.queryParams("group"));
+				long linkID=safeParseLong(req.queryParams("link"));
+				Account self=currentUserAccount(req);
+				Group g=ctx.getGroupsController().getGroupOrThrow(groupID);
+				ctx.getPrivacyController().enforceGroupContentAccess(req, g);
+				GroupLink link=ctx.getGroupsController().getLink(g, linkID);
+				if(link.apImageURL==null)
+					throw new BadRequestException();
+				uri=link.apImageURL;
 				mime="image/webp";
 				itemType=MediaCache.ItemType.PHOTO;
 			}

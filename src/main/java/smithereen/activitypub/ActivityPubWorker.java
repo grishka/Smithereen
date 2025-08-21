@@ -559,11 +559,45 @@ public class ActivityPubWorker{
 	}
 
 	public void sendUpdateGroupActivity(Group group){
-		Update update=new Update()
-				.withActorLinkAndObject(group, group)
-				.withActorFragmentID("updateProfile"+System.currentTimeMillis());
-		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
-		submitActivityForMembers(update, group);
+		Runnable action=()->{
+			scheduledActorUpdates.remove(-group.id);
+			Group upToDateGroup;
+			try{
+				// Make sure that any updates to this group made between when this was scheduled and now are incorporated
+				upToDateGroup=context.getGroupsController().getGroupOrThrow(group.id);
+			}catch(ObjectNotFoundException x){
+				LOG.warn("Failed to send a delayed Update{Group} for group {} because the group somehow no longer exists", group.id);
+				return;
+			}
+			Update update=new Update()
+					.withActorLinkAndObject(upToDateGroup, upToDateGroup)
+					.withActorFragmentID("updateProfile"+System.currentTimeMillis());
+			update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+			submitActivityForMembers(update, upToDateGroup);
+		};
+		String mutexName="updateGroup"+group.id;
+		try{
+			mutex.acquire(mutexName);
+			if(scheduledActorUpdates.contains(-group.id)){
+				LOG.trace("Update{Group} for group {} is already scheduled", group.id);
+				return;
+			}
+			Instant removeBefore=Instant.now().minus(5, ChronoUnit.MINUTES);
+			lastActorUpdates.values().removeIf(removeBefore::isAfter);
+			Instant lastUpdate=lastActorUpdates.get(-group.id);
+			if(lastUpdate==null){
+				LOG.trace("Sending Update{Group} for group {} immediately", group.id);
+				lastActorUpdates.put(-group.id, Instant.now());
+				action.run();
+			}else{
+				long delay=lastUpdate.plus(5, ChronoUnit.MINUTES).toEpochMilli()-System.currentTimeMillis();
+				LOG.trace("Delaying Update{Group} for group {} by {}s", group.id, delay/1000.0);
+				scheduledActorUpdates.add(-group.id);
+				retryExecutor.schedule(action, delay, TimeUnit.MILLISECONDS);
+			}
+		}finally{
+			mutex.release(mutexName);
+		}
 	}
 
 	public void sendCreateStatusActivity(Actor actor, ActorStatus status){

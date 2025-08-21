@@ -187,6 +187,8 @@ public class SearchController{
 			}catch(URISyntaxException x){
 				throw new BadRequestException(x);
 			}
+			if(StringUtils.isEmpty(uri.getHost()) || StringUtils.isEmpty(uri.getScheme()))
+				throw new BadRequestException("Invalid URL");
 		}
 
 		// Try resolving locally first

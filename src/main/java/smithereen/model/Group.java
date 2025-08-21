@@ -12,13 +12,17 @@ import java.util.List;
 
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Event;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.jsonld.JLD;
 import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupFeatureState;
+import smithereen.model.groups.GroupLink;
 import smithereen.storage.DatabaseUtils;
+import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
 
@@ -201,6 +205,29 @@ public class Group extends Actor{
 		serializerContext.addSmIdType("pinnedBoardTopics");
 		obj.addProperty("boardTopics", groupURL+"/topics");
 		obj.addProperty("pinnedBoardTopics", groupURL+"/pinnedTopics");
+
+		List<GroupLink> links=serializerContext.appContext.getGroupsController().getLinks(this);
+		if(!links.isEmpty()){
+			serializerContext.addSmIdType("links");
+			serializerContext.addSmAlias("displayOrder");
+			JsonArrayBuilder linkArr=new JsonArrayBuilder();
+			for(GroupLink link:links){
+				JsonObjectBuilder linkBuilder=new JsonObjectBuilder()
+						.add("type", "Link")
+						.add("href", link.url.toString())
+						.add("id", Config.localURI("/groups/"+id+"/links/"+link.id).toString())
+						.add("name", link.title)
+						.add("displayOrder", link.displayOrder);
+				if(link.image instanceof LocalImage li){
+					linkBuilder.add("icon", li.asActivityPubObject(new JsonObject(), serializerContext));
+				}
+				if(link.object!=null){
+					linkBuilder.add("mediaType", ActivityPub.CONTENT_TYPE);
+				}
+				linkArr.add(linkBuilder);
+			}
+			obj.add("links", linkArr.build());
+		}
 
 		return obj;
 	}

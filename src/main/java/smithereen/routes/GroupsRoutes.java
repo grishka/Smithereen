@@ -1133,6 +1133,8 @@ public class GroupsRoutes{
 		String title=req.queryParams("title");
 		if(StringUtils.isEmpty(title))
 			title=res.title();
+		if(title==null)
+			title="";
 		ctx.getGroupsController().addLink(self.user, group, url, res, title);
 
 		if(isAjax(req))

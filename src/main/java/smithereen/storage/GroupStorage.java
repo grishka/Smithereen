@@ -132,7 +132,7 @@ public class GroupStorage{
 		String key=group.activityPubID.toString().toLowerCase();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			foreignGroupUpdateLocks.acquire(key);
-			int existingGroupID=new SQLQueryBuilder(conn)
+			final int existingGroupID=new SQLQueryBuilder(conn)
 					.selectFrom("groups")
 					.columns("id")
 					.where("ap_id=?", group.activityPubID.toString())
@@ -164,7 +164,7 @@ public class GroupStorage{
 					.value("profile_fields", group.serializeProfileFields())
 					.valueExpr("last_updated", "CURRENT_TIMESTAMP()");
 
-			if(existingGroupID==0){
+			if(existingGroupID==-1){
 				group.id=builder.executeAndGetID();
 				new SQLQueryBuilder(conn)
 						.insertInto("qsearch_index")
@@ -225,6 +225,53 @@ public class GroupStorage{
 								.value("display_order", order)
 								.executeNoResult();
 						order++;
+					}
+				}
+
+
+				List<GroupLink> existingLinks;
+				if(existingGroupID==-1)
+					existingLinks=List.of();
+				else
+					existingLinks=getGroupLinks(existingGroupID);
+				if(!existingLinks.isEmpty() || !group.linksFromActivityPub.isEmpty()){
+					Map<URI, GroupLink> existingLinksByID=existingLinks.stream().collect(Collectors.toMap(l->l.apID, Function.identity(), (a, b)->b));
+					for(GroupLink l:group.linksFromActivityPub){
+						GroupLink existingLink=existingLinksByID.get(l.apID);
+						if(existingLink==null){
+							new SQLQueryBuilder(conn)
+									.insertInto("group_links")
+									.value("group_id", group.id)
+									.value("url", l.url.toString())
+									.value("title", l.title)
+									.value("object_type", l.object==null ? null : l.object.type().id)
+									.value("object_id", l.object==null ? null : l.object.id())
+									.value("ap_image_url", l.apImageURL==null ? null : l.apImageURL.toString())
+									.value("display_order", l.displayOrder)
+									.value("ap_id", l.apID.toString())
+									.value("is_unresolved_ap_object", l.isUnresolvedActivityPubObject)
+									.executeNoResult();
+						}else if(!Objects.equals(l.title, existingLink.title) || l.displayOrder!=existingLink.displayOrder){
+							new SQLQueryBuilder(conn)
+									.update("group_links")
+									.where("ap_id=? AND group_id=?", l.apID, group.id)
+									.value("title", l.title)
+									.value("display_order", l.displayOrder)
+									.executeNoResult();
+						}
+					}
+					Set<URI> newLinkIDs=group.linksFromActivityPub.stream().map(l->l.apID).collect(Collectors.toSet());
+					HashSet<Long> removedLinkIDs=new HashSet<>();
+					for(GroupLink l:existingLinks){
+						if(!newLinkIDs.contains(l.apID))
+							removedLinkIDs.add(l.id);
+					}
+					if(!removedLinkIDs.isEmpty()){
+						new SQLQueryBuilder(conn)
+								.deleteFrom("group_links")
+								.whereIn("id", removedLinkIDs)
+								.andWhere("group_id=?", group.id)
+								.executeNoResult();
 					}
 				}
 			}

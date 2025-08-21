@@ -160,6 +160,7 @@ public class JLDProcessor{
 		addSmIdAlias(lc, "board");
 		addSmAlias(lc, "TopicCreationRequest");
 		addSmAlias(lc, "TopicRenameRequest");
+		addSmIdAlias(lc, "links");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

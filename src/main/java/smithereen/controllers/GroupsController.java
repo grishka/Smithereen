@@ -876,7 +876,7 @@ public class GroupsController{
 			if(imageID!=0){
 				MediaStorage.createMediaFileReference(imageID, id, MediaFileReferenceType.GROUP_LINK_THUMB, -group.id);
 			}
-			// TODO Update{Group}
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 			return id;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -888,7 +888,7 @@ public class GroupsController{
 			List<GroupLink> links=GroupStorage.getGroupLinks(group.id);
 			for(GroupLink l:links){
 				if(l.object!=null){
-					l.url=ObjectLinkResolver.getLocalURLForObjectID(l.object);
+					l.localUrl=ObjectLinkResolver.getLocalURLForObjectID(l.object);
 				}
 			}
 			return links;
@@ -911,7 +911,7 @@ public class GroupsController{
 	public void setLinkOrder(Group group, GroupLink link, int order){
 		try{
 			GroupStorage.setLinkOrder(group.id, link.id, order);
-			// TODO Update{Group}
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -920,7 +920,7 @@ public class GroupsController{
 	public void updateLinkTitle(Group group, GroupLink link, String title){
 		try{
 			GroupStorage.updateLinkTitle(group.id, link.id, title);
-			// TODO Update{Group}
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -929,7 +929,7 @@ public class GroupsController{
 	public void deleteLink(Group group, GroupLink link){
 		try{
 			GroupStorage.deleteLink(group.id, link.id);
-			// TODO Update{Group}
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

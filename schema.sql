@@ -450,6 +450,7 @@ CREATE TABLE `group_links` (
   `ap_image_url` varchar(300) DEFAULT NULL,
   `display_order` int unsigned NOT NULL DEFAULT '0',
   `ap_id` varchar(300) DEFAULT NULL,
+  `is_unresolved_ap_object` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `group_id` (`group_id`),
@@ -1150,4 +1151,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-08-18 19:05:04
+-- Dump completed on 2025-08-21 13:06:55

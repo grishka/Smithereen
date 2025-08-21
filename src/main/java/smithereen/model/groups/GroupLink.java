@@ -11,22 +11,23 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
-import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
 import smithereen.storage.MediaCache;
-import smithereen.util.XTEA;
 
-public final class GroupLink{
+public class GroupLink{
 	private static final Logger LOG=LoggerFactory.getLogger(GroupLink.class);
 
 	public long id;
 	public int groupID;
 	public URI url;
+	public URI apID;
 	public String title;
 	public ObjectLinkResolver.ObjectTypeAndID object;
 	public SizedImage image;
 	public int displayOrder;
 	public URI apImageURL;
+	public URI localUrl;
+	public boolean isUnresolvedActivityPubObject;
 
 	public static GroupLink fromResultSet(ResultSet res) throws SQLException{
 		GroupLink l=new GroupLink();
@@ -47,6 +48,12 @@ public final class GroupLink{
 		}else if(apImageURL!=null){
 			l.apImageURL=URI.create(apImageURL);
 		}
+		String apID=res.getString("ap_id");
+		if(apID!=null)
+			l.apID=URI.create(apID);
+
+		l.isUnresolvedActivityPubObject=res.getBoolean("is_unresolved_ap_object");
+
 		return l;
 	}
 
@@ -83,5 +90,9 @@ public final class GroupLink{
 
 	public String getDescription(){
 		return object!=null ? title : url.getHost();
+	}
+
+	public URI getUrl(){
+		return localUrl==null ? url : localUrl;
 	}
 }

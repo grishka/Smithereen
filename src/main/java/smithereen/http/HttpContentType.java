@@ -9,6 +9,10 @@ import java.util.Objects;
 public record HttpContentType(String mimeType, Map<String, String> attributes){
 	public static HttpContentType from(HttpHeaders headers){
 		String contentType=headers.firstValue("content-type").orElse("text/html; charset=UTF-8");
+		return from(contentType);
+	}
+
+	public static HttpContentType from(String contentType){
 		int index=contentType.indexOf(';');
 		if(index==-1){
 			return new HttpContentType(contentType, Map.of());
