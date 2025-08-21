@@ -38,7 +38,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 	public URI members;
 	public URI tentativeMembers;
 	public EnumSet<Capability> capabilities=EnumSet.noneOf(ForeignGroup.Capability.class);
-	public List<GroupLink> linksFromActivityPub;
+	public List<GroupLink> linksFromActivityPub=List.of();
 
 	public static ForeignGroup fromResultSet(ResultSet res) throws SQLException{
 		ForeignGroup g=new ForeignGroup();
