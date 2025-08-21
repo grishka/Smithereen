@@ -14,12 +14,14 @@ import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Add;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.ForeignGroup;
 import smithereen.model.Post;
 import smithereen.exceptions.BadRequestException;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.feed.NewsfeedEntry;
 
 public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuestion>{
 	@Override
@@ -62,8 +64,6 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuesti
 			LOG.warn("Ignoring Add{Note} sent by {} because target collection {} is unknown or unsupported", actor.activityPubID, targetCollectionID);
 			return;
 		}
-//		if(!Objects.equals(post.owner.activityPubID, actor.activityPubID))
-//			throw new BadRequestException("Post's target collection doesn't match actor's wall collection");
 		Post nativePost=post.asNativePost(context.appContext);
 		if(post.inReplyTo!=null){
 			Post topLevel=context.appContext.getWallController().getPostOrThrow(nativePost.getReplyChainElement(0));
@@ -74,7 +74,11 @@ public class AddNoteHandler extends ActivityTypeHandler<Actor, Add, NoteOrQuesti
 		boolean isNew=nativePost.id==0;
 		context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 		context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
-		if(isNew)
+		if(isNew){
 			context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
+			if(nativePost.getReplyLevel()==0 && actor instanceof ForeignGroup g){
+				context.appContext.getNewsfeedController().putGroupsFeedEntry(g, nativePost.id, NewsfeedEntry.Type.POST, nativePost.createdAt);
+			}
+		}
 	}
 }
