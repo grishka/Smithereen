@@ -1043,6 +1043,13 @@ public class UserStorage{
 		}
 	}
 
+	public static FollowRelationship getFollowRelationship(int followerID, int followeeID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("followings")
+				.where("follower_id=? AND followee_id=?", followerID, followeeID)
+				.executeAndGetSingleObject(FollowRelationship::fromResultSet);
+	}
+
 	public static void setFollowAccepted(int followerID, int followeeID, boolean accepted) throws SQLException{
 		new SQLQueryBuilder()
 				.update("followings")

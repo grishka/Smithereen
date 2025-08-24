@@ -102,6 +102,7 @@ import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.friends.FollowRelationship;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoTag;
@@ -416,32 +417,32 @@ public class ActivityPubWorker{
 		});
 	}
 
-	public void sendUnfriendActivity(User self, User target){
+	public void sendUnfriendActivity(User self, User target, FollowRelationship relationship){
 		if(!(target instanceof ForeignUser))
 			return;
 
 		Follow follow=new Follow()
 				.withActorAndObjectLinks(self, target)
-				.withActorFragmentID("followUser"+target.id+"_"+rand());
+				.withActorFragmentID("followUser"+target.id+"_"+relationship.addedAt().getEpochSecond());
 		Undo undo=new Undo()
 				.withActorLinkAndObject(self, follow)
-				.withActorFragmentID("unfollowUser"+target.id+"_"+rand());
+				.withActorFragmentID("unfollowUser"+target.id+"_"+relationship.addedAt().getEpochSecond());
 
 		submitActivity(undo, self, target.inbox);
 	}
 
-	public void sendRemoveFromFriendsCollectionActivity(User self, User exFriend){
+	public void sendRemoveFromFriendsCollectionActivity(User self, User exFriend, FollowRelationship relationship){
 		Remove remove=new Remove()
 				.withActorAndObjectLinks(self, exFriend)
-				.withActorFragmentID("unfriendUserCollection"+exFriend.id+"_"+rand())
+				.withActorFragmentID("unfriendUserCollection"+exFriend.id+"_"+relationship.addedAt().getEpochSecond())
 				.withTarget(self.getFriendsURL());
 		submitActivityForFollowers(remove, self);
 	}
 
-	public void sendAddToFriendsCollectionActivity(User self, User friend){
+	public void sendAddToFriendsCollectionActivity(User self, User friend, FollowRelationship relationship){
 		Add add=new Add()
 				.withActorAndObjectLinks(self, friend)
-				.withActorFragmentID("addFriendUserCollection"+friend.id+"_"+rand())
+				.withActorFragmentID("addFriendUserCollection"+friend.id+"_"+relationship.addedAt().getEpochSecond())
 				.withTarget(self.getFriendsURL());
 		submitActivityForFollowers(add, self);
 	}
@@ -463,10 +464,10 @@ public class ActivityPubWorker{
 		submitActivityForFollowers(remove, self);
 	}
 
-	public void sendFollowUserActivity(User self, ForeignUser target){
+	public void sendFollowUserActivity(User self, ForeignUser target, FollowRelationship relationship){
 		Follow follow=new Follow()
 				.withActorAndObjectLinks(self, target)
-				.withActorFragmentID("followUser"+target.id+"_"+rand());
+				.withActorFragmentID("followUser"+target.id+"_"+relationship.addedAt().getEpochSecond());
 		submitActivity(follow, self, target.inbox);
 	}
 
@@ -484,14 +485,14 @@ public class ActivityPubWorker{
 		submitActivity(leave, self, target.inbox);
 	}
 
-	public void sendFriendRequestActivity(User self, ForeignUser target, String message){
+	public void sendFriendRequestActivity(User self, ForeignUser target, String message, FollowRelationship relationship){
 		Follow follow=new Follow()
 				.withActorAndObjectLinks(self, target)
 				.withActorFragmentID("follow"+target.id+"_"+rand());
 		if(target.supportsFriendRequests()){
 			Offer offer=new Offer()
 					.withActorLinkAndObject(self, new Follow().withActorAndObjectLinks(target, self))
-					.withActorFragmentID("friendRequest"+target.id+"_"+rand());
+					.withActorFragmentID("friendRequest"+target.id+"_"+relationship.addedAt().getEpochSecond());
 			if(StringUtils.isNotEmpty(message)){
 				offer.content=message;
 			}
@@ -501,7 +502,15 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void sendAcceptFollowActivity(ForeignUser actor, Actor self, Follow follow){
+	public void sendAcceptFollowActivity(ForeignUser actor, User self, Follow follow, FollowRelationship relationship){
+		self.ensureLocal();
+		Accept accept=new Accept()
+				.withActorLinkAndObject(self, follow)
+				.withActorFragmentID("acceptFollow"+actor.id+"_"+relationship.addedAt().getEpochSecond());
+		submitActivity(accept, self, actor.inbox);
+	}
+
+	public void sendAcceptFollowActivity(ForeignUser actor, Group self, Follow follow){
 		self.ensureLocal();
 		Accept accept=new Accept()
 				.withActorLinkAndObject(self, follow)

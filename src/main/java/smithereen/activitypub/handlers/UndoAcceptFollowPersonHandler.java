@@ -8,6 +8,7 @@ import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Follow;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.model.ForeignUser;
+import smithereen.model.friends.FollowRelationship;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.User;
 import smithereen.model.feed.NewsfeedEntry;
@@ -22,9 +23,10 @@ public class UndoAcceptFollowPersonHandler extends DoublyNestedActivityTypeHandl
 			throw new ObjectNotFoundException("Follower not found");
 		follower.ensureLocal();
 		FriendshipStatus status=UserStorage.getFriendshipStatus(follower.id, actor.id);
+		FollowRelationship relationship=UserStorage.getFollowRelationship(follower.id, actor.id);
 		UserStorage.setFollowAccepted(follower.id, actor.id, false);
 		if(status==FriendshipStatus.FRIENDS){
-			context.appContext.getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(follower, actor);
+			context.appContext.getActivityPubWorker().sendRemoveFromFriendsCollectionActivity(follower, actor, relationship);
 			context.appContext.getNewsfeedController().deleteFriendsFeedEntry(follower, actor.id, NewsfeedEntry.Type.ADD_FRIEND);
 		}
 	}
