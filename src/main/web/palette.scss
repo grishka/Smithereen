@@ -25,6 +25,14 @@ $normalLink: rgb(72, 92, 0);
 $boldHeaders: rgb(78, 112, 0);
 $auxiliaryGrey: rgb(119, 119, 119);
 $auxiliaryBlockHeader: rgb(171, 175, 114);
+$mailMessageRow: rgb(164, 171, 59);
+$mailMessageRowUnreadTime: rgb(148, 151, 96);
+$mailMessageRowDeleted: rgb(144, 136, 81);
+$mailHistorySelf: rgb(164, 174, 70);
+$photoGripUpload: rgb(134, 132, 77);
+$profileCounter: rgb(150, 150, 89);
+$postLayerCommentsRestricted: rgb(126, 141, 49);
+$photoAlbumsGridEmpty: rgb(132, 132, 90);
 
 $darkGrey: #444444;
 $sectionHeaderBorder: #CCCCCC;
@@ -41,6 +49,19 @@ $blockBorderBottom: rgb(228, 223, 193);
 $blockBackground: rgb(234, 232, 203);
 $blockUnderboxBackground: rgb(241, 241, 241);
 $bgGrey: rgb(247, 247, 247);
+$repostBorderLeft: rgb(186, 192, 135);
+$completionSelectedBackgroundColor: rgb(108, 131, 0);
+$completionSelectedBorderColor: rgb(46, 98, 0);
+$mailMessageRowUnreadBackgroundColor: rgb(254, 248, 238);
+$mailMessageRowDeletedBackgroundColor: rgb(254, 250, 228);
+$mailMessageRowDeletedBorderColor: rgb(226, 218, 166);
+$photoGripUploadBackgroundColor: rgb(242, 241, 234);
+$notificationOwnReplyBackgroundColor: rgb(243, 241, 227);
+$notificationOwnReplyBorderColor: rgb(226, 222, 190);
+$notificationOwnReplyWallPostFormBackgroundColor: rgb(234, 231, 210);
+$notificationOwnReplyWallPostFormBorderColor: rgb(218, 215, 183);
+$photoAlbumsGridEmptyBackgroundColor: rgb(238, 238, 221);
+
 /* button */
 $buttonGradientBottom: rgb(96, 125, 0);
 $buttonBorder: rgb(100, 137, 0);
@@ -58,6 +79,7 @@ $tabBackground: rgb(104, 132, 1);
 $simpleButton: rgb(92, 120, 0);
 $lightTabBorder: #cbcbaf;
 $lightTabBackground: #f7f8ee;
+$secondaryTabBarBorder: rgb(221, 230, 199);
 /* header */
 $headerBorderTop: rgb(68, 107, 0);
 $headerGradientTop: rgb(76, 110, 0);
@@ -68,6 +90,14 @@ $headerBorderBottomLight: rgb(118, 155, 27);
 $iconColor: rgb(156, 168, 80);
 $likeIconColor: rgb(219, 216, 173);
 $lightIconColor: #bfc18a;
+$avaPlaceholderColor: rgb(128, 149, 40);
+$avaPlaceholderBorderColor: rgb(236, 229, 209);
+$avaPlaceholderOwnColor: rgb(232, 227, 187);
+$avaPlaceholderOwnBackgroundColor: rgb(255, 248, 204);
+$avaPlaceholderOwnBorderColor: rgb(255, 226, 34);
+$privatePostLockIconColor: rgb(207, 195, 159);
+$postIconActionColor: rgb(145, 162, 11);
+$photoAlbumsGridEmptyIconColor: rgb(200, 199, 161);
 
 /*$normalLink: $headerGradientBottom;*/
 
@@ -77,3 +107,8 @@ $audioAreaOnHover: rgb(243, 241, 226);
 $playline: rgb(220, 225, 188);
 $audioControlsColor: rgb(113, 129, 0);
 $audioProgressTipColor: rgba(210, 206, 160, 0.9);
+$audioBackLineColor: rgb(225, 222, 199);
+$audioLoadLineColor: rgb(203, 199, 150);
+$audioProgressLineColor: rgb(112, 125, 0);
+$audioSliderColor: rgb(115, 129, 0);
+$audioTipTextColor: rgb(89, 103, 0);
