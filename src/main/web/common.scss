@@ -197,8 +197,8 @@ table{
 	height: 115px;
 	position: relative;
 	&.own{
-		background-image: svg-load("img/ava_question.svg", fill: #e8e3bb);
-		background-color: #fff8cc;
+		background-image: svg-load("img/ava_question.svg", fill: $avaPlaceholderOwnColor);
+		background-color: $avaPlaceholderOwnBackgroundColor;
 		border: none;
 	}
 }
@@ -739,7 +739,7 @@ small{
 	display: inline-block;
 	width: 8px;
 	height: 9px;
-	background: svg-load('img/lock.svg', fill: #cfc39f);
+	background: svg-load('img/lock.svg', fill: $privatePostLockIconColor);
 	margin-left: 5px;
 }
 

@@ -1666,7 +1666,7 @@ input.searchField{
 		color: $text;
 	}
 	&.unread{
-		background: #fef8ee;
+		background: $mailMessageRowUnreadBackgroundColor;
 	}
 }
 
@@ -1755,10 +1755,10 @@ input.searchField{
 		border-bottom: solid 1px #ccc;
 		opacity: 0.95;
 		&.firstSelected{
-			border-top: solid 1px #2e6200;
+			border-top: solid 1px $completionSelectedBorderColor;
 		}
 		&.lastSelected{
-			border-bottom: solid 1px #2e6200;
+			border-bottom: solid 1px $completionSelectedBorderColor;
 		}
 	}
 }
@@ -1804,9 +1804,9 @@ input.searchField{
 				border-bottom: solid 1px transparent;
 			}
 			&.selected{
-				background: #6c8300;
+				background: $completionSelectedBackgroundColor;
 				color: #FFFFFF;
-				border-color: #2e6200;
+				border-color: $completionSelectedBorderColor;
 				z-index: 1;
 			}
 		}
@@ -1894,7 +1894,7 @@ input.searchField{
 
 .secondaryTabBar{
 	background: $gray;
-	border-bottom: solid 1px #dde6c7;
+	border-bottom: solid 1px $secondaryTabBarBorder;
 	padding: 16px;
 	display: flex;
 	flex-wrap: wrap;
@@ -2001,10 +2001,10 @@ input.searchField{
 		flex: none;
 	}
 	.empty{
-		background: #eeeedd svg-load('img/material/photo_camera_fill1_48px.svg', fill: #c8c7a1) no-repeat center;
+		background: $photoAlbumsGridEmptyBackgroundColor svg-load('img/material/photo_camera_fill1_48px.svg', fill: $photoAlbumsGridEmptyIconColor) no-repeat center;
 		.infoW{
 			background: none;
-			color: #84845a;
+			color: $photoAlbumsGridEmpty;
 			text-shadow: none;
 		}
 		.count{
@@ -2068,7 +2068,7 @@ input.searchField{
 	.thumb{
 		width: 130px;
 		height: 86px;
-		background: #eed;
+		background: $photoAlbumsGridEmptyBackgroundColor;
 		border-radius: 3px;
 		overflow: hidden;
 	}
@@ -2085,7 +2085,7 @@ input.searchField{
 		grid-template-rows: 1fr 1fr;
 		grid-gap: 2px;
 		.placeholder{
-			background: #eed;
+			background: $photoAlbumsGridEmptyBackgroundColor;
 		}
 		>*{
 			border-radius: 0;

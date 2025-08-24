@@ -82,7 +82,7 @@
 	position: relative;
 	display: block;
 	top: -15px;
-	background-color: rgb(225, 222, 199);
+	background-color: $audioBackLineColor;
 	cursor: pointer;
 	user-select: none;
 	border-radius: 2px;
@@ -95,7 +95,7 @@
 	position: relative;
 	display: block;
 	top: -19px;
-	background-color: rgb(203, 199, 150);
+	background-color: $audioLoadLineColor;
 	cursor: pointer;
 	user-select: none;
 	border-radius: 2px;
@@ -108,7 +108,7 @@
 	position: relative;
 	display: block;
 	top: -11px;
-	background-color: rgb(112, 125, 0);
+	background-color: $audioProgressLineColor;
 	cursor: pointer;
 	user-select: none;
 	border-radius: 2px;
@@ -120,7 +120,7 @@
 	margin: 0;
 	padding: 0;
 	display: none;
-	background-color: rgb(115, 129, 0);
+	background-color: $audioSliderColor;
 	user-select: none;
 	border-radius: 50%;
 	cursor: pointer;
@@ -152,7 +152,7 @@
 #audioTipWrap{
 	z-index: 1000;
 	display: none;
-	color: rgb(89, 103, 0);
+	color: $audioTipTextColor;
 	background: $audioProgressTipColor;
 	pointer-events: none;
 	padding: 2px 5px 3px;
