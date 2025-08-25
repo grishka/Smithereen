@@ -17,6 +17,7 @@
 		<!-- right column -->
 		<td id="right">
 			<h2>{{ L('about_admins') }}</h2>
+			<div class="marginBefore">
 			<table width="100%" style="table-layout: fixed;" class="profileBlock marginAfter">
 				<colgroup><col width="48"/><col width="*"/></colgroup>
 				{% for admin in serverAdmins %}
@@ -28,6 +29,7 @@
 					</tr>
 				{% endfor %}
 			</table>
+			</div>
 			{% if serverAdminEmail is not empty %}
 				<h2>{{ L('about_contact') }}</h2>
 				<div class="marginBefore">
