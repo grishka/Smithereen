@@ -281,6 +281,7 @@ public class User extends Actor{
 			PropertyValue pv=new PropertyValue();
 			pv.name="Website";
 			pv.value="<a href=\""+url+"\" rel=\"me\">"+url+"</a>";
+			pv.parsed=true;
 			attachment.add(pv);
 		}
 		for(ContactInfoKey key:ContactInfoKey.values()){
@@ -288,6 +289,7 @@ public class User extends Actor{
 				String value=contacts.get(key);
 				String url=TextProcessor.getContactInfoValueURL(key, value);
 				PropertyValue pv=new PropertyValue();
+				pv.parsed=true;
 				pv.name=key.getFieldName();
 				if(url!=null){
 					pv.value="<a href=\""+TextProcessor.escapeHTML(url)+"\" rel=\"me\">"+TextProcessor.escapeHTML(value)+"</a>";
@@ -558,10 +560,11 @@ public class User extends Actor{
 		JsonArray custom=null;
 		if(attachment!=null){
 			for(ActivityPubObject att:attachment){
-				if(att instanceof PropertyValue){
+				if(att instanceof PropertyValue pv){
+					if(pv.parsed)
+						continue;
 					if(custom==null)
 						custom=new JsonArray();
-					PropertyValue pv=(PropertyValue) att;
 					JsonObject fld=new JsonObject();
 					fld.addProperty("n", pv.name);
 					fld.addProperty("v", pv.value);
