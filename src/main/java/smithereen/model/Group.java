@@ -162,6 +162,7 @@ public class Group extends Actor{
 			PropertyValue pv=new PropertyValue();
 			pv.name="Website";
 			pv.value="<a href=\""+url+"\" rel=\"me\">"+url+"</a>";
+			pv.parsed=true;
 			attachment.add(pv);
 		}
 	}

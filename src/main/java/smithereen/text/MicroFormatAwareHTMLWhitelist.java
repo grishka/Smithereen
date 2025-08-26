@@ -60,7 +60,11 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 				return false;
 			String authority=uri.getAuthority();
 			if(NON_IDN_CHAR_REGEX.matcher(authority).find()){
-				uri=new UriBuilder(uri).authority(IDN.toASCII(authority)).build();
+				try{
+					uri=new UriBuilder(uri).authority(IDN.toASCII(authority)).build();
+				}catch(IllegalArgumentException x){
+					return false;
+				}
 				attr.setValue(uri.toString());
 			}
 		}catch(URISyntaxException x){
