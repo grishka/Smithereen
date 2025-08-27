@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=80;
+	public static final int SCHEMA_VERSION=81;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -1040,6 +1040,20 @@ public class DatabaseSchemaUpdater{
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
 			case 80 -> conn.createStatement().execute("ALTER TABLE group_links ADD is_unresolved_ap_object tinyint(1) NOT NULL DEFAULT 0");
+			case 81 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `group_action_log` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `action` int unsigned NOT NULL,
+						  `group_id` int unsigned NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `admin_id` int unsigned DEFAULT NULL,
+						  `info` json NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `group_id` (`group_id`),
+						  CONSTRAINT `group_action_log_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
 		}
 	}
 

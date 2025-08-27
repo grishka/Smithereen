@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import smithereen.Config;
 import smithereen.Utils;
@@ -172,11 +173,14 @@ public class Group extends Actor{
 		obj=super.asActivityPubObject(obj, serializerContext);
 
 		String groupURL=activityPubID.toString();
+		serializerContext.addSmAlias("displayOrder");
 		JsonArray ar=new JsonArray();
-		for(GroupAdmin admin : adminsForActivityPub){
+		Map<Integer, User> users=serializerContext.appContext.getUsersController().getUsers(adminsForActivityPub.stream().map(a->a.userID).toList());
+		for(GroupAdmin admin:adminsForActivityPub){
 			JsonObject ja=new JsonObject();
 			ja.addProperty("type", "Person");
-			ja.addProperty("id", admin.user.activityPubID.toString());
+			ja.addProperty("id", users.get(admin.userID).activityPubID.toString());
+			ja.addProperty("displayOrder", admin.displayOrder);
 			if(StringUtils.isNotEmpty(admin.title))
 				ja.addProperty("title", admin.title);
 			ar.add(ja);

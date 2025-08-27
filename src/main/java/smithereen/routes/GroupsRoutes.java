@@ -241,6 +241,7 @@ public class GroupsRoutes{
 		}else{
 			adminLevel=null;
 		}
+		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 
 		// Public info: still visible for non-members in public groups
 		List<User> members=ctx.getGroupsController().getRandomMembersForProfile(group, false);
@@ -248,12 +249,14 @@ public class GroupsRoutes{
 		if(group.isEvent())
 			model.with("tentativeMembers", ctx.getGroupsController().getRandomMembersForProfile(group, true));
 		model.with("title", group.name);
-		model.with("admins", ctx.getGroupsController().getAdmins(group));
+		List<GroupAdmin> admins=ctx.getGroupsController().getAdmins(group);
 		model.with("canAccessContent", canAccessContent);
+		for(GroupAdmin admin:admins){
+			needUsers.add(admin.userID);
+		}
 
 		int wallPostsCount=0;
 		if(canAccessContent){
-			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			// Wall posts
 			if(group.wallState!=GroupFeatureState.DISABLED){
 				int offset=offset(req);
@@ -311,9 +314,13 @@ public class GroupsRoutes{
 				}
 			}
 
-			model.with("users", ctx.getUsersController().getUsers(needUsers))
-					.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 		}
+
+		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
+		model.with("users", users)
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+
+		model.with("admins", admins.stream().map(a->Map.of("user", users.get(a.userID), "title", a.title==null ? "" : a.title)).toList());
 
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
@@ -512,9 +519,12 @@ public class GroupsRoutes{
 	public static Object admins(Request req, Response resp){
 		Group group=getGroup(req);
 		SessionInfo info=sessionInfo(req);
-		context(req).getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
+		ApplicationContext ctx=context(req);
+		ctx.getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("actor_list", req);
-		model.with("actors", context(req).getGroupsController().getAdmins(group).stream().map(a->new ActorWithDescription(a.user, a.title)).collect(Collectors.toList()));
+		List<GroupAdmin> admins=ctx.getGroupsController().getAdmins(group);
+		Map<Integer, User> users=ctx.getUsersController().getUsers(admins.stream().map(a->a.userID).toList());
+		model.with("actors", admins.stream().map(a->new ActorWithDescription(users.get(a.userID), a.title)).collect(Collectors.toList()));
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		if(isAjax(req)){
@@ -543,7 +553,7 @@ public class GroupsRoutes{
 		Map<Integer, User> users=ctx.getUsersController().getUsers(ids.list);
 		model.paginate(new PaginatedList<User>(ids, ids.list.stream().map(users::get).toList()));
 		model.with("group", group).with("title", group.name);
-		model.with("adminIDs", ctx.getGroupsController().getAdmins(group).stream().map(adm->adm.user.id).collect(Collectors.toList()));
+		model.with("adminIDs", ctx.getGroupsController().getAdmins(group).stream().map(adm->adm.userID).collect(Collectors.toList()));
 		model.with("canAddAdmins", level.isAtLeast(Group.AdminLevel.ADMIN));
 		model.with("adminLevel", level);
 		model.with("subtab", "all");
@@ -583,7 +593,7 @@ public class GroupsRoutes{
 			}
 		}
 
-		ctx.getGroupsController().addOrUpdateAdmin(group, user, title, lvl);
+		ctx.getGroupsController().addOrUpdateAdmin(group, self.user, user, title, lvl);
 
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
@@ -605,7 +615,7 @@ public class GroupsRoutes{
 		int userID=safeParseInt(req.queryParams("id"));
 		User user=ctx.getUsersController().getUserOrThrow(userID);
 
-		ctx.getGroupsController().removeAdmin(group, user);
+		ctx.getGroupsController().removeAdmin(group, self.user, user);
 
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();

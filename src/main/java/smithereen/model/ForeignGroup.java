@@ -222,12 +222,11 @@ public class ForeignGroup extends Group implements ForeignActor{
 			if(!"Person".equals(optString(adm, "type")))
 				return;
 			GroupAdmin admin=new GroupAdmin();
-			try{
-				admin.activityPubUserID=new URI(adm.get("id").getAsString());
-			}catch(URISyntaxException x){
-				throw new BadRequestException(x);
-			}
+			admin.activityPubUserID=tryParseURL(optString(adm, "id"));
+			if(admin.activityPubUserID==null)
+				return;
 			admin.title=Objects.requireNonNullElse(optString(adm, "title"), "");
+			admin.displayOrder=optInt(adm, "displayOrder");
 			adminsForActivityPub.add(admin);
 		}else if(_adm.isJsonPrimitive()){
 			URI adm=tryParseURL(_adm.getAsString());

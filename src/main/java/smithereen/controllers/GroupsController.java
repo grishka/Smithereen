@@ -44,6 +44,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
 import smithereen.model.OwnedContentObject;
+import smithereen.model.admin.GroupActionLogAction;
 import smithereen.model.groups.GroupLink;
 import smithereen.model.groups.GroupLinkParseResult;
 import smithereen.model.media.MediaFileReferenceType;
@@ -66,6 +67,7 @@ import smithereen.storage.FederationStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
+import smithereen.storage.ModerationStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.utils.IntPair;
 import smithereen.storage.utils.Pair;
@@ -264,8 +266,12 @@ public class GroupsController{
 				});
 				if(!result)
 					throw new BadRequestException("err_group_username_taken");
+				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_USERNAME, admin.id, Map.of("old", group.username, "new", username));
 			}else{
 				GroupStorage.updateGroupGeneralInfo(group, name, username, aboutSrc, about, eventStart, eventEnd, accessType);
+			}
+			if(!group.name.equals(name)){
+				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_NAME, admin.id, Map.of("old", group.name, "new", name));
 			}
 			if(photosState==GroupFeatureState.ENABLED_OPEN || photosState==GroupFeatureState.ENABLED_CLOSED)
 				photosState=GroupFeatureState.ENABLED_RESTRICTED;
@@ -673,17 +679,22 @@ public class GroupsController{
 		}
 	}
 
-	public void addOrUpdateAdmin(Group group, User user, String title, Group.AdminLevel level){
+	public void addOrUpdateAdmin(Group group, User self, User user, String title, Group.AdminLevel level){
 		try{
+			Group.AdminLevel oldLevel=getMemberAdminLevel(group, user);
 			GroupStorage.addOrUpdateGroupAdmin(group.id, user.id, title, level);
+			if(oldLevel!=level)
+				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, self.id, Map.of("user", user.id, "old", oldLevel.toString(), "new", level.toString()));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void removeAdmin(Group group, User user){
+	public void removeAdmin(Group group, User self, User user){
 		try{
+			Group.AdminLevel oldLevel=getMemberAdminLevel(group, user);
 			GroupStorage.removeGroupAdmin(group.id, user.id);
+			ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, self.id, Map.of("user", user.id, "old", oldLevel.toString(), "new", Group.AdminLevel.REGULAR.toString()));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

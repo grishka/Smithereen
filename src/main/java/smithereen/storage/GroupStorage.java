@@ -41,13 +41,14 @@ import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
-import smithereen.model.groups.GroupAdmin;
-import smithereen.model.groups.GroupInvitation;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
+import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupInvitation;
 import smithereen.model.groups.GroupLink;
-import smithereen.model.notifications.UserNotifications;
 import smithereen.model.media.MediaFileRecord;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -145,6 +146,14 @@ public class GroupStorage{
 				builder.update("groups").where("id=?", existingGroupID);
 			}
 
+			if(existingGroupID!=-1){
+				Group oldGroup=getById(existingGroupID);
+				if(!oldGroup.username.equals(group.username))
+					ModerationStorage.createGroupActionLogEntry(existingGroupID, GroupActionLogAction.CHANGE_USERNAME, 0, Map.of("old", oldGroup.username, "new", group.username));
+				if(!oldGroup.name.equals(group.name))
+					ModerationStorage.createGroupActionLogEntry(existingGroupID, GroupActionLogAction.CHANGE_NAME, 0, Map.of("old", oldGroup.name, "new", group.name));
+			}
+
 			builder.value("name", group.name)
 					.value("username", group.username)
 					.value("domain", group.domain)
@@ -182,49 +191,51 @@ public class GroupStorage{
 			}
 			removeFromCache(group);
 			synchronized(adminUpdateLock){
-				builder=new SQLQueryBuilder(conn)
-						.selectFrom("group_admins")
-						.columns("user_id", "title")
-						.where("group_id=?", group.id);
-				Map<Integer, GroupAdmin> admins=group.adminsForActivityPub.stream().collect(Collectors.toMap(adm->adm.user.id, adm->adm));
-				int count=0;
-				boolean needUpdate=false;
-				try(ResultSet res=builder.execute()){
-					while(res.next()){
-						count++;
-						int id=res.getInt(1);
-						String title=res.getString(2);
-						if(!admins.containsKey(id)){
-							needUpdate=true;
-							break;
-						}
-						GroupAdmin existing=admins.get(id);
-						if(!Objects.equals(title, existing.title)){
-							needUpdate=true;
-							break;
+				List<GroupAdmin> existingAdmins;
+				if(existingGroupID==-1)
+					existingAdmins=List.of();
+				else
+					existingAdmins=getGroupAdmins(existingGroupID);
+				if(!existingAdmins.isEmpty() || !group.adminsForActivityPub.isEmpty()){
+					Map<Integer, GroupAdmin> existingAdminsByID=existingAdmins.stream().collect(Collectors.toMap(a->a.userID, Function.identity(), (a, b)->b));
+					for(GroupAdmin a:group.adminsForActivityPub){
+						GroupAdmin existingAdmin=existingAdminsByID.get(a.userID);
+						if(existingAdmin==null){
+							new SQLQueryBuilder(conn)
+									.insertInto("group_admins")
+									.value("group_id", group.id)
+									.value("user_id", a.userID)
+									.value("title", a.title)
+									.value("level", Group.AdminLevel.MODERATOR)
+									.value("display_order", a.displayOrder)
+									.executeNoResult();
+							if(existingGroupID!=-1)
+								ModerationStorage.createGroupActionLogEntry(existingGroupID, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, 0, Map.of("user", a.userID, "old", Group.AdminLevel.REGULAR.toString(), "new", Group.AdminLevel.MODERATOR.toString()));
+						}else if(!Objects.equals(a.title, existingAdmin.title) || a.displayOrder!=existingAdmin.displayOrder){
+							new SQLQueryBuilder(conn)
+									.update("group_admins")
+									.where("group_id=? AND user_id=?", group.id, a.userID)
+									.value("title", a.title)
+									.value("display_order", a.displayOrder)
+									.executeNoResult();
 						}
 					}
-				}
-				if(!needUpdate && count!=group.adminsForActivityPub.size())
-					needUpdate=true;
-
-				// TODO only update whatever has actually changed
-				if(needUpdate){
-					new SQLQueryBuilder(conn)
-							.deleteFrom("group_admins")
-							.where("group_id=?", group.id)
-							.executeNoResult();
-					int order=0;
-					for(GroupAdmin admin: group.adminsForActivityPub){
+					Set<Integer> newAdminIDs=group.adminsForActivityPub.stream().map(l->l.userID).collect(Collectors.toSet());
+					HashSet<Integer> removedAdminIDs=new HashSet<>();
+					for(GroupAdmin a:existingAdmins){
+						if(!newAdminIDs.contains(a.userID))
+							removedAdminIDs.add(a.userID);
+					}
+					if(!removedAdminIDs.isEmpty()){
 						new SQLQueryBuilder(conn)
-								.insertInto("group_admins")
-								.value("group_id", group.id)
-								.value("user_id", admin.user.id)
-								.value("title", admin.title)
-								.value("level", Group.AdminLevel.MODERATOR.ordinal())
-								.value("display_order", order)
+								.deleteFrom("group_admins")
+								.whereIn("user_id", removedAdminIDs)
+								.andWhere("group_id=?", group.id)
 								.executeNoResult();
-						order++;
+						for(int id:removedAdminIDs){
+							GroupAdmin admin=existingAdmins.get(id);
+							ModerationStorage.createGroupActionLogEntry(existingGroupID, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, 0, Map.of("user", id, "old", admin.level.toString(), "new", Group.AdminLevel.REGULAR.toString()));
+						}
 					}
 				}
 
@@ -722,7 +733,6 @@ public class GroupStorage{
 	public static List<GroupAdmin> getGroupAdmins(int groupID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("group_admins")
-				.columns("level", "user_id", "title")
 				.where("group_id=?", groupID)
 				.orderBy("display_order ASC")
 				.executeAsStream(GroupAdmin::fromResultSet)
@@ -732,7 +742,6 @@ public class GroupStorage{
 	public static GroupAdmin getGroupAdmin(int groupID, int userID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("group_admins")
-				.columns("level", "user_id", "title")
 				.where("group_id=? AND user_id=?", groupID, userID)
 				.executeAndGetSingleObject(GroupAdmin::fromResultSet);
 	}

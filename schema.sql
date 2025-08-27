@@ -397,6 +397,22 @@ CREATE TABLE `friend_requests` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `group_action_log`
+--
+
+CREATE TABLE `group_action_log` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `action` int unsigned NOT NULL,
+  `group_id` int unsigned NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `admin_id` int unsigned DEFAULT NULL,
+  `info` json NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `group_id` (`group_id`),
+  CONSTRAINT `group_action_log_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `group_admins`
 --
 
@@ -1151,4 +1167,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-08-21 13:06:55
+-- Dump completed on 2025-08-27  9:55:11

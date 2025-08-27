@@ -431,13 +431,10 @@ public class ObjectLinkResolver{
 				case ForeignGroup fg -> {
 					for(GroupAdmin adm:fg.adminsForActivityPub){
 						try{
-							adm.user=resolve(adm.activityPubUserID, User.class, true, false, false);
+							adm.userID=resolve(adm.activityPubUserID, User.class, true, true, false).id;
 						}catch(ObjectNotFoundException ignore){}
 					}
-					fg.adminsForActivityPub.removeIf(adm->adm.user==null);
-					for(GroupAdmin adm:fg.adminsForActivityPub){
-						storeOrUpdateRemoteObject(adm.user, adm.user);
-					}
+					fg.adminsForActivityPub.removeIf(adm->adm.userID==0);
 					GroupStorage.putOrUpdateForeignGroup(fg);
 					maybeUpdateServerFeaturesFromActor(fg);
 				}

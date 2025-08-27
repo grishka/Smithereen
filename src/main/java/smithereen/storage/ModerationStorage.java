@@ -23,6 +23,8 @@ import smithereen.model.admin.ActorStaffNote;
 import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.EmailDomainBlockRule;
 import smithereen.model.admin.EmailDomainBlockRuleFull;
+import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.admin.GroupActionLogEntry;
 import smithereen.model.admin.IPBlockRule;
 import smithereen.model.admin.IPBlockRuleFull;
 import smithereen.model.PaginatedList;
@@ -686,6 +688,39 @@ public class ModerationStorage{
 				.deleteFrom("announcements")
 				.where("id=?", id)
 				.executeNoResult();
+	}
+
+	// endregion
+	// region Group action log
+
+	public static void createGroupActionLogEntry(int groupID, GroupActionLogAction action, int adminID, Map<String, Object> info) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("group_action_log")
+				.value("group_id", groupID)
+				.value("action", action)
+				.value("admin_id", adminID==0 ? null : adminID)
+				.value("info", Utils.gson.toJson(info))
+				.executeNoResult();
+	}
+
+	public static PaginatedList<GroupActionLogEntry> getGroupActionLog(int groupID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("group_action_log")
+					.count()
+					.where("group_id=?", groupID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<GroupActionLogEntry> log=new SQLQueryBuilder(conn)
+					.selectFrom("group_action_log")
+					.where("group_id=?", groupID)
+					.orderBy("id DESC")
+					.limit(count, offset)
+					.executeAsStream(GroupActionLogEntry::fromResultSet)
+					.toList();
+			return new PaginatedList<>(log, total, offset, count);
+		}
 	}
 
 	// endregion
