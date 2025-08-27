@@ -34,7 +34,6 @@
 					{% endif %}
 					<div class="unlabeled">
 					{% if onlines contains req.from.id and onlines[req.from.id].isOnline %}<div class="onlineText">{{ L('user_online') }}{% if onlines[req.from.id].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>{% endif %}
-					<div class="onlineText">{{ L('user_online') }}{% if onlines[req.from.id].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>
 					{% if req.mutualFriendsCount>0 %}
 						<div class="mutual">
 							<span class="grayText">
