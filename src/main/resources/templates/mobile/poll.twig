@@ -33,12 +33,14 @@
 		</form>
 	{% else %}
 		{% set maxOptionVotes=0 %}
+		{% set totalVotes=0 %}
 		{% for opt in poll.options %}
 			{% set maxOptionVotes=max(opt.numVotes, maxOptionVotes) %}
+			{% set totalVotes=totalVotes+opt.numVotes %}
 		{% endfor %}
 		{% for opt in poll.options %}
 			{# @pebvariable name="fraction" type="float" #}
-			{% set fraction=(poll.numVoters==0 ? 0 : (opt.numVotes*1.0)/poll.numVoters) %}
+			{% set fraction=(totalVotes==0 ? 0 : (opt.numVotes*1.0)/totalVotes) %}
 			{% if not poll.anonymous %}
 			<a href="/posts/{{ post.post.id }}/pollVoters/{{ opt.id }}" class="undecoratedLink">
 			{% endif %}
