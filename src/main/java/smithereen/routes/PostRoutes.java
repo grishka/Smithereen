@@ -226,6 +226,7 @@ public class PostRoutes{
 				if(newPostCount==1){
 					rb.remove("wallEmptyState");
 				}
+				rb.addClass("wallPostForm_"+formID, "collapsed");
 			}else{
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+switch(self.prefs.commentViewType){
 					case THREADED -> replyTo;
