@@ -618,6 +618,11 @@ public class PostRoutes{
 			}else if(req.queryParams("elid")!=null){
 				return wdr.remove(req.queryParams("elid"));
 			}
+			int newPostCount=Utils.parseIntOrDefault(req.queryParams("wallPostCount"), -1)-1;
+			if(newPostCount>=0){
+				wdr.setContent("wallPostCount", lang(req).get("X_posts", Map.of("count", newPostCount)))
+						.setInputValue("wallPostCountInput", Integer.toString(newPostCount));
+			}
 			return wdr.remove("post"+post.id+ridSuffix, "postReplies"+post.id+ridSuffix);
 		}
 		resp.redirect(Utils.back(req));

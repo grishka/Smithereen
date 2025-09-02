@@ -45,7 +45,8 @@
 		{% if not hideActions %}
 		<div class="flR revealOnHover floatingPostActions" id="postFloatingActions{{ realPost.id }}_{{ randomID }}">
 			{% if userPermissions is not null and userPermissions.canDeletePost(realPost) %}
-			<a href="{{ realPost.internalURL }}/confirmDelete" data-confirm-title="{{ L('delete_post') }}" data-confirm-message="{{ L('delete_post_confirm') }}" data-confirm-action="{{ realPost.internalURL }}/delete?rid={{ randomID }}" class="flR postIconAction actionDelete" data-tooltip="{{ L('delete') }}" aria-label="{{ L('delete') }}"><span class="icon"></span></a>
+				<a href="{{ realPost.internalURL }}/confirmDelete" data-confirm-title="{{ L('delete_post') }}" data-confirm-message="{{ L('delete_post_confirm') }}" data-confirm-action="{{ realPost.internalURL }}/delete?rid={{ randomID }}" class="flR postIconAction actionDelete"
+				   data-tooltip="{{ L('delete') }}" data-additional-inputs="wallPostCountInput" aria-label="{{ L('delete') }}"><span class="icon"></span></a>
 			{% endif %}
 			{% if userPermissions is not null and userPermissions.canEditPost(realPost) %}
 			<a href="{{ realPost.internalURL }}/edit?rid={{ randomID }}" data-ajax class="flR postIconAction actionEdit" data-tooltip="{{ L('edit') }}" aria-label="{{ L('edit') }}"><span class="icon"></span></a>

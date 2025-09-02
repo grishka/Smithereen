@@ -596,7 +596,7 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 		return true;
 	}
 	if(link.dataset.confirmAction){
-		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage, link.dataset.confirmAction, {}, false, link.dataset.confirmButton);
+		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage, link.dataset.confirmAction, getInputValuesByIds(link.dataset.additionalInputs), false, link.dataset.confirmButton);
 		return true;
 	}
 
