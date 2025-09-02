@@ -626,6 +626,9 @@ public class PostRoutes{
 				wdr.setContent("wallPostCount", lang(req).get("X_posts", Map.of("count", newPostCount)))
 						.setInputValue("wallPostCountInput", Integer.toString(newPostCount));
 			}
+			if(newPostCount==0){
+				wdr.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postList", "<div id=\"wallEmptyState\">"+lang(req).get("wall_empty")+"</div>");
+			}
 			return wdr.remove("post"+post.id+ridSuffix, "postReplies"+post.id+ridSuffix);
 		}
 		resp.redirect(Utils.back(req));
