@@ -223,6 +223,9 @@ public class PostRoutes{
 					rb.setContent("wallPostCount", lang(req).get("X_posts", Map.of("count", newPostCount)))
 							.setInputValue("wallPostCountInput", Integer.toString(newPostCount));
 				}
+				if(newPostCount==1){
+					rb.remove("wallEmptyState");
+				}
 			}else{
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+switch(self.prefs.commentViewType){
 					case THREADED -> replyTo;
