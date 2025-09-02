@@ -235,6 +235,9 @@ public class PostRoutes{
 				}+ridSuffix, postHTML)
 						.show("postReplies"+replyTo+ridSuffix)
 						.show("postCommentsSummary"+post.replyKey.getFirst()+ridSuffix);
+				if(req.attribute("mobile")==null && self.prefs.commentViewType!=CommentViewType.FLAT && post.getReplyLevel()>1){
+					rb.hide("wallPostForm_"+formID);
+				}
 				try{
 					Post topLevel=ctx.getWallController().getPostOrThrow(post.replyKey.getFirst());
 					rb.setContent("postCommentsTotal"+post.replyKey.getFirst()+ridSuffix, lang(req).get("X_comments", Map.of("count", topLevel.replyCount)));
