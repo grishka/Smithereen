@@ -212,6 +212,17 @@ public class PostRoutes{
 						.addClass("wallPostForm_"+formID, "collapsed");
 			}else if(replyTo==0){
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
+				int newPostCount=Utils.parseIntOrDefault(req.queryParams("wallPostCount"), -1)+1;
+				if(newPostCount>0){
+					// When creating a new post, update the wall header with the incremented number.
+					// It is deliberate that we just increment the previous value instead of fetching the up-to-date value
+					// from the DB, because as far as the user is concerned, only one new post has appeared,
+					// even if some other user created a post on the same wall at the same time.
+					// The post by the other user will appear only after the page refreshes,
+					// so there is no point in counting it in the updated wall header.
+					rb.setContent("wallPostCount", lang(req).get("X_posts", Map.of("count", newPostCount)))
+							.setInputValue("wallPostCountInput", Integer.toString(newPostCount));
+				}
 			}else{
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+switch(self.prefs.commentViewType){
 					case THREADED -> replyTo;

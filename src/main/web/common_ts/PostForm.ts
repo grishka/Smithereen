@@ -414,9 +414,12 @@ class PostForm{
 			}
 			this.forceOverrideDirty=false;
 			if(onDone) onDone(true);
-		}, this.submitButton, {onResponseReceived: (resp:any)=>{
-			this.forceOverrideDirty=true;
-		}});
+		}, this.submitButton, {
+			onResponseReceived: (resp:any)=>{
+				this.forceOverrideDirty=true;
+			},
+			additionalInputs: getInputValuesByIds("wallPostCountInput")
+		});
 		return true;
 	}
 

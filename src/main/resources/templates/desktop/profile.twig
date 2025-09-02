@@ -229,7 +229,7 @@
 			{{ profileSection(_context, L('profile_personal_title'), "/settings/profile/personal", personalFields) }}
 			{{ profileSection(_context, L('profile_interests_title'), "/settings/profile/interests", interestsFields) }}
 		</div>
-		{% include "profile_module_wall" with {'wallOwner': user, 'headerTitle': L('wall'), 'headerHref': "/users/#{user.id}/wall"+(canSeeOthersPosts and user.hasWall ? "" : "/own"), 'additionalHeader': L('X_posts', {'count': totalItems})} %}
+		{% include "profile_module_wall" with {'wallOwner': user, 'headerTitle': L('wall'), 'headerHref': "/users/#{user.id}/wall"+(canSeeOthersPosts and user.hasWall ? "" : "/own"), 'additionalHeader': L('X_posts', {'count': totalItems}), 'additionalHeaderId': 'wallPostCount', 'wallPostCount': totalItems} %}
 	</div>
 </div>
 {% script %}initExpandingProfileColumn(ge("right"), ge("left"), ge("profileLayout"));{% endscript %}
