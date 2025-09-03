@@ -16,5 +16,11 @@
   "notifications_empty": "Je meldingen verschijnen hier.",
   "summary_notifications": "Laatste meldingen worden weergegeven",
   "notification_liked_photo": "vindt je <a id=\"photo\">afbeelding</a> leuk",
-  "notification_commented_on_photo": "heeft gereageerd op je <a id=\"photo\">afbeelding</a>"
+  "notification_commented_on_photo": "heeft gereageerd op je <a id=\"photo\">afbeelding</a>",
+  "notification_two_people": "<a id=\"user1\">{name1}</a> en <a id=\"user2\">{name2}</a>",
+  "notification_three_people": "<a id=\"user1\">{name1}</a>, <a id=\"user2\">{name2}</a> en <a id=\"user3\">{name3}</a>",
+  "notification_many_people": "<a id=\"user1\">{name1}</a>, <a id=\"user2\">{name2}</a> en nog {count, plural, one {<b>#</b> persoon} other {<b>#</b> mensen}}",
+  "notification_liked_post_multiple": "hebben jouw post leuk gevonden",
+  "notification_liked_comment_multiple": "hebben jouw reactie leuk gevonden",
+  "notification_liked_photo_multiple": "hebben jouw <a id=\"photo\">foto</a> leuk gevonden"
 }
