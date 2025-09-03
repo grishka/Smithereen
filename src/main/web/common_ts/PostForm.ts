@@ -12,6 +12,8 @@ interface UploadingAttachment{
 	extraParams:any;
 }
 
+type PostFormReplyType="post"|"comment";
+
 class PostForm{
 	private id:string;
 	private root:HTMLElement;
@@ -431,7 +433,7 @@ class PostForm{
 		}
 	}
 
-	public setupForReplyTo(id:(number|string), type:string="post", randomID:string=null):void{
+	public setupForReplyTo(id:(number|string), type:PostFormReplyType="post", randomID:string=null):void{
 		this.replyToField.value=id+"";
 		var suffix=randomID ? "_"+randomID : "";
 		var postEl=ge(type+id+suffix);

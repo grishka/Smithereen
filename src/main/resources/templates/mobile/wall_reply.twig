@@ -58,7 +58,7 @@
 			<div class="actions">
 				{% if currentUser is not null %}
 					{% if not hideReplyLink and postInteractions[topLevel.post.id].canComment -%}
-						<a href="{{realPost.internalURL}}" onclick="return showPostReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', false)">{{L('add_reply')}}</a>
+						<a href="{{realPost.internalURL}}" onclick="return showReplyForm({{realPost.id}}, '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', 'post', false)">{{L('add_reply')}}</a>
 					{%- endif %}
 					{% set options=[] %}
 					{% if interactions is not null and interactions.likeCount>0 %}

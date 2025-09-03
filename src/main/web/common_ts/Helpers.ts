@@ -800,26 +800,15 @@ function applyServerCommand(cmd:any){
 	}
 }
 
-function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true, containerPostID:number=0, randomID:string=null):boolean{
+function showReplyForm(id:number|string, formID:string="wallPostForm_reply", type:PostFormReplyType, moveForm:boolean=true, containerPostID:number=0, randomID:string=null):boolean{
 	var form=ge(formID);
 	form.show();
 	if(moveForm){
 		var suffix=randomID ? "_"+randomID : "";
-		var replies=ge("postReplies"+(containerPostID || id)+suffix);
+		var replies=ge(type+"Replies"+(containerPostID || id)+suffix);
 		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
 	}
-	form.customData.postFormObj.setupForReplyTo(id, "post", randomID);
-	return false;
-}
-
-function showCommentReplyForm(id:string, formID:string, moveForm:boolean=true, containerPostID:string=null):boolean{
-	var form=ge(formID);
-	form.show();
-	if(moveForm){
-		var replies=ge("commentReplies"+(containerPostID || id));
-		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
-	}
-	form.customData.postFormObj.setupForReplyTo(id, "comment");
+	form.customData.postFormObj.setupForReplyTo(id, type, randomID);
 	return false;
 }
 
@@ -1749,7 +1738,7 @@ function setMenuCounters(counters:{[key:string]:number}){
 	}
 }
 
-function activateNotificationsPostForm(id:string, postID:string, type:string, randomID:string){
+function activateNotificationsPostForm(id:string, postID:string, type:PostFormReplyType, randomID:string){
 	var ev=window.event;
 	var target=ev.target as HTMLElement;
 	if(target.tagName=='A' || target.tagName=='LABEL' || target.tagName=='INPUT')
