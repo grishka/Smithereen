@@ -808,7 +808,7 @@ function showReplyForm(id:number|string, formID:string="wallPostForm_reply", typ
 		var replies=ge(type+"Replies"+(containerPostID || id)+suffix);
 		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
 	}
-	form.customData.postFormObj.setupForReplyTo(id, type, randomID);
+	form.customData.postFormObj.setupForReplyTo(id, type, randomID, moveForm);
 	return false;
 }
 

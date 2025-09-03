@@ -49,6 +49,7 @@ class PostForm{
 
 	private origReplyID:string;
 	private editing:boolean;
+	private isMovableReplyForm:Boolean=false;
 
 	private uploadQueue:UploadingAttachment[]=[];
 	private currentUploadingAttachment:UploadingAttachment;
@@ -238,7 +239,11 @@ class PostForm{
 		if(ev.target===document.activeElement)
 			return;
 		if(!this.isDirty() && !this.mouseInside){
-			this.setCollapsed(true);
+			if(this.isMovableReplyForm){
+				this.root.hide();
+			}else{
+				this.setCollapsed(true);
+			}
 		}
 	}
 
@@ -433,8 +438,9 @@ class PostForm{
 		}
 	}
 
-	public setupForReplyTo(id:(number|string), type:PostFormReplyType="post", randomID:string=null):void{
+	public setupForReplyTo(id:(number|string), type:PostFormReplyType="post", randomID:string=null, isMovable:boolean=false):void{
 		this.replyToField.value=id+"";
+		this.isMovableReplyForm=isMovable;
 		var suffix=randomID ? "_"+randomID : "";
 		var postEl=ge(type+id+suffix);
 		var name:string=postEl.dataset.replyName;
