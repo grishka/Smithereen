@@ -54,7 +54,7 @@
 			<div class="actions">
 				{% if currentUser is not null %}
 					{% if not hideReplyLink and canComment -%}
-						<a href="{{realPost.internalURL}}" onclick="return showCommentReplyForm('{{realPost.idString}}', 'wallPostForm_comment_{{ parentObject.commentParentID.htmlElementID }}', false)">{{L('add_reply')}}</a>
+						<a href="{{realPost.internalURL}}" onclick="return showReplyForm('{{realPost.idString}}', 'wallPostForm_comment_{{ parentObject.commentParentID.htmlElementID }}', 'comment', false)">{{L('add_reply')}}</a>
 					{%- endif %}
 					{% set options=[] %}
 					{% if interactions is not null and interactions.likeCount>0 %}

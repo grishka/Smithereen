@@ -470,7 +470,13 @@ function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, 
 	return false;
 }
 
-function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, submitter:HTMLElement=null, extra:any={}):boolean{
+interface AjaxSubmitFormExtraData{
+	confirmed?:boolean;
+	onResponseReceived?:(response:any)=>void;
+	additionalInputs?:Record<string, any>;
+}
+
+function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, submitter:HTMLElement=null, extra:AjaxSubmitFormExtraData={}):boolean{
 	if(submittingForm)
 		return false;
 	if(!form.checkValidity()){
@@ -478,7 +484,9 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 		return false;
 	}
 	if(submitter && submitter.dataset.confirmMessage && !extra.confirmed){
-		new ConfirmBox(lang(submitter.dataset.confirmTitle), lang(submitter.dataset.confirmMessage), ()=>ajaxSubmitForm(form, onDone, submitter, {confirmed: true})).show();
+		const confirmedExtra=Object.assign({}, extra);
+		confirmedExtra.confirmed=true;
+		new ConfirmBox(lang(submitter.dataset.confirmTitle), lang(submitter.dataset.confirmMessage), ()=>ajaxSubmitForm(form, onDone, submitter, confirmedExtra)).show();
 		return;
 	}
 	submittingForm=form;
@@ -506,6 +514,9 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 				data[el.name]=el.value;
 			}
 		}
+	}
+	if(extra.additionalInputs){
+		Object.assign(data, extra.additionalInputs);
 	}
 	data.csrf=userConfig.csrf;
 	if(location.search){
@@ -585,7 +596,7 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 		return true;
 	}
 	if(link.dataset.confirmAction){
-		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage, link.dataset.confirmAction, {}, false, link.dataset.confirmButton);
+		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage, link.dataset.confirmAction, getInputValuesByIds(link.dataset.additionalInputs), false, link.dataset.confirmButton);
 		return true;
 	}
 
@@ -789,26 +800,15 @@ function applyServerCommand(cmd:any){
 	}
 }
 
-function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true, containerPostID:number=0, randomID:string=null):boolean{
+function showReplyForm(id:number|string, formID:string="wallPostForm_reply", type:PostFormReplyType, moveForm:boolean=true, containerPostID:number=0, randomID:string=null):boolean{
 	var form=ge(formID);
 	form.show();
 	if(moveForm){
 		var suffix=randomID ? "_"+randomID : "";
-		var replies=ge("postReplies"+(containerPostID || id)+suffix);
+		var replies=ge(type+"Replies"+(containerPostID || id)+suffix);
 		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
 	}
-	form.customData.postFormObj.setupForReplyTo(id, "post", randomID);
-	return false;
-}
-
-function showCommentReplyForm(id:string, formID:string, moveForm:boolean=true, containerPostID:string=null):boolean{
-	var form=ge(formID);
-	form.show();
-	if(moveForm){
-		var replies=ge("commentReplies"+(containerPostID || id));
-		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
-	}
-	form.customData.postFormObj.setupForReplyTo(id, "comment");
+	form.customData.postFormObj.setupForReplyTo(id, type, randomID, moveForm);
 	return false;
 }
 
@@ -1738,7 +1738,7 @@ function setMenuCounters(counters:{[key:string]:number}){
 	}
 }
 
-function activateNotificationsPostForm(id:string, postID:string, type:string, randomID:string){
+function activateNotificationsPostForm(id:string, postID:string, type:PostFormReplyType, randomID:string){
 	var ev=window.event;
 	var target=ev.target as HTMLElement;
 	if(target.tagName=='A' || target.tagName=='LABEL' || target.tagName=='INPUT')
@@ -1879,4 +1879,18 @@ function showProfileStatusBox(){
 	};
 	window.addEventListener("mousedown", box.customData.mouseListener);
 	window.addEventListener("keydown", box.customData.escListener);
+}
+
+/**
+ * Returns the values of the {@link HTMLInputElement}s looked up by the space-separated list of {@link ids}.
+ */
+function getInputValuesByIds(ids:string|undefined|null):Record<string, string>{
+	const inputs:Record<string, string>={};
+	if(!ids) return inputs;
+	for(const id of ids.split(/\s+/)){
+		const el=ge<HTMLInputElement>(id);
+		if(!el) continue;
+		inputs[el.name]=el.value;
+	}
+	return inputs;
 }

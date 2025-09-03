@@ -1,5 +1,6 @@
 {% extends "profile_module" %}
 {% block moduleContent %}
+	<input type="hidden" id="wallPostCountInput" name="wallPostCount" value="{{ wallPostCount }}" autocomplete="off"/>
 	{% if canPostOnWall and wallOwner.hasWall %}
 	{% include "wall_post_form" with {'id': 'profile'} %}
 	{% endif %}

@@ -159,6 +159,9 @@ public class CommentsRoutes{
 					case TWO_LEVEL -> XTEA.encodeObjectID(comment.replyKey.get(Math.min(comment.getReplyLevel()-1, 0)), ObfuscatedObjectIDType.COMMENT);
 					case FLAT -> throw new IllegalStateException();
 				}, postHTML).show("commentReplies"+replyTo);
+				if(req.attribute("mobile")==null){
+					rb.hide("wallPostForm_"+formID);
+				}
 			}
 			if(req.attribute("mobile")==null && replyTo==0){
 				rb.runScript("updatePostForms();");

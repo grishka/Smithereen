@@ -4,12 +4,13 @@
 </div>
 {%endif%}
 <div id="postList">
+	<input type="hidden" id="wallPostCountInput" name="wallPostCount" value="{{ wallPostCount }}" autocomplete="off"/>
 	{%for post in items%}
 	<div class="card">
 		{%include "wall_post" with {'post': post}%}
 	</div>
 	{% else %}
-	<div class="card padded">
+		<div id="wallEmptyState" class="card padded">
 		{{ L('wall_empty') }}
 	</div>
 	{%endfor%}

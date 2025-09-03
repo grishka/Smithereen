@@ -212,6 +212,21 @@ public class PostRoutes{
 						.addClass("wallPostForm_"+formID, "collapsed");
 			}else if(replyTo==0){
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
+				int newPostCount=Utils.parseIntOrDefault(req.queryParams("wallPostCount"), -1)+1;
+				if(newPostCount>0){
+					// When creating a new post, update the wall header with the incremented number.
+					// It is deliberate that we just increment the previous value instead of fetching the up-to-date value
+					// from the DB, because as far as the user is concerned, only one new post has appeared,
+					// even if some other user created a post on the same wall at the same time.
+					// The post by the other user will appear only after the page refreshes,
+					// so there is no point in counting it in the updated wall header.
+					rb.setContent("wallPostCount", lang(req).get("X_posts", Map.of("count", newPostCount)))
+							.setInputValue("wallPostCountInput", Integer.toString(newPostCount));
+				}
+				if(newPostCount==1){
+					rb.remove("wallEmptyState");
+				}
+				rb.addClass("wallPostForm_"+formID, "collapsed");
 			}else{
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+switch(self.prefs.commentViewType){
 					case THREADED -> replyTo;
@@ -220,6 +235,9 @@ public class PostRoutes{
 				}+ridSuffix, postHTML)
 						.show("postReplies"+replyTo+ridSuffix)
 						.show("postCommentsSummary"+post.replyKey.getFirst()+ridSuffix);
+				if(req.attribute("mobile")==null && self.prefs.commentViewType!=CommentViewType.FLAT && post.getReplyLevel()>1){
+					rb.hide("wallPostForm_"+formID);
+				}
 				try{
 					Post topLevel=ctx.getWallController().getPostOrThrow(post.replyKey.getFirst());
 					rb.setContent("postCommentsTotal"+post.replyKey.getFirst()+ridSuffix, lang(req).get("X_comments", Map.of("count", topLevel.replyCount)));
@@ -606,6 +624,14 @@ public class PostRoutes{
 				return wdr.runScript("LayerManager.getMediaInstance().dismissByID(\"postLayer"+post.id+ridSuffix+"\");");
 			}else if(req.queryParams("elid")!=null){
 				return wdr.remove(req.queryParams("elid"));
+			}
+			int newPostCount=Utils.parseIntOrDefault(req.queryParams("wallPostCount"), -1)-1;
+			if(newPostCount>=0){
+				wdr.setContent("wallPostCount", lang(req).get("X_posts", Map.of("count", newPostCount)))
+						.setInputValue("wallPostCountInput", Integer.toString(newPostCount));
+			}
+			if(newPostCount==0){
+				wdr.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postList", "<div id=\"wallEmptyState\">"+lang(req).get("wall_empty")+"</div>");
 			}
 			return wdr.remove("post"+post.id+ridSuffix, "postReplies"+post.id+ridSuffix);
 		}
