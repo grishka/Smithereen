@@ -328,9 +328,6 @@ public class FASPController{
 			LOG.trace("Sending request: {} {}, {} bytes", method, requestUrl, bodyBytes.length);
 			HttpRequest req=signRequestOrResponse(provider, reqBuilder, bodyBytes);
 			HttpResponse<byte[]> resp=ActivityPub.httpClient.send(req, HttpResponse.BodyHandlers.ofByteArray());
-			FileOutputStream out=new FileOutputStream("/Users/grishka/Downloads/fasp_error.html");
-			out.write(resp.body());
-			out.close();
 			LOG.trace("Response: {}, {} bytes", resp, resp.body().length);
 			if(resp.statusCode()/100!=2)
 				throw new IOException("Response not successful: "+resp.statusCode());
