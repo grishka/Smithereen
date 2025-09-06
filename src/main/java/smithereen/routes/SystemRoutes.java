@@ -590,6 +590,10 @@ public class SystemRoutes{
 			case "post" -> {
 				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
+				if(post.isMastodonStyleRepost()){
+					post=ctx.getWallController().getPostOrThrow(post.repostOf);
+					rawID=post.id+"";
+				}
 				User postAuthor=ctx.getUsersController().getUserOrThrow(post.authorID);
 				actorForAvatar=postAuthor;
 				title=postAuthor.getCompleteName();
