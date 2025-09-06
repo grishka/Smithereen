@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
 
@@ -16,6 +17,7 @@ import jakarta.servlet.http.Part;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
@@ -47,8 +49,24 @@ public class AdminCustomCSSRoutes{
 				.pageTitle(l.get("admin_custom_css")+" | "+l.get("menu_admin"));
 	}
 
+	private static String getMultipartFieldAsString(Request req, String name){
+		try{
+			Part part=req.raw().getPart(name);
+			if(part==null)
+				throw new BadRequestException();
+			try(InputStream in=part.getInputStream()){
+				return new String(in.readNBytes((int)part.getSize()), StandardCharsets.UTF_8);
+			}
+		}catch(IOException e){
+			throw new InternalServerErrorException(e);
+		}catch(ServletException|IllegalArgumentException e){
+			throw new BadRequestException(e);
+		}
+	}
+
 	public static Object saveCustomCSS(Request req, Response resp, Account self, ApplicationContext ctx){
-		Config.updateCSS(req.queryParams("common"), req.queryParams("desktop"), req.queryParams("mobile"));
+		req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
+		Config.updateCSS(getMultipartFieldAsString(req, "common"), getMultipartFieldAsString(req, "desktop"), getMultipartFieldAsString(req, "mobile"));
 
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();

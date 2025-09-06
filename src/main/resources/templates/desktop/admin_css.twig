@@ -27,7 +27,7 @@
 		<a href="javascript:void(0)" onclick="cur.showTab(1)">{{ L('admin_css_desktop') }}</a>
 		<a href="javascript:void(0)" onclick="cur.showTab(2)">{{ L('admin_css_mobile') }}</a>
 	</div>
-	<form action="/settings/admin/saveCSS?csrf={{ csrf }}" method="post" class="singleColumn">
+	<form action="/settings/admin/saveCSS?csrf={{ csrf }}" method="post" enctype="multipart/form-data" class="singleColumn">
 		<textarea name="common" id="commonCSS" style="font-family: monospace; width: 100%">{{ commonCSS }}</textarea>
 		<textarea name="desktop" id="desktopCSS" style="font-family: monospace; width: 100%; display: none">{{ desktopCSS }}</textarea>
 		<textarea name="mobile" id="mobileCSS" style="font-family: monospace; width: 100%; display: none">{{ mobileCSS }}</textarea>
