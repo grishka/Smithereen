@@ -359,5 +359,8 @@
   "admin_announcement_delete_confirm": "Are you sure you want to delete this announcement?",
   "admin_announcement_updated": "Changes to the announcement were successfully saved",
   "admin_announcement_edit": "Edit announcement",
-  "admin_manage_group": "Manage group"
+  "admin_manage_group": "Manage group",
+  "admin_group_staff_notes_empty": "Add a note about this group for other members of your server staff or for your future self. These notes are only visible to those who have access to manage groups.",
+  "admin_group_X_staff_notes_summary": "{count, plural, =0 {No staff notes} one {# staff note} other {# staff notes}} for this group",
+  "admin_group_staff_note_confirm_delete": "Are you sure you want to delete this note?"
 }

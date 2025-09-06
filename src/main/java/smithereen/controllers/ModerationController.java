@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -825,43 +824,43 @@ public class ModerationController{
 	}
 
 	// endregion
-	// region User staff notes
+	// region Actor staff notes
 
-	public int getUserStaffNoteCount(User user){
+	public int getActorStaffNoteCount(Actor actor){
 		try{
-			return ModerationStorage.getUserStaffNoteCount(user.id);
+			return ModerationStorage.getActorStaffNoteCount(actor.getOwnerID());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public PaginatedList<ActorStaffNote> getUserStaffNotes(User user, int offset, int count){
+	public PaginatedList<ActorStaffNote> getActorStaffNotes(Actor actor, int offset, int count){
 		try{
-			return ModerationStorage.getUserStaffNotes(user.id, offset, count);
+			return ModerationStorage.getActorStaffNotes(actor.getOwnerID(), offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void createUserStaffNote(User self, User target, String text){
+	public void createActorStaffNote(User self, Actor target, String text){
 		try{
-			ModerationStorage.createUserStaffNote(target.id, self.id, TextProcessor.preprocessPostHTML(text, null));
+			ModerationStorage.createActorStaffNote(target.getOwnerID(), self.id, TextProcessor.preprocessPostHTML(text, null));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void deleteUserStaffNote(ActorStaffNote note){
+	public void deleteActorStaffNote(Actor actor, ActorStaffNote note){
 		try{
-			ModerationStorage.deleteUserStaffNote(note.id());
+			ModerationStorage.deleteActorStaffNote(actor.getOwnerID(), note.id());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public ActorStaffNote getUserStaffNoteOrThrow(int id){
+	public ActorStaffNote getActorStaffNoteOrThrow(Actor actor, int id){
 		try{
-			ActorStaffNote note=ModerationStorage.getUserStaffNote(id);
+			ActorStaffNote note=ModerationStorage.getActorStaffNote(actor.getOwnerID(), id);
 			if(note==null)
 				throw new ObjectNotFoundException();
 			return note;

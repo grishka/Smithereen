@@ -382,50 +382,54 @@ public class ModerationStorage{
 				.executeNoResult();
 	}
 
-	public static int getUserStaffNoteCount(int userID) throws SQLException{
+	// region Actor staff notes
+
+	public static int getActorStaffNoteCount(int id) throws SQLException{
 		return new SQLQueryBuilder()
-				.selectFrom("user_staff_notes")
+				.selectFrom(id>0 ? "user_staff_notes" : "group_staff_notes")
 				.count()
-				.where("target_id=?", userID)
+				.where("target_id=?", Math.abs(id))
 				.executeAndGetInt();
 	}
 
-	public static PaginatedList<ActorStaffNote> getUserStaffNotes(int userID, int offset, int count) throws SQLException{
-		int total=getUserStaffNoteCount(userID);
+	public static PaginatedList<ActorStaffNote> getActorStaffNotes(int id, int offset, int count) throws SQLException{
+		int total=getActorStaffNoteCount(id);
 		if(total==0)
 			return PaginatedList.emptyList(count);
 		List<ActorStaffNote> notes=new SQLQueryBuilder()
-				.selectFrom("user_staff_notes")
+				.selectFrom(id>0 ? "user_staff_notes" : "group_staff_notes")
 				.allColumns()
-				.where("target_id=?", userID)
+				.where("target_id=?", Math.abs(id))
 				.limit(count, offset)
 				.executeAsStream(ActorStaffNote::fromResultSet)
 				.toList();
 		return new PaginatedList<>(notes, total, offset, count);
 	}
 
-	public static int createUserStaffNote(int userID, int authorID, String text) throws SQLException{
+	public static int createActorStaffNote(int id, int authorID, String text) throws SQLException{
 		return new SQLQueryBuilder()
-				.insertInto("user_staff_notes")
-				.value("target_id", userID)
+				.insertInto(id>0 ? "user_staff_notes" : "group_staff_notes")
+				.value("target_id", Math.abs(id))
 				.value("author_id", authorID)
 				.value("text", text)
 				.executeAndGetID();
 	}
 
-	public static void deleteUserStaffNote(int id) throws SQLException{
+	public static void deleteActorStaffNote(int actorID, int id) throws SQLException{
 		new SQLQueryBuilder()
-				.deleteFrom("user_staff_notes")
+				.deleteFrom(actorID>0 ? "user_staff_notes" : "group_staff_notes")
 				.where("id=?", id)
 				.executeNoResult();
 	}
 
-	public static ActorStaffNote getUserStaffNote(int id) throws SQLException{
+	public static ActorStaffNote getActorStaffNote(int actorID, int id) throws SQLException{
 		return new SQLQueryBuilder()
-				.selectFrom("user_staff_notes")
+				.selectFrom(actorID>0 ? "user_staff_notes" : "group_staff_notes")
 				.where("id=?", id)
 				.executeAndGetSingleObject(ActorStaffNote::fromResultSet);
 	}
+
+	// endregion
 
 	public static void createEmailDomainBlockRule(String domain, EmailDomainBlockRule.Action action, String note, int creatorID) throws SQLException{
 		new SQLQueryBuilder()

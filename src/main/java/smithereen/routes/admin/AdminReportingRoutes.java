@@ -419,7 +419,7 @@ public class AdminReportingRoutes{
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(groupIDs))
 				.with("filteredByUser", user)
 				.headerBack(user);
-		model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
+		model.with("staffNoteCount", ctx.getModerationController().getActorStaffNoteCount(user));
 
 		return model;
 	}

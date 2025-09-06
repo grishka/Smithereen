@@ -493,6 +493,21 @@ CREATE TABLE `group_memberships` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `group_staff_notes`
+--
+
+CREATE TABLE `group_staff_notes` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `target_id` int unsigned NOT NULL,
+  `author_id` int unsigned NOT NULL,
+  `text` text NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `target_id` (`target_id`),
+  CONSTRAINT `group_staff_notes_ibfk_1` FOREIGN KEY (`target_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `groups`
 --
 
@@ -1167,4 +1182,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-08-27  9:55:11
+-- Dump completed on 2025-09-07  2:21:52

@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=81;
+	public static final int SCHEMA_VERSION=82;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -1052,6 +1052,19 @@ public class DatabaseSchemaUpdater{
 						  PRIMARY KEY (`id`),
 						  KEY `group_id` (`group_id`),
 						  CONSTRAINT `group_action_log_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 82 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `group_staff_notes` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `target_id` int unsigned NOT NULL,
+						  `author_id` int unsigned NOT NULL,
+						  `text` text NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  KEY `target_id` (`target_id`),
+						  CONSTRAINT `group_staff_notes_ibfk_1` FOREIGN KEY (`target_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
 			}
 		}

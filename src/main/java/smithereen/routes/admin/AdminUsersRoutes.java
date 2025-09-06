@@ -195,7 +195,7 @@ public class AdminUsersRoutes{
 		model.with("relationshipMetrics", relMetrics).with("contentMetrics", contentMetrics);
 		model.pageTitle(lang(req).get("admin_manage_user")+" | "+user.getFullName())
 				.headerBack(user);
-		model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
+		model.with("staffNoteCount", ctx.getModerationController().getActorStaffNoteCount(user));
 		return model;
 	}
 
@@ -394,7 +394,7 @@ public class AdminUsersRoutes{
 	public static Object userStaffNotes(Request req, Response resp, Account self, ApplicationContext ctx){
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_users_notes", req);
-		PaginatedList<ActorStaffNote> notes=ctx.getModerationController().getUserStaffNotes(user, offset(req), 50);
+		PaginatedList<ActorStaffNote> notes=ctx.getModerationController().getActorStaffNotes(user, offset(req), 50);
 		model.paginate(notes);
 		model.with("users", ctx.getUsersController().getUsers(notes.list.stream().map(ActorStaffNote::authorID).collect(Collectors.toSet())));
 		model.with("user", user).with("staffNoteCount", notes.total).headerBack(user);
@@ -405,7 +405,7 @@ public class AdminUsersRoutes{
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		requireQueryParams(req, "text");
 		String text=req.queryParams("text");
-		ctx.getModerationController().createUserStaffNote(self.user, user, text);
+		ctx.getModerationController().createActorStaffNote(self.user, user, text);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).setContent("commentText", "").refresh();
 		resp.redirect(back(req));
@@ -420,8 +420,9 @@ public class AdminUsersRoutes{
 	}
 
 	public static Object userStaffNoteDelete(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		int noteID=safeParseInt(req.params(":noteID"));
-		ctx.getModerationController().deleteUserStaffNote(ctx.getModerationController().getUserStaffNoteOrThrow(noteID));
+		ctx.getModerationController().deleteActorStaffNote(user, ctx.getModerationController().getActorStaffNoteOrThrow(user, noteID));
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
@@ -484,7 +485,7 @@ public class AdminUsersRoutes{
 				.headerBack(user);
 		model.with("users", ctx.getUsersController().getUsers(needUsers))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
-		model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
+		model.with("staffNoteCount", ctx.getModerationController().getActorStaffNoteCount(user));
 
 		int reportID=safeParseInt(req.queryParams("report"));
 		if(reportID>0)

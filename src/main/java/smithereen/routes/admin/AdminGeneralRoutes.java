@@ -193,7 +193,7 @@ public class AdminGeneralRoutes{
 		if(req.queryParams("uid")!=null){
 			User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.queryParams("uid")));
 			model.with("user", user);
-			model.with("staffNoteCount", ctx.getModerationController().getUserStaffNoteCount(user));
+			model.with("staffNoteCount", ctx.getModerationController().getActorStaffNoteCount(user));
 			log=ctx.getModerationController().getUserAuditLog(user, offset(req), 100);
 		}else{
 			log=ctx.getModerationController().getGlobalAuditLog(offset(req), 100);

@@ -764,6 +764,10 @@ public class SmithereenApplication{
 			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncRelationshipsCollections);
 			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncContentCollections);
 			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncProfile);
+			getRequiringPermission("/staffNotes", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNotes);
+			postRequiringPermissionWithCSRF("/addStaffNote", UserRole.Permission.MANAGE_GROUPS,AdminGroupsRoutes::groupStaffNoteAdd);
+			getRequiringPermission("/staffNotes/:noteID/confirmDelete", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNoteConfirmDelete);
+			postRequiringPermissionWithCSRF("/staffNotes/:noteID/delete", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNoteDelete);
 
 			getWithCSRF("/addBookmark", BookmarksRoutes::addGroupBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeGroupBookmark);
