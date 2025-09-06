@@ -90,6 +90,7 @@ import smithereen.routes.WellKnownRoutes;
 import smithereen.routes.admin.AdminEmailRulesRoutes;
 import smithereen.routes.admin.AdminFederationRoutes;
 import smithereen.routes.admin.AdminGeneralRoutes;
+import smithereen.routes.admin.AdminGroupsRoutes;
 import smithereen.routes.admin.AdminIPRulesRoutes;
 import smithereen.routes.admin.AdminReportingRoutes;
 import smithereen.routes.admin.AdminRolesRoutes;
@@ -778,6 +779,8 @@ public class SmithereenApplication{
 			get("/board", BoardRoutes::groupTopics);
 			getActivityPubCollection("/topics", 100, ActivityPubRoutes::groupTopics);
 			getActivityPubCollection("/pinnedTopics", 100, ActivityPubRoutes::groupPinnedTopics);
+
+			getRequiringPermission("/groupinfo", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupInfo);
 		});
 
 		path("/posts/:postID", ()->{

@@ -19,6 +19,9 @@
 		{% if userPermissions is not null and userPermissions.canReport(group) %}
 			{% set _=options.add({'label': L('report').toString(), 'type': 'link', 'ajax': 'box', 'href': "/system/reportForm?type=group&id="+group.id}) %}
 		{% endif %}
+		{% if userPermissions.hasPermission('MANAGE_GROUPS') %}
+			{% set _=options.add({'label': L('admin_manage_group').toString(), 'type': 'link', 'href': "/groups/#{group.id}/groupinfo"}) %}
+		{% endif %}
 	{% endif %}
 	{% block optionsButton %}
 	{% if options is not empty %}

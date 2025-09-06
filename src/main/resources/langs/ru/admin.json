@@ -358,5 +358,6 @@
   "admin_announcement_deletion": "Удаление объявления",
   "admin_announcement_delete_confirm": "Вы действительно хотите удалить это объявление?",
   "admin_announcement_updated": "Изменения успешно сохранены",
-  "admin_announcement_edit": "Редактирование объявления"
+  "admin_announcement_edit": "Редактирование объявления",
+  "admin_manage_group": "Карточка сообщества"
 }

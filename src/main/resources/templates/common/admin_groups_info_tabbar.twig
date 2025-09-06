@@ -1,0 +1,13 @@
+{# @pebvariable name="userPermissions" type="smithereen.model.UserPermissions" #}
+<div class="tabbar">
+	{% if userPermissions.hasPermission('MANAGE_GROUPS') %}
+	<a href="/groups/{{ group.id }}/groupinfo" class="{{ tab=='info' ? 'selected' : '' }}">{{ L('admin_manage_group') }}</a>
+	<a href="/groups/{{ group.id }}/staffNotes" class="{{ tab=='staffNotes' ? 'selected' : '' }}">{{ L('admin_user_staff_notes') }}{% if staffNoteCount>0 %} (<b>{{ staffNoteCount | numberformat }}</b>){% endif %}</a>
+	{% endif %}
+	{% if userPermissions.hasPermission('MANAGE_REPORTS') %}
+	<a href="/groups/{{ group.id }}/reports" class="{{ tab=='reports' ? 'selected' : '' }}">{{ L('menu_reports') }}</a>
+	{% endif %}
+	{% if userPermissions.hasPermission('VIEW_SERVER_AUDIT_LOG') %}
+	<a href="/settings/admin/auditLog?gid={{ group.id }}" class="{{ tab=='auditLog' ? 'selected' : '' }}">{{ L('admin_audit_log') }}</a>
+	{% endif %}
+</div>

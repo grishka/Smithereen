@@ -1,0 +1,32 @@
+{# @pebvariable name="group" type="smithereen.model.Group" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_groups_info_tabbar" with {'tab': 'info'} %}
+<div class="singleColumn">
+	<div class="itemWithMediumAvatar">
+		<div>{{ group | pictureForAvatar('b') }}</div>
+		<div>
+			<h2><a href="{{ group.profileURL }}" target="_blank" rel="noopener">{{ group.name }}</a></h2>
+			<div class="marginBefore marginAfter">
+				@{{ group.fullUsername }}, ID {{ group.id }}
+				{% if group.domain is not empty %}
+				<span data-tooltip="{{ L('admin_ap_actor_id_tooltip') }}" style="display: inline-block;">({{ group.activityPubID }})</span>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+	<div class="gridWithItemTitles marginBefore">
+		{% if group.domain is not empty %}
+		<div class="itemTitle">{{ L('admin_actor_last_updated') }}:</div>
+		<div>{{ LD(group.lastUpdated) }}</div>
+		{% endif %}
+	</div>
+	{% if group.domain is not empty %}
+	<div class="marginBefore marginAfter">
+		<a href="/groups/{{ group.id }}/syncProfile?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('sync_profile') }}</a>
+		<a href="/groups/{{ group.id }}/syncRelCollections?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('sync_members') }}</a>
+		<a href="/groups/{{ group.id }}/syncContentCollections?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('sync_content') }}</a>
+	</div>
+	{% endif %}
+</div>
+{% endblock %}
