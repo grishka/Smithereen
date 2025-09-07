@@ -274,5 +274,16 @@
   "admin_ip_rule_created": "Правіла для IP створана",
   "summary_admin_X_signup_invites": "Усяго {count, plural, =0 {0 запрашэнняў} one {# запрашэнне} few {# запрашэнні} other {# запрашэнняў}}",
   "admin_audit_log_deleted_invite": "<a id=\"adminUser\">{name}</a> {gender, select, female {выдаліла} other {выдаліў}} запрашэнне <a id=\"targetUser\">{targetName, inflect, dative}</a>",
-  "signup_invite_deleted": "Запрашэнне выдалена"
+  "signup_invite_deleted": "Запрашэнне выдалена",
+  "admin_server_rules_edit": "Editar regra",
+  "admin_report_reason": "Motivo",
+  "admin_report_reason_spam": "Spam",
+  "admin_report_reason_rules": "Regras violadas",
+  "admin_report_reason_illegal": "Conteúdo ilegal",
+  "admin_report_reason_other": "Outro",
+  "admin_report_violated_rules": "Regras violadas",
+  "admin_report_change_rules_title": "Mudar regras violadas",
+  "admin_report_exclude_content": "Excluir",
+  "admin_user_content_comments": "Outros comentários",
+  "admin_user_content_photos": "Fotos"
 }
