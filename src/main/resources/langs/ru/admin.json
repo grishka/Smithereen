@@ -359,5 +359,8 @@
   "admin_announcement_delete_confirm": "Вы действительно хотите удалить это объявление?",
   "admin_announcement_updated": "Изменения успешно сохранены",
   "admin_announcement_edit": "Редактирование объявления",
-  "admin_manage_group": "Карточка сообщества"
+  "admin_manage_group": "Карточка сообщества",
+  "admin_group_staff_notes_empty": "Добавьте заметку об этом сообществе для других администраторов сервера или для себя в будущем. Заметки видны только тем, у кого есть доступ к карточкам сообществ.",
+  "admin_group_X_staff_notes_summary": "{count, plural, =0 {Нет служебных заметок} one {# служебная заметка} few {# служебных заметки} other {# служебных заметок}} об этом сообществе",
+  "admin_group_staff_note_confirm_delete": "Вы действительно хотите удалить эту заметку?"
 }
