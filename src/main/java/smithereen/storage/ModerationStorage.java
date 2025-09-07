@@ -266,19 +266,19 @@ public class ModerationStorage{
 		}
 	}
 
-	public static PaginatedList<AuditLogEntry> getUserAuditLog(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<AuditLogEntry> getActorAuditLog(int actorID, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("audit_log")
 					.count()
-					.where("owner_id=?", userID)
+					.where("owner_id=?", actorID)
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(count);
 			return new PaginatedList<>(new SQLQueryBuilder(conn)
 					.selectFrom("audit_log")
 					.allColumns()
-					.where("owner_id=?", userID)
+					.where("owner_id=?", actorID)
 					.orderBy("id DESC")
 					.limit(count, offset)
 					.executeAsStream(AuditLogEntry::fromResultSet)

@@ -728,9 +728,9 @@ public class ModerationController{
 		}
 	}
 
-	public PaginatedList<AuditLogEntry> getUserAuditLog(User user, int offset, int count){
+	public PaginatedList<AuditLogEntry> getActorAuditLog(Actor actor, int offset, int count){
 		try{
-			return ModerationStorage.getUserAuditLog(user.id, offset, count);
+			return ModerationStorage.getActorAuditLog(actor.getOwnerID(), offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

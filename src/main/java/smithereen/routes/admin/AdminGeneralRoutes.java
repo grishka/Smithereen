@@ -194,7 +194,14 @@ public class AdminGeneralRoutes{
 			User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.queryParams("uid")));
 			model.with("user", user);
 			model.with("staffNoteCount", ctx.getModerationController().getActorStaffNoteCount(user));
-			log=ctx.getModerationController().getUserAuditLog(user, offset(req), 100);
+			model.headerBack(user);
+			log=ctx.getModerationController().getActorAuditLog(user, offset(req), 100);
+		}else if(req.queryParams("gid")!=null){
+			Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.queryParams("gid")));
+			model.with("group", group);
+			model.with("staffNoteCount", ctx.getModerationController().getActorStaffNoteCount(group));
+			model.headerBack(group);
+			log=ctx.getModerationController().getActorAuditLog(group, offset(req), 100);
 		}else{
 			log=ctx.getModerationController().getGlobalAuditLog(offset(req), 100);
 		}
