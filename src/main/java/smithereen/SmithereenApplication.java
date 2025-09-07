@@ -768,6 +768,7 @@ public class SmithereenApplication{
 			postRequiringPermissionWithCSRF("/addStaffNote", UserRole.Permission.MANAGE_GROUPS,AdminGroupsRoutes::groupStaffNoteAdd);
 			getRequiringPermission("/staffNotes/:noteID/confirmDelete", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNoteConfirmDelete);
 			postRequiringPermissionWithCSRF("/staffNotes/:noteID/delete", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNoteDelete);
+			getRequiringPermission("/reports", UserRole.Permission.MANAGE_REPORTS, AdminReportingRoutes::reportsOfGroup);
 
 			getWithCSRF("/addBookmark", BookmarksRoutes::addGroupBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeGroupBookmark);

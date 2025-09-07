@@ -3,6 +3,8 @@
 {% block content %}
 {% if filteredByUser is not null %}
 {% include "reports_user_tabbar" with {'user': filteredByUser} %}
+{% elseif filteredByGroup is not null %}
+{% include "admin_groups_info_tabbar" with {'group': filteredByGroup, 'tab': 'reports'} %}
 {% else %}
 {% include "reports_tabbar" %}
 {% endif %}

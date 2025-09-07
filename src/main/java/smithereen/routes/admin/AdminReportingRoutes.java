@@ -424,6 +424,28 @@ public class AdminReportingRoutes{
 		return model;
 	}
 
+	public static Object reportsOfGroup(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.params(":id")));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("report_list", req);
+		model.pageTitle(lang(req).get("menu_reports"));
+		PaginatedList<ViolationReport> reports;
+		model.with("tab", "reportsOf");
+		reports=ctx.getModerationController().getViolationReportsOfActor(group, offset(req), 50);
+		model.paginate(reports);
+
+		Set<Integer> userIDs=reports.list.stream().filter(r->r.targetID>0).map(r->r.targetID).collect(Collectors.toSet());
+		userIDs.addAll(reports.list.stream().filter(r->r.reporterID!=0).map(r->r.reporterID).collect(Collectors.toSet()));
+		Set<Integer> groupIDs=reports.list.stream().filter(r->r.targetID<0).map(r->-r.targetID).collect(Collectors.toSet());
+
+		model.with("users", ctx.getUsersController().getUsers(userIDs))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(groupIDs))
+				.with("filteredByGroup", group)
+				.headerBack(group);
+		model.with("staffNoteCount", ctx.getModerationController().getActorStaffNoteCount(group));
+
+		return model;
+	}
+
 	public static Object createReportForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		requireQueryParams(req, "type", "ids", "uid");
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.queryParams("uid")));

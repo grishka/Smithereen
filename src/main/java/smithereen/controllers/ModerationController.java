@@ -189,7 +189,7 @@ public class ModerationController{
 
 	public PaginatedList<ViolationReport> getViolationReportsOfActor(Actor actor, int offset, int count){
 		try{
-			return ModerationStorage.getViolationReportsOfActor(actor.getLocalID(), offset, count);
+			return ModerationStorage.getViolationReportsOfActor(actor.getOwnerID(), offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
