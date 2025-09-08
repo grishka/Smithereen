@@ -424,11 +424,12 @@ public class PhotoStorage{
 	}
 
 	public static long getAlbumIdByActivityPubId(URI activityPubID) throws SQLException{
-		return new SQLQueryBuilder()
+		long id=new SQLQueryBuilder()
 				.selectFrom("photo_albums")
 				.columns("id")
 				.where("ap_id=?", activityPubID.toString())
 				.executeAndGetLong();
+		return id==-1 ? 0 : id;
 	}
 
 	public static void putOrUpdateForeignAlbum(PhotoAlbum album) throws SQLException{
@@ -486,11 +487,12 @@ public class PhotoStorage{
 	}
 
 	public static long getPhotoIdByActivityPubId(URI activityPubID) throws SQLException{
-		return new SQLQueryBuilder()
+		long id=new SQLQueryBuilder()
 				.selectFrom("photos")
 				.columns("id")
 				.where("ap_id=?", activityPubID.toString())
 				.executeAndGetLong();
+		return id==-1 ? 0 : id;
 	}
 
 	public static Map<URI, Long> getPhotoIdsByActivityPubIds(Collection<URI> apIDs) throws SQLException{

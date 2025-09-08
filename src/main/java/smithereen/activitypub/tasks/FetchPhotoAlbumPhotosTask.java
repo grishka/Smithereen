@@ -76,10 +76,10 @@ public class FetchPhotoAlbumPhotosTask extends ForwardPaginatingCollectionTask{
 				}
 				Photo nPhoto=photo.asNativePhoto(context);
 				photos.add(new Pair<>(nPhoto, photo));
-				seenPhotos.add(nPhoto.id);
 			}
 			if(!photos.isEmpty()){
 				context.getPhotosController().putOrUpdateForeignPhotos(photos);
+				photos.stream().map(p->p.first().id).forEach(seenPhotos::add);
 			}
 		}catch(Exception x){
 			LOG.warn("Error processing photo album page", x);
