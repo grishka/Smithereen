@@ -780,7 +780,7 @@ public class ActivityPub{
 		for(URI uri:query)
 			body.add("item", uri.toString());
 		builder.POST(body.build()).header("Content-Type", FormBodyPublisherBuilder.CONTENT_TYPE);
-		signRequest(builder, actor.collectionQueryEndpoint, actor, null, "post");
+		signRequest(builder, actor.collectionQueryEndpoint, ServiceActor.getInstance(), null, "post");
 		try{
 			HttpResponse<Reader> resp=httpClient.send(builder.build(), new ReaderBodyHandler());
 			try(Reader reader=resp.body()){
