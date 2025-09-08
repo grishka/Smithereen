@@ -2360,7 +2360,7 @@ textarea{
 	padding: 0 10px;
 }
 
-.boxContent .emptyState, .mediaGridW .emptyState, .layerWithTitle .emptyState, .dataTable .emptyState{
+.boxContent .emptyState, .mediaGridW .emptyState, .layerWithTitle .emptyState, .dataTable .emptyState, .emptyState.compact{
 	height: auto;
 	padding: 50px 0;
 	border: none;
@@ -5352,5 +5352,12 @@ ol.largeNumbers{
 
 #groupLinksReorderable{
 	margin: -10px 0;
+}
+
+.listItemWithDivider+.ajaxEndlessPagination{
+	margin-top: -10px;
+	a{
+		border-top: none;
+	}
 }
 

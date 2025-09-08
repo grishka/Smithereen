@@ -12,21 +12,21 @@
 		<div class="reorderableList groupEditMemberList" id="groupAdminsReorderable">
 			{% for admin in admins %}
 				<div class="reorderableItemWrap">
-					<div class="reorderableItem groupEditMember" data-reorder-id="{{ admin.user.id }}">
-						{{ admin.user | pictureForAvatar('a', 25) }}
+					<div class="reorderableItem groupEditMember" data-reorder-id="{{ admin.userID }}">
+						{{ users[admin.userID] | pictureForAvatar('a', 25) }}
 						<div class="ellipsize">
-							<a href="{{ admin.user.profileURL }}" class="name">{{ admin.user | name }}</a>
+							<a href="{{ profileURL(admin.userID) }}" class="name">{{ users[admin.userID] | name }}</a>
 							{%- if admin.title is not empty -%}
 							, {{ admin.title }}
 							{% endif %}
 						</div>
 						<div class="actions">
-							<a href="/groups/{{ group.id }}/editAdminForm?id={{ admin.user.id }}" data-ajax-box="1">{{ L('edit') }}</a>
+							<a href="/groups/{{ group.id }}/editAdminForm?id={{ admin.userID }}" data-ajax-box="1">{{ L('edit') }}</a>
 							{% if admin.level!='OWNER' %}
-								| <a href="/groups/{{ group.id }}/confirmDemoteAdmin?id={{ admin.user.id }}"
+								| <a href="/groups/{{ group.id }}/confirmDemoteAdmin?id={{ admin.userID }}"
 									 data-confirm-title="{{ L('group_admin_demote') }}"
-									 data-confirm-message="{{ L('group_admin_demote_confirm', {'name': admin.user.firstLastAndGender}) | forceEscape }}"
-									 data-confirm-action="/groups/{{ group.id }}/removeAdmin?id={{ admin.user.id }}">{{ L('group_admin_demote') }}</a>
+									 data-confirm-message="{{ L('group_admin_demote_confirm', {'name': users[admin.userID] | name('fullAndGender')}) | forceEscape }}"
+									 data-confirm-action="/groups/{{ group.id }}/removeAdmin?id={{ admin.userID }}">{{ L('group_admin_demote') }}</a>
 							{% endif %}
 						</div>
 						<div class="clear"></div>

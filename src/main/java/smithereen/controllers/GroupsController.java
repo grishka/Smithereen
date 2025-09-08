@@ -256,6 +256,9 @@ public class GroupsController{
 		try{
 			enforceUserAdminLevel(group, admin, Group.AdminLevel.ADMIN);
 			String about=StringUtils.isNotEmpty(aboutSrc) ? TextProcessor.preprocessPostHTML(aboutSrc, null) : null;
+			if(!group.name.equals(name)){
+				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_NAME, admin.id, Map.of("old", group.name, "new", name));
+			}
 			if(!group.username.equals(username)){
 				if(!Utils.isValidUsername(username))
 					throw new BadRequestException("err_group_invalid_username");
@@ -269,9 +272,6 @@ public class GroupsController{
 				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_USERNAME, admin.id, Map.of("old", group.username, "new", username));
 			}else{
 				GroupStorage.updateGroupGeneralInfo(group, name, username, aboutSrc, about, eventStart, eventEnd, accessType);
-			}
-			if(!group.name.equals(name)){
-				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_NAME, admin.id, Map.of("old", group.name, "new", name));
 			}
 			if(photosState==GroupFeatureState.ENABLED_OPEN || photosState==GroupFeatureState.ENABLED_CLOSED)
 				photosState=GroupFeatureState.ENABLED_RESTRICTED;
@@ -287,7 +287,7 @@ public class GroupsController{
 
 			if(!group.isEvent())
 				location=null;
-			if(website!=null && !website.startsWith("https:") && !website.startsWith("http:"))
+			if(StringUtils.isNotEmpty(website) && !website.startsWith("https:") && !website.startsWith("http:"))
 				website="https://"+website;
 			if(!Objects.equals(group.website, website) || !Objects.equals(group.location, location)){
 				group.website=website;

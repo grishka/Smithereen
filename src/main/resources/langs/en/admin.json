@@ -362,5 +362,13 @@
   "admin_manage_group": "Manage group",
   "admin_group_staff_notes_empty": "Add a note about this group for other members of your server staff or for your future self. These notes are only visible to those who have access to manage groups.",
   "admin_group_X_staff_notes_summary": "{count, plural, =0 {No staff notes} one {# staff note} other {# staff notes}} for this group",
-  "admin_group_staff_note_confirm_delete": "Are you sure you want to delete this note?"
+  "admin_group_staff_note_confirm_delete": "Are you sure you want to delete this note?",
+  "admin_group_action_log": "Management actions",
+  "admin_group_no_actions": "No actions logged.",
+  "admin_group_name_changed": "Name changed:",
+  "admin_group_username_changed": "Address changed:",
+  "admin_group_admin_added": "Manager added:",
+  "admin_group_admin_removed": "Manager removed:",
+  "admin_group_admin_changed": "Manager level changed:",
+  "admin_show_X_more_group_log": "Show {count, plural, one {# more entry} other {# more entries}}"
 }

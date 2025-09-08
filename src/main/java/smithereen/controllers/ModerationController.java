@@ -44,6 +44,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.Group;
 import smithereen.model.ServerAnnouncement;
 import smithereen.model.ServerRule;
 import smithereen.model.admin.ActorStaffNote;
@@ -54,6 +55,8 @@ import smithereen.model.admin.EmailDomainBlockRuleFull;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.admin.GroupActionLogEntry;
 import smithereen.model.admin.IPBlockRule;
 import smithereen.model.admin.IPBlockRuleFull;
 import smithereen.model.MailMessage;
@@ -1245,6 +1248,24 @@ public class ModerationController{
 		try{
 			ModerationStorage.deleteAnnouncement(announcement.id());
 			currentAndFutureAnnouncements=null;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Group action log
+
+	public PaginatedList<GroupActionLogEntry> getGroupActionLog(Group group, int offset, int count){
+		try{
+			PaginatedList<GroupActionLogEntry> log=ModerationStorage.getGroupActionLog(group.id, offset, count);
+			for(GroupActionLogEntry e:log.list){
+				if(e.action()==GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL){
+					e.info().put("new", Group.AdminLevel.valueOf((String)e.info().get("new")));
+					e.info().put("old", Group.AdminLevel.valueOf((String)e.info().get("old")));
+				}
+			}
+			return log;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

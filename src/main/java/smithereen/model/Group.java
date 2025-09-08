@@ -28,6 +28,7 @@ import smithereen.storage.DatabaseUtils;
 import smithereen.text.TextProcessor;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
+import smithereen.util.TranslatableEnum;
 import spark.utils.StringUtils;
 
 public class Group extends Actor{
@@ -270,7 +271,7 @@ public class Group extends Actor{
 		return URI.create(userURL+"/members");
 	}
 
-	public enum AdminLevel{
+	public enum AdminLevel implements TranslatableEnum<AdminLevel>{
 		REGULAR,
 		MODERATOR,
 		ADMIN,
@@ -282,6 +283,15 @@ public class Group extends Actor{
 
 		public boolean isAtLeast(String lvl){
 			return isAtLeast(valueOf(lvl));
+		}
+
+		@Override
+		public String getLangKey(){
+			return switch(this){
+				case REGULAR, OWNER -> "";
+				case ADMIN -> "group_access_admin";
+				case MODERATOR -> "group_access_moderator";
+			};
 		}
 	}
 

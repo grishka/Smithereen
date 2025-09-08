@@ -8,16 +8,16 @@
 	<div class="reorderableList groupEditMemberList" id="groupAdminsReorderable">
 		{% for admin in admins %}
 			<div class="reorderableItemWrap">
-				<div class="reorderableItem groupEditMember" data-reorder-id="{{ admin.user.id }}">
+				<div class="reorderableItem groupEditMember" data-reorder-id="{{ admin.userID }}">
 					<div class="draggyGrippyThing"></div>
-					{{ admin.user | pictureForAvatar('a') }}
-					{% set options=[{'type': 'link', 'href': "/groups/#{group.id}/editAdminForm?id=#{admin.user.id}", 'label': L('edit').toString(), 'ajax': 'box'}] %}
+					{{ users[admin.userID] | pictureForAvatar('a') }}
+					{% set options=[{'type': 'link', 'href': "/groups/#{group.id}/editAdminForm?id=#{admin.userID}", 'label': L('edit').toString(), 'ajax': 'box'}] %}
 					{% if admin.level!='OWNER' %}
-						{% set _=options.add({'type': 'confirm', 'url': "/groups/#{group.id}/removeAdmin?id=#{admin.user.id}", 'label': L('group_admin_demote').toString(), 'title': L('group_admin_demote').toString(), 'msg': L('group_admin_demote_confirm', {'name': admin.user.firstLastAndGender}).toString() }) %}
+						{% set _=options.add({'type': 'confirm', 'url': "/groups/#{group.id}/removeAdmin?id=#{admin.userID}", 'label': L('group_admin_demote').toString(), 'title': L('group_admin_demote').toString(), 'msg': L('group_admin_demote_confirm', {'name': users[admin.userID] | name('fullAndGender')}).toString() }) %}
 					{% endif %}
 					<a class="moreButton" onclick="return showOptions(this)" data-options="{{ json(options) }}"></a>
 					<div class="ellipsize nameWrap">
-						<a href="{{ admin.user.profileURL }}" class="name">{{ admin.user | name }}</a>
+						<a href="{{ profileURL(admin.userID) }}" class="name">{{ users[admin.userID] | name }}</a>
 					</div>
 					{% if admin.title is not empty %}
 						<div class="subtitle ellipsize">{{ admin.title }}</div>

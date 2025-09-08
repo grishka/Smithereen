@@ -28,5 +28,8 @@
 		<a href="/groups/{{ group.id }}/syncContentCollections?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('sync_content') }}</a>
 	</div>
 	{% endif %}
+	<h2 class="marginBefore marginAfter">{{ L('admin_group_action_log') }}</h2>
+	{% include "admin_groups_info_log" with {'items': actionLog.list, 'totalItems': actionLog.total, 'paginationOffset': 0, 'paginationPerPage': actionLog.list | length, 'paginationUrlPrefix': "/groups/#{group.id}/ajaxActionLog?offset="} %}
+	{% include "pagination_endless" with {'paginationLinkText': L('admin_show_X_more_group_log', {'count': actionLog.total-(actionLog.list | length)}), 'noScrollEvents': true, 'totalItems': actionLog.total, 'paginationOffset': 0, 'paginationPerPage': actionLog.list | length, 'paginationUrlPrefix': "/groups/#{group.id}/ajaxActionLog?offset="} %}
 </div>
 {% endblock %}

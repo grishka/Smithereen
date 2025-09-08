@@ -537,7 +537,9 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_admins", req);
 		model.with("group", group).with("title", group.name);
-		model.with("admins", ctx.getGroupsController().getAdmins(group));
+		List<GroupAdmin> admins=ctx.getGroupsController().getAdmins(group);
+		model.with("admins", admins);
+		model.with("users", ctx.getUsersController().getUsers(admins.stream().map(a->a.userID).collect(Collectors.toSet())));
 		model.with("subtab", "admins");
 		model.with("joinRequestCount", ctx.getGroupsController().getJoinRequestCount(self.user, group));
 		jsLangKey(req, "cancel", "group_admin_demote", "yes", "no");

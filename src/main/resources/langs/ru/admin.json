@@ -362,5 +362,13 @@
   "admin_manage_group": "Карточка сообщества",
   "admin_group_staff_notes_empty": "Добавьте заметку об этом сообществе для других администраторов сервера или для себя в будущем. Заметки видны только тем, у кого есть доступ к карточкам сообществ.",
   "admin_group_X_staff_notes_summary": "{count, plural, =0 {Нет служебных заметок} one {# служебная заметка} few {# служебных заметки} other {# служебных заметок}} об этом сообществе",
-  "admin_group_staff_note_confirm_delete": "Вы действительно хотите удалить эту заметку?"
+  "admin_group_staff_note_confirm_delete": "Вы действительно хотите удалить эту заметку?",
+  "admin_group_action_log": "Действия администраторов",
+  "admin_group_no_actions": "Не записано ни одного действия.",
+  "admin_group_name_changed": "Изменено название:",
+  "admin_group_username_changed": "Изменён адрес:",
+  "admin_group_admin_added": "Добавлен руководитель:",
+  "admin_group_admin_removed": "Разжалован руководитель:",
+  "admin_group_admin_changed": "Изменён уровень руководителя:",
+  "admin_show_X_more_group_log": "Показать ещё {count, plural, one {# запись} few {# записи} other {# записей}}"
 }

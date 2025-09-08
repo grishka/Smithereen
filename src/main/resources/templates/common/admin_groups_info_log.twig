@@ -1,0 +1,31 @@
+{% for action in items %}
+<div class="listItemWithDivider itemWithAvatar">
+	<div><a href="{{ profileURL(action.adminID) }}">{{ users[action.adminID] | pictureForAvatar('a') }}</a></div>
+	<div>
+		<div class="smallVMargin" style="margin-top: 0;"><a href="{{ profileURL(action.adminID) }}">{{ users[action.adminID] | name('complete') }}</a></div>
+		<div class="smallVMargin">
+		{% if action.action=='CHANGE_NAME' %}
+		<div class="smallVMargin">{{ L('admin_group_name_changed') }}</div>
+		<div>{{ action.info.old }} &rarr; {{ action.info.new }}</div>
+		{% elseif action.action=='CHANGE_USERNAME' %}
+		<div class="smallVMargin">{{ L('admin_group_username_changed') }}</div>
+		<div>{{ action.info.old }} &rarr; {{ action.info.new }}</div>
+		{% elseif action.action=='CHANGE_MEMBER_ADMIN_LEVEL' %}
+		{% if action.info.old!='REGULAR' and action.info.new!='REGULAR' %}
+		<div class="smallVMargin">{{ L('admin_group_admin_changed') }}</div>
+		<div><a href="{{ profileURL(action.info.user) }}">{{ users[action.info.user] | name }}</a>, {{ L(action.info.old.langKey) }} &rarr; {{ L(action.info.new.langKey) }}</div>
+		{% elseif action.info.old=='REGULAR' %}
+		<div class="smallVMargin">{{ L('admin_group_admin_added') }}</div>
+		<div><a href="{{ profileURL(action.info.user) }}">{{ users[action.info.user] | name }}</a>, {{ L(action.info.new.langKey) }}</div>
+		{% elseif action.info.new=='REGULAR' %}
+		<div class="smallVMargin">{{ L('admin_group_admin_removed') }}</div>
+		<div><a href="{{ profileURL(action.info.user) }}">{{ users[action.info.user] | name }}</a>, {{ L(action.info.old.langKey) }}</div>
+		{% endif %}
+		{% endif %}
+		</div>
+		<div class="grayText">{{ LD(action.time) }}</div>
+	</div>
+</div>
+{% else %}
+<div class="emptyState compact">{{ L('admin_group_no_actions') }}</div>
+{% endfor %}
