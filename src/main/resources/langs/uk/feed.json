@@ -1,3 +1,13 @@
 {
-  "feed_links_separator": ", "
+  "feed_added_friend_name": "{name, inflect, accusative}",
+  "feed_tab_news": "Новини",
+  "feed_tab_comments": "Коментарі",
+  "feed_links_separator": ", ",
+  "feed_type_posts": "Записи",
+  "feed_type_photos": "Фотографії",
+  "feed_type_friends": "Друзі",
+  "feed_type_groups": "Групи",
+  "feed_type_events": "Події",
+  "feed_relationship_searching": "<a id=\"author\">{author}</a> в активному пошуку.",
+  "feed_type_board_topics": "Теми"
 }
