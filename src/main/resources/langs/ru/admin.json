@@ -225,6 +225,7 @@
   "report_action_delete_content_locally": "Удалить контент <b>локально</b>…",
   "report_action_reject": "Отклонить",
   "report_action_limit_user": "Ограничить пользователя…",
+  "report_action_limit_group": "Ограничить группу…",
   "report_action_delete_and_limit": "Удалить и ограничить…",
   "report_state_open": "Открыта",
   "report_state_resolved": "Решена",
