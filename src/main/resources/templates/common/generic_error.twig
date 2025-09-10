@@ -1,7 +1,7 @@
 {%extends "page"%}
 {%block content%}
 <center class="notMuchContent">
-	<p>{{error}}</p>
+	<p>{{ error | nl2br }}</p>
 	{% if details is not empty %}
 	<input type="checkbox" class="toggler" id="errorDetailsExpander"/>
 	<p class="toggled">

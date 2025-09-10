@@ -186,5 +186,13 @@
   "group_delete_link_confirm": "Are you sure you want to delete this link?",
   "group_website": "Website",
   "event_location": "Location",
-  "event_location_hint": "City, address, venue name"
+  "event_location_hint": "City, address, venue name",
+  "group_deactivated": "This group was deleted by its management.",
+  "group_hidden": "Hidden group",
+  "group_hidden_info": "You need to log in to view this group.",
+  "group_banned": "This group was banned by the server staff.",
+  "event_deactivated": "This event was deleted by its organizers.",
+  "event_hidden": "Hidden event",
+  "event_hidden_info": "You need to log in to view this event.",
+  "event_banned": "This event was banned by the server staff."
 }

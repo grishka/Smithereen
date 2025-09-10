@@ -535,10 +535,13 @@ CREATE TABLE `groups` (
   `flags` bigint unsigned NOT NULL DEFAULT '0',
   `endpoints` json DEFAULT NULL,
   `access_type` tinyint NOT NULL DEFAULT '0',
+  `ban_status` tinyint unsigned NOT NULL DEFAULT '0',
+  `ban_info` json DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`),
-  KEY `type` (`type`)
+  KEY `type` (`type`),
+  KEY `ban_status` (`ban_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -1182,4 +1185,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-09-07  2:21:52
+-- Dump completed on 2025-09-09  3:50:46

@@ -37,6 +37,28 @@
 	<a href="{{group.url}}" target="_blank">{{L('open_on_server_X', {'domain': group.domain})}}</a>
 </div>
 {%endif%}
+{% if group.banInfo is not null and currentUser is not null and userPermissions.hasPermission('MANAGE_GROUPS') %}
+{% if group.domain is empty and movedTo is null %}<div class="marginsAreMessy"></div>{% endif %}
+{% set banModerator=users[group.banInfo.moderatorID] %}
+<div class="card padded textByItself">
+	{% if group.banStatus=='SUSPENDED' %}
+	{% if group.domain is empty %}
+	<p>{{ L('admin_group_state_suspended', {'deletionTime': LD(deletionTime)}) }}</p>
+	{% else %}
+	<p>{{ L('admin_group_state_suspended_foreign') }}</p>
+	{% endif %}
+	{% elseif group.banStatus=='HIDDEN' %}
+	<p>{{ L('admin_group_state_hidden') }}</p>
+	{% elseif group.banStatus=='SELF_DEACTIVATED' %}
+	<p>{{ L('admin_group_state_self_deactivated', {'deletionTime': LD(deletionTime)}) }}</p>
+	{% endif %}
+	{% if group.banInfo is not null %}
+	{% if group.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_group_suspended_remotely') }}</p>{% endif %}
+	<p>{% if banModerator is not null %}<a href="{{ banModerator.profileURL }}">{{ banModerator | name }}</a>, {% endif %}{{ LD(group.banInfo.bannedAt()) }}</p>
+	{% if group.banInfo.message is not empty %}<p>{{ L('admin_group_ban_message') }}: {{ group.banInfo.message }}</p>{% endif %}
+	{% endif %}
+</div>
+{% endif %}
 <input type="checkbox" id="profileInfoToggler" class="toggler"/>
 <div class="toggled">
 <div class="card singleColumn">

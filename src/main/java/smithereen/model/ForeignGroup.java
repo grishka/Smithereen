@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -27,6 +28,8 @@ import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
 import smithereen.http.HttpContentType;
 import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.groups.GroupLink;
 import smithereen.storage.DatabaseUtils;
@@ -209,6 +212,18 @@ public class ForeignGroup extends Group implements ForeignActor{
 					}
 				}
 			}
+		}
+
+		if(optBoolean(obj, "suspended")){
+			if(banInfo==null)
+				banInfo=new GroupBanInfo(Instant.now(), null, 0, 0, true);
+			else
+				banInfo=banInfo.withRemoteSuspensionStatus(true);
+		}else if(banInfo!=null){
+			if(banStatus==GroupBanStatus.NONE)
+				banInfo=null;
+			else
+				banInfo=banInfo.withRemoteSuspensionStatus(false);
 		}
 
 		return this;

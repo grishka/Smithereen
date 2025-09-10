@@ -51,6 +51,7 @@
 {%endif%}
 {% if user.banInfo is not null and currentUser is not null and userPermissions.hasPermission('MANAGE_USERS') %}
 {% if user.domain is empty and movedTo is null %}<div class="marginsAreMessy"></div>{% endif %}
+{% set banModerator=users[user.banInfo.moderatorID] %}
 <div class="settingsMessage textByItself">
 	{% if user.banStatus=='FROZEN' %}
 	<p>{{ L('admin_user_state_frozen', {'expirationTime': user.banInfo.expiresAt is null ? L('email_account_frozen_until_first_login') : LD(user.banInfo.expiresAt)}) }}</p>

@@ -39,12 +39,16 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.admin.GroupActionLogAction;
 import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.groups.GroupInvitation;
 import smithereen.model.groups.GroupLink;
 import smithereen.model.media.MediaFileRecord;
@@ -1254,6 +1258,41 @@ public class GroupStorage{
 						.executeNoResult();
 			}
 		}
+	}
+
+	public static void setGroupBanStatus(Group group, GroupBanStatus banStatus, String banInfo) throws SQLException{
+		new SQLQueryBuilder()
+				.update("groups")
+				.where("id=?", group.id)
+				.value("ban_status", banStatus)
+				.value("ban_info", banInfo)
+				.executeNoResult();
+		removeFromCache(group);
+	}
+
+	public static void deleteGroup(Group group) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			// Delete media file refs first because triggers don't trigger on cascade deletes. Argh.
+			new SQLQueryBuilder(conn)
+					.deleteFrom("media_file_refs")
+					.where("owner_group_id=?", group.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.deleteFrom("groups")
+					.where("id=?", group.id)
+					.executeNoResult();
+			removeFromCache(group);
+		}
+	}
+
+	public static List<Group> getTerminallyBannedGroups() throws SQLException{
+		return getByIdAsList(new SQLQueryBuilder()
+				.selectFrom("groups")
+				.columns("id")
+				.whereIn("ban_status", GroupBanStatus.SELF_DEACTIVATED, GroupBanStatus.SUSPENDED)
+				.andWhere("ap_id IS NULL")
+				.executeAndGetIntList());
 	}
 
 	// region Links

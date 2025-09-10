@@ -179,16 +179,18 @@ public class AdminUsersRoutes{
 				}catch(ObjectNotFoundException ignore){}
 			}
 			model.with("sessions", ctx.getUsersController().getAccountSessions(account));
-			if(user.banInfo!=null){
-				if(user.domain==null && (user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.SELF_DEACTIVATED)){
-					model.with("accountDeletionTime", user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
-				}
+		}else{
+			account=null;
+		}
+		if(user.banInfo!=null){
+			if(user.domain==null && (user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.SELF_DEACTIVATED)){
+				model.with("accountDeletionTime", user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
+			}
+			if(user.banInfo.moderatorID()!=0){
 				try{
 					model.with("banModerator", ctx.getUsersController().getUserOrThrow(user.banInfo.moderatorID()));
 				}catch(ObjectNotFoundException ignore){}
 			}
-		}else{
-			account=null;
 		}
 		UserRelationshipMetrics relMetrics=ctx.getUsersController().getRelationshipMetrics(user);
 		UserContentMetrics contentMetrics=ctx.getUsersController().getContentMetrics(user);

@@ -31,6 +31,7 @@ import java.util.stream.IntStream;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
+import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
@@ -44,7 +45,12 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
 import smithereen.model.OwnedContentObject;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
+import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.groups.GroupLink;
 import smithereen.model.groups.GroupLinkParseResult;
 import smithereen.model.media.MediaFileReferenceType;
@@ -69,6 +75,8 @@ import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.NotificationsStorage;
+import smithereen.storage.SessionStorage;
+import smithereen.storage.UserStorage;
 import smithereen.storage.utils.IntPair;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
@@ -967,6 +975,44 @@ public class GroupsController{
 			GroupStorage.resolveLink(group.id, link.id, obj);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteLocalGroup(User admin, Group group){
+		if(group instanceof ForeignGroup || (group.banStatus!=GroupBanStatus.SELF_DEACTIVATED && group.banStatus!=GroupBanStatus.SUSPENDED))
+			throw new IllegalArgumentException();
+		try{
+			context.getActivityPubWorker().sendGroupDeleteSelf(group);
+			GroupStorage.deleteGroup(group);
+			if(admin!=null)
+				ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.DELETE_GROUP, -group.id, 0, null, Map.of("name", group.name));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public static void doPendingGroupDeletions(ApplicationContext ctx){
+		try{
+			List<Group> groups=GroupStorage.getTerminallyBannedGroups();
+			if(groups.isEmpty()){
+				LOG.trace("No groups to delete");
+				return;
+			}
+			Instant deleteBannedBefore=Instant.now().minus(GroupBanInfo.GROUP_DELETION_DAYS, ChronoUnit.DAYS);
+			for(Group group:groups){
+				if(group.banStatus!=GroupBanStatus.SUSPENDED && group.banStatus!=GroupBanStatus.SELF_DEACTIVATED){
+					LOG.warn("Ineligible group {} in pending group deletions - bug likely (banStatus {}, banInfo {})", group.id, group.banStatus, group.banInfo);
+					continue;
+				}
+				if(group.banInfo.bannedAt().isBefore(deleteBannedBefore)){
+					LOG.info("Deleting group {}, banStatus {}, banInfo {}", group.id, group.banStatus, group.banInfo);
+					ctx.getGroupsController().deleteLocalGroup(null, group);
+				}else{
+					LOG.trace("Group {} too early to delete", group.id);
+				}
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to delete groups", x);
 		}
 	}
 

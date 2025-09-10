@@ -32,12 +32,14 @@ import jakarta.servlet.http.HttpSessionListener;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.controllers.GroupsController;
 import smithereen.controllers.MailController;
 import smithereen.controllers.ModerationController;
 import smithereen.controllers.UsersController;
 import smithereen.debug.DebugLog;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
+import smithereen.exceptions.InaccessibleGroupException;
 import smithereen.exceptions.InaccessibleProfileException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -770,6 +772,10 @@ public class SmithereenApplication{
 			postRequiringPermissionWithCSRF("/staffNotes/:noteID/delete", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNoteDelete);
 			getRequiringPermission("/reports", UserRole.Permission.MANAGE_REPORTS, AdminReportingRoutes::reportsOfGroup);
 			getRequiringPermission("/ajaxActionLog", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::ajaxGroupActionLog);
+			getRequiringPermission("/banForm", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::banGroupForm);
+			postRequiringPermissionWithCSRF("/ban", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::banGroup);
+			getRequiringPermission("/deleteImmediatelyForm", UserRole.Permission.DELETE_USERS_IMMEDIATE, AdminGroupsRoutes::deleteGroupImmediatelyForm);
+			postRequiringPermissionWithCSRF("/deleteImmediately", UserRole.Permission.DELETE_USERS_IMMEDIATE, AdminGroupsRoutes::deleteGroupImmediately);
 
 			getWithCSRF("/addBookmark", BookmarksRoutes::addGroupBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeGroupBookmark);
@@ -1024,6 +1030,11 @@ public class SmithereenApplication{
 			model.with("user", x.user);
 			resp.body(model.renderToString());
 		});
+		exception(InaccessibleGroupException.class, (x, req, resp)->{
+			RenderedTemplateResponse model=new RenderedTemplateResponse("hidden_group", req);
+			model.with("group", x.group);
+			resp.body(model.renderToString());
+		});
 		exception(UnauthorizedRequestException.class, (x, req, resp)->{
 			if(Config.DEBUG)
 				LOG.warn("401: {}", req.pathInfo(), x);
@@ -1190,6 +1201,7 @@ public class SmithereenApplication{
 			TopLevelDomainList.updateIfNeeded();
 			PublicSuffixList.updateIfNeeded();
 			UsersController.doPendingAccountDeletions(context);
+			GroupsController.doPendingGroupDeletions(context);
 			ModerationController.deleteResolvedViolationReportFiles();
 		});
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);

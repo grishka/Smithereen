@@ -59,6 +59,7 @@
 </div>
 {%endif%}
 {% if user.banInfo is not null and currentUser is not null and userPermissions.hasPermission('MANAGE_USERS') %}
+{% set banModerator=users[user.banInfo.moderatorID] %}
 <div class="card padded textByItself">
 	{% if user.banStatus=='FROZEN' %}
 	<p>{{ L('admin_user_state_frozen', {'expirationTime': user.banInfo.expiresAt is null ? L('email_account_frozen_until_first_login') : LD(user.banInfo.expiresAt)}) }}</p>

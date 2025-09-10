@@ -1,0 +1,11 @@
+{% extends "page" %}
+{% block content %}
+<div class="notMuchContent">
+	<h2 class="marginAfter">{{ L(group.event ? 'event_hidden' : 'group_hidden') }}</h2>
+	<p>{{ L(group.event ? 'event_hidden_info' : 'group_hidden_info') }}</p>
+	<p>
+		<a href="/account/login">{{ L('log_in') }}</a>
+		{% if group.domain is not empty %}| <a href="{{ group.url }}" target="_blank" rel="nofollow">{{ L('open_on_server_X', {'domain': group.domain}) }}</a>{% endif %}
+	</p>
+</div>
+{% endblock %}

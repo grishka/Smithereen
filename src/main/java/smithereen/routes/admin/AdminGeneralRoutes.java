@@ -22,6 +22,7 @@ import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
@@ -34,6 +35,8 @@ import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.EmailDomainBlockRule;
 import smithereen.model.admin.IPBlockRule;
 import smithereen.model.admin.UserRole;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.viewmodel.AuditLogEntryViewModel;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
@@ -327,9 +330,21 @@ public class AdminGeneralRoutes{
 					langArgs.put("title", le.extra().get("title"));
 					yield l.get("admin_audit_log_deleted_server_rule", langArgs);
 				}
+
+				case BAN_GROUP -> {
+					Group targetGroup=groups.get(-le.ownerID());
+					langArgs.put("targetName", targetGroup!=null ? targetGroup.name : "DELETED");
+					links.put("targetUser", Map.of("href", targetGroup!=null ? targetGroup.getProfileURL() : "/id"+le.ownerID()));
+					yield l.get("admin_audit_log_changed_group_restrictions", langArgs);
+				}
+				case DELETE_GROUP -> {
+					langArgs.put("targetName", le.extra().get("name"));
+					links.put("targetGroup", Map.of("href", "/club"+(-le.ownerID())));
+					yield l.get("admin_audit_log_deleted_group", langArgs);
+				}
 			};
 			String extraText=switch(le.action()){
-				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD, DELETE_USER -> null;
+				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD, DELETE_USER, DELETE_GROUP -> null;
 
 				case CREATE_ROLE -> {
 					StringBuilder sb=new StringBuilder("<i>");
@@ -481,6 +496,25 @@ public class AdminGeneralRoutes{
 						}
 					}
 					yield "<i>"+String.join("<br/>", lines)+"</i>";
+				}
+
+				case BAN_GROUP -> {
+					Group targetGroup=groups.get(-le.ownerID());
+					String statusStr=switch(GroupBanStatus.valueOf((String)le.extra().get("status"))){
+						case NONE -> l.get("admin_group_state_no_restrictions");
+						case SUSPENDED -> {
+							if(targetGroup instanceof ForeignGroup)
+								yield l.get("admin_group_state_suspended_foreign");
+							else
+								yield l.get("admin_group_state_suspended", Map.of("deletionTime", l.formatDate(le.time().plus(GroupBanInfo.GROUP_DELETION_DAYS, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
+						}
+						case HIDDEN -> l.get("admin_group_state_hidden");
+						case SELF_DEACTIVATED -> null;
+					};
+					if(le.extra().get("message")!=null){
+						statusStr+="<br/>"+l.get("admin_group_ban_message")+": "+TextProcessor.escapeHTML((String)le.extra().get("message"));
+					}
+					yield statusStr;
 				}
 			};
 			return new AuditLogEntryViewModel(le, TextProcessor.substituteLinks(mainText, links), extraText);

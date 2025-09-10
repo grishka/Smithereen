@@ -856,6 +856,13 @@ public class ActivityPubWorker{
 		submitActivityForFollowers(del, self);
 	}
 
+	public void sendGroupDeleteSelf(Group self){
+		Delete del=new Delete()
+				.withActorAndObjectLinks(self, self)
+				.withActorFragmentID("deleteSelf");
+		submitActivityForMembers(del, self);
+	}
+
 	public void sendUserMoveSelf(User self, User destination){
 		Move move=new Move()
 				.withActorAndObjectLinks(self, self)

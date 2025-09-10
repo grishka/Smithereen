@@ -40,7 +40,11 @@ public record AuditLogEntry(int id, int adminID, Action action, Instant time, in
 		// Server rules
 		CREATE_SERVER_RULE,
 		UPDATE_SERVER_RULE,
-		DELETE_SERVER_RULE
+		DELETE_SERVER_RULE,
+
+		// Groups
+		BAN_GROUP,
+		DELETE_GROUP,
 	}
 
 	public enum ObjectType{

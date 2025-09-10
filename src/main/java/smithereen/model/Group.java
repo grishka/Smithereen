@@ -22,6 +22,8 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
 import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.groups.GroupLink;
 import smithereen.storage.DatabaseUtils;
@@ -42,6 +44,8 @@ public class Group extends Actor{
 	public GroupFeatureState photosState=GroupFeatureState.ENABLED_RESTRICTED;
 	public GroupFeatureState boardState=GroupFeatureState.ENABLED_RESTRICTED;
 	public String website, location;
+	public GroupBanStatus banStatus=GroupBanStatus.NONE;
+	public GroupBanInfo banInfo;
 
 	public List<GroupAdmin> adminsForActivityPub;
 
@@ -167,6 +171,12 @@ public class Group extends Actor{
 			pv.parsed=true;
 			attachment.add(pv);
 		}
+
+		banStatus=GroupBanStatus.values()[res.getInt("ban_status")];
+		String _banInfo=res.getString("ban_info");
+		if(StringUtils.isNotEmpty(_banInfo)){
+			banInfo=Utils.gson.fromJson(_banInfo, GroupBanInfo.class);
+		}
 	}
 
 	@Override
@@ -257,6 +267,10 @@ public class Group extends Actor{
 		}
 		if(StringUtils.isNotEmpty(location))
 			obj.addProperty("vcard:Address", location);
+
+		serializerContext.addAlias("toot", JLD.MASTODON);
+		serializerContext.addAlias("suspended", "toot:suspended");
+		obj.addProperty("suspended", banStatus==GroupBanStatus.SUSPENDED);
 
 		return obj;
 	}

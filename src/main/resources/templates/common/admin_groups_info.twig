@@ -31,5 +31,30 @@
 	<h2 class="marginBefore marginAfter">{{ L('admin_group_action_log') }}</h2>
 	{% include "admin_groups_info_log" with {'items': actionLog.list, 'totalItems': actionLog.total, 'paginationOffset': 0, 'paginationPerPage': actionLog.list | length, 'paginationUrlPrefix': "/groups/#{group.id}/ajaxActionLog?offset="} %}
 	{% include "pagination_endless" with {'paginationLinkText': L('admin_show_X_more_group_log', {'count': actionLog.total-(actionLog.list | length)}), 'noScrollEvents': true, 'totalItems': actionLog.total, 'paginationOffset': 0, 'paginationPerPage': actionLog.list | length, 'paginationUrlPrefix': "/groups/#{group.id}/ajaxActionLog?offset="} %}
+	<h2 class="marginBefore marginAfter">{{ L('admin_group_restrictions') }}</h2>
+	<div class="marginBefore marginAfter textByItself">
+		{% if group.banStatus=='NONE' %}
+		{% if group.banInfo is null or not group.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_group_state_no_restrictions') }}</p>{% endif %}
+		{% elseif group.banStatus=='SUSPENDED' %}
+		{% if group.domain is empty %}
+		<p>{{ L('admin_group_state_suspended', {'deletionTime': LD(groupDeletionTime)}) }}</p>
+		{% else %}
+		<p>{{ L('admin_group_state_suspended_foreign') }}</p>
+		{% endif %}
+		{% elseif group.banStatus=='HIDDEN' %}
+		<p>{{ L('admin_group_state_hidden') }}</p>
+		{% elseif group.banStatus=='SELF_DEACTIVATED' %}
+		<p>{{ L('admin_group_state_self_deactivated', {'deletionTime': LD(groupDeletionTime)}) }}</p>
+		{% endif %}
+		{% if group.banInfo is not null %}
+		{% if group.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_group_suspended_remotely') }}</p>{% endif %}
+		<p>{% if banModerator is not null %}<a href="{{ banModerator.profileURL }}">{{ banModerator | name }}</a>, {% endif %}{{ LD(group.banInfo.bannedAt()) }}</p>
+		{% if group.banInfo.message is not empty %}<p>{{ L('admin_group_ban_message') }}: {{ group.banInfo.message }}</p>{% endif %}
+		{% endif %}
+	</div>
+	<a href="/groups/{{ group.id }}/banForm" data-ajax-box class="button">{{ L('admin_group_change_restrictions') }}</a>
+	{% if userPermissions.hasPermission('DELETE_USERS_IMMEDIATE') and (group.banStatus=='SUSPENDED' or group.banStatus=='SELF_DEACTIVATED') and group.domain is empty %}
+	<a href="/groups/{{ group.id }}/deleteImmediatelyForm" data-ajax-box class="button">{{ L('admin_group_delete_now') }}</a>
+	{% endif %}
 </div>
 {% endblock %}

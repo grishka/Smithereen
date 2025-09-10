@@ -5,6 +5,7 @@ import org.jsoup.Jsoup;
 
 import java.net.URI;
 import java.net.URLEncoder;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -32,6 +33,8 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -112,6 +115,13 @@ public class ProfileRoutes{
 				.with("canSeeOthersPosts", canSeeOthers)
 				.with("canMessage", canMessage)
 				.paginate(wall, "/users/"+user.id+"/wall"+(canSeeOthers ? "" : "/own")+"?offset=", null);
+
+		if(user.banStatus!=UserBanStatus.NONE && user.banInfo!=null){
+			if(user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.FROZEN)
+				model.with("accountDeletionTime", user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
+			if(user.banInfo.moderatorID()!=0)
+				needUsers.add(user.banInfo.moderatorID());
+		}
 
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;

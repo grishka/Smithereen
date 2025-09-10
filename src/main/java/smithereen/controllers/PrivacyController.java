@@ -28,6 +28,7 @@ import smithereen.Config;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InaccessibleGroupException;
 import smithereen.exceptions.InaccessibleProfileException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -72,6 +73,11 @@ public class PrivacyController{
 	}
 
 	public void enforceObjectPrivacy(@Nullable User self, @NotNull OwnedContentObject object){
+		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(object);
+		if(oaa.owner() instanceof User user)
+			enforceUserProfileAccess(self, user);
+		else if(oaa.owner() instanceof Group group)
+			enforceUserAccessToGroupProfile(self, group);
 		if(object instanceof Post post){
 			if(post.ownerID<0){
 				Group group=context.getGroupsController().getGroupOrThrow(-post.ownerID);
@@ -113,14 +119,31 @@ public class PrivacyController{
 	}
 
 	public void enforceUserAccessToGroupProfile(@Nullable User self, @NotNull Group group){
+		switch(group.banStatus){
+			case NONE -> {}
+			case SUSPENDED -> {
+				if(!canAccessBannedGroups(self))
+					throw new UserErrorException(group.isEvent() ? "event_banned" : "group_banned");
+			}
+			case HIDDEN -> {
+				if(self==null)
+					throw new InaccessibleGroupException(group);
+			}
+			case SELF_DEACTIVATED -> {
+				if(!canAccessBannedGroups(self))
+					throw new UserErrorException(group.isEvent() ? "event_deactivated" : "group_deactivated");
+			}
+		}
+		if(group.banInfo!=null && group.banInfo.suspendedOnRemoteServer() && !canAccessBannedGroups(self))
+			throw new UserErrorException(group.isEvent() ? "event_banned" : "group_banned");
 		// For closed groups, the profile is still accessible by everyone.
 		// For private groups, the profile is only accessible if you're a member or have a pending invite.
 		if(group.accessType==Group.AccessType.PRIVATE){
 			if(self==null)
-				throw new UserActionNotAllowedException();
+				throw new UserActionNotAllowedException(group.isEvent() ? "event_private_no_access" : "group_private_no_access");
 			Group.MembershipState state=context.getGroupsController().getUserMembershipState(group, self);
 			if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.INVITED)
-				throw new UserActionNotAllowedException();
+				throw new UserActionNotAllowedException(group.isEvent() ? "event_private_no_access" : "group_private_no_access");
 		}
 	}
 
@@ -391,10 +414,6 @@ public class PrivacyController{
 	}
 
 	public void enforcePostPrivacy(@Nullable User self, Post post){
-		if(post.ownerID>0){
-			User owner=context.getUsersController().getUserOrThrow(post.ownerID);
-			enforceUserProfileAccess(self, owner);
-		}
 		if(!checkPostPrivacy(self, post))
 			throw new UserContentUnavailableException();
 	}
@@ -413,6 +432,15 @@ public class PrivacyController{
 			Account account=context.getUsersController().getAccountForUser(self);
 			if(account.roleID!=0)
 				return Config.userRoles.get(account.roleID).hasPermission(UserRole.Permission.MANAGE_USERS);
+		}
+		return false;
+	}
+
+	private boolean canAccessBannedGroups(@Nullable User self){
+		if(self!=null && !(self instanceof ForeignUser)){
+			Account account=context.getUsersController().getAccountForUser(self);
+			if(account.roleID!=0)
+				return Config.userRoles.get(account.roleID).hasPermission(UserRole.Permission.MANAGE_GROUPS);
 		}
 		return false;
 	}

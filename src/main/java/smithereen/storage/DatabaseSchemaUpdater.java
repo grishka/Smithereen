@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=82;
+	public static final int SCHEMA_VERSION=83;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -1066,6 +1066,9 @@ public class DatabaseSchemaUpdater{
 						  KEY `target_id` (`target_id`),
 						  CONSTRAINT `group_staff_notes_ibfk_1` FOREIGN KEY (`target_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 83 -> {
+				conn.createStatement().execute("ALTER TABLE `groups` ADD `ban_status` tinyint unsigned NOT NULL DEFAULT '0', ADD `ban_info` json DEFAULT NULL, ADD KEY `ban_status` (`ban_status`)");
 			}
 		}
 	}

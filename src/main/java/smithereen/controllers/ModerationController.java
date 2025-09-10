@@ -67,6 +67,8 @@ import smithereen.model.Post;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.Server;
@@ -86,6 +88,7 @@ import smithereen.model.reports.ReportedComment;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
 import smithereen.storage.FederationStorage;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.PhotoStorage;
@@ -336,6 +339,24 @@ public class ModerationController{
 			if(banInfo!=null){
 				if(banInfo.expiresAt()!=null)
 					extra.put("expiresAt", banInfo.expiresAt().toEpochMilli());
+				if(StringUtils.isNotEmpty(banInfo.message()))
+					extra.put("message", banInfo.message());
+			}
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.RESOLVE_WITH_ACTION, null, Utils.gson.toJsonTree(extra).getAsJsonObject());
+			updateReportsCounter();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void resolveViolationReport(ViolationReport report, User self, GroupBanStatus status, GroupBanInfo banInfo){
+		try{
+			if(report.state!=ViolationReport.State.OPEN)
+				throw new IllegalArgumentException("Report is not open");
+			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_ACTION_TAKEN);
+			HashMap<String, Object> extra=new HashMap<>();
+			extra.put("status", status);
+			if(banInfo!=null){
 				if(StringUtils.isNotEmpty(banInfo.message()))
 					extra.put("message", banInfo.message());
 			}
@@ -1266,6 +1287,32 @@ public class ModerationController{
 				}
 			}
 			return log;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Group bans
+
+	public void setGroupBanStatus(User self, Group target, GroupBanStatus status, GroupBanInfo info){
+		try{
+			GroupBanStatus prevStatus=target.banStatus;
+			GroupStorage.setGroupBanStatus(target, status, status!=GroupBanStatus.NONE ? Utils.gson.toJson(info) : null);
+			target.banStatus=status;
+			target.banInfo=info;
+			HashMap<String, Object> auditLogArgs=new HashMap<>();
+			auditLogArgs.put("status", status);
+			if(info!=null){
+				if(StringUtils.isNotEmpty(info.message()))
+					auditLogArgs.put("message", info.message());
+				if(info.reportID()>0)
+					auditLogArgs.put("report", info.reportID());
+			}
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.BAN_GROUP, -target.id, 0, null, auditLogArgs);
+			if(!(target instanceof ForeignGroup) && (status==GroupBanStatus.SUSPENDED || prevStatus==GroupBanStatus.SUSPENDED)){
+				context.getActivityPubWorker().sendUpdateGroupActivity(target);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,11 +33,14 @@ import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorWithDescription;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
 import smithereen.model.groups.GroupAdmin;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -47,6 +51,8 @@ import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.board.BoardTopicsSortOrder;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.groups.GroupLink;
 import smithereen.model.groups.GroupLinkParseResult;
@@ -210,8 +216,6 @@ public class GroupsRoutes{
 		if(membershipState!=Group.MembershipState.MEMBER && membershipState!=Group.MembershipState.TENTATIVE_MEMBER){
 			if(group.accessType==Group.AccessType.CLOSED){
 				canAccessContent=false;
-			}else if(group.accessType==Group.AccessType.PRIVATE){
-				throw new UserActionNotAllowedException(group.isEvent() ? "event_private_no_access" : "group_private_no_access");
 			}
 		}
 
@@ -242,6 +246,23 @@ public class GroupsRoutes{
 			adminLevel=null;
 		}
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+
+		if(group.banInfo!=null && group.banInfo.message()!=null && adminLevel!=null && adminLevel.isAtLeast(Group.AdminLevel.MODERATOR)){
+			try{
+				ctx.getPrivacyController().enforceUserAccessToGroupProfile(self.user, group);
+			}catch(UserErrorException x){
+				throw new UserErrorException(l.get(x.getMessage())+"\n\n"+l.get("admin_group_ban_message")+": "+TextProcessor.escapeHTML(group.banInfo.message()));
+			}
+		}else{
+			ctx.getPrivacyController().enforceUserAccessToGroupProfile(self==null ? null : self.user, group);
+		}
+
+		if(group.banStatus!=GroupBanStatus.NONE && group.banInfo!=null){
+			if(group.banStatus==GroupBanStatus.SUSPENDED)
+				model.with("deletionTime", group.banInfo.bannedAt().plus(GroupBanInfo.GROUP_DELETION_DAYS, ChronoUnit.DAYS));
+			if(group.banInfo.moderatorID()!=0)
+				needUsers.add(group.banInfo.moderatorID());
+		}
 
 		// Public info: still visible for non-members in public groups
 		List<User> members=ctx.getGroupsController().getRandomMembersForProfile(group, false);
