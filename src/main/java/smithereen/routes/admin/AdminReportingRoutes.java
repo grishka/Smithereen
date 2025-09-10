@@ -21,6 +21,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
@@ -35,6 +36,8 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.model.admin.ViolationReport;
 import smithereen.model.admin.ViolationReportAction;
 import smithereen.model.comments.Comment;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.reports.ReportableContentObjectID;
@@ -142,8 +145,12 @@ public class AdminReportingRoutes{
 						User targetUser=(User)target;
 						langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
 						links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+report.targetID));
+					}else{
+						Group targetGroup=(Group)target;
+						langArgs.put("targetName", targetGroup!=null ? targetGroup.name : "DELETED");
+						links.put("targetGroup", Map.of("href", targetGroup!=null ? targetGroup.getProfileURL() : "/club"+(-report.targetID)));
 					}
-					yield l.get("admin_audit_log_changed_user_restrictions", langArgs);
+					yield l.get(report.targetID>0 ? "admin_audit_log_changed_user_restrictions" : "admin_audit_log_changed_group_restrictions", langArgs);
 				}
 				case DELETE_CONTENT -> l.get("report_log_deleted_content", langArgs);
 				case CHANGE_REASON -> l.get("report_log_changed_reason", langArgs);
@@ -154,19 +161,35 @@ public class AdminReportingRoutes{
 			return new ViolationReportActionViewModel(a, TextProcessor.substituteLinks(mainText, links), switch(a.actionType()){
 				case COMMENT -> TextProcessor.postprocessPostHTMLForDisplay(a.text(), false, false);
 				case RESOLVE_WITH_ACTION -> {
-					User targetUser=users.get(report.targetID);
-					String statusStr=switch(UserBanStatus.valueOf(a.extra().get("status").getAsString())){
-						case NONE -> l.get("admin_user_state_no_restrictions");
-						case FROZEN -> l.get("admin_user_state_frozen", Map.of("expirationTime", a.extra().has("expiresAt") ? l.formatDate(Instant.ofEpochMilli(a.extra().get("expiresAt").getAsLong()), timeZoneForRequest(req), false) : l.get("email_account_frozen_until_first_login")));
-						case SUSPENDED -> {
-							if(targetUser instanceof ForeignUser)
-								yield l.get("admin_user_state_suspended_foreign");
-							else
-								yield l.get("admin_user_state_suspended", Map.of("deletionTime", l.formatDate(a.time().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
-						}
-						case HIDDEN -> l.get("admin_user_state_hidden");
-						case SELF_DEACTIVATED -> null;
-					};
+					String statusStr;
+					if(report.targetID>0){
+						User targetUser=users.get(report.targetID);
+						statusStr=switch(UserBanStatus.valueOf(a.extra().get("status").getAsString())){
+							case NONE -> l.get("admin_user_state_no_restrictions");
+							case FROZEN -> l.get("admin_user_state_frozen", Map.of("expirationTime", a.extra().has("expiresAt") ? l.formatDate(Instant.ofEpochMilli(a.extra().get("expiresAt").getAsLong()), timeZoneForRequest(req), false) : l.get("email_account_frozen_until_first_login")));
+							case SUSPENDED -> {
+								if(targetUser instanceof ForeignUser)
+									yield l.get("admin_user_state_suspended_foreign");
+								else
+									yield l.get("admin_user_state_suspended", Map.of("deletionTime", l.formatDate(a.time().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
+							}
+							case HIDDEN -> l.get("admin_user_state_hidden");
+							case SELF_DEACTIVATED -> null;
+						};
+					}else{
+						Group targetGroup=groups.get(-report.targetID);
+						statusStr=switch(GroupBanStatus.valueOf(a.extra().get("status").getAsString())){
+							case NONE -> l.get("admin_group_state_no_restrictions");
+							case SUSPENDED -> {
+								if(targetGroup instanceof ForeignGroup)
+									yield l.get("admin_group_state_suspended_foreign");
+								else
+									yield l.get("admin_group_state_suspended", Map.of("deletionTime", l.formatDate(a.time().plus(GroupBanInfo.GROUP_DELETION_DAYS, ChronoUnit.DAYS), timeZoneForRequest(req), false)));
+							}
+							case HIDDEN -> l.get("admin_group_state_hidden");
+							case SELF_DEACTIVATED -> null;
+						};
+					}
 					if(a.extra().has("message")){
 						statusStr+="<br/>"+l.get("admin_user_ban_message")+": "+TextProcessor.escapeHTML(a.extra().get("message").getAsString());
 					}

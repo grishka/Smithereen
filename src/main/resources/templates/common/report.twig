@@ -167,8 +167,18 @@ cur.showReasonMenu=function(el){
 			{% if report.state=='OPEN' %}
 			<a href="/settings/admin/reports/{{ report.id }}/markResolved?csrf={{ csrf }}" class="button" data-ajax>{{ L('report_action_reject') }}</a>
 			{% if canDeleteContent %}<a href="/settings/admin/reports/{{ report.id }}/deleteContentForm" class="button" data-ajax-box>{{ L(isLocalTarget ? 'report_action_delete_content' : 'report_action_delete_content_locally') }}</a>{% endif %}
-			{% if report.targetID>0 %}<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}" class="button" data-ajax-box>{{ L('report_action_limit_user') }}</a>{% endif %}
-			{% if canDeleteContent and report.targetID>0 %}<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}&deleteContent" class="button" data-ajax-box>{{ L('report_action_delete_and_limit') }}</a>{% endif %}
+			{% if report.targetID>0 %}
+			<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}" class="button" data-ajax-box>{{ L('report_action_limit_user') }}</a>
+			{% else %}
+			<a href="/groups/{{ -report.targetID }}/banForm?report={{ report.id }}" class="button" data-ajax-box>{{ L('report_action_limit_group') }}</a>
+			{% endif %}
+			{% if canDeleteContent %}
+			{% if report.targetID>0 %}
+			<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}&deleteContent" class="button" data-ajax-box>{{ L('report_action_delete_and_limit') }}</a>
+			{% else %}
+			<a href="/groups/{{ -report.targetID }}/banForm?report={{ report.id }}&deleteContent" class="button" data-ajax-box>{{ L('report_action_delete_and_limit') }}</a>
+			{% endif %}
+			{% endif %}
 			{% else %}
 			<a href="/settings/admin/reports/{{ report.id }}/markUnresolved?csrf={{ csrf }}" class="button" data-ajax>{{ L('mark_report_unresolved') }}</a>
 			{% endif %}

@@ -225,6 +225,7 @@
   "report_action_delete_content_locally": "Delete content <b>locally</b>…",
   "report_action_reject": "Reject",
   "report_action_limit_user": "Limit user…",
+  "report_action_limit_group": "Limit group",
   "report_action_delete_and_limit": "Delete &amp; limit…",
   "report_state_open": "Open",
   "report_state_resolved": "Resolved",
