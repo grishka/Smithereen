@@ -44,6 +44,7 @@ import smithereen.activitypub.handlers.CreateNoteHandler;
 import smithereen.activitypub.handlers.CreatePhotoAlbumHandler;
 import smithereen.activitypub.handlers.CreatePhotoHandler;
 import smithereen.activitypub.handlers.DeleteActorStatusHandler;
+import smithereen.activitypub.handlers.DeleteGroupHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
 import smithereen.activitypub.handlers.DeletePhotoAlbumHandler;
@@ -239,6 +240,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Undo.class, Invite.class, ForeignGroup.class, new UndoInviteGroupHandler());
 		registerActivityHandler(ForeignGroup.class, Add.class, User.class, new GroupAddPersonHandler());
 		registerActivityHandler(ForeignGroup.class, Remove.class, User.class, new GroupRemovePersonHandler());
+		registerActivityHandler(ForeignGroup.class, Delete.class, ForeignGroup.class, new DeleteGroupHandler());
 
 		registerActivityHandler(Actor.class, Add.class, NoteOrQuestion.class, new AddNoteHandler());
 		registerActivityHandler(Actor.class, Remove.class, NoteOrQuestion.class, new RemoveNoteHandler());

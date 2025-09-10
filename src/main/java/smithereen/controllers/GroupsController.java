@@ -991,6 +991,14 @@ public class GroupsController{
 		}
 	}
 
+	public void deleteForeignGroup(ForeignGroup group){
+		try{
+			GroupStorage.deleteGroup(group);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public static void doPendingGroupDeletions(ApplicationContext ctx){
 		try{
 			List<Group> groups=GroupStorage.getTerminallyBannedGroups();
