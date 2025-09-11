@@ -19,6 +19,14 @@
 		{% if group.domain is not empty %}
 		<div class="itemTitle">{{ L('admin_actor_last_updated') }}:</div>
 		<div>{{ LD(group.lastUpdated) }}</div>
+		{% else %}
+		<div class="itemTitle">{{ L('settings_username') }}:</div>
+		<div>
+			/{{ group.username }}
+			[ <a href="/groups/{{ group.id }}/adminChangeUsernameForm" data-ajax-box>{{ L('change') }}</a> ]
+			{% set defaultUsername=(group.event ? "event" : "club")+group.id %}
+			{% if group.username!=defaultUsername %}[ <a href="/groups/{{ group.id }}/adminConfirmResetUsername" data-confirm-action="/groups/{{ group.id }}/adminChangeUsername?username={{ defaultUsername }}" data-confirm-title="{{ L('admin_reset_username_title') }}" data-confirm-message="{{ L('admin_reset_username_confirm', {'newUsername': defaultUsername}) | forceEscape }}" data-confirm-button="{{ L('admin_username_reset') }}">{{ L('admin_username_reset') }}</a> ]{% endif %}
+		</div>
 		{% endif %}
 	</div>
 	{% if group.domain is not empty %}

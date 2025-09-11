@@ -39,6 +39,12 @@
 			{% endif %}
 			[ <a href="/settings/admin/users?emailDomain={{ account.emailDomain }}">{{ L('admin_others_with_this_domain') }}</a> ]
 		</div>
+		<div class="itemTitle">{{ L('settings_username') }}:</div>
+		<div>
+			/{{ user.username }}
+			[ <a href="/users/{{ user.id }}/adminChangeUsernameForm" data-ajax-box>{{ L('change') }}</a> ]
+			{% if user.username!="id#{user.id}" %}[ <a href="/users/{{ user.id }}/adminConfirmResetUsername" data-confirm-action="/users/{{ user.id }}/adminChangeUsername?username=id{{ user.id }}" data-confirm-title="{{ L('admin_reset_username_title') }}" data-confirm-message="{{ L('admin_reset_username_confirm', {'newUsername': "id"+user.id}) | forceEscape }}" data-confirm-button="{{ L('admin_username_reset') }}">{{ L('admin_username_reset') }}</a> ]{% endif %}
+		</div>
 		<div class="itemTitle">{{ L('role') }}:</div>
 		<div>
 			{%- if account.roleID!=0 %}{{ roleTitle }}{% else %}<i>{{ L('role_none') }}</i>{% endif -%}

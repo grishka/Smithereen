@@ -873,6 +873,7 @@ public class GroupStorage{
 				.executeNoResult();
 
 		group.name=name;
+		group.username=username;
 		new SQLQueryBuilder()
 				.update("qsearch_index")
 				.value("string", getQSearchStringForGroup(group))
@@ -1301,6 +1302,21 @@ public class GroupStorage{
 				.whereIn("ban_status", GroupBanStatus.SELF_DEACTIVATED, GroupBanStatus.SUSPENDED)
 				.andWhere("ap_id IS NULL")
 				.executeAndGetIntList());
+	}
+
+	public static void updateUsername(Group group, String username) throws SQLException{
+		new SQLQueryBuilder()
+				.update("groups")
+				.where("id=?", group.id)
+				.value("username", username)
+				.executeNoResult();
+		group.username=username;
+		new SQLQueryBuilder()
+				.update("qsearch_index")
+				.value("string", getQSearchStringForGroup(group))
+				.where("group_id=?", group.id)
+				.executeNoResult();
+		removeFromCache(group);
 	}
 
 	// region Links

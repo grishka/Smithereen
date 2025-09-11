@@ -45,6 +45,9 @@ public record AuditLogEntry(int id, int adminID, Action action, Instant time, in
 		// Groups
 		BAN_GROUP,
 		DELETE_GROUP,
+
+		CHANGE_USER_USERNAME,
+		CHANGE_GROUP_USERNAME,
 	}
 
 	public enum ObjectType{

@@ -44,50 +44,51 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
-import smithereen.model.Group;
-import smithereen.model.ServerAnnouncement;
-import smithereen.model.ServerRule;
-import smithereen.model.admin.ActorStaffNote;
-import smithereen.model.admin.AdminNotifications;
-import smithereen.model.admin.AuditLogEntry;
-import smithereen.model.admin.EmailDomainBlockRule;
-import smithereen.model.admin.EmailDomainBlockRuleFull;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.admin.GroupActionLogAction;
-import smithereen.model.admin.GroupActionLogEntry;
-import smithereen.model.admin.IPBlockRule;
-import smithereen.model.admin.IPBlockRuleFull;
+import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
-import smithereen.model.board.BoardTopic;
-import smithereen.model.comments.Comment;
-import smithereen.model.comments.CommentableObjectType;
-import smithereen.model.groups.GroupAdmin;
-import smithereen.model.groups.GroupBanInfo;
-import smithereen.model.groups.GroupBanStatus;
-import smithereen.model.photos.Photo;
-import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.Server;
+import smithereen.model.ServerAnnouncement;
+import smithereen.model.ServerRule;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
+import smithereen.model.admin.ActorStaffNote;
+import smithereen.model.admin.AdminNotifications;
+import smithereen.model.admin.AuditLogEntry;
+import smithereen.model.admin.EmailDomainBlockRule;
+import smithereen.model.admin.EmailDomainBlockRuleFull;
+import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.admin.GroupActionLogEntry;
+import smithereen.model.admin.IPBlockRule;
+import smithereen.model.admin.IPBlockRuleFull;
 import smithereen.model.admin.UserRole;
 import smithereen.model.admin.ViolationReport;
 import smithereen.model.admin.ViolationReportAction;
+import smithereen.model.board.BoardTopic;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.photos.Photo;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.reports.ReportableContentObjectID;
 import smithereen.model.reports.ReportedComment;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
+import smithereen.storage.DatabaseUtils;
 import smithereen.storage.FederationStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorage;
@@ -865,6 +866,18 @@ public class ModerationController{
 		}
 	}
 
+	public void updateUserUsername(User self, User target, String username){
+		String oldUsername=target.username;
+		context.getUsersController().updateUsername(target, username);
+		if(StringUtils.isEmpty(username))
+			username="id"+target.id;
+		try{
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CHANGE_USER_USERNAME, target.id, 0, null, Map.of("old", oldUsername, "new", username));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	// endregion
 	// region Actor staff notes
 
@@ -1331,6 +1344,31 @@ public class ModerationController{
 			if(!(target instanceof ForeignGroup) && (status==GroupBanStatus.SUSPENDED || prevStatus==GroupBanStatus.SUSPENDED)){
 				context.getActivityPubWorker().sendUpdateGroupActivity(target);
 			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateGroupUsername(User self, Group target, String username){
+		String oldUsername=target.username;
+		try{
+			String defaultUsername=(target.isEvent() ? "event" : "club")+target.id;
+			if(StringUtils.isEmpty(username))
+				username=defaultUsername;
+			if(!Utils.isValidUsername(username))
+				throw new UserErrorException("err_group_invalid_username");
+			if(Utils.isReservedUsername(username) && !username.equals(defaultUsername))
+				throw new UserErrorException("err_group_reserved_username");
+			String finalUsername=username;
+			boolean result=DatabaseUtils.runWithUniqueUsername(username, ()->{
+				GroupStorage.updateUsername(target, finalUsername);
+			});
+			if(!result)
+				throw new UserErrorException("err_group_username_taken");
+			target.username=username;
+			target.url=Config.localURI(username);
+			context.getActivityPubWorker().sendUpdateGroupActivity(target);
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CHANGE_GROUP_USERNAME, -target.id, 0, null, Map.of("old", oldUsername, "new", username));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

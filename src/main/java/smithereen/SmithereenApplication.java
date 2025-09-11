@@ -663,6 +663,9 @@ public class SmithereenApplication{
 			postRequiringPermissionWithCSRF("/addStaffNote", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::userStaffNoteAdd);
 			getRequiringPermission("/staffNotes/:noteID/confirmDelete", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::userStaffNoteConfirmDelete);
 			postRequiringPermissionWithCSRF("/staffNotes/:noteID/delete", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::userStaffNoteDelete);
+			getRequiringPermission("/adminChangeUsernameForm", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::changeUserUsernameForm);
+			postRequiringPermissionWithCSRF("/adminChangeUsername", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::changeUserUsername);
+			getRequiringPermission("/adminConfirmResetUsername", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::confirmResetUserUsername);
 
 			get("/hoverCard", ProfileRoutes::mentionHoverCard);
 
@@ -776,6 +779,9 @@ public class SmithereenApplication{
 			postRequiringPermissionWithCSRF("/ban", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::banGroup);
 			getRequiringPermission("/deleteImmediatelyForm", UserRole.Permission.DELETE_USERS_IMMEDIATE, AdminGroupsRoutes::deleteGroupImmediatelyForm);
 			postRequiringPermissionWithCSRF("/deleteImmediately", UserRole.Permission.DELETE_USERS_IMMEDIATE, AdminGroupsRoutes::deleteGroupImmediately);
+			getRequiringPermission("/adminChangeUsernameForm", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::changeGroupUsernameForm);
+			postRequiringPermissionWithCSRF("/adminChangeUsername", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::changeGroupUsername);
+			getRequiringPermission("/adminConfirmResetUsername", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::confirmResetGroupUsername);
 
 			getWithCSRF("/addBookmark", BookmarksRoutes::addGroupBookmark);
 			getWithCSRF("/removeBookmark", BookmarksRoutes::removeGroupBookmark);

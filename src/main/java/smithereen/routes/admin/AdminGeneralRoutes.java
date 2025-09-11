@@ -285,6 +285,12 @@ public class AdminGeneralRoutes{
 					links.put("targetUser", Map.of("href", "/id"+le.ownerID()));
 					yield l.get("admin_audit_log_deleted_user_account", langArgs);
 				}
+				case CHANGE_USER_USERNAME -> {
+					User targetUser=users.get(le.ownerID());
+					langArgs.put("targetName", targetUser!=null ? targetUser.getFirstLastAndGender() : "DELETED");
+					links.put("targetUser", Map.of("href", targetUser!=null ? targetUser.getProfileURL() : "/id"+le.ownerID()));
+					yield l.get("admin_audit_log_changed_user_username", langArgs);
+				}
 
 				case CREATE_EMAIL_DOMAIN_RULE -> {
 					langArgs.put("domain", le.extra().get("domain"));
@@ -334,13 +340,19 @@ public class AdminGeneralRoutes{
 				case BAN_GROUP -> {
 					Group targetGroup=groups.get(-le.ownerID());
 					langArgs.put("targetName", targetGroup!=null ? targetGroup.name : "DELETED");
-					links.put("targetUser", Map.of("href", targetGroup!=null ? targetGroup.getProfileURL() : "/id"+le.ownerID()));
+					links.put("targetGroup", Map.of("href", targetGroup!=null ? targetGroup.getProfileURL() : "/club"+(-le.ownerID())));
 					yield l.get("admin_audit_log_changed_group_restrictions", langArgs);
 				}
 				case DELETE_GROUP -> {
 					langArgs.put("targetName", le.extra().get("name"));
 					links.put("targetGroup", Map.of("href", "/club"+(-le.ownerID())));
 					yield l.get("admin_audit_log_deleted_group", langArgs);
+				}
+				case CHANGE_GROUP_USERNAME -> {
+					Group targetGroup=groups.get(-le.ownerID());
+					langArgs.put("targetName", targetGroup!=null ? targetGroup.name : "DELETED");
+					links.put("targetGroup", Map.of("href", targetGroup!=null ? targetGroup.getProfileURL() : "/club"+(-le.ownerID())));
+					yield l.get("admin_audit_log_changed_group_username", langArgs);
 				}
 			};
 			String extraText=switch(le.action()){
@@ -417,6 +429,7 @@ public class AdminGeneralRoutes{
 					}
 					yield statusStr;
 				}
+				case CHANGE_USER_USERNAME, CHANGE_GROUP_USERNAME -> "<i>"+le.extra().get("old")+" &rarr; "+le.extra().get("new")+"</i>";
 
 				case CREATE_EMAIL_DOMAIN_RULE, DELETE_EMAIL_DOMAIN_RULE -> "<i>"+l.get("admin_rule_action")+": "+l.get(EmailDomainBlockRule.Action.valueOf((String)le.extra().get("action")).getLangKey())+"</i>";
 				case UPDATE_EMAIL_DOMAIN_RULE -> "<i>"+l.get("admin_rule_action")+": "

@@ -504,4 +504,39 @@ public class AdminUsersRoutes{
 
 		return model;
 	}
+
+	public static Object changeUserUsernameForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		User target=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_change_username_form", req)
+				.with("target", target);
+		return wrapForm(req, resp, "admin_change_username_form", "/users/"+target.id+"/adminChangeUsername", lang(req).get("admin_change_username_title"), "settings_change_username", model);
+	}
+
+	public static Object changeUserUsername(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "username");
+		String username=req.queryParams("username").trim();
+		User target=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		try{
+			ctx.getModerationController().updateUserUsername(self.user, target, username);
+			if(isAjax(req))
+				return new WebDeltaResponse(resp).refresh();
+			resp.redirect(back(req));
+			return "";
+		}catch(UserErrorException x){
+			if(isAjax(req)){
+				return new WebDeltaResponse(resp)
+						.keepBox()
+						.show("formMessage_changeUsername")
+						.setContent("formMessage_changeUsername", lang(req).get(x.getMessage()));
+			}
+			throw x;
+		}
+	}
+
+	public static Object confirmResetUserUsername(Request req, Response resp, Account self, ApplicationContext ctx){
+		User target=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		Lang l=lang(req);
+		String newUsername="id"+target.id;
+		return wrapConfirmation(req, resp, l.get("admin_reset_username_title"), l.get("admin_reset_username_confirm", Map.of("newUsername", newUsername)), "/users/"+target.id+"/adminChangeUsername?username="+newUsername);
+	}
 }

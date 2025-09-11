@@ -397,5 +397,11 @@
   "admin_group_deleted_successfully": "Группа успешно удалена",
   "admin_audit_log_deleted_group": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} группу <a id=\"targetGroup\">{targetName}</a>",
   "admin_user_managed_groups": "Админ. группы",
-  "admin_user_managed_events": "Админ. встречи"
+  "admin_user_managed_events": "Админ. встречи",
+  "admin_username_reset": "Сбросить",
+  "admin_audit_log_changed_user_username": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} адрес страницы <a id=\"targetUser\">{targetName, inflect, dative}</a>",
+  "admin_audit_log_changed_group_username": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} адрес страницы группе \"<a id=\"targetGroup\">{targetName}</a>\"",
+  "admin_change_username_title": "Изменение адреса страницы",
+  "admin_reset_username_title": "Сброс адреса страницы",
+  "admin_reset_username_confirm": "Вы действительно хотите сбросить адрес страницы на <b>{newUsername}</b>?"
 }

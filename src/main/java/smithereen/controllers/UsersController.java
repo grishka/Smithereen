@@ -513,12 +513,15 @@ public class UsersController{
 
 	public void updateUsername(User self, String username){
 		try{
+			if(StringUtils.isEmpty(username))
+				username="id"+self.id;
 			if(!Utils.isValidUsername(username))
 				throw new UserErrorException("err_reg_invalid_username");
-			if(Utils.isReservedUsername(username))
+			if(Utils.isReservedUsername(username) && !username.equals("id"+self.id))
 				throw new UserErrorException("err_reg_reserved_username");
+			String finalUsername=username;
 			boolean result=DatabaseUtils.runWithUniqueUsername(username, ()->{
-				UserStorage.updateUsername(self, username);
+				UserStorage.updateUsername(self, finalUsername);
 			});
 			if(!result)
 				throw new UserErrorException("err_reg_username_taken");
