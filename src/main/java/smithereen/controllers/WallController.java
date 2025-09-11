@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 import static smithereen.Utils.ensureUserNotBlocked;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
@@ -823,7 +824,12 @@ public class WallController{
 
 	private void deletePostInternal(@NotNull User self, Post post, boolean ignorePermissions){
 		try{
-			OwnerAndAuthor oaa=getContentAuthorAndOwner(post);
+			OwnerAndAuthor oaa;
+			try{
+				oaa=getContentAuthorAndOwner(post);
+			}catch(ObjectNotFoundException x){
+				oaa=new OwnerAndAuthor(null, null);
+			}
 			if(!ignorePermissions){
 				context.getPrivacyController().enforceObjectPrivacy(self, post);
 				if(post.ownerID!=self.id && post.authorID!=self.id){ // Can always delete own posts and others' posts on own wall
@@ -841,10 +847,12 @@ public class WallController{
 			}
 			User deleteActor=self;
 			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
-			if(ignorePermissions && oaa.author().id!=self.id && !post.isGroupOwner() && post.ownerID!=self.id && !(oaa.author() instanceof ForeignUser)){
+			if(ignorePermissions && post.authorID!=self.id && !post.isGroupOwner() && post.ownerID!=self.id && !(oaa.author() instanceof ForeignUser)){
 				deleteActor=oaa.author();
 			}
-			context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
+			if(oaa.author()!=null && Config.isLocal(post.getActivityPubID())){
+				context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
+			}
 
 			if(post.isLocal() && post.attachments!=null){
 				MediaStorage.deleteMediaFileReferences(post.id, MediaFileReferenceType.WALL_ATTACHMENT);

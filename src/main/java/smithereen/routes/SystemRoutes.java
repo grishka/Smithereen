@@ -594,9 +594,12 @@ public class SystemRoutes{
 					post=ctx.getWallController().getPostOrThrow(post.repostOf);
 					rawID=post.id+"";
 				}
-				User postAuthor=ctx.getUsersController().getUserOrThrow(post.authorID);
+				User postAuthor=null;
+				try{
+					postAuthor=ctx.getUsersController().getUserOrThrow(post.authorID);
+				}catch(ObjectNotFoundException ignore){}
 				actorForAvatar=postAuthor;
-				title=postAuthor.getCompleteName();
+				title=postAuthor==null ? "DELETED" : postAuthor.getCompleteName();
 				subtitle=TextProcessor.truncateOnWordBoundary(post.text, 200);
 				boxTitle=l.get(post.getReplyLevel()>0 ? "report_title_comment" : "report_title_post");
 				titleText=l.get(post.getReplyLevel()>0 ? "report_text_comment" : "report_text_post");
@@ -637,9 +640,12 @@ public class SystemRoutes{
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
 				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
 				ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
-				User user=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				User user=null;
+				try{
+					user=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				}catch(ObjectNotFoundException ignore){}
 				actorForAvatar=user;
-				title=user.getCompleteName();
+				title=user==null ? "DELETED" : user.getCompleteName();
 				subtitle=photo.description;
 				boxTitle=l.get("report_title_photo");
 				titleText=l.get("report_text_photo");
@@ -649,9 +655,12 @@ public class SystemRoutes{
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.COMMENT);
 				Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(id);
 				ctx.getPrivacyController().enforceObjectPrivacy(self.user, comment);
-				User user=ctx.getUsersController().getUserOrThrow(comment.authorID);
+				User user=null;
+				try{
+					user=ctx.getUsersController().getUserOrThrow(comment.authorID);
+				}catch(ObjectNotFoundException ignore){}
 				actorForAvatar=user;
-				title=user.getCompleteName();
+				title=user==null ? "DELETED" : user.getCompleteName();
 				subtitle=TextProcessor.truncateOnWordBoundary(comment.text, 200);
 				boxTitle=l.get("report_title_comment");
 				titleText=l.get("report_text_comment");
@@ -705,7 +714,11 @@ public class SystemRoutes{
 				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
 				content=List.of(post);
-				target=ctx.getUsersController().getUserOrThrow(post.authorID);
+				try{
+					target=ctx.getUsersController().getUserOrThrow(post.authorID);
+				}catch(ObjectNotFoundException x){
+					target=null;
+				}
 			}
 			case "user" -> {
 				int id=safeParseInt(rawID);
@@ -727,7 +740,11 @@ public class SystemRoutes{
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
 				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
 				ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
-				target=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				try{
+					target=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				}catch(ObjectNotFoundException x){
+					target=null;
+				}
 				content=List.of(photo);
 			}
 			case "comment" -> {
@@ -735,7 +752,11 @@ public class SystemRoutes{
 				Comment commentObj=ctx.getCommentsController().getCommentIgnoringPrivacy(id);
 				ctx.getPrivacyController().enforceObjectPrivacy(self.user, commentObj);
 				content=List.of(commentObj);
-				target=ctx.getUsersController().getUserOrThrow(commentObj.authorID);
+				try{
+					target=ctx.getUsersController().getUserOrThrow(commentObj.authorID);
+				}catch(ObjectNotFoundException x){
+					target=null;
+				}
 			}
 			default -> throw new BadRequestException("invalid type");
 		}

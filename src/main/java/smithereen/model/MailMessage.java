@@ -170,6 +170,21 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 		return new ReportableContentObjectID(ReportableContentObjectType.MESSAGE, XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE));
 	}
 
+	@Override
+	public int getOwnerID(){
+		return ownerID;
+	}
+
+	@Override
+	public int getAuthorID(){
+		return senderID;
+	}
+
+	@Override
+	public long getObjectID(){
+		return id;
+	}
+
 	public enum ParentObjectType{
 		MESSAGE,
 		POST;

@@ -274,7 +274,8 @@ public class AdminReportingRoutes{
 		model.with("report", report);
 		model.with("users", users).with("groups", groups);
 		model.with("posts", posts).with("messages", messages).with("photos", photos).with("comments", comments);
-		model.with("canDeleteContent", (!posts.isEmpty() || !messages.isEmpty() || !photos.isEmpty() || !comments.isEmpty()) && target!=null);
+		model.with("canDeleteContent", !posts.isEmpty() || !messages.isEmpty() || !photos.isEmpty() || !comments.isEmpty());
+		model.with("canBanTarget", target!=null);
 		model.with("actions", actionViewModels);
 		model.with("content", contentForTemplate);
 		model.with("isLocalTarget", target!=null && StringUtils.isEmpty(target.domain));

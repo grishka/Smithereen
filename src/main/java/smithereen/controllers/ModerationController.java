@@ -120,7 +120,7 @@ public class ModerationController{
 
 	// region Reporting
 
-	public int createViolationReport(User self, Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, boolean forward){
+	public int createViolationReport(User self, @Nullable Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, boolean forward){
 		int reportID=createViolationReportInternal(self, target, content, reason, rules, comment, null);
 		if(forward && (target instanceof ForeignGroup || target instanceof ForeignUser)){
 			ArrayList<URI> objectIDs=new ArrayList<>();
@@ -136,15 +136,24 @@ public class ModerationController{
 		createViolationReportInternal(self, target, content, ViolationReport.Reason.OTHER, null, comment, otherServerDomain);
 	}
 
-	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, String otherServerDomain){
+	private int createViolationReportInternal(@Nullable User self, @Nullable Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, String otherServerDomain){
 		try{
-			int targetID=target.getOwnerID();
+			int targetID;
+			if(target!=null){
+				targetID=target.getOwnerID();
+			}else if(content!=null && !content.isEmpty()){
+				targetID=content.getFirst().getAuthorID();
+			}else{
+				throw new IllegalArgumentException("Either target actor or non-empty content required");
+			}
 
 			HashSet<Long> contentFileIDs=new HashSet<>();
 			JsonArray contentJson;
 			if(content!=null && !content.isEmpty()){
 				JsonArrayBuilder ab=new JsonArrayBuilder();
 				for(ReportableContentObject obj:content){
+					if(obj.getAuthorID()!=targetID)
+						continue;
 					JsonObject jo=obj.serializeForReport(targetID, contentFileIDs);
 					if(jo!=null){
 						if(obj instanceof Comment c && c.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
