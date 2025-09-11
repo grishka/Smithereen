@@ -899,10 +899,15 @@ public class WallController{
 			owner=context.getGroupsController().getGroupOrThrow(-ownerID);
 		else
 			owner=context.getUsersController().getUserOrThrow(ownerID);
-		if(authorID!=0)
-			author=context.getUsersController().getUserOrThrow(authorID);
-		else
+		if(authorID!=0){
+			try{
+				author=context.getUsersController().getUserOrThrow(authorID);
+			}catch(ObjectNotFoundException x){
+				author=null;
+			}
+		}else{
 			author=null;
+		}
 		return new OwnerAndAuthor(owner, author);
 	}
 
