@@ -1127,7 +1127,7 @@ public class GroupsRoutes{
 	public static Object addLinkForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		requireQueryParams(req, "url");
-		String rawURL=req.queryParams("url");
+		String rawURL=req.queryParams("url").trim().replace(" ", "%20");
 		if(!rawURL.startsWith("https:") && !rawURL.startsWith("http:"))
 			rawURL="https://"+rawURL;
 		URI url;

@@ -896,7 +896,7 @@ public class GroupsController{
 				throw new UserErrorException("group_link_error");
 			}
 		}catch(Exception x){
-			if(Config.isLocal(url)){ // Explicitly allow any local links
+			if(url.getHost()!=null && Config.isLocal(url)){ // Explicitly allow any local links
 				return new GroupLinkParseResult(null, url.toString(), null, null);
 			}
 			throw new UserErrorException("group_link_error", x);
