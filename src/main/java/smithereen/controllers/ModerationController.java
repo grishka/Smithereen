@@ -67,6 +67,7 @@ import smithereen.model.Post;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupBanInfo;
 import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.photos.Photo;
@@ -851,6 +852,14 @@ public class ModerationController{
 	public void clearUserBanStatus(Account self){
 		try{
 			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.NONE, null);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<GroupAdmin> getUserManagedGroups(User user){
+		try{
+			return GroupStorage.getUserManagedGroupsWithLevels(user.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

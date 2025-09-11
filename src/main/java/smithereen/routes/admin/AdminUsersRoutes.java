@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
@@ -21,6 +22,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ForeignUser;
+import smithereen.model.Group;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
@@ -32,6 +34,7 @@ import smithereen.model.admin.ActorStaffNote;
 import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.UserRole;
 import smithereen.model.admin.ViolationReport;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.CommentViewModel;
@@ -198,6 +201,12 @@ public class AdminUsersRoutes{
 		model.pageTitle(lang(req).get("admin_manage_user")+" | "+user.getFullName())
 				.headerBack(user);
 		model.with("staffNoteCount", ctx.getModerationController().getActorStaffNoteCount(user));
+		List<GroupAdmin> managedGroups=ctx.getModerationController().getUserManagedGroups(user);
+		Set<Integer> needGroups=managedGroups.stream().map(ga->ga.groupID).collect(Collectors.toSet());
+		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(needGroups);
+		model.with("groups", groups);
+		model.with("managedGroups", managedGroups.stream().filter(ga->!groups.get(ga.groupID).isEvent()).toList());
+		model.with("managedEvents", managedGroups.stream().filter(ga->groups.get(ga.groupID).isEvent()).toList());
 		return model;
 	}
 

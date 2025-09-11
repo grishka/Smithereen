@@ -750,6 +750,14 @@ public class GroupStorage{
 				.executeAndGetSingleObject(GroupAdmin::fromResultSet);
 	}
 
+	public static List<GroupAdmin> getUserManagedGroupsWithLevels(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("group_admins")
+				.where("user_id=?", userID)
+				.executeAsStream(GroupAdmin::fromResultSet)
+				.toList();
+	}
+
 	public static void addOrUpdateGroupAdmin(int groupID, int userID, String title, @Nullable Group.AdminLevel level) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			synchronized(adminUpdateLock){

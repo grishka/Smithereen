@@ -69,6 +69,24 @@
 		<div class="itemTitle">{{ L('admin_actor_last_updated') }}:</div>
 		<div>{{ LD(user.lastUpdated) }}</div>
 		{% endif %}
+		{% if managedGroups is not empty %}
+		<div class="itemTitle">{{ L('admin_user_managed_groups') }}:</div>
+		<div>
+		{% for mg in managedGroups %}
+		{% set group=groups[mg.groupID] %}
+		<a href="{{ profileURL(-mg.groupID) }}" style="{% if mg.level=='OWNER' %}font-weight: bold;{% endif %}{% if group.banStatus=='SUSPENDED' or group.banInfo.suspendedOnRemoteServer %}text-decoration: line-through;{% endif %}">{{ group | name }}</a>{% if group.accessType!='OPEN' %}<span class="privatePostLockIcon"></span>{% endif %}{% if not loop.last %}, {% endif %}
+		{% endfor %}
+		</div>
+		{% endif %}
+		{% if managedEvents is not empty %}
+		<div class="itemTitle">{{ L('admin_user_managed_events') }}:</div>
+		<div>
+		{% for mg in managedEvents %}
+		{% set group=groups[mg.groupID] %}
+		<a href="{{ profileURL(-mg.groupID) }}" style="{% if mg.level=='OWNER' %}font-weight: bold;{% endif %}{% if group.banStatus=='SUSPENDED' or group.banInfo.suspendedOnRemoteServer %}text-decoration: line-through;{% endif %}">{{ group | name }}</a>{% if group.accessType!='OPEN' %}<span class="privatePostLockIcon"></span>{% endif %}{% if not loop.last %}, {% endif %}
+		{% endfor %}
+		</div>
+		{% endif %}
 	</div>
 	{% if account is null %}
 	<div class="marginBefore marginAfter">

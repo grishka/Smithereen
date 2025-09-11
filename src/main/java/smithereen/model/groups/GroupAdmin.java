@@ -13,6 +13,7 @@ public class GroupAdmin{
 	public Group.AdminLevel level;
 	public String title;
 	public int displayOrder;
+	public int groupID;
 
 	public URI activityPubUserID;
 
@@ -22,6 +23,7 @@ public class GroupAdmin{
 		admin.userID=res.getInt("user_id");
 		admin.title=res.getString("title");
 		admin.displayOrder=res.getInt("display_order");
+		admin.groupID=res.getInt("group_id");
 		return admin;
 	}
 }
