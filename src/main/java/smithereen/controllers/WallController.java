@@ -74,6 +74,7 @@ import spark.utils.StringUtils;
 
 public class WallController{
 	private static final Logger LOG=LoggerFactory.getLogger(WallController.class);
+	public static final int MAX_PINNED_POSTS=5;
 
 	private final ApplicationContext context;
 
@@ -1027,8 +1028,17 @@ public class WallController{
 
 	public void pinPost(Post post, boolean keepPrevious){
 		try{
+			User author=context.getUsersController().getUserOrThrow(post.authorID);
+			if(!keepPrevious && !(author instanceof ForeignUser)){
+				List<Post> currentPosts=PostStorage.getPinnedPosts(post.authorID);
+				for(Post oldPost:currentPosts){
+					context.getActivityPubWorker().sendUnpinPostActivity(author, oldPost);
+				}
+			}
 			PostStorage.pinPost(post.authorID, post.id, keepPrevious);
-			// TODO federate
+			if(!(author instanceof ForeignUser)){
+				context.getActivityPubWorker().sendPinPostActivity(author, post);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -1037,7 +1047,18 @@ public class WallController{
 	public void unpinPost(Post post){
 		try{
 			PostStorage.unpinPost(post.authorID, post.id);
-			// TODO federate
+			User author=context.getUsersController().getUserOrThrow(post.authorID);
+			if(!(author instanceof ForeignUser)){
+				context.getActivityPubWorker().sendUnpinPostActivity(author, post);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void clearPinnedPosts(User owner){
+		try{
+			PostStorage.clearPinnedPosts(owner.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

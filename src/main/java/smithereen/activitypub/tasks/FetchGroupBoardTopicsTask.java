@@ -9,7 +9,7 @@ import java.util.Set;
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
-import smithereen.activitypub.objects.CollectionPage;
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.model.ForeignGroup;
 import smithereen.model.board.BoardTopic;
@@ -30,7 +30,7 @@ public class FetchGroupBoardTopicsTask extends ForwardPaginatingCollectionTask{
 	}
 
 	@Override
-	protected void doOneCollectionPage(CollectionPage page){
+	protected void doOneCollectionPage(ActivityPubCollection page){
 		try{
 			int i=0;
 			for(LinkOrObject lo:page.items){

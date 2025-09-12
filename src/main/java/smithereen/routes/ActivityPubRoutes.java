@@ -204,7 +204,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Announce.class, NoteOrQuestion.class, new AnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Announce.class, NoteOrQuestion.class, new UndoAnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Update.class, NoteOrQuestion.class, new UpdateNoteHandler());
-		registerActivityHandler(ForeignUser.class, Delete.class, NoteOrQuestion.class, new DeleteNoteHandler());
+		registerActivityHandler(Actor.class, Delete.class, NoteOrQuestion.class, new DeleteNoteHandler());
 		registerActivityHandler(Actor.class, Reject.class, Add.class, NoteOrQuestion.class, new RejectAddNoteHandler());
 		registerActivityHandler(ForeignUser.class, Read.class, NoteOrQuestion.class, new ReadNoteHandler());
 		registerActivityHandler(ForeignUser.class, QuoteRequest.class, NoteOrQuestion.class, new QuoteRequestNoteHandler());
@@ -1016,7 +1016,8 @@ public class ActivityPubRoutes{
 					}else{
 						collectionOwner=null;
 					}
-					aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false, collectionOwner, true);
+					boolean allowFetching=activity instanceof Announce || activity instanceof Add || activity instanceof Invite;
+					aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, allowFetching, !allowFetching, false, collectionOwner, true);
 				}
 			}
 			for(ActivityTypeHandlerRecord r:typeHandlers){
@@ -1131,6 +1132,16 @@ public class ActivityPubRoutes{
 		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, offset, count);
 		Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(photos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(photos.list.stream().map(p->p.apID==null ? new LinkOrObject(ActivityPubPhoto.fromNativePhoto(p, albums.get(p.albumID), ctx)) : new LinkOrObject(p.apID)).toList(), photos.total);
+	}
+
+	public static Object userPinnedPosts(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		User user=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		List<NoteOrQuestion> posts=ctx.getWallController().getPinnedPosts(null, user).stream().map(p->NoteOrQuestion.fromNativePost(p, ctx)).toList();
+		ActivityPubCollection collection=new ActivityPubCollection(true);
+		collection.items=posts.stream().map(LinkOrObject::new).toList();
+		collection.totalItems=posts.size();
+		return collection;
 	}
 
 	public static Object serviceActor(Request req, Response resp){

@@ -11,6 +11,7 @@ import java.util.List;
 import smithereen.activitypub.ActivityForwardingUtils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Delete;
@@ -21,18 +22,20 @@ import smithereen.model.Post;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.storage.MailStorage;
+import smithereen.storage.MediaStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
 
-public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, NoteOrQuestion>{
+public class DeleteNoteHandler extends ActivityTypeHandler<Actor, Delete, NoteOrQuestion>{
 	private static final Logger LOG=LoggerFactory.getLogger(DeleteNoteHandler.class);
 
 	@Override
-	public void handle(ActivityHandlerContext context, ForeignUser actor, Delete activity, NoteOrQuestion post) throws SQLException{
+	public void handle(ActivityHandlerContext context, Actor actor, Delete activity, NoteOrQuestion post) throws SQLException{
 		Object nativeObj;
 		try{
 			nativeObj=context.appContext.getObjectLinkResolver().resolveNative(post.activityPubID, Object.class, false, false, false, (JsonObject) null, false);
@@ -42,17 +45,20 @@ public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, 
 		}
 		if(nativeObj instanceof Post nativePost){
 			handleForPost(nativePost, actor, context);
-		}else if(nativeObj instanceof MailMessage msg){
-			handleForMessage(msg, actor, context);
+		}else if(nativeObj instanceof MailMessage msg && actor instanceof ForeignUser user){
+			handleForMessage(msg, user, context);
 		}else if(nativeObj instanceof Comment comment){
 			handleForComment(comment, actor, context);
 		}
 	}
 
-	private void handleForPost(Post nativePost, ForeignUser actor, ActivityHandlerContext context) throws SQLException{
+	private void handleForPost(Post nativePost, Actor actor, ActivityHandlerContext context) throws SQLException{
 		if(nativePost.canBeManagedBy(actor)){
 			PostStorage.deletePost(nativePost.id);
 			NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.POST, nativePost.id);
+			if(nativePost.isLocal() && nativePost.attachments!=null){
+				MediaStorage.deleteMediaFileReferences(nativePost.id, MediaFileReferenceType.WALL_ATTACHMENT);
+			}
 			if(nativePost.getReplyLevel()>0){
 				Post topLevel=PostStorage.getPostByID(nativePost.replyKey.get(0), false);
 				if(topLevel!=null && topLevel.isLocal()){
@@ -86,7 +92,7 @@ public class DeleteNoteHandler extends ActivityTypeHandler<ForeignUser, Delete, 
 		});
 	}
 
-	private void handleForComment(Comment comment, ForeignUser actor, ActivityHandlerContext context){
+	private void handleForComment(Comment comment, Actor actor, ActivityHandlerContext context){
 		boolean needForward=true;
 		if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC)
 			needForward=context.appContext.getBoardController().getTopicIgnoringPrivacy(comment.parentObjectID.id()).firstCommentID!=comment.id;

@@ -76,6 +76,7 @@ public class JLDProcessor{
 		lc.addProperty("blurhash", "toot:blurhash");
 		lc.addProperty("votersCount", "toot:votersCount");
 		lc.addProperty("suspended", "toot:suspended");
+		lc.add("featured", idAndTypeObject("toot:featured", "@id"));
 
 		// Misskey quote-reposts
 		lc.add("_misskey_quote", idAndTypeObject(JLD.MISSKEY+"_misskey_quote", "@id"));

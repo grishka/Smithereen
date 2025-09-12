@@ -5,7 +5,7 @@ import java.sql.SQLException;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.activitypub.ActivityPubWorker;
-import smithereen.activitypub.objects.CollectionPage;
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.ForeignGroup;
 import smithereen.storage.GroupStorage;
@@ -23,7 +23,7 @@ public class FetchGroupMembersTask extends ForwardPaginatingCollectionTask{
 	}
 
 	@Override
-	protected void doOneCollectionPage(CollectionPage page){
+	protected void doOneCollectionPage(ActivityPubCollection page){
 		apw.invokeAll(page.items.stream()
 				.filter(lo->lo.link!=null && !Config.isLocal(lo.link))
 				.map(lo->new FetchAndStoreOneGroupMemberTask(context, group, lo.link, tentative))

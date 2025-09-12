@@ -4,22 +4,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
-import smithereen.activitypub.objects.CollectionPage;
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.controllers.PhotosController;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
-import smithereen.storage.utils.Pair;
 
 public class FetchBoardTopicCommentsTask extends ForwardPaginatingCollectionTask{
 	private static final Logger LOG=LoggerFactory.getLogger(FetchBoardTopicCommentsTask.class);
@@ -49,7 +45,7 @@ public class FetchBoardTopicCommentsTask extends ForwardPaginatingCollectionTask
 	}
 
 	@Override
-	protected void doOneCollectionPage(CollectionPage page){
+	protected void doOneCollectionPage(ActivityPubCollection page){
 		try{
 			for(LinkOrObject lo:page.items){
 				NoteOrQuestion comment;

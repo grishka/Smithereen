@@ -23,6 +23,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.notifications.Notification;
 import smithereen.model.reports.ReportableContentObject;
@@ -97,10 +98,10 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		return replyKey.get(level);
 	}
 
-	public boolean canBeManagedBy(User user){
-		if(user==null)
+	public boolean canBeManagedBy(Actor actor){
+		if(actor==null)
 			return false;
-		return ownerID==user.id || authorID==user.id;
+		return ownerID==actor.getOwnerID() || authorID==actor.getOwnerID();
 	}
 
 	@Override

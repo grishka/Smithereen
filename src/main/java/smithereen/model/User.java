@@ -539,6 +539,9 @@ public class User extends Actor{
 		serializerContext.addAlias("suspended", "toot:suspended");
 		obj.addProperty("suspended", banStatus==UserBanStatus.SUSPENDED);
 
+		serializerContext.addType("featured", "toot:featured", "@id");
+		obj.addProperty("featured", getPinnedPostsURL().toString());
+
 		return obj;
 	}
 
@@ -694,6 +697,10 @@ public class User extends Actor{
 
 	public URI getTaggedPhotosURL(){
 		return Config.localURI("/users/"+id+"/tagged");
+	}
+
+	public URI getPinnedPostsURL(){
+		return Config.localURI("/users/"+id+"/pinnedPosts");
 	}
 
 	@Override

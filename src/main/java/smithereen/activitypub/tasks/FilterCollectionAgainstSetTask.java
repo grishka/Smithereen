@@ -5,7 +5,6 @@ import java.util.Set;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.objects.ActivityPubCollection;
-import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
 
 public class FilterCollectionAgainstSetTask extends ForwardPaginatingCollectionTask{
@@ -19,7 +18,7 @@ public class FilterCollectionAgainstSetTask extends ForwardPaginatingCollectionT
 	}
 
 	@Override
-	protected void doOneCollectionPage(CollectionPage page){
+	protected void doOneCollectionPage(ActivityPubCollection page){
 		for(LinkOrObject lo: page.items){
 			if(lo.link!=null && filter.contains(lo.link))
 				result.add(lo.link);

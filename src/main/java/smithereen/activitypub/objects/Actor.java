@@ -450,5 +450,7 @@ public abstract class Actor extends ActivityPubObject{
 		public String wallComments;
 		@SerializedName("bt")
 		public String boardTopics;
+		@SerializedName("pp")
+		public String pinnedPosts;
 	}
 }

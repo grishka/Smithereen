@@ -684,6 +684,7 @@ public class SmithereenApplication{
 			postWithCSRF("/setFriendLists", FriendsRoutes::setUserFriendLists);
 			getLoggedIn("/setListsMobileBox", FriendsRoutes::setUserListsMobileBox);
 			get("/statuses/:statusID", ActivityPubRoutes::userStatus);
+			get("/pinnedPosts", ActivityPubRoutes::userPinnedPosts);
 		});
 
 		path("/groups/:id", ()->{

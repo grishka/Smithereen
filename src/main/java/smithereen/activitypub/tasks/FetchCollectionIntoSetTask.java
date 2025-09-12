@@ -5,7 +5,6 @@ import java.util.Set;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.objects.ActivityPubCollection;
-import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
 
 public class FetchCollectionIntoSetTask extends ForwardPaginatingCollectionTask{
@@ -18,7 +17,7 @@ public class FetchCollectionIntoSetTask extends ForwardPaginatingCollectionTask{
 	}
 
 	@Override
-	protected void doOneCollectionPage(CollectionPage page){
+	protected void doOneCollectionPage(ActivityPubCollection page){
 		for(LinkOrObject lo: page.items){
 			if(lo.link!=null)
 				set.add(lo.link);

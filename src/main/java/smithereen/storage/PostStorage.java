@@ -31,6 +31,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.controllers.WallController;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.FederationState;
 import smithereen.model.ForeignGroup;
@@ -1325,6 +1326,30 @@ public class PostStorage{
 					.value("post_id", postID)
 					.value("display_order", order)
 					.executeNoResult();
+
+			if(!keepPrevious){
+				int count=new SQLQueryBuilder(conn)
+						.selectFrom("wall_pinned_posts")
+						.count()
+						.where("owner_user_id=?", ownerID)
+						.executeAndGetInt();
+				if(count>WallController.MAX_PINNED_POSTS){
+					Set<Integer> toDelete=new SQLQueryBuilder(conn)
+							.selectFrom("wall_pinned_posts")
+							.columns("post_id")
+							.where("owner_user_id=?", ownerID)
+							.limit(count-WallController.MAX_PINNED_POSTS, 0)
+							.orderBy("display_order ASC")
+							.executeAndGetIntStream()
+							.boxed()
+							.collect(Collectors.toSet());
+					new SQLQueryBuilder(conn)
+							.deleteFrom("wall_pinned_posts")
+							.whereIn("post_id", toDelete)
+							.andWhere("owner_user_id=?", ownerID)
+							.executeNoResult();
+				}
+			}
 		}
 	}
 
@@ -1354,6 +1379,13 @@ public class PostStorage{
 				.count()
 				.where("post_id=?", id)
 				.executeAndGetInt()>0;
+	}
+
+	public static void clearPinnedPosts(int userID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("wall_pinned_posts")
+				.where("owner_user_id=?", userID)
+				.executeNoResult();
 	}
 
 	// endregion

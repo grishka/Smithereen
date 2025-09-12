@@ -11,9 +11,9 @@ import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
-import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.controllers.PhotosController;
 import smithereen.model.photos.PhotoAlbum;
@@ -43,7 +43,7 @@ public class FetchActorPhotoAlbumsTask extends ForwardPaginatingCollectionTask{
 	}
 
 	@Override
-	protected void doOneCollectionPage(CollectionPage page){
+	protected void doOneCollectionPage(ActivityPubCollection page){
 		try{
 			int i=0;
 			for(LinkOrObject lo:page.items){

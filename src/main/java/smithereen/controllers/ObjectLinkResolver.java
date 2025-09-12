@@ -414,6 +414,9 @@ public class ObjectLinkResolver{
 								fu.setFriendsCount(friendsCount);
 						}
 						UserStorage.putOrUpdateForeignUser(fu);
+						if(fu.getPinnedPostsURL()!=null){
+							context.getActivityPubWorker().fetchUserPinnedPosts(fu);
+						}
 						maybeUpdateServerFeaturesFromActor(fu);
 						User partner=null;
 						if(fu.relationshipPartnerActivityPubID!=null && fu.relationshipPartnerID==0){

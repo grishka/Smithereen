@@ -72,6 +72,7 @@ import smithereen.activitypub.tasks.FetchAllWallRepliesTask;
 import smithereen.activitypub.tasks.FetchBoardTopicCommentsTask;
 import smithereen.activitypub.tasks.FetchCommentReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchPhotoAlbumPhotosTask;
+import smithereen.activitypub.tasks.FetchUserPinnedPostsTask;
 import smithereen.activitypub.tasks.FetchWallReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchRepostChainTask;
 import smithereen.activitypub.tasks.ForwardOneActivityRunnable;
@@ -148,6 +149,7 @@ public class ActivityPubWorker{
 	private final HashMap<URI, Future<List<Post>>> fetchingRepostChains=new HashMap<>();
 	private final HashMap<URI, Future<Void>> fetchingPhotoAlbums=new HashMap<>();
 	private final HashMap<URI, Future<Void>> fetchingBoardTopics=new HashMap<>();
+	private final HashMap<URI, Future<Void>> fetchingUserPinnedPosts=new HashMap<>();
 
 	private final ApplicationContext context;
 
@@ -415,6 +417,22 @@ public class ActivityPubWorker{
 			delete.activityPubID=new UriBuilder(post.getActivityPubID()).appendPath("delete").build();
 			sendActivityForPost(post, delete, actor);
 		});
+	}
+
+	public void sendPinPostActivity(User self, Post post){
+		Add add=new Add()
+				.withActorAndObjectLinks(self, post)
+				.withTarget(self.getPinnedPostsURL())
+				.withObjectFragmentID("pin"+rand());
+		submitActivityForFollowers(add, self);
+	}
+
+	public void sendUnpinPostActivity(User self, Post post){
+		Remove remove=new Remove()
+				.withActorAndObjectLinks(self, post)
+				.withTarget(self.getPinnedPostsURL())
+				.withObjectFragmentID("unpin"+rand());
+		submitActivityForFollowers(remove, self);
 	}
 
 	public void sendUnfriendActivity(User self, User target, FollowRelationship relationship){
@@ -1294,6 +1312,10 @@ public class ActivityPubWorker{
 
 	public synchronized Future<Void> fetchBoardTopicComments(ActivityPubBoardTopic topic, BoardTopic nativeTopic){
 		return fetchingBoardTopics.computeIfAbsent(topic.activityPubID, uri->executor.submit(new FetchBoardTopicCommentsTask(context, topic, nativeTopic, this, fetchingBoardTopics)));
+	}
+
+	public synchronized Future<Void> fetchUserPinnedPosts(ForeignUser user){
+		return fetchingUserPinnedPosts.computeIfAbsent(user.activityPubID, uri->executor.submit(new FetchUserPinnedPostsTask(context, user, fetchingUserPinnedPosts, this)));
 	}
 
 	public <R, T extends Callable<R>> List<Future<R>> invokeAll(Collection<T> tasks){

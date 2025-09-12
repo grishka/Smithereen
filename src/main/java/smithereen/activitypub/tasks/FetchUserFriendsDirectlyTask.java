@@ -5,7 +5,7 @@ import java.util.Objects;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.activitypub.ActivityPubWorker;
-import smithereen.activitypub.objects.CollectionPage;
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.model.ForeignUser;
 
 /**
@@ -22,7 +22,7 @@ public class FetchUserFriendsDirectlyTask extends ForwardPaginatingCollectionTas
 		this.apw=apw;
 	}
 
-	protected void doOneCollectionPage(CollectionPage page){
+	protected void doOneCollectionPage(ActivityPubCollection page){
 		apw.invokeAll(page.items.stream()
 				.filter(lo->lo.link!=null && !Config.isLocal(lo.link))
 				.map(lo->new FetchAndStoreOneUserFolloweeTask(context, user, lo.link, ForeignUser.class))
