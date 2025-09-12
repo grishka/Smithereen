@@ -592,6 +592,7 @@ public class ActivityPubWorker{
 			try{
 				// Make sure that any updates to this group made between when this was scheduled and now are incorporated
 				upToDateGroup=context.getGroupsController().getGroupOrThrow(group.id);
+				upToDateGroup.adminsForActivityPub=context.getGroupsController().getAdmins(upToDateGroup);
 			}catch(ObjectNotFoundException x){
 				LOG.warn("Failed to send a delayed Update{Group} for group {} because the group somehow no longer exists", group.id);
 				return;
