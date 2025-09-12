@@ -69,7 +69,8 @@ public abstract class Actor extends ActivityPubObject{
 	}
 
 	public boolean hasAvatar(){
-		return icon!=null;
+		Image img=getBestAvatarImage();
+		return img!=null && (img instanceof LocalImage || img.url!=null);
 	}
 
 	public Image getAvatarImage(){
