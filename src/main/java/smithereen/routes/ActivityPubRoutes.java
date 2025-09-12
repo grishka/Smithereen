@@ -1139,7 +1139,7 @@ public class ActivityPubRoutes{
 		User user=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
 		List<NoteOrQuestion> posts=ctx.getWallController().getPinnedPosts(null, user).stream().map(p->NoteOrQuestion.fromNativePost(p, ctx)).toList();
 		ActivityPubCollection collection=new ActivityPubCollection(true);
-		collection.items=posts.stream().map(LinkOrObject::new).toList();
+		collection.items=posts.stream().map(LinkOrObject::new).toList().reversed();
 		collection.totalItems=posts.size();
 		return collection;
 	}

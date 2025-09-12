@@ -1,7 +1,9 @@
 package smithereen.activitypub.tasks;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
@@ -14,9 +16,9 @@ import smithereen.model.Post;
 
 public class FetchUserPinnedPostsTask extends ForwardPaginatingCollectionTask{
 	private final ForeignUser user;
-	private boolean first=true;
 	private final HashMap<URI, Future<Void>> fetchingUserPinnedPosts;
 	private final ActivityPubWorker apw;
+	private ArrayList<Post> posts=new ArrayList<>();
 
 	public FetchUserPinnedPostsTask(ApplicationContext context, ForeignUser user, HashMap<URI, Future<Void>> fetchingUserPinnedPosts, ActivityPubWorker apw){
 		super(context, user.getPinnedPostsURL());
@@ -29,6 +31,13 @@ public class FetchUserPinnedPostsTask extends ForwardPaginatingCollectionTask{
 	protected void compute(){
 		try{
 			super.compute();
+			List<Integer> existingPostIDs=context.getWallController().getPinnedPosts(user, user).stream().map(p->p.id).toList();
+			List<Integer> newPostIDs=posts.stream().map(p->p.id).toList();
+			if(existingPostIDs.equals(newPostIDs))
+				return;
+			context.getWallController().clearPinnedPosts(user);
+			for(Post post:posts)
+				context.getWallController().pinPost(post, true);
 		}finally{
 			synchronized(apw){
 				fetchingUserPinnedPosts.remove(user.activityPubID);
@@ -38,16 +47,12 @@ public class FetchUserPinnedPostsTask extends ForwardPaginatingCollectionTask{
 
 	@Override
 	protected void doOneCollectionPage(ActivityPubCollection page){
-		if(first){
-			context.getWallController().clearPinnedPosts(user);
-			first=false;
-		}
 		for(LinkOrObject lo:page.items){
 			if(lo.object instanceof NoteOrQuestion noq){
 				try{
 					Post post=noq.asNativePost(context);
 					context.getObjectLinkResolver().storeOrUpdateRemoteObject(post, noq);
-					context.getWallController().pinPost(post, true);
+					posts.addFirst(post); // Posts are returned in reverse order
 				}catch(Exception x){
 					LOG.debug("Error processing post {}", lo, x);
 				}
