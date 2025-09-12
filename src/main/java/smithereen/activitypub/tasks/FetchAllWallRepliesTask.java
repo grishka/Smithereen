@@ -94,7 +94,7 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 						}
 						doOneCollectionPage(page.items);
 					}catch(ObjectNotFoundException x){
-						LOG.warn("Failed to get replies collection page for post {}", post.getActivityPubID());
+						LOG.warn("Failed to get replies collection page for post {}: {}", post.getActivityPubID(), x.toString());
 						return post;
 					}
 				}

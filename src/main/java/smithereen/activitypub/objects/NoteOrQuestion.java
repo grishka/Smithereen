@@ -283,7 +283,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 				noq.quoteRepostID=repost.getActivityPubID();
 				cc.add(context.getUsersController().getUserOrThrow(repost.authorID).activityPubID);
 
-				Document doc=Jsoup.parseBodyFragment(noq.content);
+				Document doc=Jsoup.parseBodyFragment(noq.content==null ? "" : noq.content);
 				doc.outputSettings().prettyPrint(false).indentAmount(0);
 				Element root=doc.body();
 				Element parentP;
