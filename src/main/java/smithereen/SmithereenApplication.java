@@ -833,6 +833,8 @@ public class SmithereenApplication{
 			get("/embed", PostRoutes::postEmbed);
 			get("/hoverCard", PostRoutes::commentHoverCard);
 			get("/layerPrevComments", PostRoutes::ajaxLayerPrevComments);
+			getWithCSRF("/pin", PostRoutes::pinPost);
+			getWithCSRF("/unpin", PostRoutes::unpinPost);
 		});
 
 		path("/albums/:id", ()->{

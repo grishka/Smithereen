@@ -1301,6 +1301,63 @@ public class PostStorage{
 		}
 	}
 
+	// region Pinned posts
+
+	public static void pinPost(int ownerID, int postID, boolean keepPrevious) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int order;
+			if(!keepPrevious){
+				new SQLQueryBuilder(conn)
+						.deleteFrom("wall_pinned_posts")
+						.where("owner_user_id=?", ownerID)
+						.executeNoResult();
+				order=0;
+			}else{
+				order=new SQLQueryBuilder(conn)
+						.selectFrom("wall_pinned_posts")
+						.selectExpr("MAX(display_order)")
+						.where("owner_user_id=?", ownerID)
+						.executeAndGetInt()+1;
+			}
+			new SQLQueryBuilder(conn)
+					.insertIgnoreInto("wall_pinned_posts")
+					.value("owner_user_id", ownerID)
+					.value("post_id", postID)
+					.value("display_order", order)
+					.executeNoResult();
+		}
+	}
+
+	public static void unpinPost(int ownerID, int postID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("wall_pinned_posts")
+				.where("owner_user_id=? AND post_id=?", ownerID, postID)
+				.executeNoResult();
+	}
+
+	public static List<Post> getPinnedPosts(int ownerID) throws SQLException{
+		List<Post> posts=new SQLQueryBuilder()
+				.selectFrom("wall_pinned_posts")
+				.selectExpr("wall_posts.*")
+				.join("JOIN wall_posts ON wall_pinned_posts.post_id=wall_posts.id")
+				.where("wall_pinned_posts.owner_user_id=?", ownerID)
+				.orderBy("wall_pinned_posts.display_order DESC")
+				.executeAsStream(Post::fromResultSet)
+				.toList();
+		postprocessPosts(posts);
+		return posts;
+	}
+
+	public static boolean isPostPinned(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_pinned_posts")
+				.count()
+				.where("post_id=?", id)
+				.executeAndGetInt()>0;
+	}
+
+	// endregion
+
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{
 		@Override
 		public void run(){

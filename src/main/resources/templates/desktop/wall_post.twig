@@ -62,6 +62,7 @@
 		{%- endif %}
 		{%- if showOwner and realPost.ownerID!=realPost.authorID %}<span class="postOwnerArrowIcon"></span><a href="{{ profileURL(realPost.ownerID) }}" class="authorName">{{ (realPost.ownerID>0 ? users[realPost.ownerID] : groups[-realPost.ownerID]) | name }}</a>{% endif %}
 		{%- if realPost.action=='AVATAR_UPDATE' %} <span class="grayText">{{ L('post_action_updated_avatar', {'gender': users[realPost.authorID].gender}) }}</span>{% endif %}
+		{%- if pinnedLabel %} <span class="grayText">{{ L('wall_pinned_post') }}</span>{% endif %}
 		<div id="postInner{{ realPost.id }}_{{ randomID }}">
 			{% block postInner %}
 			{% include "wall_post_inner" with {'post': post, 'repostDepth': 0, 'repostParent': post, 'randomID': randomID} %}
@@ -96,6 +97,9 @@
 				{% endif %}
 				{% if not realPost.local %}
 					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+				{% endif %}
+				{% if standalone and currentUser is not null and realPost.ownerID==currentUser.id and realPost.authorID==currentUser.id %}
+					| <a href="{{ realPost.internalURL }}/{{ isPinned ? 'unpin' : 'pin' }}?csrf={{ csrf }}&rid={{ randomID }}" id="postPinButton{{ realPost.id }}_{{ randomID }}" data-ajax data-ajax-hide="postPinButton{{ realPost.id }}_{{ randomID }}" data-ajax-show="postPinLoader{{ realPost.id }}_{{ randomID }}">{{ L(isPinned ? 'wall_unpin_post' : 'wall_pin_post') }}</a><span class="inlineLoader" style="display: none" id="postPinLoader{{ realPost.id }}_{{ randomID }}"></span>
 				{% endif %}
 				{% if not standalone and currentUser is not null and interactions.canComment %}
 					<span id="postCommentLinkWrap{{ realPost.id }}_{{ randomID }}" style="{{ post.repliesObjects is empty ? '' : 'display: none;' }}">| <a href="{{ realPost.internalURL }}" onclick="return showPostCommentForm({{ realPost.id }}, '{{ randomID }}')">{{ L('add_comment') }}</a></span>

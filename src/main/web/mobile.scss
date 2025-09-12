@@ -3009,3 +3009,17 @@ ol.largeNumbers{
 	}
 }
 
+.wallShowExtraPosts{
+	display: block;
+	text-align: center;
+	padding: 16px;
+}
+
+.pinnedPostIcon{
+	display: inline-block;
+	width: 11px;
+	height: 11px;
+	margin-left: 5px;
+	background: svg-load('img/post_pinned.svg', fill: $grayText);
+}
+

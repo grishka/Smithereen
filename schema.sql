@@ -1124,6 +1124,20 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `wall_pinned_posts`
+--
+
+CREATE TABLE `wall_pinned_posts` (
+  `owner_user_id` int unsigned NOT NULL,
+  `post_id` int unsigned NOT NULL,
+  `display_order` int unsigned NOT NULL,
+  PRIMARY KEY (`owner_user_id`,`post_id`),
+  KEY `post_id` (`post_id`),
+  CONSTRAINT `wall_pinned_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `wall_pinned_posts_ibfk_2` FOREIGN KEY (`post_id`) REFERENCES `wall_posts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `wall_posts`
 --
 
@@ -1185,4 +1199,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-09-09  3:50:46
+-- Dump completed on 2025-09-12  7:02:32

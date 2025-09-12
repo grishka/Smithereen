@@ -41,6 +41,9 @@
 	{%if currentUser is not null and userPermissions is not null and userPermissions.canEditPost(realPost)%}
 		<li><a href="{{ realPost.internalURL }}/edit">{{ L('edit') }}</a></li>
 	{%endif%}
+	{% if currentUser is not null and realPost.ownerID==currentUser.id and realPost.authorID==currentUser.id %}
+		<li><a href="{{ realPost.internalURL }}/{{ isPinned ? 'unpin' : 'pin' }}?csrf={{ csrf }}" id="postPinButton{{ realPost.id }}" data-ajax class="ajaxReplaceWithLoader">{{ L(isPinned ? 'wall_unpin_post' : 'wall_pin_post') }}</a></li>
+	{% endif %}
 	{%if not(realPost.local)%}
 		<li><a href="{{ realPost.activityPubURL }}" target="_blank">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a></li>
 	{%endif%}

@@ -41,6 +41,9 @@
 	{% if userPermissions is not null and userPermissions.canEditPost(realPost) %}
 	<a href="{{ realPost.internalURL }}/edit?rid={{ randomID }}&fromLayer" data-ajax class="button tertiary">{{ L('edit') }}</a>
 	{% endif %}
+	{% if currentUser is not null and realPost.ownerID==currentUser.id and realPost.authorID==currentUser.id %}
+	<a href="{{ realPost.internalURL }}/{{ isPinned ? 'unpin' : 'pin' }}?csrf={{ csrf }}&rid={{ randomID }}" id="postPinButton{{ realPost.id }}_{{ randomID }}" data-ajax class="button tertiary ajaxReplaceWithLoader">{{ L(isPinned ? 'wall_unpin_post' : 'wall_pin_post') }}</a>
+	{% endif %}
 	{% if userPermissions is not null and userPermissions.canReport(realPost) %}
 	<a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box class="button tertiary">{{ L('report') }}</a>
 	{% endif %}

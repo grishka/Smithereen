@@ -5,6 +5,24 @@
 	{% include "wall_post_form" with {'id': 'profile'} %}
 	{% endif %}
 	<div class="narrowWall" id="postList">
+		{% if pinnedPosts is not empty %}
+		<div class="wallRow">{% include "wall_post" with {'post': pinnedPosts.first, 'pinnedLabel': true} %}</div>
+		{% if pinnedPosts | length>1 %}
+		<a href="javascript:void(0)" onclick="cur.showAllPinnedPosts(); return false;" class="wallShowExtraPosts" id="wallShowPinnedPosts">{{ L('wall_show_X_more_pinned', {'count': (pinnedPosts | length)-1}) }}</a>
+		{% script %}
+		cur.showAllPinnedPosts=function(){
+			var posts=document.querySelectorAll(".hiddenPinnedPost");
+			for(var i=0;i<posts.length;i++){
+				posts[i].style.display="";
+			}
+			ge("wallShowPinnedPosts").remove();
+		};
+		{% endscript %}
+		{% for post in pinnedPosts | slice(1, pinnedPosts | length) %}
+			<div class="wallRow hiddenPinnedPost" style="display: none">{%include "wall_post" with {'post': post, 'pinnedLabel': true}%}</div>
+		{% endfor %}
+		{% endif %}
+		{% endif %}
 		{%for post in items%}
 			<div class="wallRow">{%include "wall_post" with {'post': post}%}</div>
 		{% else %}

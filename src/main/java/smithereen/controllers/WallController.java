@@ -994,4 +994,54 @@ public class WallController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	// region Pinned posts
+
+	public List<Post> getPinnedPosts(User self, User owner){
+		try{
+			List<Post> posts=PostStorage.getPinnedPosts(owner.id);
+			boolean hasPrivate=false;
+			for(Post p:posts){
+				if(p.privacy!=Post.Privacy.PUBLIC){
+					hasPrivate=true;
+					break;
+				}
+			}
+			if(hasPrivate){
+				posts=new ArrayList<>(posts);
+				context.getPrivacyController().filterPosts(self, posts);
+			}
+			return posts;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public boolean isPostPinned(Post post){
+		try{
+			return PostStorage.isPostPinned(post.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void pinPost(Post post, boolean keepPrevious){
+		try{
+			PostStorage.pinPost(post.authorID, post.id, keepPrevious);
+			// TODO federate
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void unpinPost(Post post){
+		try{
+			PostStorage.unpinPost(post.authorID, post.id);
+			// TODO federate
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
 }

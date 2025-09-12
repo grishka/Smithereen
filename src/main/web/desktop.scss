@@ -493,6 +493,18 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	}
 }
 
+.wallShowExtraPosts{
+	display: block;
+	height: 30px;
+	width: 100%;
+	line-height: 31px;
+	text-align: center;
+	background-color: $menuItemsSeparator;
+	margin: -11px 0 10px;
+	&:hover{
+		text-decoration: none;
+	}
+}
 
 #elevator{
 	position: fixed;

@@ -728,7 +728,7 @@ small{
 }
 
 .ajaxReplaceWithLoader.ajaxLoading{
-	color: transparent;
+	color: transparent !important;
 	position: relative;
 	&::before{
 		content: ' ';
@@ -738,8 +738,11 @@ small{
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background-position: 10px center;
 	}
+}
+
+.actionList .ajaxReplaceWithLoader.ajaxLoading::before{
+	background-position: 10px center;
 }
 
 .privatePostLockIcon{

@@ -33,6 +33,7 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
+import smithereen.model.Post;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.friends.FriendshipStatus;
@@ -106,6 +107,7 @@ public class ProfileRoutes{
 		boolean canMessage=self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.PRIVATE_MESSAGES);
 
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, user, !canSeeOthers, offset, 20));
+
 		RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req)
 				.pageTitle(user.getFullName())
 				.with("user", user)
@@ -116,6 +118,17 @@ public class ProfileRoutes{
 				.with("canMessage", canMessage)
 				.paginate(wall, "/users/"+user.id+"/wall"+(canSeeOthers ? "" : "/own")+"?offset=", null);
 
+		List<Post> rawPinnedPosts=ctx.getWallController().getPinnedPosts(self==null ? null : self.user, user);
+		List<PostViewModel> pinnedPosts=null;
+		if(offset==0){
+			pinnedPosts=rawPinnedPosts.stream().map(PostViewModel::new).toList();
+			model.with("pinnedPosts", pinnedPosts);
+		}
+		if(!rawPinnedPosts.isEmpty()){
+			Set<Integer> pinnedPostIDs=rawPinnedPosts.stream().map(p->p.id).collect(Collectors.toSet());
+			wall.list.removeIf(p->pinnedPostIDs.contains(p.post.id));
+		}
+
 		if(user.banStatus!=UserBanStatus.NONE && user.banInfo!=null){
 			if(user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.FROZEN)
 				model.with("accountDeletionTime", user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
@@ -124,16 +137,26 @@ public class ProfileRoutes{
 		}
 
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+		if(pinnedPosts!=null)
+			ctx.getWallController().populateReposts(self!=null ? self.user : null, pinnedPosts, 2);
 		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
+			if(pinnedPosts!=null)
+				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, pinnedPosts, viewType);
 		}
 
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
+		if(pinnedPosts!=null){
+			interactions=new HashMap<>(interactions);
+			interactions.putAll(ctx.getWallController().getUserInteractions(pinnedPosts, self!=null ? self.user : null));
+		}
 		model.with("postInteractions", interactions);
 		model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 
 		PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
+		if(pinnedPosts!=null)
+			PostViewModel.collectActorIDs(pinnedPosts, needUsers, needGroups);
 		model.with("users", ctx.getUsersController().getUsers(needUsers, true));
 
 		PaginatedList<User> friends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM);

@@ -503,6 +503,12 @@ public class PostRoutes{
 			ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post.post);
 		}
 
+		if(self!=null && post.post.ownerID==self.id && post.post.authorID==self.id && post.post.getReplyLevel()==0){
+			model.with("isPinned", ctx.getWallController().isPostPinned(post.post));
+		}else{
+			model.with("isPinned", false);
+		}
+
 		if(!post.post.replyKey.isEmpty()){
 			model.with("prefilledPostText", author.getNameForReply()+", ");
 		}
@@ -743,7 +749,26 @@ public class PostRoutes{
 				.with("tab", ownOnly ? "own" : "all")
 				.headerBack(owner);
 
-		preparePostList(ctx, wall.list, model, self);
+		List<PostViewModel> pinnedPosts=null;
+		if(owner instanceof User user){
+			List<Post> rawPinnedPosts=ctx.getWallController().getPinnedPosts(self==null ? null : self.user, user);
+			if(offset==0){
+				pinnedPosts=rawPinnedPosts.stream().map(PostViewModel::new).toList();
+				if(req.attribute("mobile")==null){
+					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, pinnedPosts, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+				}
+				model.with("pinnedPosts", pinnedPosts);
+			}
+			if(!rawPinnedPosts.isEmpty()){
+				Set<Integer> pinnedPostIDs=rawPinnedPosts.stream().map(p->p.id).collect(Collectors.toSet());
+				wall.list.removeIf(p->pinnedPostIDs.contains(p.post.id));
+			}
+		}
+
+		if(pinnedPosts!=null)
+			preparePostList(ctx, Stream.of(wall.list, pinnedPosts).flatMap(List::stream).toList(), model, self);
+		else
+			preparePostList(ctx, wall.list, model, self);
 
 		if(isAjax(req) && !isMobile(req)){
 			String paginationID=req.queryParams("pagination");
@@ -1233,5 +1258,47 @@ public class PostRoutes{
 		else
 			rb.runScript("var layerCont=ge(\"postReplies"+postID+ridSuffix+"\").closest(\".layerContent\"); layerCont.scrollTop+=layerCont.scrollHeight-window._layerScrollHeight; delete window._layerScrollHeight;");
 		return rb;
+	}
+
+	public static Object pinPost(Request req, Response resp, Account self, ApplicationContext ctx){
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
+
+		if(post.authorID!=self.id || post.authorID!=post.ownerID || post.getReplyLevel()>0)
+			throw new UserActionNotAllowedException();
+
+		ctx.getWallController().pinPost(post, false);
+
+		if(isAjax(req)){
+			String rid=req.queryParams("rid");
+			String ridSuffix="";
+			if(StringUtils.isNotEmpty(rid))
+				ridSuffix="_"+rid;
+			return new WebDeltaResponse(resp)
+					.setContent("postPinButton"+post.id+ridSuffix, lang(req).get("wall_unpin_post"))
+					.setAttribute("postPinButton"+post.id+ridSuffix, "href", "/posts/"+post.id+"/unpin?csrf="+req.queryParams("csrf")+(StringUtils.isEmpty(rid) ? "" : ("&rid="+rid)));
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object unpinPost(Request req, Response resp, Account self, ApplicationContext ctx){
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
+
+		if(post.authorID!=self.id)
+			throw new UserActionNotAllowedException();
+
+		ctx.getWallController().unpinPost(post);
+
+		if(isAjax(req)){
+			String rid=req.queryParams("rid");
+			String ridSuffix="";
+			if(StringUtils.isNotEmpty(rid))
+				ridSuffix="_"+rid;
+			return new WebDeltaResponse(resp)
+					.setContent("postPinButton"+post.id+ridSuffix, lang(req).get("wall_pin_post"))
+					.setAttribute("postPinButton"+post.id+ridSuffix, "href", "/posts/"+post.id+"/pin?csrf="+req.queryParams("csrf")+(StringUtils.isEmpty(rid) ? "" : ("&rid="+rid)));
+		}
+		resp.redirect(back(req));
+		return "";
 	}
 }

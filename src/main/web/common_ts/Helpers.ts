@@ -567,6 +567,8 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	if(ev && (ev instanceof MouseEvent || ev instanceof KeyboardEvent) && (ev.altKey || ev.ctrlKey || ev.shiftKey || ev.metaKey))
 		return false;
 	if(link.dataset.ajax!=undefined){
+		if(link.classList.contains("ajaxLoading"))
+			return true;
 		var elToHide:HTMLElement;
 		var elToShow:HTMLElement;
 		if(link.dataset.ajaxHide!=undefined){
