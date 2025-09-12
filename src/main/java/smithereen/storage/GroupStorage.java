@@ -1262,7 +1262,7 @@ public class GroupStorage{
 			for(int id:filteredIDs){
 				new SQLQueryBuilder(conn)
 						.update("group_memberships")
-						.where("user_id=? AND mutual=1", id)
+						.where("user_id=?", id)
 						.valueExpr("hints_rank", "FLOOR(hints_rank/2)")
 						.executeNoResult();
 			}
