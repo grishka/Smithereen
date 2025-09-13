@@ -178,7 +178,7 @@ public class ProfileRoutes{
 		if(user.attachment!=null)
 			user.attachment.stream()
 					.map(o->o instanceof PropertyValue pv ? pv : null)
-					.filter(Objects::nonNull)
+					.filter(pv->pv!=null && !pv.parsed)
 					.map(pv->Map.of("name", pv.name, "value", pv.value, "html", "true"))
 					.forEach(mainFields::add);
 		if(StringUtils.isNotEmpty(user.hometown))
