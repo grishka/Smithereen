@@ -19,7 +19,9 @@
 	{% endif %}
 	{% elseif status=='SUSPENDED' %}
 	<h2 class="marginAfter">{{ L('account_suspended') }}</h2>
-	<p>{{ L('account_suspended_info', {'deletionTime': LD(deletionTime), 'name': currentUser | name('first')}) }}</p>
+	{% set redirectLink={'href': "/settings/transferFollowersForm"} %}
+	{% if not isMobile %}{% set _=redirectLink.put('data-ajax-box', '1') %}{% endif %}
+	<p>{{ L('account_suspended_info', {'deletionTime': LD(deletionTime), 'name': currentUser | name('first')}, {'downloadData': {'href': "/settings/export"}, 'redirect': redirectLink}) }}</p>
 	{% elseif status=='SELF_DEACTIVATED' %}
 	<h2 class="marginAfter">{{ L('account_deactivated') }}</h2>
 	<p>{{ L('account_deactivated_info', {'deletionTime': LD(deletionTime)}) }}</p>

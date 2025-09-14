@@ -39,6 +39,8 @@ import smithereen.model.PostLikeObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.UserDataExport;
+import smithereen.model.notifications.RealtimeNotificationSettingType;
 import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPresence;
 import smithereen.model.attachments.Attachment;
@@ -312,7 +314,8 @@ public class NotificationsController{
 			}
 		}
 
-		if(account.prefs.notifierTypes!=null && !account.prefs.notifierTypes.contains(type.getSettingType()))
+		RealtimeNotificationSettingType settingType=type.getSettingType();
+		if(account.prefs.notifierTypes!=null && settingType!=null && !account.prefs.notifierTypes.contains(settingType))
 			return;
 
 		List<WebSocketConnection> connections=null;
@@ -350,6 +353,7 @@ public class NotificationsController{
 					case EVENT_INVITE -> "notification_title_event_invite";
 					case GROUP_REQUEST_ACCEPTED -> "notification_title_group_request_accepted";
 					case PHOTO_TAG -> "notification_title_photo_tag";
+					case EXPORT_READY -> "settings_data_export_title";
 				});
 				String content=switch(type){
 					case REPLY -> {
@@ -464,12 +468,14 @@ public class NotificationsController{
 						String text=l.get("notification_content_photo_tag", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
 						yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL())));
 					}
+					case EXPORT_READY -> l.get("notification_content_export_ready", Map.of("time", l.formatDate(((UserDataExport)object).requestedAt, tz, false)));
 				};
 				String url=switch(object){
 					case Post post -> post.getReplyLevel()>0 && relatedObject instanceof Post parentPost ? parentPost.getInternalURL().toString()+"#comment"+post.id : post.getInternalURL().toString();
 					case Photo photo -> photo.getURL();
 					case Comment comment when relatedObject instanceof CommentableContentObject parent -> parent.getURL()+"#comment"+comment.getIDString();
 					case MailMessage msg -> "/my/mail/messages/"+msg.encodedID;
+					case UserDataExport ude -> "/settings/export";
 					case null, default -> actor.getProfileURL();
 				};
 				String objID=switch(object){
@@ -481,7 +487,9 @@ public class NotificationsController{
 				};
 
 				RealtimeNotification.ImageURLs ava;
-				if(actor.hasAvatar()){
+				if(type==RealtimeNotification.Type.EXPORT_READY){
+					ava=RealtimeNotification.ImageURLs.ofSingle("/res/notification_export_ready.png");
+				}else if(actor.hasAvatar()){
 					SizedImage actorAva=actor.getAvatar();
 					ava=new RealtimeNotification.ImageURLs(
 							actorAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, SizedImage.Format.JPEG).toString(),
@@ -549,7 +557,7 @@ public class NotificationsController{
 					extraImage=null;
 				}
 
-				RealtimeNotification rn=new RealtimeNotification(id, type, objType, objID, actor.getLocalID(), title, content, url, ava, extraImage, extraAttrs);
+				RealtimeNotification rn=new RealtimeNotification(id, type, objType, objID, actor==null ? null : actor.getLocalID(), title, content, url, ava, extraImage, extraAttrs);
 				conn.send(rn);
 				conn.sendRaw(makeCountersWebsocketMessage(conn.session.account));
 			});

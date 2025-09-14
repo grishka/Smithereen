@@ -28,6 +28,7 @@ import smithereen.templates.functions.InstantToDateFunction;
 import smithereen.templates.functions.InstantToTimeFunction;
 import smithereen.templates.functions.JsonFunction;
 import smithereen.templates.functions.LangDateFunction;
+import smithereen.templates.functions.FormatFileSizeFunction;
 import smithereen.templates.functions.LangFunction;
 import smithereen.templates.functions.ProfileRelFunction;
 import smithereen.templates.functions.ProfileUrlFunction;
@@ -56,6 +57,7 @@ public class SmithereenExtension extends AbstractExtension{
 		f.put("inlineTextResource", new InlineTextResourceFunction());
 		f.put("addScriptFile", new AddExtraScriptFunction());
 		f.put("getLocale", new GetLocaleFunction());
+		f.put("formatFileSize", new FormatFileSizeFunction());
 		return f;
 	}
 

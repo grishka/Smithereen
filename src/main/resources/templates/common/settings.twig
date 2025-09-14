@@ -71,6 +71,6 @@
 <div class="bottomSummaryWrap">
 	{% set moveLinkOpts={'href': '/settings/moveAccountOptions'} %}
 	{% if not isMobile %}{% set _=moveLinkOpts.put('data-ajax-box', 1) %}{% endif %}
-	<div class="bottomSummary">{{ L('settings_deactivate_or_move_account', {}, {'deactivate': {'href': '/settings/deactivateAccountForm', 'data-ajax-box': '1'}, 'move': moveLinkOpts }) }}</div>
+	<div class="bottomSummary">{{ L('settings_deactivate_or_move_account', {}, {'deactivate': {'href': '/settings/deactivateAccountForm', 'data-ajax-box': '1'}, 'move': moveLinkOpts, 'export': {'href': '/settings/export'} }) }}</div>
 </div>
 {%endblock%}

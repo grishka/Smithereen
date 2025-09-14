@@ -3,7 +3,12 @@ package smithereen.model.notifications;
 import java.util.Map;
 
 public record RealtimeNotification(String id, Type type, ObjectType objectType, String objectID, Integer actorID, String title, String content, String url, ImageURLs avatar, ImageURLs image, Map<String, String> linkExtraAttrs){
-	public record ImageURLs(String jpeg1x, String webp1x, String jpeg2x, String webp2x){}
+	public record ImageURLs(String jpeg1x, String webp1x, String jpeg2x, String webp2x){
+		public static ImageURLs ofSingle(String url){
+			return new ImageURLs(url, url, url, url);
+		}
+	}
+
 	public enum Type{
 		REPLY,
 		LIKE,
@@ -18,7 +23,8 @@ public record RealtimeNotification(String id, Type type, ObjectType objectType, 
 		GROUP_INVITE,
 		EVENT_INVITE,
 		GROUP_REQUEST_ACCEPTED,
-		PHOTO_TAG;
+		PHOTO_TAG,
+		EXPORT_READY;
 
 		public RealtimeNotificationSettingType getSettingType(){
 			return switch(this){
@@ -31,6 +37,7 @@ public record RealtimeNotification(String id, Type type, ObjectType objectType, 
 				case MAIL_MESSAGE -> RealtimeNotificationSettingType.MAIL;
 				case GROUP_INVITE, GROUP_REQUEST_ACCEPTED, EVENT_INVITE -> RealtimeNotificationSettingType.GROUP_INVITES;
 				case PHOTO_TAG -> RealtimeNotificationSettingType.PHOTO_TAGS;
+				case EXPORT_READY -> null;
 			};
 		}
 	}

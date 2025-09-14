@@ -3,11 +3,13 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonObject;
 
 import java.net.URI;
+import java.util.Base64;
 
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.SerializerContext;
+import smithereen.controllers.UserDataExportWorker;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
 import smithereen.model.media.MediaFileRecord;
@@ -100,7 +102,15 @@ public class LocalImage extends Image implements SizedImage{
 			im.mediaType="image/jpeg";
 			obj.add("image", im.asActivityPubObject(null, serializerContext));
 		}
-		obj.addProperty("url", builder.build().toString());
+		if(serializerContext instanceof UserDataExportWorker.ExportSerializerContext esc){
+			String fileName=Base64.getUrlEncoder().withoutPadding().encodeToString(fileRecord.id().randomID())+"_"+
+					Base64.getUrlEncoder().withoutPadding().encodeToString(Utils.packLong(XTEA.obfuscateObjectID(fileID, ObfuscatedObjectIDType.MEDIA_FILE)))+
+					"."+fileRecord.id().type().getFileExtension();
+			obj.addProperty("url", "media/"+fileName);
+			esc.filesToInclude.add(fileRecord.id());
+		}else{
+			obj.addProperty("url", builder.build().toString());
+		}
 		obj.addProperty("width", croppedWidth);
 		obj.addProperty("height", croppedHeight);
 		if(mediaType==null)

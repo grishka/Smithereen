@@ -49,19 +49,23 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.UserDataExport;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.admin.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.filtering.FilterContext;
 import smithereen.model.filtering.WordFilter;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.model.notifications.EmailNotificationFrequency;
 import smithereen.model.notifications.EmailNotificationType;
 import smithereen.model.notifications.RealtimeNotificationSettingType;
 import smithereen.model.photos.AvatarCropRects;
+import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
+import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
@@ -326,15 +330,15 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object blocking(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object blocking(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking", req).pageTitle(lang(req).get("settings_blocking")).mobileToolbarTitle(lang(req).get("settings"));
-		model.with("blockedUsers", UserStorage.getBlockedUsers(self.user.id));
-		model.with("blockedDomains", UserStorage.getBlockedDomains(self.user.id));
+		model.with("blockedUsers", ctx.getPrivacyController().getBlockedUsers(self.user));
+		model.with("blockedDomains", ctx.getPrivacyController().getBlockedDomains(self.user));
 		jsLangKey(req, "unblock", "yes", "no", "cancel");
 		return model;
 	}
 
-	public static Object blockDomainForm(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object blockDomainForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("block_domain", req);
 		return wrapForm(req, resp, "block_domain", "/settings/blockDomain", lang(req).get("block_a_domain"), "block", model);
 	}
@@ -1181,5 +1185,59 @@ public class SettingsRoutes{
 			status=ctx.getGroupsController().getGroupOrThrow(groupID).getStatusText();
 		Lang l=lang(req);
 		return wrapForm(req, resp, "status_form", groupID>0 ? "/groups/"+groupID+"/updateStatus" : "/settings/updateStatus", l.get("update_status"), "save", new RenderedTemplateResponse("status_form", req).with("statusText", status));
+	}
+
+	public static Object dataExports(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		List<UserDataExport> exports=ctx.getUsersController().getUserDataExports(self.user);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_exports", req)
+				.with("waitDays", UserDataExport.COOLDOWN_DAYS)
+				.pageTitle(l.get("settings_data_export_title"))
+				.addNavBarItem(l.get("menu_settings"), "/settings")
+				.addNavBarItem(l.get("settings_data_export_title"))
+				.with("exports", exports);
+
+		Set<Long> needFiles=exports.stream().filter(e->e.state==UserDataExport.State.READY).map(e->e.fileID).collect(Collectors.toSet());
+		if(!needFiles.isEmpty()){
+			try{
+				Map<Long, MediaFileRecord> records=MediaStorage.getMediaFileRecords(needFiles);
+				Map<Long, String> urls=new HashMap<>();
+				for(MediaFileRecord mfr:records.values()){
+					urls.put(mfr.id().id(), MediaFileStorageDriver.getInstance().getFilePublicURL(mfr.id()).toString());
+				}
+				model.with("fileURLs", urls);
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+
+		Instant cooldownThreshold=Instant.now().minus(UserDataExport.COOLDOWN_DAYS, ChronoUnit.DAYS);
+		Instant lastExport=ctx.getUsersController().getLastSuccessfulUserDataExportTime(self.user);
+		if(lastExport==null || lastExport.isBefore(cooldownThreshold)){
+			model.with("canRequest", true);
+		}else{
+			model.with("canRequest", false)
+					.with("cooldownEndTime", lastExport.plus(UserDataExport.COOLDOWN_DAYS, ChronoUnit.DAYS));
+		}
+		return model;
+	}
+
+	public static Object requestDataExportForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		return wrapForm(req, resp, "request_data_export_form", "/settings/requestExport", lang(req).get("settings_data_export_title"), "settings_exports_request", "requestExport", List.of(), null, null);
+	}
+
+	public static Object requestDataExport(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "password");
+		String password=req.queryParams("password");
+		if(!ctx.getUsersController().checkPassword(self, password)){
+			return wrapForm(req, resp, "request_data_export_form", "/settings/requestExport", lang(req).get("settings_data_export_title"), "settings_exports_request", "requestExport", List.of(), null, lang(req).get("err_old_password_incorrect"));
+		}
+		Instant cooldownThreshold=Instant.now().minus(UserDataExport.COOLDOWN_DAYS, ChronoUnit.DAYS);
+		Instant lastExport=ctx.getUsersController().getLastSuccessfulUserDataExportTime(self.user);
+		if(lastExport!=null && lastExport.isAfter(cooldownThreshold)){
+			throw new UserActionNotAllowedException();
+		}
+		ctx.getUserDataExportWorker().startExport(self.user);
+		return ajaxAwareRedirect(req, resp, "/settings/export");
 	}
 }

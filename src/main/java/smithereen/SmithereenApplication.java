@@ -391,6 +391,9 @@ public class SmithereenApplication{
 			post("/notifications/emailUnsubscribe/:key", SettingsRoutes::doEmailUnsubscribe);
 			postWithCSRF("/updateStatus", SettingsRoutes::updateSelfStatus);
 			getLoggedIn("/mobileStatusForm", SettingsRoutes::mobileStatusForm);
+			getLoggedIn("/export", SettingsRoutes::dataExports);
+			getLoggedIn("/requestExport", SettingsRoutes::requestDataExportForm);
+			postWithCSRF("/requestExport", SettingsRoutes::requestDataExport);
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminGeneralRoutes::serverInfo);
@@ -1212,6 +1215,7 @@ public class SmithereenApplication{
 			UsersController.doPendingAccountDeletions(context);
 			GroupsController.doPendingGroupDeletions(context);
 			ModerationController.deleteResolvedViolationReportFiles();
+			context.getUserDataExportWorker().expireExports();
 		});
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
@@ -1299,6 +1303,20 @@ public class SmithereenApplication{
 				"/settings/deactivateAccountForm",
 				"/settings/deactivateAccount",
 				"/settings/confirmRemoveMoveRedirect",
+				"/settings/removeMoveRedirect",
+				"/settings/export",
+				"/settings/requestExport"
+		).contains(path);
+	}
+
+	private static boolean isAllowedForSuspendedAccounts(Request req){
+		String path=req.pathInfo();
+		return Set.of(
+				"/settings/export",
+				"/settings/requestExport",
+				"/settings/transferFollowersForm",
+				"/settings/transferFollowers",
+				"/settings/confirmRemoveMoveRedirect",
 				"/settings/removeMoveRedirect"
 		).contains(path);
 	}
@@ -1318,6 +1336,8 @@ public class SmithereenApplication{
 			// Account ban or self-deactivation
 			UserBanStatus status=info.account.user.banStatus;
 			if(status!=UserBanStatus.NONE && status!=UserBanStatus.HIDDEN){
+				if(isAllowedForSuspendedAccounts(req))
+					return;
 				Lang l=lang(req);
 				RenderedTemplateResponse model=new RenderedTemplateResponse("account_banned", req)
 						.with("noLeftMenu", true);

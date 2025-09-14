@@ -14,11 +14,13 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
@@ -36,6 +38,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
+import smithereen.util.XTEA;
 
 public class PhotoStorage{
 	public static List<PhotoAlbum> getAllAlbums(int ownerID) throws SQLException{
@@ -790,5 +793,19 @@ public class PhotoStorage{
 
 			return new PaginatedList<>(photos, total, offset, count);
 		}
+	}
+
+	public static Map<Long, URI> getPhotoActivityPubIDsByLocalIDs(Collection<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.columns("id", "ap_id")
+				.whereIn("id", ids)
+				.executeAsStream(res->new Pair<>(res.getLong("id"), res.getString("ap_id")))
+				.collect(Collectors.toMap(Pair::first, p->{
+					String apID=p.second();
+					if(apID==null)
+						return Config.localURI("/photos/"+XTEA.encodeObjectID(p.first(), ObfuscatedObjectIDType.PHOTO));
+					return URI.create(apID);
+				}));
 	}
 }

@@ -545,4 +545,20 @@ public class PrivacyController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public List<User> getBlockedUsers(User self){
+		try{
+			return UserStorage.getBlockedUsers(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<String> getBlockedDomains(User self){
+		try{
+			return UserStorage.getBlockedDomains(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
 }

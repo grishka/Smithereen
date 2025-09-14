@@ -385,6 +385,30 @@ public class PostStorage{
 		}
 	}
 
+	public static PaginatedList<Post> getWallComments(int ownerID, int offset, int count) throws SQLException{
+		String ownerField=ownerID<0 ? "owner_group_id" : "owner_user_id";
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where(ownerField+"=? AND reply_key IS NOT NULL", Math.abs(ownerID))
+					.executeAndGetInt();
+
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<Post> posts=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.allColumns()
+					.where(ownerField+"=? AND reply_key IS NOT NULL", Math.abs(ownerID))
+					.orderBy("id ASC")
+					.limit(count, offset)
+					.executeAsStream(Post::fromResultSet)
+					.toList();
+			return new PaginatedList<>(posts, total, offset, count);
+		}
+	}
+
 	public static List<Post> getWallToWall(int userID, int otherUserID, int offset, int count, int[] total) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt;
@@ -1300,6 +1324,20 @@ public class PostStorage{
 			postprocessPosts(posts);
 			return new PaginatedList<>(posts, total, offset, count);
 		}
+	}
+
+	public static Map<Integer, URI> getActivityPubIDsByLocalIDs(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.columns("id", "ap_id")
+				.whereIn("id", ids)
+				.executeAsStream(res->new Pair<>(res.getInt("id"), res.getString("ap_id")))
+				.collect(Collectors.toMap(Pair::first, p->{
+					String apID=p.second();
+					if(apID==null)
+						return Config.localURI("/posts/"+p.first());
+					return URI.create(apID);
+				}));
 	}
 
 	// region Pinned posts

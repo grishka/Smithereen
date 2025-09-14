@@ -7,8 +7,13 @@ import java.net.URI;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
 
-public abstract class ActivityPubLink extends ActivityPubObject{
+public class ActivityPubLink extends ActivityPubObject{
 	public URI href;
+
+	@Override
+	public String getType(){
+		return "Link";
+	}
 
 	@Override
 	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){

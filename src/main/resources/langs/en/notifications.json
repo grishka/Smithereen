@@ -66,5 +66,6 @@
   "notification_follow_multiple": "started following you",
   "notification_friend_req_accept_multiple": "accepted your friend requests",
   "notification_liked_photo_multiple": "liked your <a id=\"photo\">photo</a>",
-  "notifications_seen": "Seen notifications"
+  "notifications_seen": "Seen notifications",
+  "notification_content_export_ready": "The archive of your data, requested {time}, is ready for download"
 }

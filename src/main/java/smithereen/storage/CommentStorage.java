@@ -22,9 +22,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.PostSource;
 import smithereen.model.User;
@@ -40,6 +42,7 @@ import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.XTEA;
 
 public class CommentStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(CommentStorage.class);
@@ -635,6 +638,20 @@ public class CommentStorage{
 			postprocessComments(comments);
 			return new PaginatedList<>(comments, total, offset, count);
 		}
+	}
+
+	public static Map<Long, URI> getCommentActivityPubIDsByLocalIDs(Collection<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.columns("id", "ap_id")
+				.whereIn("id", ids)
+				.executeAsStream(res->new Pair<>(res.getLong("id"), res.getString("ap_id")))
+				.collect(Collectors.toMap(Pair::first, p->{
+					String apID=p.second();
+					if(apID==null)
+						return Config.localURI("/comments/"+XTEA.encodeObjectID(p.first(), ObfuscatedObjectIDType.COMMENT));
+					return URI.create(apID);
+				}));
 	}
 
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{

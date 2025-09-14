@@ -37,6 +37,7 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
+import smithereen.model.UserDataExport;
 import smithereen.model.notifications.BirthdayReminder;
 import smithereen.model.ForeignUser;
 import smithereen.model.friends.FriendRequest;
@@ -1679,5 +1680,58 @@ public class UserStorage{
 				.where("follower_id=? AND mutual=1 AND accepted=1", userID)
 				.executeAsStream(res->new Pair<>(res.getInt(1), BitSet.valueOf(new long[]{res.getLong(2)})))
 				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
+	public static List<UserDataExport> getUserDataExports(int userID, int count) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_data_exports")
+				.where("user_id=?", userID)
+				.orderBy("id DESC")
+				.limit(count, 0)
+				.executeAsStream(UserDataExport::fromResultSet)
+				.toList();
+	}
+
+	public static Instant getLastSuccessfulUserDataExportTime(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_data_exports")
+				.columns("requested_at")
+				.where("user_id=? AND state<>?", userID, UserDataExport.State.FAILED)
+				.orderBy("id DESC")
+				.limit(1, 0)
+				.executeAndGetSingleObject(res->DatabaseUtils.getInstant(res, "requested_at"));
+	}
+
+	public static long createUserDataExport(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("user_data_exports")
+				.value("user_id", userID)
+				.value("state", UserDataExport.State.PREPARING)
+				.executeAndGetIDLong();
+	}
+
+	public static void updateUserDataExport(long id, long fileID, UserDataExport.State state, long fileSize) throws SQLException{
+		new SQLQueryBuilder()
+				.update("user_data_exports")
+				.value("file_id", fileID==0 ? null : fileID)
+				.value("state", state)
+				.value("size", fileSize)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static List<UserDataExport> getUserDataExportsToExpire() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_data_exports")
+				.where("state=? AND requested_at<DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL ? DAY)", UserDataExport.State.READY, UserDataExport.RETENTION_DAYS)
+				.executeAsStream(UserDataExport::fromResultSet)
+				.toList();
+	}
+
+	public static UserDataExport getUserDataExport(long id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_data_exports")
+				.where("id=?", id)
+				.executeAndGetSingleObject(UserDataExport::fromResultSet);
 	}
 }

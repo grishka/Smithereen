@@ -1056,6 +1056,20 @@ CREATE TABLE `user_agents` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `user_data_exports`
+--
+
+CREATE TABLE `user_data_exports` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int unsigned NOT NULL,
+  `state` tinyint unsigned NOT NULL,
+  `size` bigint unsigned NOT NULL DEFAULT '0',
+  `file_id` bigint DEFAULT NULL,
+  `requested_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `user_roles`
 --
 
@@ -1199,4 +1213,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-09-12  7:02:32
+-- Dump completed on 2025-09-14 14:37:09

@@ -101,7 +101,7 @@ public abstract class ActivityPubObject{
 		return asRootActivityPubObject(serializerContext);
 	}
 
-	private JsonObject asRootActivityPubObject(SerializerContext serializerContext){
+	public JsonObject asRootActivityPubObject(SerializerContext serializerContext){
 		JsonObject obj=asActivityPubObject(new JsonObject(), serializerContext);
 		obj.add("@context", serializerContext.getJLDContext());
 		return obj;

@@ -16,6 +16,7 @@ import smithereen.controllers.PhotosController;
 import smithereen.controllers.PrivacyController;
 import smithereen.controllers.SearchController;
 import smithereen.controllers.StatsController;
+import smithereen.controllers.UserDataExportWorker;
 import smithereen.controllers.UserInteractionsController;
 import smithereen.controllers.UsersController;
 import smithereen.controllers.WallController;
@@ -40,6 +41,7 @@ public class ApplicationContext{
 	private final CommentsController commentsController;
 	private final FASPController faspController;
 	private final BoardController boardController;
+	private final UserDataExportWorker userDataExportWorker;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -61,6 +63,7 @@ public class ApplicationContext{
 		commentsController=new CommentsController(this);
 		faspController=new FASPController(this);
 		boardController=new BoardController(this);
+		userDataExportWorker=new UserDataExportWorker(this);
 	}
 
 	public WallController getWallController(){
@@ -137,5 +140,9 @@ public class ApplicationContext{
 
 	public BoardController getBoardController(){
 		return boardController;
+	}
+
+	public UserDataExportWorker getUserDataExportWorker(){
+		return userDataExportWorker;
 	}
 }

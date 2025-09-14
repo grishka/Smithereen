@@ -38,6 +38,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
+import smithereen.model.UserDataExport;
 import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -1013,6 +1014,22 @@ public class UsersController{
 		}
 
 		return status;
+	}
+
+	public List<UserDataExport> getUserDataExports(User user){
+		try{
+			return UserStorage.getUserDataExports(user.id, 10);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Instant getLastSuccessfulUserDataExportTime(User user){
+		try{
+			return UserStorage.getLastSuccessfulUserDataExportTime(user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	private record CachedUserPresence(int userID, long sessionID, UserPresence presence){}

@@ -33,12 +33,14 @@ public class LocalMediaFileStorageDriver extends MediaFileStorageDriver{
 
 	@Override
 	public InputStream openStream(MediaFileID id) throws IOException{
-		return new FileInputStream(getFilePath(id));
+		File targetFile=new File(Config.uploadPath, getFilePath(id));
+		return new FileInputStream(targetFile);
 	}
 
 	@Override
 	public void deleteFile(MediaFileID id) throws IOException{
-		Files.deleteIfExists(Path.of(getFilePath(id)));
+		File targetFile=new File(Config.uploadPath, getFilePath(id));
+		Files.deleteIfExists(targetFile.toPath());
 	}
 
 	@Override

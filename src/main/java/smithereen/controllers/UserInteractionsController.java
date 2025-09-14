@@ -20,6 +20,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.LikeableContentObject;
+import smithereen.model.LikedObjectID;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
@@ -224,6 +225,14 @@ public class UserInteractionsController{
 	public PaginatedList<Long> getLikedObjects(User self, Like.ObjectType type, int offset, int count){
 		try{
 			return LikeStorage.getLikedObjectIDs(self.id, type, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<LikedObjectID> getLikedObjects(User self, int offset, int count){
+		try{
+			return LikeStorage.getLikedObjectIDs(self.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -14,6 +14,7 @@ import smithereen.Config;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.ForeignUser;
+import smithereen.model.LikedObjectID;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
@@ -163,6 +164,27 @@ public class LikeStorage{
 					.limit(count, offset)
 					.executeAndGetLongStream()
 					.boxed()
+					.toList();
+			return new PaginatedList<>(ids, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<LikedObjectID> getLikedObjectIDs(int ownerID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("likes")
+					.count()
+					.where("user_id=?", ownerID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<LikedObjectID> ids=new SQLQueryBuilder(conn)
+					.selectFrom("likes")
+					.columns("object_type", "object_id")
+					.where("user_id=?", ownerID)
+					.orderBy("id DESC")
+					.limit(count, offset)
+					.executeAsStream(res->new LikedObjectID(Like.ObjectType.values()[res.getInt("object_type")], res.getLong("object_id")))
 					.toList();
 			return new PaginatedList<>(ids, total, offset, count);
 		}
