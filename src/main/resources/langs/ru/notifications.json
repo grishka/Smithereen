@@ -63,5 +63,6 @@
   "notification_follow_multiple": "подписались на ваши обновления",
   "notification_friend_req_accept_multiple": "приняли ваши заявки в друзья",
   "notification_liked_photo_multiple": "оценили вашу <a id=\"photo\">фотографию</a>",
-  "notifications_seen": "Просмотренные уведомления"
+  "notifications_seen": "Просмотренные уведомления",
+  "notification_content_export_ready": "Архив с вашими данными, который вы запросили {time}, готов для скачивания"
 }
