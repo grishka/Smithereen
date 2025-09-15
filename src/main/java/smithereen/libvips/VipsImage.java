@@ -22,6 +22,7 @@ public class VipsImage{
 			"VipsForeignLoadHeifFile",
 			"VipsForeignLoadNsgifFile"
 	);
+	private static final int MAX_SIZE=10_000;
 
 	Pointer nativePtr;
 	private boolean released;
@@ -42,6 +43,13 @@ public class VipsImage{
 		nativePtr=vips_image_new_from_file(filePath);
 		if(nativePtr==Pointer.NULL){
 			throwError();
+		}
+
+		int width=getWidth();
+		int height=getHeight();
+		if(width>MAX_SIZE || height>MAX_SIZE){
+			release();
+			throw new IOException("Image size "+width+"x"+height+" exceeds the limit of "+MAX_SIZE+" on largest side");
 		}
 	}
 

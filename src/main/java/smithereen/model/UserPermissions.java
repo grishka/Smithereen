@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
+import smithereen.model.admin.UserRole;
 import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 
@@ -41,7 +43,7 @@ public class UserPermissions{
 	}
 
 	public boolean canEditPost(PostLikeObject post){
-		return post.authorID==userID && System.currentTimeMillis()-post.createdAt.toEpochMilli()<24*3600_000L && (!(post instanceof Post p) || p.action==null);
+		return post.authorID==userID && ((post instanceof Comment c && c.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC) || (System.currentTimeMillis()-post.createdAt.toEpochMilli()<24*3600_000L && (!(post instanceof Post p) || p.action==null)));
 	}
 
 	public boolean canEditGroup(Group group){

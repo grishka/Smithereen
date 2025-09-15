@@ -15,11 +15,12 @@ import smithereen.Utils;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.media.MediaFileID;
 import smithereen.storage.ImgProxy;
+import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 
 public class LocalMediaFileStorageDriver extends MediaFileStorageDriver{
 	@Override
-	public void storeFile(File localFile, MediaFileID id, boolean keepLocalFile) throws IOException{
+	public void storeFile(File localFile, MediaFileID id, boolean keepLocalFile, String downloadFileName) throws IOException{
 		int oid=Math.abs(id.originalOwnerID());
 		File dir=new File(Config.uploadPath, String.format(Locale.US, "%02d/%02d/%02d", oid%100, oid/100%100, oid/10000%100));
 		if(!dir.exists() && !dir.mkdirs())
@@ -33,12 +34,14 @@ public class LocalMediaFileStorageDriver extends MediaFileStorageDriver{
 
 	@Override
 	public InputStream openStream(MediaFileID id) throws IOException{
-		return new FileInputStream(getFilePath(id));
+		File targetFile=new File(Config.uploadPath, getFilePath(id));
+		return new FileInputStream(targetFile);
 	}
 
 	@Override
 	public void deleteFile(MediaFileID id) throws IOException{
-		Files.deleteIfExists(Path.of(getFilePath(id)));
+		File targetFile=new File(Config.uploadPath, getFilePath(id));
+		Files.deleteIfExists(targetFile.toPath());
 	}
 
 	@Override
@@ -48,8 +51,11 @@ public class LocalMediaFileStorageDriver extends MediaFileStorageDriver{
 	}
 
 	@Override
-	public URI getFilePublicURL(MediaFileID id){
-		return Config.localURI(Config.uploadUrlPath+"/"+getFilePath(id));
+	public URI getFilePublicURL(MediaFileID id, String downloadFileName){
+		URI url=Config.localURI(Config.uploadUrlPath+"/"+getFilePath(id));
+		if(downloadFileName!=null)
+			url=new UriBuilder(url).queryParam("fn", downloadFileName).build();
+		return url;
 	}
 
 	private String getFilePath(MediaFileID id){

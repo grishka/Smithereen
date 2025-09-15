@@ -12,12 +12,15 @@ class EndlessPagination{
 		this.loader=el.qs("span.loader");
 		this.link.addEventListener("click", (ev)=>{
 			ev.preventDefault();
+			ev.stopPropagation();
 			this.load();
-		});
+		}, false);
 		this.id=el.dataset.id;
 
-		this.observer=new IntersectionObserver(this.observerCallback.bind(this));
-		this.observer.observe(el);
+		if(el.dataset.noScrollEvents==undefined){
+			this.observer=new IntersectionObserver(this.observerCallback.bind(this));
+			this.observer.observe(el);
+		}
 	}
 
 	private load(){

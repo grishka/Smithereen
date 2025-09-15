@@ -7,15 +7,17 @@
 	<form action="/groups/{{ group.id }}/saveGeneral" method="post" data-ajax>
 		{{ form.start('groupEdit', groupEditMessage) }}
 			{{ form.textInput('name', L('group_name'), group.name, {'maxlength': 200, 'required': true}) }}
-			{{ form.textArea('about', L(group.event ? 'about_event' : 'about_group'), group.aboutSource) }}
 			{{ form.textInput('username', L('group_username'), group.username, {'prefix': "#{serverDomain}/", 'autocomplete': false, 'maxlength': 50, 'required': true, 'pattern': '[a-zA-Z][a-zA-Z0-9\._\-]+', 'explanation': L('username_explain')}) }}
+			{{ form.textArea('about', L(group.event ? 'about_event' : 'about_group'), group.aboutSource) }}
+			{{ form.textInput('website', L('group_website'), group.website) }}
 			{% if group.event %}
 			{{ form.dateTimeInput('event_start', L('event_start_time'), group.eventStartTime) }}
 			{{ form.dateTimeInput('event_end', L('event_end_time'), group.eventEndTime) }}
+			{{ form.textInput('location', L('event_location'), group.location, {'placeholder': L('event_location_hint')}) }}
 			{% endif %}
 			{{ form.radioGroup(
 				'access',
-				L('group_access_type'),
+				L(group.event ? 'event_access_type' : 'group_access_type'),
 				group.event ? [
 					{'value': 'OPEN', 'label': L('group_access_open'), 'selected': group.accessType=='OPEN', 'explanation': L('event_access_open_explain')},
 					{'value': 'PRIVATE', 'label': L('group_access_private'), 'selected': group.accessType=='PRIVATE', 'explanation': L('event_access_private_explain')}
@@ -23,6 +25,33 @@
 					{'value': 'OPEN', 'label': L('group_access_open'), 'selected': group.accessType=='OPEN', 'explanation': L('group_access_open_explain')},
 					{'value': 'CLOSED', 'label': L('group_access_closed'), 'selected': group.accessType=='CLOSED', 'explanation': L('group_access_closed_explain')},
 					{'value': 'PRIVATE', 'label': L('group_access_private'), 'selected': group.accessType=='PRIVATE', 'explanation': L('group_access_private_explain')}
+				]
+			) }}
+			{{ form.radioGroup(
+				'wallState',
+				L('group_feature_wall'),
+				[
+					{'value': 'ENABLED_OPEN', 'label': L('group_feature_wall_public'), 'selected': group.wallState=='ENABLED_OPEN', 'explanation': L('group_feature_wall_public_explanation')},
+					{'value': 'ENABLED_RESTRICTED', 'label': L('group_feature_wall_restricted'), 'selected': group.wallState=='ENABLED_RESTRICTED', 'explanation': L(group.event ? 'event_feature_wall_restricted_explanation' : 'group_feature_wall_restricted_explanation')},
+					{'value': 'ENABLED_CLOSED', 'label': L('group_feature_wall_closed'), 'selected': group.wallState=='ENABLED_CLOSED', 'explanation': L(group.event ? 'event_feature_wall_closed_explanation' : 'group_feature_wall_closed_explanation')},
+					{'value': 'DISABLED', 'label': L('group_feature_wall_disabled'), 'selected': group.wallState=='DISABLED'}
+				]
+			) }}
+			{{ form.radioGroup(
+				'photosState',
+				L('group_feature_photos'),
+				[
+					{'value': 'ENABLED_RESTRICTED', 'label': L('group_feature_photos_restricted'), 'selected': group.photosState=='ENABLED_RESTRICTED', 'explanation': L(group.event ? 'event_feature_photos_restricted_explanation' : 'group_feature_photos_restricted_explanation')},
+					{'value': 'DISABLED', 'label': L('group_feature_photos_disabled'), 'selected': group.photosState=='DISABLED'}
+				]
+			) }}
+			{{ form.radioGroup(
+				'boardState',
+				L('group_feature_board'),
+				[
+					{'value': 'ENABLED_OPEN', 'label': L('group_feature_board_public'), 'selected': group.boardState=='ENABLED_OPEN', 'explanation': L('group_feature_board_public_explanation')},
+					{'value': 'ENABLED_RESTRICTED', 'label': L('group_feature_board_restricted'), 'selected': group.boardState=='ENABLED_RESTRICTED', 'explanation': L(group.event ? 'event_feature_board_restricted_explanation' : 'group_feature_board_restricted_explanation')},
+					{'value': 'DISABLED', 'label': L('group_feature_board_disabled'), 'selected': group.boardState=='DISABLED'}
 				]
 			) }}
 			{{ form.footer(L('save')) }}

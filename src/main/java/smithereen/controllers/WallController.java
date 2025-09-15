@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 import static smithereen.Utils.ensureUserNotBlocked;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
@@ -41,7 +42,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
@@ -55,8 +56,9 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.viewmodel.PostViewModel;
@@ -72,6 +74,7 @@ import spark.utils.StringUtils;
 
 public class WallController{
 	private static final Logger LOG=LoggerFactory.getLogger(WallController.class);
+	public static final int MAX_PINNED_POSTS=5;
 
 	private final ApplicationContext context;
 
@@ -118,8 +121,13 @@ public class WallController{
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
-				if(inReplyTo==null)
+				if(group.wallState==GroupFeatureState.DISABLED)
+					throw new UserActionNotAllowedException();
+				if(inReplyTo==null){
 					ensureUserNotBlocked(author, group);
+					if(group.wallState==GroupFeatureState.ENABLED_CLOSED)
+						context.getGroupsController().enforceUserAdminLevel(group, author, Group.AdminLevel.MODERATOR);
+				}
 			}else if(wallOwner instanceof User user){
 				if(inReplyTo==null){
 					ensureUserNotBlocked(author, user);
@@ -151,7 +159,7 @@ public class WallController{
 
 			if(repost!=null){
 				// If we're reposting a repost, use the original post if it's an Announce or there's no comment
-				if(repost.isMastodonStyleRepost() || (repost.repostOf!=0 && TextProcessor.stripHTML(repost.text, false).trim().isEmpty())){
+				if(repost.isMastodonStyleRepost() || (repost.repostOf!=0 && TextProcessor.stripHTML(repost.text, false).trim().isEmpty() && (repost.attachments==null || repost.attachments.isEmpty()) && repost.poll==null)){
 					repost=getPostOrThrow(repost.repostOf);
 				}
 				// Can't repost wall posts
@@ -237,6 +245,9 @@ public class WallController{
 
 				mentionedUsers.add(topLevelAuthor);
 				if(topLevel.isGroupOwner()){
+					Group group=(Group) topLevelOwner;
+					if(group.wallState==GroupFeatureState.ENABLED_CLOSED || group.wallState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException();
 					ownerGroupID=-topLevel.ownerID;
 					ownerUserID=0;
 					ensureUserNotBlocked(author, topLevelOwner);
@@ -595,12 +606,14 @@ public class WallController{
 	public Map<Integer, UserInteractions> getUserInteractions(@NotNull List<PostViewModel> posts, @Nullable User self){
 		try{
 			Set<Integer> postIDs=posts.stream().map(p->p.post.getIDForInteractions()).collect(Collectors.toSet());
-			Set<Integer> ownerUserIDs=new HashSet<>();
+			Set<Integer> ownerUserIDs=new HashSet<>(), ownerGroupIDs=new HashSet<>();
 			for(PostViewModel p:posts){
 				p.getAllReplyIDs(postIDs);
 				if(!p.post.isMastodonStyleRepost()){
 					if(p.post.ownerID>0)
 						ownerUserIDs.add(p.post.ownerID);
+					else if(p.post.ownerID<0)
+						ownerGroupIDs.add(-p.post.ownerID);
 				}else if(p.repost!=null && p.repost.post()!=null){
 					Post repost=p.repost.post().post;
 					if(repost.ownerID>0)
@@ -611,6 +624,15 @@ public class WallController{
 					.entrySet()
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
+
+			if(!ownerGroupIDs.isEmpty()){
+				canComment=new HashMap<>(canComment);
+				for(Group group:context.getGroupsController().getGroupsByIdAsList(ownerGroupIDs)){
+					if(group==null)
+						continue;
+					canComment.put(-group.id, group.wallState!=GroupFeatureState.ENABLED_CLOSED);
+				}
+			}
 
 			List<PostViewModel> allPosts=posts.stream().flatMap(pvm->{
 				ArrayList<PostViewModel> replies=new ArrayList<>();
@@ -803,7 +825,12 @@ public class WallController{
 
 	private void deletePostInternal(@NotNull User self, Post post, boolean ignorePermissions){
 		try{
-			OwnerAndAuthor oaa=getContentAuthorAndOwner(post);
+			OwnerAndAuthor oaa;
+			try{
+				oaa=getContentAuthorAndOwner(post);
+			}catch(ObjectNotFoundException x){
+				oaa=new OwnerAndAuthor(null, null);
+			}
 			if(!ignorePermissions){
 				context.getPrivacyController().enforceObjectPrivacy(self, post);
 				if(post.ownerID!=self.id && post.authorID!=self.id){ // Can always delete own posts and others' posts on own wall
@@ -821,10 +848,12 @@ public class WallController{
 			}
 			User deleteActor=self;
 			// if the current user is a moderator, and the post isn't made or owned by them, send the deletion as if the author deleted the post themselves
-			if(ignorePermissions && oaa.author().id!=self.id && !post.isGroupOwner() && post.ownerID!=self.id && !(oaa.author() instanceof ForeignUser)){
+			if(ignorePermissions && post.authorID!=self.id && !post.isGroupOwner() && post.ownerID!=self.id && !(oaa.author() instanceof ForeignUser)){
 				deleteActor=oaa.author();
 			}
-			context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
+			if(oaa.author()!=null && Config.isLocal(post.getActivityPubID())){
+				context.getActivityPubWorker().sendDeletePostActivity(post, deleteActor);
+			}
 
 			if(post.isLocal() && post.attachments!=null){
 				MediaStorage.deleteMediaFileReferences(post.id, MediaFileReferenceType.WALL_ATTACHMENT);
@@ -871,10 +900,15 @@ public class WallController{
 			owner=context.getGroupsController().getGroupOrThrow(-ownerID);
 		else
 			owner=context.getUsersController().getUserOrThrow(ownerID);
-		if(authorID!=0)
-			author=context.getUsersController().getUserOrThrow(authorID);
-		else
+		if(authorID!=0){
+			try{
+				author=context.getUsersController().getUserOrThrow(authorID);
+			}catch(ObjectNotFoundException x){
+				author=null;
+			}
+		}else{
 			author=null;
+		}
 		return new OwnerAndAuthor(owner, author);
 	}
 
@@ -952,4 +986,83 @@ public class WallController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public PaginatedList<PostViewModel> getAllPostsByAuthor(User user, int offset, int count){
+		try{
+			PaginatedList<Post> posts=PostStorage.getAllPostsByAuthor(user.id, offset, count);
+			return PostViewModel.wrap(posts);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// region Pinned posts
+
+	public List<Post> getPinnedPosts(User self, User owner){
+		try{
+			List<Post> posts=PostStorage.getPinnedPosts(owner.id);
+			boolean hasPrivate=false;
+			for(Post p:posts){
+				if(p.privacy!=Post.Privacy.PUBLIC){
+					hasPrivate=true;
+					break;
+				}
+			}
+			if(hasPrivate){
+				posts=new ArrayList<>(posts);
+				context.getPrivacyController().filterPosts(self, posts);
+			}
+			return posts;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public boolean isPostPinned(Post post){
+		try{
+			return PostStorage.isPostPinned(post.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void pinPost(Post post, boolean keepPrevious){
+		try{
+			User author=context.getUsersController().getUserOrThrow(post.authorID);
+			if(!keepPrevious && !(author instanceof ForeignUser)){
+				List<Post> currentPosts=PostStorage.getPinnedPosts(post.authorID);
+				for(Post oldPost:currentPosts){
+					context.getActivityPubWorker().sendUnpinPostActivity(author, oldPost);
+				}
+			}
+			PostStorage.pinPost(post.authorID, post.id, keepPrevious);
+			if(!(author instanceof ForeignUser)){
+				context.getActivityPubWorker().sendPinPostActivity(author, post);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void unpinPost(Post post){
+		try{
+			PostStorage.unpinPost(post.authorID, post.id);
+			User author=context.getUsersController().getUserOrThrow(post.authorID);
+			if(!(author instanceof ForeignUser)){
+				context.getActivityPubWorker().sendUnpinPostActivity(author, post);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void clearPinnedPosts(User owner){
+		try{
+			PostStorage.clearPinnedPosts(owner.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
 }

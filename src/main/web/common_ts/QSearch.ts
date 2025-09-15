@@ -83,9 +83,11 @@ function initQSearch(){
 	});
 }
 
-function loadRemoteObject(url:string):void{
+function loadRemoteObject(url:string, opts:any={}):void{
 	LayerManager.getInstance().showBoxLoader();
-	ajaxPost("/system/loadRemoteObject", {uri: url}, (resp:any)=>{
+	if(!opts)
+		opts={};
+	ajaxPost("/system/loadRemoteObject", {uri: url, ...opts}, (resp:any)=>{
 		if(resp.success){
 			window.location.href=resp.success;
 		}else if(resp.error){
@@ -97,7 +99,6 @@ function loadRemoteObject(url:string):void{
 						<div class="showWhenOn">${(resp.details as string).escapeHTML()}</div>
 					</div>`;
 			}
-			console.log("HERE?!");
 			new MessageBox(lang("error"), content, lang("close")).show();
 		}
 	}, ()=>{

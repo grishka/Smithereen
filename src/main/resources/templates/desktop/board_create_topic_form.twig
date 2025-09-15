@@ -1,0 +1,12 @@
+{% extends "page" %}
+{% block content %}
+{% include "board_tabbar" with {'tab': 'new'} %}
+<div class="gray boardNewTopic formWithBoldHeaders">
+	<form action="/groups/{{ group.id }}/createTopic" method="post" id="wallPostFormForm_newBoardTopic">
+		<h4 id="titleLabel">{{ L('board_topic_title') }}</h4>
+		<input type="text" name="title" aria-labelledby="titleLabel" maxlength="255" style="width: 100%" required/>
+		<h4>{{ L('board_topic_text') }}</h4>
+		{% include "mail_message_form" with {'id': "newBoardTopic", 'sendButtonLabel': L('board_create_topic')} %}
+	</form>
+</div>
+{% endblock %}

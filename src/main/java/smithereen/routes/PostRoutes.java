@@ -47,11 +47,12 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.UserRole;
-import smithereen.model.ViolationReport;
+import smithereen.model.admin.UserRole;
+import smithereen.model.admin.ViolationReport;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
@@ -211,6 +212,21 @@ public class PostRoutes{
 						.addClass("wallPostForm_"+formID, "collapsed");
 			}else if(replyTo==0){
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
+				int newPostCount=Utils.parseIntOrDefault(req.queryParams("wallPostCount"), -1)+1;
+				if(newPostCount>0){
+					// When creating a new post, update the wall header with the incremented number.
+					// It is deliberate that we just increment the previous value instead of fetching the up-to-date value
+					// from the DB, because as far as the user is concerned, only one new post has appeared,
+					// even if some other user created a post on the same wall at the same time.
+					// The post by the other user will appear only after the page refreshes,
+					// so there is no point in counting it in the updated wall header.
+					rb.setContent("wallPostCount", lang(req).get("X_posts", Map.of("count", newPostCount)))
+							.setInputValue("wallPostCountInput", Integer.toString(newPostCount));
+				}
+				if(newPostCount==1){
+					rb.remove("wallEmptyState");
+				}
+				rb.addClass("wallPostForm_"+formID, "collapsed");
 			}else{
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postReplies"+switch(self.prefs.commentViewType){
 					case THREADED -> replyTo;
@@ -219,6 +235,9 @@ public class PostRoutes{
 				}+ridSuffix, postHTML)
 						.show("postReplies"+replyTo+ridSuffix)
 						.show("postCommentsSummary"+post.replyKey.getFirst()+ridSuffix);
+				if(req.attribute("mobile")==null && self.prefs.commentViewType!=CommentViewType.FLAT && post.getReplyLevel()>1){
+					rb.hide("wallPostForm_"+formID);
+				}
 				try{
 					Post topLevel=ctx.getWallController().getPostOrThrow(post.replyKey.getFirst());
 					rb.setContent("postCommentsTotal"+post.replyKey.getFirst()+ridSuffix, lang(req).get("X_comments", Map.of("count", topLevel.replyCount)));
@@ -359,7 +378,9 @@ public class PostRoutes{
 				fromLayer=false;
 			}
 			RenderedTemplateResponse model=new RenderedTemplateResponse(templateName, req).with("post", postVM);
-			model.with("users", Map.of(self.user.id, self.user));
+			HashSet<Integer> needUsers=new HashSet<>();
+			PostViewModel.collectActorIDs(List.of(postVM), needUsers, null);
+			model.with("users", ctx.getUsersController().getUsers(needUsers));
 
 			String rid=req.queryParams("rid");
 			String ridSuffix="";
@@ -482,6 +503,12 @@ public class PostRoutes{
 			ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post.post);
 		}
 
+		if(self!=null && post.post.ownerID==self.id && post.post.authorID==self.id && post.post.getReplyLevel()==0){
+			model.with("isPinned", ctx.getWallController().isPostPinned(post.post));
+		}else{
+			model.with("isPinned", false);
+		}
+
 		if(!post.post.replyKey.isEmpty()){
 			model.with("prefilledPostText", author.getNameForReply()+", ");
 		}
@@ -564,8 +591,9 @@ public class PostRoutes{
 		if(!post.post.isLocal() && owner instanceof ForeignActor)
 			model.with("noindex", true);
 
-		model.with("users", ctx.getUsersController().getUsers(needUsers))
-				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.headerBack(owner);
 		return model;
 	}
 
@@ -602,6 +630,14 @@ public class PostRoutes{
 				return wdr.runScript("LayerManager.getMediaInstance().dismissByID(\"postLayer"+post.id+ridSuffix+"\");");
 			}else if(req.queryParams("elid")!=null){
 				return wdr.remove(req.queryParams("elid"));
+			}
+			int newPostCount=Utils.parseIntOrDefault(req.queryParams("wallPostCount"), -1)-1;
+			if(newPostCount>=0){
+				wdr.setContent("wallPostCount", lang(req).get("X_posts", Map.of("count", newPostCount)))
+						.setInputValue("wallPostCountInput", Integer.toString(newPostCount));
+			}
+			if(newPostCount==0){
+				wdr.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "postList", "<div id=\"wallEmptyState\">"+lang(req).get("wall_empty")+"</div>");
 			}
 			return wdr.remove("post"+post.id+ridSuffix, "postReplies"+post.id+ridSuffix);
 		}
@@ -675,13 +711,15 @@ public class PostRoutes{
 
 	public static Object groupWall(Request req, Response resp){
 		Group group=context(req).getGroupsController().getGroupOrThrow(safeParseInt(req.params(":id")));
+		if(group.wallState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("err_access_content");
 		return wall(req, resp, group, false);
 	}
 
 	public static void preparePostList(ApplicationContext ctx, List<PostViewModel> wall, RenderedTemplateResponse model, Account self){
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		PostViewModel.collectActorIDs(wall, needUsers, needGroups);
-		model.with("users", ctx.getUsersController().getUsers(needUsers))
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
 				.with("maxReplyDepth", getMaxReplyDepth(self));
 	}
@@ -708,9 +746,29 @@ public class PostRoutes{
 				.with("isGroup", owner instanceof Group)
 				.with("ownOnly", ownOnly)
 				.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, u, UserPrivacySettingKey.WALL_OTHERS_POSTS))
-				.with("tab", ownOnly ? "own" : "all");
+				.with("tab", ownOnly ? "own" : "all")
+				.headerBack(owner);
 
-		preparePostList(ctx, wall.list, model, self);
+		List<PostViewModel> pinnedPosts=null;
+		if(owner instanceof User user){
+			List<Post> rawPinnedPosts=ctx.getWallController().getPinnedPosts(self==null ? null : self.user, user);
+			if(offset==0){
+				pinnedPosts=rawPinnedPosts.stream().map(PostViewModel::new).toList();
+				if(req.attribute("mobile")==null){
+					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, pinnedPosts, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+				}
+				model.with("pinnedPosts", pinnedPosts);
+			}
+			if(!rawPinnedPosts.isEmpty()){
+				Set<Integer> pinnedPostIDs=rawPinnedPosts.stream().map(p->p.id).collect(Collectors.toSet());
+				wall.list.removeIf(p->pinnedPostIDs.contains(p.post.id));
+			}
+		}
+
+		if(pinnedPosts!=null)
+			preparePostList(ctx, Stream.of(wall.list, pinnedPosts).flatMap(List::stream).toList(), model, self);
+		else
+			preparePostList(ctx, wall.list, model, self);
 
 		if(isAjax(req) && !isMobile(req)){
 			String paginationID=req.queryParams("pagination");
@@ -761,7 +819,8 @@ public class PostRoutes{
 				.with("otherUser", otherUser)
 				.with("canSeeOthersPosts", ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, user, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", "wall2wall")
-				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())));
+				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())))
+				.headerBack(user);
 		preparePostList(ctx, wall.list, model, self);
 		return model;
 	}
@@ -1129,7 +1188,7 @@ public class PostRoutes{
 		return new RenderedTemplateResponse("wall_reply_hover_card", req)
 				.with("post", pvm)
 				.with("maxReplyDepth", getMaxReplyDepth(self))
-				.with("users", ctx.getUsersController().getUsers(needUsers))
+				.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 	}
 
@@ -1199,5 +1258,47 @@ public class PostRoutes{
 		else
 			rb.runScript("var layerCont=ge(\"postReplies"+postID+ridSuffix+"\").closest(\".layerContent\"); layerCont.scrollTop+=layerCont.scrollHeight-window._layerScrollHeight; delete window._layerScrollHeight;");
 		return rb;
+	}
+
+	public static Object pinPost(Request req, Response resp, Account self, ApplicationContext ctx){
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
+
+		if(post.authorID!=self.id || post.authorID!=post.ownerID || post.getReplyLevel()>0)
+			throw new UserActionNotAllowedException();
+
+		ctx.getWallController().pinPost(post, false);
+
+		if(isAjax(req)){
+			String rid=req.queryParams("rid");
+			String ridSuffix="";
+			if(StringUtils.isNotEmpty(rid))
+				ridSuffix="_"+rid;
+			return new WebDeltaResponse(resp)
+					.setContent("postPinButton"+post.id+ridSuffix, lang(req).get("wall_unpin_post"))
+					.setAttribute("postPinButton"+post.id+ridSuffix, "href", "/posts/"+post.id+"/unpin?csrf="+req.queryParams("csrf")+(StringUtils.isEmpty(rid) ? "" : ("&rid="+rid)));
+		}
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object unpinPost(Request req, Response resp, Account self, ApplicationContext ctx){
+		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
+
+		if(post.authorID!=self.id)
+			throw new UserActionNotAllowedException();
+
+		ctx.getWallController().unpinPost(post);
+
+		if(isAjax(req)){
+			String rid=req.queryParams("rid");
+			String ridSuffix="";
+			if(StringUtils.isNotEmpty(rid))
+				ridSuffix="_"+rid;
+			return new WebDeltaResponse(resp)
+					.setContent("postPinButton"+post.id+ridSuffix, lang(req).get("wall_pin_post"))
+					.setAttribute("postPinButton"+post.id+ridSuffix, "href", "/posts/"+post.id+"/pin?csrf="+req.queryParams("csrf")+(StringUtils.isEmpty(rid) ? "" : ("&rid="+rid)));
+		}
+		resp.redirect(back(req));
+		return "";
 	}
 }

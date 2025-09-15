@@ -1,10 +1,12 @@
 {# @pebvariable name="entry" type="smithereen.model.viewmodel.AuditLogEntryViewModel" #}
 {% extends "page" %}
 {% block content %}
-{% if user is null %}
-{% include "admin_tabbar" with {'tab': 'auditLog'} %}
-{% else %}
+{% if user is not null %}
 {% include "admin_users_info_tabbar" with {'tab': 'auditLog'} %}
+{% elseif group is not null %}
+{% include "admin_groups_info_tabbar" with {'tab': 'auditLog'} %}
+{% else %}
+{% include "admin_tabbar" with {'tab': 'auditLog'} %}
 {% endif %}
 {% if not isMobile %}
 <div class="summaryWrap">

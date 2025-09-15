@@ -1,0 +1,57 @@
+{# @pebvariable name="topic" type="smithereen.model.board.BoardTopic" #}
+{% extends "page" %}
+{% block headerActionButtons %}
+	{% set options=[] %}
+	{% if topic.apURL is not empty %}
+		{% set _=options.add({'label': L('open_on_server_X', {'domain': topic.apURL.host}).toString(), 'type': 'link', 'href': topic.activityPubURL, 'target': '_blank'}) %}
+	{% endif %}
+	{% if canEditTopic %}
+		{% set _=options.add({'label': L('board_edit_topic_title').toString(), 'type': 'link', 'ajax': 'box', 'href': "#{topic.url}/renameForm"}) %}
+		{% if userPermissions.canManageGroup(group) %}
+		{% if topic.isPinned %}
+		{% set _=options.add({'label': L('board_unpin_topic').toString(), 'type': 'post', 'ajax': 'box', 'href': "#{topic.url}/unpin"}) %}
+		{% else %}
+		{% set _=options.add({'label': L('board_pin_topic').toString(), 'type': 'post', 'ajax': 'box', 'href': "#{topic.url}/pin"}) %}
+		{% endif %}
+		{% if topic.isClosed %}
+		{% set _=options.add({'label': L('board_unlock_topic').toString(), 'type': 'post', 'ajax': 'box', 'href': "#{topic.url}/open"}) %}
+		{% else %}
+		{% set _=options.add({'label': L('board_lock_topic').toString(), 'type': 'post', 'ajax': 'box', 'href': "#{topic.url}/close"}) %}
+		{% endif %}
+		{% endif %}
+		{% set _=options.add({'label': L('board_delete_topic').toString(), 'type': 'confirm', 'title': L('board_topic_deletion').toString(), 'msg': L('board_delete_topic_confirm').toString(), 'url': "#{topic.url}/delete?csrf=#{csrf}"}) %}
+	{% endif %}
+	{% block optionsButton %}
+	{% if options is not empty %}
+    <button title="{{ L('more_options') }}" class="actionButton iconMore" onclick="new MobileOptionsBox({{ json(options) }}).show()" id="profileMoreButton"></button>
+    {% endif %}
+    {% endblock %}
+{% endblock %}
+{% block content %}
+<div class="gray boardTopicHeader">
+	<div class="title"><a href="{{ topic.url }}">{{ topic.title }}</a></div>
+	<a href="{{ profileURL(topic.authorID) }}">{{ users[topic.authorID] | name('complete') }}</a>
+</div>
+{% if message %}<div class="singleColumn"><div class="settingsMessage"><b>{{ message }}</b><br/>{{ messageSubtitle }}</div></div>{% endif %}
+<div class="singleColumnLargerPadding boardComments" id="comments_{{ topic.commentParentID.htmlElementID }}">
+{% for comment in items %}
+	{% include "comment" with {'post': comment, 'replyFormID': "wallPostForm_comment_#{topic.commentParentID.htmlElementID}", 'parentObject': topic, 'baseReplyLevel': 0, 'canComment': canComment, 'first': loop.first, 'board': true, 'suppressDeletion': comment.post.id==topic.firstCommentID} %}
+{% endfor %}
+</div>
+{% include "pagination" %}
+{% if canComment %}
+	{% include "comment_form" with {'id': "comment_#{photo.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=topic&parentID="+topic.idString, 'showReplyBar': true} %}
+{% endif %}
+{% script %}
+(function(){
+	if(window.location.hash && window.location.hash.indexOf("comment")==1){
+		var el=document.getElementById(window.location.hash.replace("#", ""));
+		if(el){
+			el.classList.add("highlight");
+			el.scrollIntoView();
+		}
+	}
+})();
+{% endscript %}
+{% endblock %}
+

@@ -8,6 +8,7 @@ import com.google.gson.JsonPrimitive;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -32,7 +33,7 @@ import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
 
-	private URI wall, friends, groups, photoAlbums, taggedPhotos, wallComments;
+	private URI wall, friends, groups, photoAlbums, taggedPhotos, wallComments, pinnedPosts;
 	public URI movedToURL;
 	public boolean isServiceActor;
 
@@ -69,6 +70,7 @@ public class ForeignUser extends User implements ForeignActor{
 		collectionQueryEndpoint=tryParseURL(ep.collectionQuery);
 		photoAlbums=tryParseURL(ep.photoAlbums);
 		taggedPhotos=tryParseURL(ep.taggedPhotos);
+		pinnedPosts=tryParseURL(ep.pinnedPosts);
 	}
 
 	@Override
@@ -269,7 +271,7 @@ public class ForeignUser extends User implements ForeignActor{
 					// Get rid of Mastodon :emojis: and non-ASCII characters
 					String normalizedName=pv.name.toLowerCase().replaceAll(":[a-z0-9_]{2,}:", "").replaceAll("[^a-z0-9 -]", "").trim();
 					// Match against popular strings people use for these things
-					if(Set.of("website", "web", "web site", "blog", "homepage", "www", "site", "personal page", "personal website", "personal blog").contains(normalizedName)){
+					if(WEBSITE_FIELD_KEYS.contains(normalizedName)){
 						website=TextProcessor.stripHTML(pv.value, false);
 						continue;
 					}
@@ -344,6 +346,7 @@ public class ForeignUser extends User implements ForeignActor{
 				newsTypesToShow=typeIDs.stream()
 						.map(id->switch(id){
 							case "sm:Photos" -> FriendsNewsfeedTypeFilter.PHOTOS;
+							case "sm:BoardTopics" -> FriendsNewsfeedTypeFilter.TOPICS;
 							case "sm:Friends" -> FriendsNewsfeedTypeFilter.FRIENDS;
 							case "sm:Groups" -> FriendsNewsfeedTypeFilter.GROUPS;
 							case "sm:Events" -> FriendsNewsfeedTypeFilter.EVENTS;
@@ -355,6 +358,20 @@ public class ForeignUser extends User implements ForeignActor{
 						.collect(Collectors.toCollection(()->EnumSet.noneOf(FriendsNewsfeedTypeFilter.class)));
 			}
 		}
+
+		if(optBoolean(obj, "suspended")){
+			if(banInfo==null)
+				banInfo=new UserBanInfo(Instant.now(), null, null, false, 0, 0, true);
+			else
+				banInfo=banInfo.withRemoteSuspensionStatus(true);
+		}else if(banInfo!=null){
+			if(banStatus==UserBanStatus.NONE)
+				banInfo=null;
+			else
+				banInfo=banInfo.withRemoteSuspensionStatus(false);
+		}
+
+		pinnedPosts=tryParseURL(optString(obj, "featured"));
 
 		return this;
 	}
@@ -405,6 +422,11 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
+	public URI getPinnedPostsURL(){
+		return pinnedPosts;
+	}
+
+	@Override
 	protected NonCachedRemoteImage.Args getAvatarArgs(){
 		return new NonCachedRemoteImage.UserProfilePictureArgs(id);
 	}
@@ -421,6 +443,10 @@ public class ForeignUser extends User implements ForeignActor{
 			ep.friends=friends.toString();
 		if(groups!=null)
 			ep.groups=groups.toString();
+		if(taggedPhotos!=null)
+			ep.taggedPhotos=taggedPhotos.toString();
+		if(pinnedPosts!=null)
+			ep.pinnedPosts=pinnedPosts.toString();
 		return ep;
 	}
 

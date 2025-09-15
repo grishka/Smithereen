@@ -25,6 +25,8 @@ import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
 import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportableContentObjectID;
+import smithereen.model.reports.ReportableContentObjectType;
 import smithereen.model.reports.ReportedPhoto;
 import smithereen.storage.DatabaseUtils;
 import smithereen.util.JsonObjectBuilder;
@@ -197,5 +199,10 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 			localFileID=jo.get("file_id").getAsLong();
 		if(jo.has("remote_src"))
 			remoteSrc=URI.create(jo.get("remote_src").getAsString());
+	}
+
+	@Override
+	public ReportableContentObjectID getReportableObjectID(){
+		return new ReportableContentObjectID(ReportableContentObjectType.PHOTO, id);
 	}
 }

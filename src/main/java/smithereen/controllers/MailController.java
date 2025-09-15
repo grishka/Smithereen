@@ -32,7 +32,7 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.User;
-import smithereen.model.UserNotifications;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;

@@ -1,0 +1,3 @@
+<div class="settingsMessage" id="formMessage_deleteGroup" style="{% if message is empty %}display: none{% endif %}">{{ message }}</div>
+<p>{{ L('admin_group_delete_confirmation', {'name': group.name}) }}</p>
+<p><input type="text" placeholder="{{ username }}" name="username" style="width: 100%"/></p>

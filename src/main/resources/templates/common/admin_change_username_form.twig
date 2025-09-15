@@ -1,0 +1,4 @@
+{% import "forms" as form %}
+{{ form.start("changeUsername") }}
+	{{ form.textInput('username', L('settings_username'), target.username, {'prefix': "#{serverDomain}/", 'autocomplete': false, 'addClasses': "wide", 'maxlength': 50, 'required': true, 'pattern': '[a-zA-Z][a-zA-Z0-9\._\-]+', 'explanation': L('username_explain')}) }}
+{{ form.end() }}

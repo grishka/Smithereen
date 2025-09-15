@@ -70,7 +70,7 @@ public class SearchStorage{
 				}
 			}
 
-			Map<Integer, User> users=UserStorage.getById(needUsers);
+			Map<Integer, User> users=UserStorage.getById(needUsers, false);
 			Map<Integer, Group> groups=GroupStorage.getById(needGroups);
 			for(SearchResult sr: results){
 				switch(sr.type){

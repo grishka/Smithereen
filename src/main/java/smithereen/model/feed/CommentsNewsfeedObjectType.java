@@ -2,5 +2,6 @@ package smithereen.model.feed;
 
 public enum CommentsNewsfeedObjectType{
 	POST,
-	PHOTO
+	PHOTO,
+	BOARD_TOPIC
 }

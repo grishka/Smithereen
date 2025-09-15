@@ -19,11 +19,19 @@ public abstract class MediaFileStorageDriver{
 	protected static final Logger LOG=LoggerFactory.getLogger(MediaFileStorageDriver.class);
 	private static MediaFileStorageDriver instance;
 
-	public abstract void storeFile(File localFile, MediaFileID id, boolean keepLocalFile) throws IOException;
+	public abstract void storeFile(File localFile, MediaFileID id, boolean keepLocalFile, String downloadFileName) throws IOException;
 	public abstract InputStream openStream(MediaFileID id) throws IOException;
 	public abstract void deleteFile(MediaFileID id) throws IOException;
 	public abstract ImgProxy.UrlBuilder getImgProxyURL(MediaFileID id);
-	public abstract URI getFilePublicURL(MediaFileID id);
+	public abstract URI getFilePublicURL(MediaFileID id, String downloadFileName);
+
+	public URI getFilePublicURL(MediaFileID id){
+		return getFilePublicURL(id, null);
+	}
+
+	public void storeFile(File localFile, MediaFileID id, boolean keepLocalFile) throws IOException{
+		storeFile(localFile, id, keepLocalFile, null);
+	}
 
 	public Set<MediaFileID> deleteFiles(Collection<MediaFileID> ids){
 		HashSet<MediaFileID> deletedIDs=new HashSet<>();

@@ -23,9 +23,12 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.notifications.Notification;
 import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportableContentObjectID;
+import smithereen.model.reports.ReportableContentObjectType;
 import smithereen.model.reports.ReportedPost;
 import smithereen.storage.PostStorage;
 import smithereen.util.JsonArrayBuilder;
@@ -95,10 +98,10 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		return replyKey.get(level);
 	}
 
-	public boolean canBeManagedBy(User user){
-		if(user==null)
+	public boolean canBeManagedBy(Actor actor){
+		if(actor==null)
 			return false;
-		return ownerID==user.id || authorID==user.id;
+		return ownerID==actor.getOwnerID() || authorID==actor.getOwnerID();
 	}
 
 	@Override
@@ -187,6 +190,11 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		}
 		if(jo.has("cw"))
 			contentWarning=jo.get("cw").getAsString();
+	}
+
+	@Override
+	public ReportableContentObjectID getReportableObjectID(){
+		return new ReportableContentObjectID(ReportableContentObjectType.POST, id);
 	}
 
 	public boolean isMastodonStyleRepost(){

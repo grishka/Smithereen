@@ -32,7 +32,7 @@ public abstract class Activity extends ActivityPubObject{
 		if(target!=null)
 			obj.add("target", target.serialize(serializerContext));
 		if(result!=null && !result.isEmpty())
-			obj.add("result", serializeLinkOrObjectArray(result, serializerContext));
+			obj.add("result", result.size()==1 ? result.getFirst().serialize(serializerContext) : serializeLinkOrObjectArray(result, serializerContext));
 		if(origin!=null)
 			obj.add("origin", origin.serialize(serializerContext));
 		if(instrument!=null)

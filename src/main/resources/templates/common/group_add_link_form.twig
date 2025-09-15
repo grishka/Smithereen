@@ -1,0 +1,21 @@
+<div class="avaWithExtraContent">
+	<div class="avaW">
+	{% if actor is not null %}
+	{{ actor | pictureForAvatar('b') }}
+	{% elseif image is not null %}
+	<span class="ava sizeB avaHasImage">{{ image | pictureForPhoto(size='b', addClasses=['avaImage']) }}</span>
+	{% else %}
+	<span class="ava sizeB avaHasImage"><img src="/res/lnkouter.svg" width="100" height="100" class="avaImage" style="--ava-width: 100px; --ava-height: 100px;"/></span>
+	{% endif %}
+	</div>
+	<div class="contentW">
+	{% if objectTitle is not empty %}
+	<h2>{{ objectTitle }}</h2>
+	<input type="text" name="title" id="linkTitleField" class="marginBefore" value="{{ pageTitle }}" style="width: 100%" placeholder="{{ L('group_link_enter_description') }}"{% if requireTitle %} required{% endif %}/>
+	{% else %}
+	<input type="text" name="title" id="linkTitleField" value="{{ pageTitle }}" style="width: 100%" placeholder="{{ L('group_link_enter_title') }}"{% if requireTitle %} required{% endif %}/>
+	<div class="grayText marginBefore">{{ domain }}</div>
+	{% endif %}
+	<input type="hidden" name="url" value="{{ url }}"/>
+	</div>
+</div>

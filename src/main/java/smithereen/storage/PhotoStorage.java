@@ -14,11 +14,13 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
@@ -36,6 +38,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
+import smithereen.util.XTEA;
 
 public class PhotoStorage{
 	public static List<PhotoAlbum> getAllAlbums(int ownerID) throws SQLException{
@@ -424,15 +427,17 @@ public class PhotoStorage{
 	}
 
 	public static long getAlbumIdByActivityPubId(URI activityPubID) throws SQLException{
-		return new SQLQueryBuilder()
+		long id=new SQLQueryBuilder()
 				.selectFrom("photo_albums")
 				.columns("id")
 				.where("ap_id=?", activityPubID.toString())
 				.executeAndGetLong();
+		return id==-1 ? 0 : id;
 	}
 
 	public static void putOrUpdateForeignAlbum(PhotoAlbum album) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			album.id=getAlbumIdByActivityPubId(album.getActivityPubID());
 			if(album.systemType!=null){
 				// Make sure there's only ever one of each type of system album per owner.
 				// This query will not match any rows 99.9999% of the time, but if the other server is doing weird shit, it'll
@@ -485,11 +490,12 @@ public class PhotoStorage{
 	}
 
 	public static long getPhotoIdByActivityPubId(URI activityPubID) throws SQLException{
-		return new SQLQueryBuilder()
+		long id=new SQLQueryBuilder()
 				.selectFrom("photos")
 				.columns("id")
 				.where("ap_id=?", activityPubID.toString())
 				.executeAndGetLong();
+		return id==-1 ? 0 : id;
 	}
 
 	public static Map<URI, Long> getPhotoIdsByActivityPubIds(Collection<URI> apIDs) throws SQLException{
@@ -503,6 +509,7 @@ public class PhotoStorage{
 
 	public static void putOrUpdateForeignPhoto(Photo photo) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			photo.id=getPhotoIdByActivityPubId(photo.getActivityPubID());
 			if(photo.id==0){
 				photo.id=new SQLQueryBuilder(conn)
 						.insertInto("photos")
@@ -763,5 +770,42 @@ public class PhotoStorage{
 				.executeAndGetLongStream()
 				.boxed()
 				.collect(Collectors.toSet());
+	}
+
+	public static PaginatedList<Photo> getAllPhotosByAuthor(int userID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("photos")
+					.count()
+					.where("author_id=?", userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<Photo> photos=new SQLQueryBuilder(conn)
+					.selectFrom("photos")
+					.where("author_id=?", userID)
+					.limit(count, offset)
+					.orderBy("created_at DESC")
+					.executeAsStream(Photo::fromResultSet)
+					.toList();
+			postprocessPhotos(photos);
+
+			return new PaginatedList<>(photos, total, offset, count);
+		}
+	}
+
+	public static Map<Long, URI> getPhotoActivityPubIDsByLocalIDs(Collection<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.columns("id", "ap_id")
+				.whereIn("id", ids)
+				.executeAsStream(res->new Pair<>(res.getLong("id"), res.getString("ap_id")))
+				.collect(Collectors.toMap(Pair::first, p->{
+					String apID=p.second();
+					if(apID==null)
+						return Config.localURI("/photos/"+XTEA.encodeObjectID(p.first(), ObfuscatedObjectIDType.PHOTO));
+					return URI.create(apID);
+				}));
 	}
 }

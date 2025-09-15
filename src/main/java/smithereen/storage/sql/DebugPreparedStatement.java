@@ -42,17 +42,21 @@ class DebugPreparedStatement extends DebugStatement implements PreparedStatement
 	@Override
 	public ResultSet executeQuery() throws SQLException{
 		long start=System.nanoTime();
-		ResultSet res=preparedStatement.executeQuery();
-		logTime(getPreparedQuery(), System.nanoTime()-start);
-		return res;
+		try{
+			return preparedStatement.executeQuery();
+		}finally{
+			logTime(getPreparedQuery(), System.nanoTime()-start);
+		}
 	}
 
 	@Override
 	public int executeUpdate() throws SQLException{
 		long start=System.nanoTime();
-		int rows=preparedStatement.executeUpdate();
-		logTime(getPreparedQuery(), System.nanoTime()-start);
-		return rows;
+		try{
+			return preparedStatement.executeUpdate();
+		}finally{
+			logTime(getPreparedQuery(), System.nanoTime()-start);
+		}
 	}
 
 	@Override
@@ -159,9 +163,11 @@ class DebugPreparedStatement extends DebugStatement implements PreparedStatement
 	@Override
 	public boolean execute() throws SQLException{
 		long start=System.nanoTime();
-		boolean res=preparedStatement.execute();
-		logTime(getPreparedQuery(), System.nanoTime()-start);
-		return res;
+		try{
+			return preparedStatement.execute();
+		}finally{
+			logTime(getPreparedQuery(), System.nanoTime()-start);
+		}
 	}
 
 	@Override
@@ -337,8 +343,10 @@ class DebugPreparedStatement extends DebugStatement implements PreparedStatement
 	@Override
 	public long executeLargeUpdate() throws SQLException{
 		long start=System.nanoTime();
-		long rows=preparedStatement.executeLargeUpdate();
-		logTime(getPreparedQuery(), System.nanoTime()-start);
-		return rows;
+		try{
+			return preparedStatement.executeLargeUpdate();
+		}finally{
+			logTime(getPreparedQuery(), System.nanoTime()-start);
+		}
 	}
 }

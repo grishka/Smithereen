@@ -37,19 +37,20 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
-import smithereen.model.BirthdayReminder;
+import smithereen.model.UserDataExport;
+import smithereen.model.notifications.BirthdayReminder;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendRequest;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendRequest;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SignupInvitation;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserBanStatus;
-import smithereen.model.UserNotifications;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.admin.UserActionLogAction;
 import smithereen.model.friends.FollowRelationship;
 import smithereen.model.friends.FriendList;
@@ -74,6 +75,10 @@ public class UserStorage{
 	private static final NamedMutexCollection foreignUserUpdateLocks=new NamedMutexCollection();
 
 	public static User getById(int id) throws SQLException{
+		return getById(id, false);
+	}
+
+	public static User getById(int id, boolean wantDeleted) throws SQLException{
 		User user=cache.get(id);
 		if(user!=null)
 			return user;
@@ -88,6 +93,11 @@ public class UserStorage{
 					li.fillIn(mfr);
 			}
 			putIntoCache(user);
+		}else if(wantDeleted){
+			user=new SQLQueryBuilder()
+					.selectFrom("deleted_user_bans")
+					.where("user_id=?", id)
+					.executeAndGetSingleObject(User::fromDeletedBannedResultSet);
 		}
 		return user;
 	}
@@ -97,11 +107,11 @@ public class UserStorage{
 			return Collections.emptyList();
 		if(ids.size()==1)
 			return Collections.singletonList(getById(ids.get(0)));
-		Map<Integer, User> users=getById(ids);
+		Map<Integer, User> users=getById(ids, false);
 		return ids.stream().map(users::get).filter(Objects::nonNull).collect(Collectors.toList());
 	}
 
-	public static Map<Integer, User> getById(Collection<Integer> _ids) throws SQLException{
+	public static Map<Integer, User> getById(Collection<Integer> _ids, boolean wantDeleted) throws SQLException{
 		if(_ids.isEmpty())
 			return Map.of();
 		if(_ids.size()==1){
@@ -150,6 +160,14 @@ public class UserStorage{
 				User u=result.get(id);
 				if(u!=null)
 					putIntoCache(u);
+			}
+			if(wantDeleted && ids.size()>result.size()){
+				ids.removeIf(result::containsKey);
+				new SQLQueryBuilder(conn)
+						.selectFrom("deleted_user_bans")
+						.whereIn("user_id", ids)
+						.executeAsStream(User::fromDeletedBannedResultSet)
+						.forEach(u->result.put(u.id, u));
 			}
 			return result;
 		}
@@ -518,7 +536,7 @@ public class UserStorage{
 			// 2. make a list of distinct users we need
 			Set<Integer> needUsers=mutualFriendIDs.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 			// 3. get them all in one go
-			Map<Integer, User> mutualFriends=getById(needUsers);
+			Map<Integer, User> mutualFriends=getById(needUsers, false);
 			// 4. finally, put them into friend requests
 			for(FriendRequest req: reqs){
 				List<Integer> ids=mutualFriendIDs.get(req.from.id);
@@ -854,7 +872,8 @@ public class UserStorage{
 					.value("middle_name", user.middleName)
 					.value("maiden_name", user.maidenName)
 					.value("endpoints", user.serializeEndpoints())
-					.value("privacy", user.privacySettings!=null ? Utils.gson.toJson(user.privacySettings) : null);
+					.value("privacy", user.privacySettings!=null ? Utils.gson.toJson(user.privacySettings) : null)
+					.value("ban_info", user.banInfo!=null ? Utils.gson.toJson(user.banInfo) : null);
 
 			if(isNew){
 				bldr.value("num_followers", user.getRawFollowersCount())
@@ -1025,6 +1044,13 @@ public class UserStorage{
 		}
 	}
 
+	public static FollowRelationship getFollowRelationship(int followerID, int followeeID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("followings")
+				.where("follower_id=? AND followee_id=?", followerID, followeeID)
+				.executeAndGetSingleObject(FollowRelationship::fromResultSet);
+	}
+
 	public static void setFollowAccepted(int followerID, int followeeID, boolean accepted) throws SQLException{
 		new SQLQueryBuilder()
 				.update("followings")
@@ -1119,7 +1145,7 @@ public class UserStorage{
 	public static void blockUser(int selfID, int targetID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			new SQLQueryBuilder(conn)
-					.insertInto("blocks_user_user")
+					.insertIgnoreInto("blocks_user_user")
 					.value("owner_id", selfID)
 					.value("user_id", targetID)
 					.executeNoResult();
@@ -1174,7 +1200,7 @@ public class UserStorage{
 
 	public static void blockDomain(int selfID, String domain) throws SQLException{
 		new SQLQueryBuilder()
-				.insertInto("blocks_user_domain")
+				.insertIgnoreInto("blocks_user_domain")
 				.value("owner_id", selfID)
 				.value("domain", domain)
 				.executeNoResult();
@@ -1384,6 +1410,15 @@ public class UserStorage{
 					.deleteFrom("users")
 					.where("id=?", user.id)
 					.executeNoResult();
+			if(user.banInfo!=null){
+				new SQLQueryBuilder(conn)
+						.insertInto("deleted_user_bans")
+						.value("user_id", user.id)
+						.value("domain", user.domain)
+						.value("ban_status", user.banStatus)
+						.value("ban_info", Utils.gson.toJson(user.banInfo))
+						.executeNoResult();
+			}
 			removeFromCache(user);
 		}
 	}
@@ -1404,6 +1439,14 @@ public class UserStorage{
 					.deleteFrom("users")
 					.where("id=?", account.user.id)
 					.executeNoResult();
+			if(account.user.banInfo!=null){
+				new SQLQueryBuilder(conn)
+						.insertInto("deleted_user_bans")
+						.value("user_id", account.user.id)
+						.value("ban_status", account.user.banStatus)
+						.value("ban_info", Utils.gson.toJson(account.user.banInfo))
+						.executeNoResult();
+			}
 			removeFromCache(account.user);
 			accountCache.remove(account.id);
 		}
@@ -1430,6 +1473,7 @@ public class UserStorage{
 				.selectFrom("users")
 				.columns("id")
 				.whereIn("ban_status", UserBanStatus.SELF_DEACTIVATED, UserBanStatus.SUSPENDED)
+				.andWhere("ap_id IS NULL")
 				.executeAndGetIntList());
 	}
 
@@ -1636,5 +1680,58 @@ public class UserStorage{
 				.where("follower_id=? AND mutual=1 AND accepted=1", userID)
 				.executeAsStream(res->new Pair<>(res.getInt(1), BitSet.valueOf(new long[]{res.getLong(2)})))
 				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
+	public static List<UserDataExport> getUserDataExports(int userID, int count) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_data_exports")
+				.where("user_id=?", userID)
+				.orderBy("id DESC")
+				.limit(count, 0)
+				.executeAsStream(UserDataExport::fromResultSet)
+				.toList();
+	}
+
+	public static Instant getLastSuccessfulUserDataExportTime(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_data_exports")
+				.columns("requested_at")
+				.where("user_id=? AND state<>?", userID, UserDataExport.State.FAILED)
+				.orderBy("id DESC")
+				.limit(1, 0)
+				.executeAndGetSingleObject(res->DatabaseUtils.getInstant(res, "requested_at"));
+	}
+
+	public static long createUserDataExport(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("user_data_exports")
+				.value("user_id", userID)
+				.value("state", UserDataExport.State.PREPARING)
+				.executeAndGetIDLong();
+	}
+
+	public static void updateUserDataExport(long id, long fileID, UserDataExport.State state, long fileSize) throws SQLException{
+		new SQLQueryBuilder()
+				.update("user_data_exports")
+				.value("file_id", fileID==0 ? null : fileID)
+				.value("state", state)
+				.value("size", fileSize)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static List<UserDataExport> getUserDataExportsToExpire() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_data_exports")
+				.where("state=? AND requested_at<DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL ? DAY)", UserDataExport.State.READY, Config.userExportRetentionDays)
+				.executeAsStream(UserDataExport::fromResultSet)
+				.toList();
+	}
+
+	public static UserDataExport getUserDataExport(long id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("user_data_exports")
+				.where("id=?", id)
+				.executeAndGetSingleObject(UserDataExport::fromResultSet);
 	}
 }

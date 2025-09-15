@@ -443,7 +443,7 @@ function setGlobalLoading(loading:boolean):void{
 	document.body.style.cursor=loading ? "progress" : "";
 }
 
-function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, useLang:boolean=true):boolean{
+function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, useLang:boolean=true, confirmButtonTitle:string=null):boolean{
 	var box:ConfirmBox;
 	box=new ConfirmBox(useLang ? lang(titleKey) : titleKey, useLang ? lang(msgKey) : msgKey, function(){
 		var btn=box.getButton(0);
@@ -465,12 +465,18 @@ function ajaxConfirm(titleKey:string, msgKey:string, url:string, params:any={}, 
 			box.dismiss();
 			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 		});
-	});
+	}, confirmButtonTitle ? [useLang ? lang(confirmButtonTitle) : confirmButtonTitle, lang("cancel")] : null);
 	box.show();
 	return false;
 }
 
-function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, submitter:HTMLElement=null, extra:any={}):boolean{
+interface AjaxSubmitFormExtraData{
+	confirmed?:boolean;
+	onResponseReceived?:(response:any)=>void;
+	additionalInputs?:Record<string, any>;
+}
+
+function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, submitter:HTMLElement=null, extra:AjaxSubmitFormExtraData={}):boolean{
 	if(submittingForm)
 		return false;
 	if(!form.checkValidity()){
@@ -478,7 +484,9 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 		return false;
 	}
 	if(submitter && submitter.dataset.confirmMessage && !extra.confirmed){
-		new ConfirmBox(lang(submitter.dataset.confirmTitle), lang(submitter.dataset.confirmMessage), ()=>ajaxSubmitForm(form, onDone, submitter, {confirmed: true})).show();
+		const confirmedExtra=Object.assign({}, extra);
+		confirmedExtra.confirmed=true;
+		new ConfirmBox(lang(submitter.dataset.confirmTitle), lang(submitter.dataset.confirmMessage), ()=>ajaxSubmitForm(form, onDone, submitter, confirmedExtra)).show();
 		return;
 	}
 	submittingForm=form;
@@ -506,6 +514,9 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 				data[el.name]=el.value;
 			}
 		}
+	}
+	if(extra.additionalInputs){
+		Object.assign(data, extra.additionalInputs);
 	}
 	data.csrf=userConfig.csrf;
 	if(location.search){
@@ -556,6 +567,8 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 	if(ev && (ev instanceof MouseEvent || ev instanceof KeyboardEvent) && (ev.altKey || ev.ctrlKey || ev.shiftKey || ev.metaKey))
 		return false;
 	if(link.dataset.ajax!=undefined){
+		if(link.classList.contains("ajaxLoading"))
+			return true;
 		var elToHide:HTMLElement;
 		var elToShow:HTMLElement;
 		if(link.dataset.ajaxHide!=undefined){
@@ -585,7 +598,7 @@ function ajaxFollowLink(link:HTMLAnchorElement):boolean{
 		return true;
 	}
 	if(link.dataset.confirmAction){
-		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage, link.dataset.confirmAction);
+		ajaxConfirm(link.dataset.confirmTitle, link.dataset.confirmMessage, link.dataset.confirmAction, getInputValuesByIds(link.dataset.additionalInputs), false, link.dataset.confirmButton);
 		return true;
 	}
 
@@ -751,10 +764,20 @@ function applyServerCommand(cmd:any){
 		}
 		break;
 		case "refresh":
-			location.reload();
+		{
+			if(mobile)
+				location.reload();
+			else
+				ajaxNavigate(location.href, false);
+		}
 			break;
 		case "location":
-			location.href=cmd.l;
+		{
+			if(mobile)
+				location.href=cmd.l;
+			else
+				ajaxNavigate(cmd.l, cmd.l!=location.href);
+		}
 			break;
 		case "run":
 			eval(cmd.s);
@@ -779,26 +802,15 @@ function applyServerCommand(cmd:any){
 	}
 }
 
-function showPostReplyForm(id:number, formID:string="wallPostForm_reply", moveForm:boolean=true, containerPostID:number=0, randomID:string=null):boolean{
+function showReplyForm(id:number|string, formID:string="wallPostForm_reply", type:PostFormReplyType, moveForm:boolean=true, containerPostID:number=0, randomID:string=null):boolean{
 	var form=ge(formID);
 	form.show();
 	if(moveForm){
 		var suffix=randomID ? "_"+randomID : "";
-		var replies=ge("postReplies"+(containerPostID || id)+suffix);
+		var replies=ge(type+"Replies"+(containerPostID || id)+suffix);
 		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
 	}
-	form.customData.postFormObj.setupForReplyTo(id, "post", randomID);
-	return false;
-}
-
-function showCommentReplyForm(id:string, formID:string, moveForm:boolean=true, containerPostID:string=null):boolean{
-	var form=ge(formID);
-	form.show();
-	if(moveForm){
-		var replies=ge("commentReplies"+(containerPostID || id));
-		replies.insertAdjacentElement(containerPostID ? "beforeend" : "afterbegin", form);
-	}
-	form.customData.postFormObj.setupForReplyTo(id, "comment");
+	form.customData.postFormObj.setupForReplyTo(id, type, randomID, moveForm);
 	return false;
 }
 
@@ -829,19 +841,22 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 	var objID=btn.getAttribute("data-obj-id");
 	var liked=btn.classList.contains("liked");
 	var counter=ge("likeCounter"+objType.substring(0,1).toUpperCase()+objType.substring(1)+objID);
-	var count=parseInt(counter.innerText);
+	var count=parseInt(counter.dataset.count);
 	var ownAva=document.querySelector(".likeAvatars"+objID+".likeAvatars .currentUserLikeAva") as HTMLElement;
 	if(btn.customData && btn.customData.popoverTimeout){
 		clearTimeout(btn.customData.popoverTimeout);
 		delete btn.customData.popoverTimeout;
 	}
 	if(!liked){
-		counter.innerText=(count+1).toString();
 		btn.classList.add("liked");
 		if(count==0){
 			counter.show();
 			btn.classList.remove("revealOnHover");
+			counter.innerText=formatNumber(count+1);
+		}else{
+			animateCounter(counter, (count+1).toString());
 		}
+		counter.dataset.count=(count+1).toString();
 		if(btn._popover){
 			if(!btn._popover.isShown())
 				btn._popover.show(-1, -1, btn.qs("span.icon"));
@@ -851,7 +866,6 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 		}
 		if(ownAva) ownAva.show();
 	}else{
-		counter.innerText=(count-1).toString();
 		btn.classList.remove("liked");
 		if(count==1){
 			counter.hide();
@@ -861,7 +875,10 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			if(btn.classList.contains("commentLike")){
 				btn.classList.add("revealOnHover");
 			}
+		}else{
+			animateCounter(counter, (count-1).toString());
 		}
+		counter.dataset.count=(count-1).toString();
 		if(btn._popover){
 			var title=btn._popover.getTitle();
 			btn._popover.setTitle(btn.customData.altPopoverTitle);
@@ -881,11 +898,13 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			btn.removeAttribute("in_progress");
 			new MessageBox(lang("error"), lang("network_error"), lang("close")).show();
 			if(liked){
-				counter.innerText=(count+1).toString();
+				counter.dataset.count=(count+1).toString();
+				animateCounter(counter, (count+1).toString());
 				btn.classList.add("liked");
 				if(count==0) counter.show();
 			}else{
-				counter.innerText=(count-1).toString();
+				counter.dataset.count=(count-1).toString();
+				animateCounter(counter, (count-1).toString());
 				btn.classList.remove("liked");
 				if(count==1) counter.hide();
 			}
@@ -1214,7 +1233,8 @@ function makeAvatar(urls:string[], baseSize:string, customSize:number=0):HTMLEle
 		]);
 	}
 	if(customSize){
-		el.style.width=el.style.height=customSize+"px";
+		el.style.setProperty("--ava-width", customSize+"px");
+		el.style.setProperty("--ava-height", customSize+"px");
 	}
 	return el;
 }
@@ -1252,7 +1272,9 @@ function showMailFormBox(el:HTMLAnchorElement){
 		box.show();
 		var button=box.getButton(0);
 		button.id="mailMessageFormSubmit";
-		postForm=new PostForm(ge("wallPostForm_mailMessage"));
+		var formEl=ge("wallPostForm_mailMessage");
+		postForm=new PostForm(formEl);
+		formEl.customData={postForm: postForm};
 		postForm.onSendDone=(success)=>{
 			if(success)
 				box.dismiss();
@@ -1645,6 +1667,10 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 			setGlobalLoading(false);
 			LayerManager.getInstance().dismissEverything();
 			LayerManager.getMediaInstance().dismissEverything();
+			for(var cb of ajaxNavCallbacks){
+				cb();
+			}
+			ajaxNavCallbacks=[];
 			cur={};
 			if(addToHistory){
 				window.history.pushState({type: "al"}, "", xhr.response.url || url);
@@ -1721,7 +1747,7 @@ function setMenuCounters(counters:{[key:string]:number}){
 	}
 }
 
-function activateNotificationsPostForm(id:string, postID:string, type:string, randomID:string){
+function activateNotificationsPostForm(id:string, postID:string, type:PostFormReplyType, randomID:string){
 	var ev=window.event;
 	var target=ev.target as HTMLElement;
 	if(target.tagName=='A' || target.tagName=='LABEL' || target.tagName=='INPUT')
@@ -1863,3 +1889,61 @@ function showProfileStatusBox(){
 	window.addEventListener("mousedown", box.customData.mouseListener);
 	window.addEventListener("keydown", box.customData.escListener);
 }
+
+/**
+ * Returns the values of the {@link HTMLInputElement}s looked up by the space-separated list of {@link ids}.
+ */
+function getInputValuesByIds(ids:string|undefined|null):Record<string, string>{
+	const inputs:Record<string, string>={};
+	if(!ids) return inputs;
+	for(const id of ids.split(/\s+/)){
+		const el=ge<HTMLInputElement>(id);
+		if(!el) continue;
+		inputs[el.name]=el.value;
+	}
+	return inputs;
+}
+
+function animateCounter(el:HTMLElement, newValue:string){
+	var oldValue=el.innerText;
+	var newValueEl=el.qs(".newValue");
+	if(newValue==oldValue || (newValueEl && newValueEl.innerText==newValue))
+		return;
+
+	if(!el.customData)
+		el.customData={};
+	if(el.customData.counterEndListener)
+		el.customData.counterEndListener(null);
+
+	var endListener=(ev:AnimationEvent)=>{
+		el.removeEventListener("animationend", endListener);
+		el.innerText=newValue;
+		el.classList.remove("animatingCounter");
+		el.customData.counterEndListener=null;
+	};
+	el.customData.counterEndListener=endListener;
+	el.addEventListener("animationend", endListener);
+	el.classList.add("animatingCounter");
+	if(newValue.length!=oldValue.length){
+		var animateForward=newValue.length>oldValue.length;
+		el.innerHTML=`<span class="animatedPart ${animateForward ? 'forward' : 'backward'}"><span class="oldValue">${oldValue}</span><span class="newValue">${newValue}</span><span style="visibility: hidden;">1</span></span>`;
+		var oldW=el.qs(".oldValue").offsetWidth;
+		var newW=el.qs(".newValue").offsetWidth;
+		var outerEl=el.children[0] as HTMLElement;
+		outerEl.style.setProperty("--old-width", oldW+"px");
+		outerEl.style.setProperty("--new-width", newW+"px");
+		outerEl.classList.add("animateWidth");
+	}else{
+		var diffStart=0;
+		var animateForward:boolean;
+		for(var i=0;i<newValue.length;i++){
+			if(oldValue[i]!=newValue[i]){
+				diffStart=i;
+				animateForward=oldValue[i]<newValue[i];
+				break;
+			}
+		}
+		el.innerHTML=`${oldValue.substring(0, diffStart)}<span class="animatedPart ${animateForward ? 'forward' : 'backward'}"><span class="oldValue">${oldValue.substring(diffStart)}</span><span class="newValue">${newValue.substring(diffStart)}</span></span>`;
+	}
+}
+

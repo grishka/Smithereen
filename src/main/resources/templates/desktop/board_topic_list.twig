@@ -1,0 +1,58 @@
+{% extends "page" %}
+{% block content %}
+{% set postsPerPage=20 %}
+{% include "board_tabbar" with {'tab': 'all'} %}
+<div class="gray borderBottom searchWithTabs">
+	<div class="searchFieldWrap singleColumn">
+	</div>
+	<div class="secondaryTabBar">
+		<a href="/groups/{{ group.id }}/board?sort=updated_desc" class="{{ sortOrder=='UPDATED_DESC' or sortOrder=='UPDATED_ASC' ? 'selected' : '' }}">{{ L('board_sort_date_updated') }}</a>
+		<a href="/groups/{{ group.id }}/board?sort=created_desc" class="{{ sortOrder=='CREATED_DESC' or sortOrder=='CREATED_ASC' ? 'selected' : '' }}">{{ L('board_sort_date_created') }}</a>
+	</div>
+</div>
+<div class="summaryWrap">
+	<div class="summary">{{ L('board_topic_list_summary', {'count': totalItems}) }}</div>
+	<a href="/groups/{{ group.id }}/board?sort={{ sortOrder.reverse | lower }}" class="flR order{{ sortOrder=='UPDATED_ASC' or sortOrder=='CREATED_ASC' ? ' reverse' : '' }}" data-tooltip="{{ L('reverse_order') }}"></a>
+	{% include "pagination" %}
+</div>
+<div>
+{% if message is not empty %}<div class="settingsMessage"><b>{{ message }}</b><div class="smallMarginBefore">{{ messageSubtitle }}</div></div>{% endif %}
+{% for topic in items %}
+	<div class="boardTopicListItem">
+		<div class="mainW">
+			<a class="title" href="{{ topic.url }}">{{ topic.title }}</a>
+			{% if topic.isPinned and topic.isClosed %}
+			<nobr class="grayText closed">{{ L('board_pinned_and_locked_topic') }}</nobr>
+			{% elseif topic.isPinned %}
+			<nobr class="grayText closed">{{ L('board_pinned_topic') }}</nobr>
+			{% elseif topic.isClosed %}
+			<nobr class="grayText closed">{{ L('board_locked_topic') }}</nobr>
+			{% endif %}
+			<div class="info">
+				<span class="postCount">{{ L('board_topic_post_count', {'count': topic.numComments}) }}</span>
+			{% if topic.numComments>postsPerPage %}
+			{% set numPages=(topic.numComments+(postsPerPage-1))/postsPerPage %}
+			<span class="pageLinks">{{ L('board_topic_page_links') }}
+			{% if numPages<8 %}
+			{% for i in range(0, numPages-1) %}<a href="{{ topic.url }}?offset={{ i*postsPerPage }}">{{ i+1 }}</a>{% endfor %}
+			{% else %}
+			{% for i in range(0, 2) %}<a href="{{ topic.url }}?offset={{ i*postsPerPage }}">{{ i+1 }}</a>{% endfor %}
+			..
+			{% for i in range(numPages-3, numPages-1) %}<a href="{{ topic.url }}?offset={{ i*postsPerPage }}">{{ i+1 }}</a>{% endfor %}
+			{% endif %}
+			</span>
+			{% endif %}
+			</div>
+		</div>
+		<a href="{{ topic.url }}?last" class="lastPost">
+			{{ users[topic.lastCommentAuthorID] | pictureForAvatar('a', 32) }}
+			<div class="ellipsize name">{{ users[topic.lastCommentAuthorID] | name }}</div>
+			<div class="ellipsize date">{{ L('board_topic_last_post_date', {'date': LD(topic.updatedAt, false, 'short'), 'gender': users[topic.lastCommentAuthorID].gender}) }}</div>
+		</a>
+	</div>
+{% else %}
+	<div class="singleColumn"><div class="emptyState">{{ L('board_no_topics') }}</div></div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}

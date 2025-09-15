@@ -2,15 +2,18 @@
 	<div class="blockHeader">
 		<a href="{{ headerHref }}"{% if headerAjaxBox %} data-ajax-box{% endif %}>{{ headerTitle }}</a>
 		{%- if additionalHeader is not empty %}
+			{%- if additionalHeaderId is not empty %}
+			{%- set idAttr="id="+additionalHeaderId %}
+			{%- endif -%}
 			{%- if additionalHeaderHref is not empty %}
-				<a class="addHeader" href="{{ additionalHeaderHref }}">{{ additionalHeader }}</a>
-			{%- else %}
-				<span class="addHeader">{{ additionalHeader }}</span>
+				<a class="addHeader" href="{{ additionalHeaderHref }}" {{ idAttr }}>{{ additionalHeader }}</a>
+                {%- else %}
+				<span class="addHeader" {{ idAttr }}>{{ additionalHeader }}</span>
 			{%- endif -%}
 		{%- endif -%}
 	</div>
 	{% if subheaderTitle is not empty %}
-	<div class="blockSubheader">{{ subheaderTitle }}</div>
+	<div class="blockSubheader">{{ subheaderTitle }}{% if subheaderLink is not empty %}<a href="{{ subheaderLinkHref }}">{{ subheaderLink }}</a>{% endif %}</div>
 	{% endif %}
 	{% block moduleContent %}
 	{% endblock %}

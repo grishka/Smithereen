@@ -7,8 +7,8 @@ import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.Actor;
-import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.model.Post;
@@ -27,7 +27,7 @@ public class FetchActorWallTask extends ForwardPaginatingCollectionTask{
 	}
 
 	@Override
-	protected void doOneCollectionPage(CollectionPage page){
+	protected void doOneCollectionPage(ActivityPubCollection page){
 		ArrayList<ProcessWallPostTask> tasks=new ArrayList<>();
 		for(LinkOrObject lo: page.items){
 			try{

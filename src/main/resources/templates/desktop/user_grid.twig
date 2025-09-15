@@ -12,7 +12,7 @@
 		{% if avatarPhotos contains id %}
 		<div class="avaZoomableW">
 			<a href="{{ profileURL(id) }}"{{ profileRel(actor) }}>{{ actor | pictureForAvatar('b') }}</a>
-			<a href="{{ avatarPhotos[user.id].url }}" class="avaZoom ellipsize" data-pv="{{ json(avatarPvInfos[user.id]) }}" onclick="return openPhotoViewer(this)"><span class="icon"></span><span>{{ L('view_user_profile_photos') }}</span></a>
+			<a href="{{ avatarPhotos[id].url }}" class="avaZoom ellipsize" data-pv="{{ json(avatarPvInfos[id]) }}" onclick="return openPhotoViewer(this)"><span class="icon"></span><span>{{ L('view_user_profile_photos') }}</span></a>
 		</div>
 		{% else %}
 		<a href="{{ profileURL(id) }}"{{ profileRel(actor) }}>{{ actor | pictureForAvatar('b') }}</a>

@@ -16,6 +16,7 @@ body, html{
 body{
 	margin: 0;
 	text-size-adjust: none;
+	-webkit-tap-highlight-color: color($normalLink alpha(20%));
 }
 
 .pageContent{
@@ -56,17 +57,18 @@ span.wideOnly{
 			vertical-align: top;
 			margin-top: 8px;
 		}
-		label{
-			font-size: 0;
+		label, .back{
 			display: block;
 			width: 100%;
 			height: 100%;
-			background-image: svg-load('img/material/ic_menu.svg', fill: $iconColor);
 			background-position: center;
 			background-repeat: no-repeat;
-			span{
-				visibility: hidden;
-			}
+		}
+		label{
+			background-image: svg-load('img/material/ic_menu.svg', fill: $iconColor);
+		}
+		.back{
+			background-image: svg-load('img/material/ic_arrow_back.svg', fill: $iconColor);
 		}
 	}
 	.title{
@@ -140,6 +142,12 @@ h4{
 	font-weight: bold;
 	margin: 8px -$contentPadding 2px;
 	padding: 0 8px;
+}
+
+h5{
+	font-size: 15px;
+	font-weight: bold;
+	margin: 8px 0;
 }
 
 .singleColumn{
@@ -320,13 +328,13 @@ select{
 		font-weight: $mediumWeight;
 	}
 	.postContentWrap{
-		padding: 8px 0;
+		margin: 8px 0;
 	}
 	.postContent pre{
 		overflow-x: auto;
 	}
 	.repostHeader{
-		padding-bottom: 8px;
+		margin-bottom: 8px;
 		.avaW{
 			margin-right: 8px;
 		}
@@ -334,8 +342,8 @@ select{
 			font-weight: $mediumWeight;
 		}
 	}
-	.postContent:not(:empty)+.repostHeader{
-		padding-top: 8px;
+	.postContent:not(:empty)+.repostHeader, .postAttachments:not(:empty)+.repostHeader{
+		margin-top: 8px;
 	}
 	.postActions{
 		border-top: solid 1px $wallCommentSeparator;
@@ -345,6 +353,10 @@ select{
 		.share{
 			margin-right: -12px;
 		}
+	}
+	.postContentWrap:has(.postAttachments:last-child>.aspectBoxW:last-child)+.postActions{
+		border-top: none;
+		margin-top: -8px;
 	}
 	code{
 		line-height: 18px;
@@ -364,6 +376,9 @@ select{
 		background-position: 0 -24px;
 		margin: 0 5px;
 		top: 1px;
+	}
+	&.standalone{
+		padding: 0;
 	}
 }
 
@@ -395,6 +410,7 @@ select{
 		padding: 0 12px;
 		min-width: 56px;
 		text-align: center;
+		overflow: hidden;
 		.wideOnly{
 			margin-right: 8px;
 		}
@@ -444,7 +460,6 @@ select{
 
 .pagination{
 	padding: 8px;
-	text-align: center;
 	a, span{
 		padding: 8px;
 		display: inline-block;
@@ -730,6 +745,10 @@ select{
 		.action{
 			height: 24px;
 			line-height: 24px;
+			display: inline-block;
+			position: relative;
+			top: 7px;
+			-webkit-tap-highlight-color: transparent;
 		}
 	}
 	.authorNameWrap{
@@ -841,7 +860,7 @@ select{
 }
 
 .postAttachments{
-	margin: 0 -12px;
+	margin: 8px -12px 0;
 	text-align: center;
 	.aspectBox{
 		display: grid;
@@ -869,6 +888,10 @@ select{
 		max-height: 510px;
 		margin: auto;
 	}
+}
+
+.comment .postAttachments{
+	margin: 8px 0 0;
 }
 
 .feedCaptionWithAva{
@@ -1422,6 +1445,10 @@ input[type=time]::-webkit-calendar-picker-indicator{
 	margin-bottom: 16px;
 }
 
+.smallMarginAfter{
+	margin-bottom: 8px;
+}
+
 .buttonBar{
 	>.button, >button, >input{
 		margin: 0 8px 8px 0;
@@ -1645,7 +1672,7 @@ input.searchField{
 		color: $text;
 	}
 	&.unread{
-		background: #fef8ee;
+		background: $mailMessageRowUnreadBackgroundColor;
 	}
 }
 
@@ -1734,10 +1761,10 @@ input.searchField{
 		border-bottom: solid 1px #ccc;
 		opacity: 0.95;
 		&.firstSelected{
-			border-top: solid 1px #2e6200;
+			border-top: solid 1px $completionSelectedBorderColor;
 		}
 		&.lastSelected{
-			border-bottom: solid 1px #2e6200;
+			border-bottom: solid 1px $completionSelectedBorderColor;
 		}
 	}
 }
@@ -1783,9 +1810,9 @@ input.searchField{
 				border-bottom: solid 1px transparent;
 			}
 			&.selected{
-				background: #6c8300;
+				background: $completionSelectedBackgroundColor;
 				color: #FFFFFF;
-				border-color: #2e6200;
+				border-color: $completionSelectedBorderColor;
 				z-index: 1;
 			}
 		}
@@ -1850,6 +1877,16 @@ input.searchField{
 	&:last-child{
 		border-bottom: none;
 	}
+	&.checkable{
+		display: flex;
+		>input{
+			flex: none;
+			margin-right: 10px;
+		}
+		>*{
+			flex-grow: 1;
+		}
+	}
 }
 
 .aBunchOfButtons{
@@ -1863,7 +1900,7 @@ input.searchField{
 
 .secondaryTabBar{
 	background: $gray;
-	border-bottom: solid 1px #dde6c7;
+	border-bottom: solid 1px $secondaryTabBarBorder;
 	padding: 16px;
 	display: flex;
 	flex-wrap: wrap;
@@ -1970,10 +2007,10 @@ input.searchField{
 		flex: none;
 	}
 	.empty{
-		background: #eeeedd svg-load('img/material/photo_camera_fill1_48px.svg', fill: #c8c7a1) no-repeat center;
+		background: $photoAlbumsGridEmptyBackgroundColor svg-load('img/material/photo_camera_fill1_48px.svg', fill: $photoAlbumsGridEmptyIconColor) no-repeat center;
 		.infoW{
 			background: none;
-			color: #84845a;
+			color: $photoAlbumsGridEmpty;
 			text-shadow: none;
 		}
 		.count{
@@ -2037,7 +2074,7 @@ input.searchField{
 	.thumb{
 		width: 130px;
 		height: 86px;
-		background: #eed;
+		background: $photoAlbumsGridEmptyBackgroundColor;
 		border-radius: 3px;
 		overflow: hidden;
 	}
@@ -2054,7 +2091,7 @@ input.searchField{
 		grid-template-rows: 1fr 1fr;
 		grid-gap: 2px;
 		.placeholder{
-			background: #eed;
+			background: $photoAlbumsGridEmptyBackgroundColor;
 		}
 		>*{
 			border-radius: 0;
@@ -2085,6 +2122,32 @@ input.searchField{
 		}
 		.avaHasImage:last-child:after{
 			border-bottom-right-radius: 3px;
+		}
+	}
+	.iconWithText{
+		display: flex;
+		flex-direction: column;
+		padding: 6px;
+		justify-content: center;
+		text-align: center;
+		font-size: 13px;
+		.icon{
+			width: 24px;
+			height: 24px;
+			align-self: center;
+		}
+		.iconBoard{
+			background: svg-load('img/material/forum_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $iconColor);
+		}
+		.iconPhoto{
+			background: svg-load('img/material/photo_camera_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $iconColor);
+		}
+		.thumbTitle{
+			margin: 6px 0 2px;
+			font-weight: $mediumWeight;
+		}
+		.thumbSubtitle{
+			color: $iconColor;
 		}
 	}
 }
@@ -2445,8 +2508,14 @@ input.searchField{
 	.iconStatus{
 		background: svg-load('img/material/chat_bubble_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: #afafaf);
 	}
+	.iconLocation{
+		background: svg-load('img/material/location_on_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: #afafaf);
+	}
 	.iconMore{
 		background: svg-load('img/material/more_horiz_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $normalLink);
+	}
+	.iconLink{
+		background: svg-load('img/material/arrow_outward_24dp_FILL1_wght400_GRAD0_opsz24.svg', fill: $normalLink);
 	}
 	.accessory{
 		flex: none;
@@ -2553,7 +2622,7 @@ input.searchField{
 		margin-left: 48px;
 		padding: 0;
 		.postContentWrap{
-			padding: 0;
+			margin: 0;
 		}
 		.postContent{
 			padding: 6px 0;
@@ -2851,5 +2920,112 @@ input.searchField{
 		color: #80478F20;
 		background-position: 0 -224px;
 	}
+}
+
+.boardTopicRow{
+	padding: 12px;
+	.topLink{
+		display: block;
+		padding: 4px 4px 8px;
+		border-bottom: solid 1px $wallPostSeparator;
+	}
+	.lastLink{
+		display: block;
+		padding: 8px 4px 4px;
+		.ava{
+			float: left;
+			margin-right: 8px;
+		}
+		.name{
+			margin-top: 3px;
+		}
+	}
+}
+
+.boardTopicHeader{
+	padding: 12px;
+	border-bottom: solid 1px $wallPostSeparator;
+	.title{
+		font-weight: $mediumWeight;
+		font-size: 16px;
+		margin-bottom: 6px;
+	}
+}
+
+.pseudoPostWithoutActions{
+	.postContentWrap{
+		padding-bottom: 12px;
+	}
+	.feedIcon{
+		margin-right: 6px;
+	}
+}
+
+ol.largeNumbers{
+	list-style-type: none;
+	padding-left: 44px;
+	margin: 16px 0;
+	li{
+		margin-bottom: 15px;
+		&:last-child{
+			margin-bottom: 0;
+		}
+	}
+	.number{
+		float: left;
+		display: block;
+		width: 32px;
+		line-height: 32px;
+		background: $blockBackground;
+		margin: -7px 0 0 -44px;
+		font-weight: bold;
+		text-align: center;
+		color: $boldHeaders;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+}
+
+.singleColumn ol.largeNumbers:last-child{
+	margin-bottom: 0;
+}
+
+.deleteButton{
+	display: inline-block;
+	width: 32px;
+	height: 32px;
+	background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+	opacity: .7;
+}
+
+.bottomActionBar{
+	position: sticky;
+	bottom: 0;
+	background: $bgGrey;
+	border-top: solid 1px $wallPostSeparator;
+	padding: 8px 16px 16px;
+	.buttonBarAux{
+		height: 32px;
+		display: flex;
+		margin-bottom: 8px;
+		align-items: center;
+		.deleteButton{
+			flex: none;
+		}
+	}
+}
+
+.wallShowExtraPosts{
+	display: block;
+	text-align: center;
+	padding: 16px;
+}
+
+.pinnedPostIcon{
+	display: inline-block;
+	width: 11px;
+	height: 11px;
+	margin-left: 5px;
+	background: svg-load('img/post_pinned.svg', fill: $grayText);
 }
 

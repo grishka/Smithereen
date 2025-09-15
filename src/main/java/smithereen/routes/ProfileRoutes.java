@@ -5,6 +5,7 @@ import org.jsoup.Jsoup;
 
 import java.net.URI;
 import java.net.URLEncoder;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -14,10 +15,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
@@ -29,7 +33,10 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.Post;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
@@ -54,6 +61,8 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class ProfileRoutes{
+	private static final Pattern ID_PATTERN=Pattern.compile("^(id|club|event)(\\d+)$");
+
 	public static Object profile(Request req, Response resp){
 		ApplicationContext ctx=context(req);
 		String username=req.params(":username");
@@ -61,6 +70,19 @@ public class ProfileRoutes{
 		try{
 			ur=ctx.getObjectLinkResolver().resolveUsernameLocally(username);
 		}catch(ObjectNotFoundException x){
+			Matcher matcher=ID_PATTERN.matcher(username);
+			if(matcher.find()){
+				int id=safeParseInt(matcher.group(2));
+				try{
+					Actor actor=switch(matcher.group(1)){
+						case "id" -> ctx.getUsersController().getUserOrThrow(id);
+						case "club", "event" -> ctx.getGroupsController().getGroupOrThrow(id);
+						default -> throw new IllegalStateException("Unexpected value: "+matcher.group(1));
+					};
+					resp.redirect("/"+actor.getFullUsername());
+					return "";
+				}catch(ObjectNotFoundException ignore){}
+			}
 			throw new ObjectNotFoundException("err_user_not_found", x);
 		}
 		return switch(ur.type()){
@@ -85,6 +107,7 @@ public class ProfileRoutes{
 		boolean canMessage=self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.PRIVATE_MESSAGES);
 
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, user, !canSeeOthers, offset, 20));
+
 		RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req)
 				.pageTitle(user.getFullName())
 				.with("user", user)
@@ -95,18 +118,46 @@ public class ProfileRoutes{
 				.with("canMessage", canMessage)
 				.paginate(wall, "/users/"+user.id+"/wall"+(canSeeOthers ? "" : "/own")+"?offset=", null);
 
+		List<Post> rawPinnedPosts=ctx.getWallController().getPinnedPosts(self==null ? null : self.user, user);
+		List<PostViewModel> pinnedPosts=null;
+		if(offset==0){
+			pinnedPosts=rawPinnedPosts.stream().map(PostViewModel::new).toList();
+			model.with("pinnedPosts", pinnedPosts);
+		}
+		if(!rawPinnedPosts.isEmpty()){
+			Set<Integer> pinnedPostIDs=rawPinnedPosts.stream().map(p->p.id).collect(Collectors.toSet());
+			wall.list.removeIf(p->pinnedPostIDs.contains(p.post.id));
+		}
+
+		if(user.banStatus!=UserBanStatus.NONE && user.banInfo!=null){
+			if(user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.FROZEN)
+				model.with("accountDeletionTime", user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
+			if(user.banInfo.moderatorID()!=0)
+				needUsers.add(user.banInfo.moderatorID());
+		}
+
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+		if(pinnedPosts!=null)
+			ctx.getWallController().populateReposts(self!=null ? self.user : null, pinnedPosts, 2);
 		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
+			if(pinnedPosts!=null)
+				ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, pinnedPosts, viewType);
 		}
 
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
+		if(pinnedPosts!=null){
+			interactions=new HashMap<>(interactions);
+			interactions.putAll(ctx.getWallController().getUserInteractions(pinnedPosts, self!=null ? self.user : null));
+		}
 		model.with("postInteractions", interactions);
 		model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 
 		PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
-		model.with("users", ctx.getUsersController().getUsers(needUsers));
+		if(pinnedPosts!=null)
+			PostViewModel.collectActorIDs(pinnedPosts, needUsers, needGroups);
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true));
 
 		PaginatedList<User> friends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM);
 		model.with("friendCount", friends.total).with("friends", friends.list);
@@ -127,7 +178,7 @@ public class ProfileRoutes{
 		if(user.attachment!=null)
 			user.attachment.stream()
 					.map(o->o instanceof PropertyValue pv ? pv : null)
-					.filter(Objects::nonNull)
+					.filter(pv->pv!=null && !pv.parsed)
 					.map(pv->Map.of("name", pv.name, "value", pv.value, "html", "true"))
 					.forEach(mainFields::add);
 		if(StringUtils.isNotEmpty(user.hometown))

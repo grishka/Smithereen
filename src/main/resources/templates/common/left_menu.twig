@@ -1,9 +1,9 @@
-{# @pebvariable name="userNotifications" type="smithereen.model.UserNotifications" #}
-{# @pebvariable name="adminNotifications" type="smithereen.model.AdminNotifications" #}
+{# @pebvariable name="userNotifications" type="smithereen.model.notifications.UserNotifications" #}
+{# @pebvariable name="adminNotifications" type="smithereen.model.admin.AdminNotifications" #}
 {# @pebvariable name="birthdayUsers" type="smithereen.model.User[]" #}
 {# @pebvariable name="eventReminderEvents" type="smithereen.model.Group[]" #}
 {# @pebvariable name="userPermissions" type="smithereen.model.UserPermissions" #}
-{% macro menuCounter(count, id) %}<span id="menuCounter_{{ id }}" style="{{ count>0 ? '' : 'display: none' }}"> (<b id="menuCounterValue_{{ id }}">{{ count | numberformat }}</b>){% endmacro %}
+{% macro menuCounter(count, id) %}<span id="menuCounter_{{ id }}" style="{{ count>0 ? '' : 'display: none' }}"> (<b id="menuCounterValue_{{ id }}">{{ count | numberformat }}</b>)</span>{% endmacro %}
 <ul class="actionList">
 	{% if currentUser is not null %}
 	<li class="hasAux"><a href="/{{currentUser.username}}" class="actionMain" id="myProfileLink">{{L('menu_profile')}}</a><a href="/settings/profile/general" class="actionAux">{{L('menu_edit')}}</a></li>
@@ -34,6 +34,15 @@
 	<li><a href="/account/logout?csrf={{ csrf }}">{{ L('log_out') }}</a></li>
 	{% endif %}
 </ul>
+{% if announcements is not empty %}
+{% for announcement in announcements %}
+<div class="leftReminder">
+	<h3>{{ announcement.title | default(L('announcement')) }}</h3>
+	{{ announcement.description }}
+	{% if announcement.linkText is not empty %}<br/><br/><a href="{{ announcement.linkURL }}"{% if announcement.linkTargetBlank %} target="_blank"{% endif %}>{{ announcement.linkText }}</a>{% endif %}
+</div>
+{% endfor %}
+{% endif %}
 {% if birthdayUsers is not empty %}
 <div class="leftReminder">
 	<h3>{{ L('reminder') }}</h3>

@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -39,7 +38,8 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
-import smithereen.model.AuditLogEntry;
+import smithereen.model.UserDataExport;
+import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.OtherSession;
@@ -51,7 +51,7 @@ import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPresence;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.admin.UserActionLogAction;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.friends.FollowRelationship;
@@ -328,10 +328,14 @@ public class UsersController{
 	}
 
 	public Map<Integer, User> getUsers(Collection<Integer> ids){
+		return getUsers(ids, false);
+	}
+
+	public Map<Integer, User> getUsers(Collection<Integer> ids, boolean wantDeleted){
 		if(ids.isEmpty())
 			return Map.of();
 		try{
-			return UserStorage.getById(ids);
+			return UserStorage.getById(ids, wantDeleted);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -350,8 +354,10 @@ public class UsersController{
 			throw new IllegalArgumentException();
 		try{
 			Account acc=SessionStorage.getAccountByUserID(user.id);
-			if(acc==null)
+			if(acc==null){
+				LOG.error("Database inconsistency, local user {} does not have an account", user.id);
 				return;
+			}
 			context.getActivityPubWorker().sendUserDeleteSelf(user);
 			UserStorage.deleteAccount(acc);
 			SmithereenApplication.invalidateAllSessionsForAccount(acc.id);
@@ -464,7 +470,7 @@ public class UsersController{
 		try{
 			if(self.user.banStatus!=UserBanStatus.NONE)
 				throw new IllegalArgumentException("Already banned");
-			UserBanInfo info=new UserBanInfo(Instant.now(), null, null, false, 0, 0);
+			UserBanInfo info=new UserBanInfo(Instant.now(), null, null, false, 0, 0, false);
 			UserStorage.setUserBanStatus(self.user, self, UserBanStatus.SELF_DEACTIVATED, Utils.gson.toJson(info));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -508,12 +514,15 @@ public class UsersController{
 
 	public void updateUsername(User self, String username){
 		try{
+			if(StringUtils.isEmpty(username))
+				username="id"+self.id;
 			if(!Utils.isValidUsername(username))
 				throw new UserErrorException("err_reg_invalid_username");
-			if(Utils.isReservedUsername(username))
+			if(Utils.isReservedUsername(username) && !username.equals("id"+self.id))
 				throw new UserErrorException("err_reg_reserved_username");
+			String finalUsername=username;
 			boolean result=DatabaseUtils.runWithUniqueUsername(username, ()->{
-				UserStorage.updateUsername(self, username);
+				UserStorage.updateUsername(self, finalUsername);
 			});
 			if(!result)
 				throw new UserErrorException("err_reg_username_taken");
@@ -770,6 +779,8 @@ public class UsersController{
 	}
 
 	public Map<Integer, UserPresence> getUserPresencesOnlineOnly(Collection<Integer> userIDs){
+		if(userIDs.isEmpty())
+			return Map.of();
 		HashMap<Integer, UserPresence> result=new HashMap<>();
 		for(int id:userIDs){
 			CachedUserPresence presence=onlineLocalUsersByID.get(id);
@@ -1003,6 +1014,22 @@ public class UsersController{
 		}
 
 		return status;
+	}
+
+	public List<UserDataExport> getUserDataExports(User user){
+		try{
+			return UserStorage.getUserDataExports(user.id, 10);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Instant getLastSuccessfulUserDataExportTime(User user){
+		try{
+			return UserStorage.getLastSuccessfulUserDataExportTime(user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	private record CachedUserPresence(int userID, long sessionID, UserPresence presence){}

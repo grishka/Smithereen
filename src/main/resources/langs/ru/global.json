@@ -128,6 +128,7 @@
   "gender_other": "другой",
   "remote_object_loading_error": "При получении объекта с другого сервера произошла ошибка.",
   "err_access_user_content": "Пользователь предпочёл скрыть эту страницу.",
+  "err_access_content": "У вас нет доступа к этой странице.",
   "menu_mail": "Мои Сообщения",
   "content_type_message": "Сообщение",
   "X_users": "{count, plural, =0 {Нет пользователей} one {# пользователь} few {# пользователя} other {# пользователей}}",
@@ -213,5 +214,18 @@
   "account_deactivated_redirect_title": "Ваша страница неактивна",
   "account_deactivated_redirect": "Вы настроили перенаправление на <a id=\"newProfile\"><b>{newProfileName}</b></a> на сервере <b>{serverDomain}</b>, перенесли туда подписчиков и деактивировали эту страницу. На данный момент на вашей странице отображается пометка о том, что вы ею больше не пользуетесь, и ссылка на вашу новую страницу. Вы можете:",
   "account_deactivated_redirect_reactivate": "Убрать перенаправление и восстановить страницу",
-  "account_deactivated_redirect_delete": "Удалить эту страницу"
+  "account_deactivated_redirect_delete": "Удалить эту страницу",
+  "suspended_user": "Заблокированный пользователь",
+  "reverse_order": "В обратном порядке",
+  "about_server_rules": "Правила сервера",
+  "account_ban_violated_rules": "Эта страница была заблокирована за нарушение следующих правил:",
+  "account_ban_violated_rules_with_content": "Правила сервера, которые вы нарушили:",
+  "account_ban_message_with_rules_or_content": "Комментарий модератора:",
+  "account_ban_content": "Эта страница была заблокирована за публикацию от вашего имени <b>{contentType}</b>:",
+  "account_ban_content_messages": "Эта страница была заблокирована за рассылку от вашего имени <b>таких сообщений</b>:",
+  "account_ban_content_posts": "таких записей",
+  "account_ban_content_comments": "таких комментариев",
+  "account_ban_content_photos": "таких фотографий",
+  "clear_selection": "Сбросить выбор",
+  "announcement": "Объявление"
 }

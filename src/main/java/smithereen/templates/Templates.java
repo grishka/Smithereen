@@ -3,20 +3,15 @@ package smithereen.templates;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.pebbletemplates.pebble.PebbleEngine;
-import io.pebbletemplates.pebble.loader.ClasspathLoader;
-import io.pebbletemplates.pebble.loader.DelegatingLoader;
-import io.pebbletemplates.pebble.template.EvaluationContext;
-import io.pebbletemplates.pebble.template.EvaluationContextImpl;
-import io.pebbletemplates.pebble.template.PebbleTemplate;
-import io.pebbletemplates.pebble.template.Scope;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -29,22 +24,31 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import io.pebbletemplates.pebble.PebbleEngine;
+import io.pebbletemplates.pebble.loader.ClasspathLoader;
+import io.pebbletemplates.pebble.loader.DelegatingLoader;
+import io.pebbletemplates.pebble.template.EvaluationContext;
+import io.pebbletemplates.pebble.template.EvaluationContextImpl;
+import io.pebbletemplates.pebble.template.PebbleTemplate;
+import io.pebbletemplates.pebble.template.Scope;
 import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.model.Account;
-import smithereen.model.AdminNotifications;
-import smithereen.model.BirthdayReminder;
-import smithereen.model.EventReminder;
-import smithereen.model.SessionInfo;
-import smithereen.model.UserNotifications;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.lang.Lang;
+import smithereen.model.Account;
+import smithereen.model.ServerAnnouncement;
+import smithereen.model.SessionInfo;
+import smithereen.model.admin.AdminNotifications;
+import smithereen.model.notifications.BirthdayReminder;
+import smithereen.model.notifications.EventReminder;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.storage.UserStorage;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import spark.Request;
+import spark.utils.StringUtils;
 
 public class Templates{
 	private static final PebbleEngine desktopEngine=makeEngineInstance("desktop", "common");
@@ -89,6 +93,7 @@ public class Templates{
 		JsonObject jsConfig=new JsonObject();
 		ZoneId tz=Utils.timeZoneForRequest(req);
 		ApplicationContext ctx=Utils.context(req);
+		Lang lang=Utils.lang(req);
 		if(req.session(false)!=null){
 			SessionInfo info=req.session().attribute("info");
 			if(info==null){
@@ -130,12 +135,31 @@ public class Templates{
 					model.with("serverSignupMode", Config.signupMode);
 					model.with("adminNotifications", AdminNotifications.getInstance(req));
 				}
+
+				List<ServerAnnouncement> announcements=ctx.getModerationController().getCurrentAndFutureAnnouncements();
+				if(!announcements.isEmpty()){
+					Instant now=Instant.now();
+					Locale locale=lang.getLocale();
+					model.with("announcements", announcements.stream()
+							.filter(a->a.showFrom().isBefore(now) && a.showTo().isAfter(now))
+							.map(a->{
+								String url=a.getTranslatedLinkURL(locale);
+								URI uri=StringUtils.isNotEmpty(url) ? URI.create(url) : null;
+								return Map.of(
+										"title", a.getTranslatedTitle(locale),
+										"description", a.getTranslatedDescription(locale),
+										"linkText", a.getTranslatedLinkText(locale),
+										"linkURL", url,
+										"linkTargetBlank", uri!=null && uri.isAbsolute() && !Config.isLocal(uri)
+								);
+							})
+							.toList());
+				}
 			}
 		}
 		jsConfig.addProperty("timeZone", tz!=null ? tz.getId() : null);
 		ArrayList<String> jsLang=new ArrayList<>();
 		Set<String> k=req.attribute("jsLang");
-		Lang lang=Utils.lang(req);
 		jsConfig.addProperty("locale", lang.getLocale().toLanguageTag());
 		jsConfig.addProperty("langPluralRulesName", lang.getPluralRulesName());
 		if(k!=null){
@@ -144,24 +168,30 @@ public class Templates{
 			}
 		}
 		for(String key:List.of("error", "ok", "network_error", "close", "cancel", "yes", "no", "show_technical_details", "photo_X_of_Y",
-				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder", "save", "photo_description")){
+				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder", "save", "photo_description", "photo_load_failed_remote", "photo_load_failed_local")){
 			if(k!=null && k.contains(key))
 				continue;
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 		}
-		if(req.attribute("mobile")!=null){
+		boolean mobile=req.attribute("mobile")!=null;
+		if(mobile){
 			for(String key:List.of("search", "qsearch_hint", "more_actions", "photo_open_original", "like", "add_comment",
 					"object_X_of_Y", "delete", "delete_photo", "delete_photo_confirm", "set_photo_as_album_cover", "open_on_server_X", "report", "photo_save_to_album")){
 				if(k!=null && k.contains(key))
 					continue;
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
+			if(Config.mobileCSSCacheHash!=null && req.queryParams("_nocss")==null)
+				model.with("customCSSHash", Config.mobileCSSCacheHash);
 		}else{
-			for(String key:List.of("photo_tagging_info", "photo_tagging_done", "photo_tag_myself", "photo_tag_select_friend", "photo_tag_not_found", "photo_delete_tag", "photo_add_tag_submit", "photo_tag_name_search")){
+			for(String key:List.of("photo_tagging_info", "photo_tagging_done", "photo_tag_myself", "photo_tag_select_friend", "photo_tag_not_found", "photo_delete_tag",
+					"photo_add_tag_submit", "photo_tag_name_search")){
 				if(k!=null && k.contains(key))
 					continue;
 				jsLang.add("\""+key+"\":"+lang.getAsJS(key));
 			}
+			if(Config.desktopCSSCacheHash!=null && req.queryParams("_nocss")==null)
+				model.with("customCSSHash", Config.desktopCSSCacheHash);
 		}
 		model.with("timeZone", tz!=null ? tz : ZoneId.systemDefault()).with("jsConfig", jsConfig.toString())
 				.with("jsLangKeys", "{"+String.join(",", jsLang)+"}")
@@ -170,7 +200,7 @@ public class Templates{
 				.with("serverDomain", Config.domain)
 				.with("serverVersion", BuildInfo.VERSION)
 				.with("langName", lang.name)
-				.with("isMobile", req.attribute("mobile")!=null)
+				.with("isMobile", mobile)
 				.with("isAjax", Utils.isAjax(req))
 				.with("_request", req);
 	}

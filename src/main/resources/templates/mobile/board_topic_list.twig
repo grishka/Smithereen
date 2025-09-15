@@ -1,0 +1,33 @@
+{% extends "page" %}
+{% block content %}
+{% if canCreateTopics %}<a href="/groups/{{ group.id }}/createTopic" class="fab iconAdd" title="{{ L('board_create_topic') }}"></a>{% endif %}
+{% if message %}<div class="settingsMessage"><b>{{ message }}</b><br/>{{ messageSubtitle }}</div>{% endif %}
+<div class="cardsBackdrop">
+{% for topic in items %}
+<div class="card boardTopicRow">
+	<a href="{{ topic.url }}" class="topLink">
+		<div class="smallMarginAfter"><b>{{ topic.title }}</b></div>
+		<div class="grayText">
+			{{ L('board_topic_post_count', {'count': topic.numComments}) }}
+			{% if topic.isPinned and topic.isClosed %}
+			{{ L('board_pinned_and_locked_topic_mobile') }}
+			{% elseif topic.isPinned %}
+			{{ L('board_pinned_topic_mobile') }}
+			{% elseif topic.isClosed %}
+			{{ L('board_locked_topic_mobile') }}
+			{% endif %}
+		</div>
+	</a>
+	<a href="{{ topic.url }}?last" class="lastLink">
+		{{ users[topic.lastCommentAuthorID] | pictureForAvatar('a', 40) }}
+		<div class="name ellipsize">{{ users[topic.lastCommentAuthorID] | name }}</div>
+		<div class="grayText">{{ L('board_topic_last_post_date', {'date': LD(topic.updatedAt), 'gender': users[topic.lastCommentAuthorID].gender}) }}</div>
+		<div class="clear"></div>
+	</a>
+</div>
+{% else %}
+<div class="emptyState">{{ L('board_no_topics') }}</div>
+{% endfor %}
+{% include "pagination" %}
+</div>
+{% endblock %}

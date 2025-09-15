@@ -1,5 +1,5 @@
-{% set id="mailMessage" %}
-<div class="wallPostForm nonCollapsible mailMessageForm" id="wallPostForm_{{id}}" data-unique-id="{{id}}" data-photo-upload-url="/system/upload/messagePhoto">
+{% set id=id | default("mailMessage") %}
+<div class="wallPostForm {% if not collapsible %}nonCollapsible {% endif %}mailMessageForm" id="wallPostForm_{{id}}" data-unique-id="{{id}}" data-photo-upload-url="/system/upload/messagePhoto">
 	<textarea name="text" id="postFormText_{{id}}" cols="100" rows="3" maxlength="65000"></textarea>
 	<input type="hidden" name="csrf" value="{{csrf}}"/>
 	<div id="postFormAttachments_{{id}}"></div>

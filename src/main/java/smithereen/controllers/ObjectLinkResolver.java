@@ -25,13 +25,13 @@ import java.util.regex.Pattern;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
-import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
-import smithereen.activitypub.objects.ActivityPubTaggedPerson;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.CollectionQueryResult;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
@@ -45,13 +45,14 @@ import smithereen.model.ActorStatus;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
-import smithereen.model.GroupAdmin;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserBanStatus;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
@@ -67,7 +68,7 @@ import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 
-import static smithereen.Utils.parseIntOrDefault;
+import static smithereen.Utils.*;
 
 public class ObjectLinkResolver{
 
@@ -78,6 +79,8 @@ public class ObjectLinkResolver{
 	private static final Pattern ALBUMS=Pattern.compile("^/albums/([a-zA-Z0-9_-]+)$");
 	private static final Pattern PHOTOS=Pattern.compile("^/photos/([a-zA-Z0-9_-]+)$");
 	private static final Pattern COMMENTS=Pattern.compile("^/comments/([a-zA-Z0-9_-]+)$");
+	private static final Pattern TOPICS=Pattern.compile("^/topics/([a-zA-Z0-9_-]+)$");
+	private static final Pattern LOCAL_USERNAME=Pattern.compile("^/([a-zA-Z][a-zA-Z0-9._-]+)$");
 
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
@@ -132,7 +135,7 @@ public class ObjectLinkResolver{
 				JsonObject token=ActivityPub.fetchActorToken(context, actor, fg);
 				if(token==null)
 					throw new FederationException();
-				return new ActorToken(token, Utils.parseISODate(token.getAsJsonPrimitive("validUntil").getAsString()));
+				return new ActorToken(token, parseISODate(token.getAsJsonPrimitive("validUntil").getAsString()));
 			}).token();
 		}catch(FederationException x){
 			return null;
@@ -166,6 +169,11 @@ public class ObjectLinkResolver{
 
 	@NotNull
 	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
+		return resolveNative(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck, false);
+	}
+
+	@NotNull
+	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck, boolean acceptHTML){
 		LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}, force refetch {}", _link, expectedType.getName(), allowStorage, forceRefetch);
 		URI link;
 		if("bear".equals(_link.getScheme())){
@@ -185,7 +193,7 @@ public class ObjectLinkResolver{
 		if(!Config.isLocal(link)){
 			if(allowFetching){
 				try{
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context);
+					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context, acceptHTML);
 					if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
 						User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
 						if(author.banStatus==UserBanStatus.SUSPENDED)
@@ -250,7 +258,7 @@ public class ObjectLinkResolver{
 
 				matcher=MESSAGES.matcher(link.getPath());
 				if(matcher.find()){
-					long id=Utils.decodeLong(matcher.group(1));
+					long id=decodeLong(matcher.group(1));
 					List<MailMessage> msgs=MailStorage.getMessages(Set.of(id));
 					if(!msgs.isEmpty())
 						return ensureTypeAndCast(msgs.getFirst(), expectedType);
@@ -258,20 +266,35 @@ public class ObjectLinkResolver{
 
 				matcher=ALBUMS.matcher(link.getPath());
 				if(matcher.find()){
-					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM);
+					long id=XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM);
 					return ensureTypeAndCast(context.getPhotosController().getAlbumIgnoringPrivacy(id), expectedType);
 				}
 
 				matcher=PHOTOS.matcher(link.getPath());
 				if(matcher.find()){
-					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO);
+					long id=XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO);
 					return ensureTypeAndCast(context.getPhotosController().getPhotoIgnoringPrivacy(id), expectedType);
 				}
 
 				matcher=COMMENTS.matcher(link.getPath());
 				if(matcher.find()){
-					long id=XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT);
+					long id=XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT);
 					return ensureTypeAndCast(context.getCommentsController().getCommentIgnoringPrivacy(id), expectedType);
+				}
+
+				matcher=TOPICS.matcher(link.getPath());
+				if(matcher.find()){
+					return ensureTypeAndCast(context.getBoardController().getTopicIgnoringPrivacy(XTEA.decodeObjectID(matcher.group(1), ObfuscatedObjectIDType.BOARD_TOPIC)), expectedType);
+				}
+
+				matcher=LOCAL_USERNAME.matcher(link.getPath());
+				if(matcher.find()){
+					String username=matcher.group(1);
+					UsernameResolutionResult res=resolveUsernameLocally(username);
+					return ensureTypeAndCast(switch(res.type){
+						case USER -> context.getUsersController().getUserOrThrow(res.localID);
+						case GROUP -> context.getGroupsController().getGroupOrThrow(res.localID);
+					}, expectedType);
 				}
 			}else{
 				ObjectTypeAndID tid=FederationStorage.getObjectTypeAndID(link);
@@ -323,6 +346,10 @@ public class ObjectLinkResolver{
 						Group group=context.getGroupsController().getGroupOrThrow(tid.idInt());
 						if(group.status!=null && link.equals(group.status.apId()))
 							return ensureTypeAndCast(group.status, expectedType);
+					}
+					if(tid.type==ObjectType.BOARD_TOPIC && expectedType.isAssignableFrom(BoardTopic.class)){
+						BoardTopic topic=context.getBoardController().getTopicIgnoringPrivacy(tid.id);
+						return ensureTypeAndCast(topic, expectedType);
 					}
 				}else{
 					if(expectedType.isAssignableFrom(ForeignUser.class)){
@@ -387,6 +414,9 @@ public class ObjectLinkResolver{
 								fu.setFriendsCount(friendsCount);
 						}
 						UserStorage.putOrUpdateForeignUser(fu);
+						if(fu.getPinnedPostsURL()!=null){
+							context.getActivityPubWorker().fetchUserPinnedPosts(fu);
+						}
 						maybeUpdateServerFeaturesFromActor(fu);
 						User partner=null;
 						if(fu.relationshipPartnerActivityPubID!=null && fu.relationshipPartnerID==0){
@@ -404,13 +434,10 @@ public class ObjectLinkResolver{
 				case ForeignGroup fg -> {
 					for(GroupAdmin adm:fg.adminsForActivityPub){
 						try{
-							adm.user=resolve(adm.activityPubUserID, User.class, true, false, false);
+							adm.userID=resolve(adm.activityPubUserID, User.class, true, true, false).id;
 						}catch(ObjectNotFoundException ignore){}
 					}
-					fg.adminsForActivityPub.removeIf(adm->adm.user==null);
-					for(GroupAdmin adm:fg.adminsForActivityPub){
-						storeOrUpdateRemoteObject(adm.user, adm.user);
-					}
+					fg.adminsForActivityPub.removeIf(adm->adm.userID==0);
 					GroupStorage.putOrUpdateForeignGroup(fg);
 					maybeUpdateServerFeaturesFromActor(fg);
 				}
@@ -418,6 +445,29 @@ public class ObjectLinkResolver{
 				case PhotoAlbum pa -> context.getPhotosController().putOrUpdateForeignAlbum(pa);
 				case Photo p -> context.getPhotosController().putOrUpdateForeignPhoto(p, (ActivityPubPhoto) origObj);
 				case Comment c -> context.getCommentsController().putOrUpdateForeignComment(c);
+				case BoardTopic t -> {
+					if(t.id>0){
+						BoardTopic old=context.getBoardController().getTopicIgnoringPrivacy(t.id);
+						if(!Objects.equals(old.title, t.title))
+							context.getBoardController().renameTopic(t, t.title);
+						if(!Objects.equals(old.pinnedAt, t.pinnedAt))
+							context.getBoardController().setTopicPinned(t, t.pinnedAt);
+						if(old.isClosed!=t.isClosed)
+							context.getBoardController().setTopicClosed(t, t.isClosed);
+					}else{
+						ActivityPubBoardTopic origTopic=(ActivityPubBoardTopic) origObj;
+						NoteOrQuestion firstComment;
+						if(uriHostMatches(origTopic.activityPubID, origTopic.firstCommentID) && origTopic.first!=null
+								&& origTopic.first.object instanceof CollectionPage page && !page.items.isEmpty() && page.items.getFirst().object instanceof NoteOrQuestion noq){
+							firstComment=noq;
+						}else{
+							firstComment=resolve(origTopic.firstCommentID, NoteOrQuestion.class, true, false, false);
+						}
+						if(!Objects.equals(firstComment.attributedTo, origTopic.authorID))
+							throw new FederationException("Topic author ID does not match first comment author ID");
+						context.getBoardController().putForeignTopic(t, firstComment);
+					}
+				}
 				case null, default -> {}
 			}
 		}catch(SQLException|InterruptedException x){
@@ -459,6 +509,8 @@ public class ObjectLinkResolver{
 			return type.cast(ActivityPubPhotoAlbum.fromNativeAlbum(pa, context));
 		}else if(type.isAssignableFrom(ActivityPubPhoto.class) && o instanceof Photo p){
 			return type.cast(ActivityPubPhoto.fromNativePhoto(p, context.getPhotosController().getAlbumIgnoringPrivacy(p.albumID), context));
+		}else if(type.isAssignableFrom(ActivityPubBoardTopic.class) && o instanceof BoardTopic t){
+			return type.cast(ActivityPubBoardTopic.fromNativeTopic(t, context));
 		}
 		throw new UnsupportedRemoteObjectTypeException("Native type "+o.getClass().getName()+" does not have an ActivityPub representation");
 	}
@@ -472,6 +524,8 @@ public class ObjectLinkResolver{
 			return type.cast(pa.asNativePhotoAlbum(context));
 		}else if(o instanceof ActivityPubPhoto p && type.isAssignableFrom(Photo.class)){
 			return type.cast(p.asNativePhoto(context));
+		}else if(o instanceof ActivityPubBoardTopic t && type.isAssignableFrom(BoardTopic.class)){
+			return type.cast(t.asNativeTopic(context));
 		}else if(type.isAssignableFrom(o.getClass())){
 			return type.cast(o);
 		}
@@ -490,7 +544,7 @@ public class ObjectLinkResolver{
 	public boolean performCollectionQuery(@NotNull Actor collectionOwner, @NotNull URI collectionID, @NotNull URI objectID){
 		if(collectionOwner.collectionQueryEndpoint==null)
 			return true; // There's nothing we can do anyway
-		if(Utils.uriHostMatches(collectionID, objectID))
+		if(uriHostMatches(collectionID, objectID))
 			return true; // This collection is on the same server as the object. We trust that that server is sane.
 		CollectionQueryResult cqr=ActivityPub.performCollectionQuery(collectionOwner, collectionID, List.of(objectID));
 		List<LinkOrObject> res=cqr.items;
@@ -597,25 +651,59 @@ public class ObjectLinkResolver{
 
 		matcher=MESSAGES.matcher(path);
 		if(matcher.find()){
-			return new ObjectTypeAndID(ObjectType.MESSAGE, Utils.decodeLong(matcher.group(1)));
+			return new ObjectTypeAndID(ObjectType.MESSAGE, decodeLong(matcher.group(1)));
 		}
 
 		matcher=ALBUMS.matcher(path);
 		if(matcher.find()){
-			return new ObjectTypeAndID(ObjectType.PHOTO_ALBUM, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM));
+			return new ObjectTypeAndID(ObjectType.PHOTO_ALBUM, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO_ALBUM));
 		}
 
 		matcher=PHOTOS.matcher(path);
 		if(matcher.find()){
-			return new ObjectTypeAndID(ObjectType.PHOTO, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO));
+			return new ObjectTypeAndID(ObjectType.PHOTO, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.PHOTO));
 		}
 
 		matcher=COMMENTS.matcher(path);
 		if(matcher.find()){
-			return new ObjectTypeAndID(ObjectType.COMMENT, XTEA.deobfuscateObjectID(Utils.decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT));
+			return new ObjectTypeAndID(ObjectType.COMMENT, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.COMMENT));
+		}
+
+		matcher=TOPICS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.BOARD_TOPIC, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.BOARD_TOPIC));
 		}
 
 		return null;
+	}
+
+	public static URI getLocalURLForObjectID(ObjectTypeAndID id){
+		return switch(id.type){
+			case USER -> Config.localURI("/users/"+id.id);
+			case GROUP -> Config.localURI("/groups/"+id.id);
+			case POST -> Config.localURI("/posts/"+id.id);
+			case MESSAGE -> Config.localURI("/mail/messages/"+encodeLong(id.id));
+			case PHOTO_ALBUM -> Config.localURI("/albums/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.PHOTO_ALBUM));
+			case PHOTO -> Config.localURI("/photos/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.PHOTO));
+			case COMMENT -> Config.localURI("/comments/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.COMMENT));
+			case USER_STATUS -> null;
+			case GROUP_STATUS -> null;
+			case BOARD_TOPIC -> Config.localURI("/topics/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.BOARD_TOPIC));
+		};
+	}
+
+	public static ObjectTypeAndID getObjectIdFromObject(Object obj){
+		return switch(obj){
+			case User user -> new ObjectTypeAndID(ObjectType.USER, user.id);
+			case Group group -> new ObjectTypeAndID(ObjectType.GROUP, group.id);
+			case Post post -> new ObjectTypeAndID(ObjectType.POST, post.id);
+			case MailMessage msg -> new ObjectTypeAndID(ObjectType.MESSAGE, msg.id);
+			case PhotoAlbum album -> new ObjectTypeAndID(ObjectType.PHOTO_ALBUM, album.id);
+			case Photo photo -> new ObjectTypeAndID(ObjectType.PHOTO, photo.id);
+			case Comment comment -> new ObjectTypeAndID(ObjectType.COMMENT, comment.id);
+			case BoardTopic topic -> new ObjectTypeAndID(ObjectType.BOARD_TOPIC, topic.id);
+			default -> null;
+		};
 	}
 
 	private record ActorToken(JsonObject token, Instant validUntil){
@@ -642,7 +730,8 @@ public class ObjectLinkResolver{
 		PHOTO('P', 'H', 'T', 'O'),
 		COMMENT('C', 'M', 'N', 'T'),
 		USER_STATUS('U', 'S', 'T', 'A'),
-		GROUP_STATUS('G', 'S', 'T', 'A');
+		GROUP_STATUS('G', 'S', 'T', 'A'),
+		BOARD_TOPIC('B', 'T', 'O', 'P');
 
 		public final int id;
 
@@ -655,7 +744,7 @@ public class ObjectLinkResolver{
 				if(t.id==id)
 					return t;
 			}
-			throw new IllegalArgumentException("Unknown object type ID '"+Utils.decodeFourCC(id)+"'");
+			throw new IllegalArgumentException("Unknown object type ID '"+decodeFourCC(id)+"'");
 		}
 	}
 

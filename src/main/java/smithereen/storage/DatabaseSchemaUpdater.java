@@ -27,7 +27,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.ObfuscatedObjectIDType;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.media.MediaFileType;
@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=71;
+	public static final int SCHEMA_VERSION=86;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -54,6 +54,7 @@ public class DatabaseSchemaUpdater{
 				createApIdIndexTriggers(conn);
 				createApIdIndexTriggersForPhotos(conn);
 				createApIdIndexTriggersForComments(conn);
+				createApIdIndexTriggersForBoardTopics(conn);
 				insertDefaultRoles(conn);
 			}
 		}else{
@@ -955,6 +956,147 @@ public class DatabaseSchemaUpdater{
 							.executeNoResult();
 				}
 			}
+			case 72 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `deleted_user_bans` (
+						  `user_id` int unsigned NOT NULL,
+						  `domain` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+						  `ban_status` tinyint unsigned NOT NULL DEFAULT '0',
+						  `ban_info` json NOT NULL,
+						  PRIMARY KEY (`user_id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 73 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `board_topics` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `title` tinytext COLLATE utf8mb4_general_ci NOT NULL,
+						  `author_id` int unsigned NOT NULL,
+						  `group_id` int unsigned NOT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `pinned_at` timestamp NULL DEFAULT NULL,
+						  `num_comments` int unsigned NOT NULL DEFAULT '0',
+						  `last_comment_author_id` int unsigned NOT NULL,
+						  `is_closed` tinyint(1) NOT NULL DEFAULT '0',
+						  `ap_url` varchar(300) COLLATE utf8mb4_general_ci DEFAULT NULL,
+						  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+						  `first_comment_id` bigint unsigned NOT NULL DEFAULT '0',
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `ap_id` (`ap_id`),
+						  KEY `group_id` (`group_id`),
+						  KEY `updated_at` (`updated_at`),
+						  KEY `created_at` (`created_at`),
+						  KEY `pinned_at` (`pinned_at`),
+						  CONSTRAINT `board_topics_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 74 -> createApIdIndexTriggersForBoardTopics(conn);
+			case 75 -> conn.createStatement().execute("ALTER TABLE reports ADD has_file_refs tinyint(1) NOT NULL DEFAULT 1, ADD KEY has_file_refs (has_file_refs)");
+			case 76 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `rules` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `title` varchar(300) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+						  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+						  `translations` json NOT NULL,
+						  `priority` int NOT NULL DEFAULT '0',
+						  `is_deleted` tinyint(1) NOT NULL DEFAULT '0',
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 77 -> conn.createStatement().execute("ALTER TABLE reports ADD `rules` tinyblob, ADD `reason` int unsigned NOT NULL DEFAULT '0'");
+			case 78 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `announcements` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `title` varchar(300) DEFAULT NULL,
+						  `description` text NOT NULL,
+						  `link_text` varchar(300) DEFAULT NULL,
+						  `link_url` varchar(300) DEFAULT NULL,
+						  `show_from` timestamp NOT NULL,
+						  `show_to` timestamp NOT NULL,
+						  `translations` json NOT NULL,
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 79 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `group_links` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `group_id` int unsigned NOT NULL,
+						  `url` varchar(300) NOT NULL,
+						  `title` varchar(300) NOT NULL,
+						  `object_type` int unsigned DEFAULT NULL,
+						  `object_id` bigint unsigned DEFAULT NULL,
+						  `image_id` bigint DEFAULT NULL,
+						  `ap_image_url` varchar(300) DEFAULT NULL,
+						  `display_order` int unsigned NOT NULL DEFAULT '0',
+						  `ap_id` varchar(300) DEFAULT NULL,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `ap_id` (`ap_id`),
+						  KEY `group_id` (`group_id`),
+						  CONSTRAINT `group_links_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 80 -> conn.createStatement().execute("ALTER TABLE group_links ADD is_unresolved_ap_object tinyint(1) NOT NULL DEFAULT 0");
+			case 81 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `group_action_log` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `action` int unsigned NOT NULL,
+						  `group_id` int unsigned NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `admin_id` int unsigned DEFAULT NULL,
+						  `info` json NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `group_id` (`group_id`),
+						  CONSTRAINT `group_action_log_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 82 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `group_staff_notes` (
+						  `id` int unsigned NOT NULL AUTO_INCREMENT,
+						  `target_id` int unsigned NOT NULL,
+						  `author_id` int unsigned NOT NULL,
+						  `text` text NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  KEY `target_id` (`target_id`),
+						  CONSTRAINT `group_staff_notes_ibfk_1` FOREIGN KEY (`target_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 83 -> {
+				conn.createStatement().execute("ALTER TABLE `groups` ADD `ban_status` tinyint unsigned NOT NULL DEFAULT '0', ADD `ban_info` json DEFAULT NULL, ADD KEY `ban_status` (`ban_status`)");
+			}
+			case 84 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `wall_pinned_posts` (
+						  `owner_user_id` int unsigned NOT NULL,
+						  `post_id` int unsigned NOT NULL,
+						  `display_order` int unsigned NOT NULL,
+						  PRIMARY KEY (`owner_user_id`,`post_id`),
+						  KEY `post_id` (`post_id`),
+						  CONSTRAINT `wall_pinned_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `wall_pinned_posts_ibfk_2` FOREIGN KEY (`post_id`) REFERENCES `wall_posts` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 85 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `user_data_exports` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `user_id` int unsigned NOT NULL,
+						  `state` tinyint unsigned NOT NULL,
+						  `size` bigint unsigned NOT NULL DEFAULT '0',
+						  `file_id` bigint DEFAULT NULL,
+						  `requested_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 86 -> {
+				conn.createStatement().execute("ALTER TABLE notifications ADD KEY `object_type` (`object_type`,`object_id`), ADD KEY `type` (`type`), ADD KEY `related_object_type` (`related_object_type`,`related_object_id`), ADD KEY `actor_id` (`actor_id`)");
+			}
 		}
 	}
 
@@ -1050,6 +1192,15 @@ public class DatabaseSchemaUpdater{
 		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_comments_to_ap_ids AFTER INSERT ON comments FOR EACH ROW BEGIN " +
 				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.COMMENT.id).execute();
 		conn.createStatement().execute("CREATE TRIGGER delete_foreign_comments_from_ap_ids AFTER DELETE ON comments FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+	}
+
+	private static void createApIdIndexTriggersForBoardTopics(DatabaseConnection conn) throws SQLException{
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_topics_to_ap_ids AFTER INSERT ON board_topics FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.BOARD_TOPIC.id).execute();
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_updated_foreign_topics_to_ap_ids AFTER UPDATE ON board_topics FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL AND OLD.ap_id IS NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.BOARD_TOPIC.id).execute();
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_topics_from_ap_ids AFTER DELETE ON board_topics FOR EACH ROW BEGIN " +
 				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
 	}
 

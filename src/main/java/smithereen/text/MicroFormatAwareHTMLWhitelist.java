@@ -42,7 +42,7 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 			return true;
 		if(attr.getKey().equals("class")){
 			String[] classList=attr.getValue().split(" ");
-			String filteredClassList=Arrays.stream(classList).filter(cn->ALLOWED_CLASSES.contains(cn) || (tagName.equals("code") && cn.startsWith("lang-"))).collect(Collectors.joining(" "));
+			String filteredClassList=Arrays.stream(classList).filter(cn->ALLOWED_CLASSES.contains(cn) || (tagName.equals("code") && (cn.startsWith("lang-") || cn.startsWith("language-")))).collect(Collectors.joining(" "));
 			if(!filteredClassList.isEmpty()){
 				attr.setValue(filteredClassList);
 				return true;
@@ -60,7 +60,11 @@ public class MicroFormatAwareHTMLWhitelist extends Whitelist{
 				return false;
 			String authority=uri.getAuthority();
 			if(NON_IDN_CHAR_REGEX.matcher(authority).find()){
-				uri=new UriBuilder(uri).authority(IDN.toASCII(authority)).build();
+				try{
+					uri=new UriBuilder(uri).authority(IDN.toASCII(authority)).build();
+				}catch(IllegalArgumentException x){
+					return false;
+				}
 				attr.setValue(uri.toString());
 			}
 		}catch(URISyntaxException x){

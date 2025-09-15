@@ -3,6 +3,7 @@
 <head>
 	<title>{{ title }}</title>
 	<link rel="stylesheet" type="text/css" href="/res/mobile.css?{{ staticHashes['mobile.css'] }}"/>
+	{% if customCSSHash is not empty %}<link rel="stylesheet" type="text/css" href="/system/custom_mobile.css?{{ customCSSHash }}"/>{% endif %}
     {% if activityPubURL is not null %}
 	<link rel="alternate" type="application/activity+json" href="{{ activityPubURL }}"/>
 	{% endif %}
@@ -37,7 +38,11 @@
 <div id="wrap">
 <div class="header">
 	<div class="menuButton">
+		{% if headerBackHref is empty %}
 		<label for="mainMenuToggler" tabindex="0" title="{{ L('main_menu') }}"></label>
+		{% else %}
+		<a href="{{ headerBackHref }}" class="back" title="{{ headerBackTitle }}"></a>
+		{% endif %}
 	</div>
 	{% block headerTitle %}<span class="title" id="headerTitle">{{toolbarTitle is empty ? title : toolbarTitle}}</span>{% endblock %}
 	{% block headerActionButtons %}{% endblock %}

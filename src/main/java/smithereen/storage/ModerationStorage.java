@@ -8,43 +8,54 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
-import smithereen.model.ActorStaffNote;
-import smithereen.model.AuditLogEntry;
-import smithereen.model.EmailDomainBlockRule;
-import smithereen.model.EmailDomainBlockRuleFull;
-import smithereen.model.IPBlockRule;
-import smithereen.model.IPBlockRuleFull;
+import smithereen.model.ServerAnnouncement;
+import smithereen.model.ServerRule;
+import smithereen.model.admin.ActorStaffNote;
+import smithereen.model.admin.AuditLogEntry;
+import smithereen.model.admin.EmailDomainBlockRule;
+import smithereen.model.admin.EmailDomainBlockRuleFull;
+import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.admin.GroupActionLogEntry;
+import smithereen.model.admin.IPBlockRule;
+import smithereen.model.admin.IPBlockRuleFull;
 import smithereen.model.PaginatedList;
 import smithereen.model.SignupInvitation;
-import smithereen.model.UserRole;
-import smithereen.model.ViolationReport;
-import smithereen.model.ViolationReportAction;
+import smithereen.model.UserBanStatus;
+import smithereen.model.admin.UserRole;
+import smithereen.model.admin.ViolationReport;
+import smithereen.model.admin.ViolationReportAction;
 import smithereen.model.admin.UserActionLogAction;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.IntPair;
+import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.InetAddressRange;
 import spark.utils.StringUtils;
 
 public class ModerationStorage{
-	public static int createViolationReport(int reporterID, int targetID, String comment, String otherServerDomain, String contentJson) throws SQLException{
+	public static int createViolationReport(int reporterID, int targetID, String comment, String otherServerDomain, String contentJson, boolean hasFileRefs, ViolationReport.Reason reason, Set<Integer> rules) throws SQLException{
 		SQLQueryBuilder bldr=new SQLQueryBuilder()
 				.insertInto("reports")
 				.value("reporter_id", reporterID!=0 ? reporterID : null)
 				.value("target_id", targetID)
 				.value("comment", comment)
 				.value("server_domain", otherServerDomain)
-				.value("content", contentJson);
+				.value("content", contentJson)
+				.value("has_file_refs", hasFileRefs)
+				.value("reason", reason)
+				.value("rules", Utils.serializeIntList(rules));
 		return bldr.executeAndGetID();
 	}
 
@@ -69,6 +80,34 @@ public class ModerationStorage{
 				.executeAsStream(ViolationReport::fromResultSet)
 				.toList();
 		return new PaginatedList<>(reports, total, offset, count);
+	}
+
+	public static List<ViolationReport> getResolvedViolationReportsWithFiles() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("reports")
+				.allColumns()
+				.where("state<>? AND has_file_refs=1", ViolationReport.State.OPEN)
+				.executeAsStream(ViolationReport::fromResultSet)
+				.toList();
+	}
+
+	public static void setViolationReportHasFileRefs(int id, boolean hasRefs) throws SQLException{
+		new SQLQueryBuilder()
+				.update("reports")
+				.where("id=?", id)
+				.value("has_file_refs", hasRefs)
+				.executeNoResult();
+	}
+
+	public static Map<Integer, Instant> getViolationReportLastActionTimes(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("report_actions")
+				.selectExpr("report_id, MAX(time) AS t")
+				.whereIn("report_id", ids)
+				.andWhere("action_type<>?", ViolationReportAction.ActionType.COMMENT)
+				.groupBy("report_id")
+				.executeAsStream(r->new Pair<>(r.getInt(1), DatabaseUtils.getInstant(r, "t")))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}
 
 	public static PaginatedList<ViolationReport> getViolationReportsOfActor(int actorID, int offset, int count) throws SQLException{
@@ -119,6 +158,39 @@ public class ModerationStorage{
 				.allColumns()
 				.where("id=?", id)
 				.executeAndGetSingleObject(ViolationReport::fromResultSet);
+	}
+
+	public static void setViolationReportReason(int id, ViolationReport.Reason reason) throws SQLException{
+		new SQLQueryBuilder()
+				.update("reports")
+				.value("reason", reason)
+				.value("rules", null)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static void setViolationReportRules(int id, Set<Integer> rules) throws SQLException{
+		new SQLQueryBuilder()
+				.update("reports")
+				.value("rules", Utils.serializeIntList(rules))
+				.where("id=?", id)
+				.executeNoResult();;
+	}
+
+	public static void updateViolationReportContent(int id, String contentJson, boolean hasFileRefs) throws SQLException{
+		new SQLQueryBuilder()
+				.update("reports")
+				.value("content", contentJson)
+				.value("has_file_refs", hasFileRefs)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static ViolationReportAction getViolationReportActionByID(int reportID, int actionID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("report_actions")
+				.where("report_id=? AND id=?", reportID, actionID)
+				.executeAndGetSingleObject(ViolationReportAction::fromResultSet);
 	}
 
 	public static void setServerRestriction(int id, String restrictionJson) throws SQLException{
@@ -194,19 +266,19 @@ public class ModerationStorage{
 		}
 	}
 
-	public static PaginatedList<AuditLogEntry> getUserAuditLog(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<AuditLogEntry> getActorAuditLog(int actorID, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("audit_log")
 					.count()
-					.where("owner_id=?", userID)
+					.where("owner_id=?", actorID)
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(count);
 			return new PaginatedList<>(new SQLQueryBuilder(conn)
 					.selectFrom("audit_log")
 					.allColumns()
-					.where("owner_id=?", userID)
+					.where("owner_id=?", actorID)
 					.orderBy("id DESC")
 					.limit(count, offset)
 					.executeAsStream(AuditLogEntry::fromResultSet)
@@ -214,7 +286,7 @@ public class ModerationStorage{
 		}
 	}
 
-	public static PaginatedList<AdminUserViewModel> getUsers(String q, Boolean localOnly, String emailDomain, InetAddressRange ipRange, int role, int offset, int count) throws SQLException{
+	public static PaginatedList<AdminUserViewModel> getUsers(String q, Boolean localOnly, String emailDomain, InetAddressRange ipRange, int role, UserBanStatus banStatus, boolean remoteSuspended, int offset, int count) throws SQLException{
 		if(StringUtils.isNotEmpty(q)){
 			q=Arrays.stream(TextProcessor.transliterate(q).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
 		}
@@ -250,6 +322,12 @@ public class ModerationStorage{
 		if(role>0){
 			whereParts.add("accounts.role=?");
 			whereArgs.add(role);
+		}
+		if(banStatus!=null){
+			whereParts.add("`users`.ban_status=?");
+			whereArgs.add(banStatus);
+		}else if(remoteSuspended){
+			whereParts.add("`users`.ap_id IS NOT NULL AND `users`.ban_info IS NOT NULL AND `users`.ban_info->'$.suspendedOnRemoteServer'=true");
 		}
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String where;
@@ -304,50 +382,54 @@ public class ModerationStorage{
 				.executeNoResult();
 	}
 
-	public static int getUserStaffNoteCount(int userID) throws SQLException{
+	// region Actor staff notes
+
+	public static int getActorStaffNoteCount(int id) throws SQLException{
 		return new SQLQueryBuilder()
-				.selectFrom("user_staff_notes")
+				.selectFrom(id>0 ? "user_staff_notes" : "group_staff_notes")
 				.count()
-				.where("target_id=?", userID)
+				.where("target_id=?", Math.abs(id))
 				.executeAndGetInt();
 	}
 
-	public static PaginatedList<ActorStaffNote> getUserStaffNotes(int userID, int offset, int count) throws SQLException{
-		int total=getUserStaffNoteCount(userID);
+	public static PaginatedList<ActorStaffNote> getActorStaffNotes(int id, int offset, int count) throws SQLException{
+		int total=getActorStaffNoteCount(id);
 		if(total==0)
 			return PaginatedList.emptyList(count);
 		List<ActorStaffNote> notes=new SQLQueryBuilder()
-				.selectFrom("user_staff_notes")
+				.selectFrom(id>0 ? "user_staff_notes" : "group_staff_notes")
 				.allColumns()
-				.where("target_id=?", userID)
+				.where("target_id=?", Math.abs(id))
 				.limit(count, offset)
 				.executeAsStream(ActorStaffNote::fromResultSet)
 				.toList();
 		return new PaginatedList<>(notes, total, offset, count);
 	}
 
-	public static int createUserStaffNote(int userID, int authorID, String text) throws SQLException{
+	public static int createActorStaffNote(int id, int authorID, String text) throws SQLException{
 		return new SQLQueryBuilder()
-				.insertInto("user_staff_notes")
-				.value("target_id", userID)
+				.insertInto(id>0 ? "user_staff_notes" : "group_staff_notes")
+				.value("target_id", Math.abs(id))
 				.value("author_id", authorID)
 				.value("text", text)
 				.executeAndGetID();
 	}
 
-	public static void deleteUserStaffNote(int id) throws SQLException{
+	public static void deleteActorStaffNote(int actorID, int id) throws SQLException{
 		new SQLQueryBuilder()
-				.deleteFrom("user_staff_notes")
+				.deleteFrom(actorID>0 ? "user_staff_notes" : "group_staff_notes")
 				.where("id=?", id)
 				.executeNoResult();
 	}
 
-	public static ActorStaffNote getUserStaffNote(int id) throws SQLException{
+	public static ActorStaffNote getActorStaffNote(int actorID, int id) throws SQLException{
 		return new SQLQueryBuilder()
-				.selectFrom("user_staff_notes")
+				.selectFrom(actorID>0 ? "user_staff_notes" : "group_staff_notes")
 				.where("id=?", id)
 				.executeAndGetSingleObject(ActorStaffNote::fromResultSet);
 	}
+
+	// endregion
 
 	public static void createEmailDomainBlockRule(String domain, EmailDomainBlockRule.Action action, String note, int creatorID) throws SQLException{
 		new SQLQueryBuilder()
@@ -491,4 +573,159 @@ public class ModerationStorage{
 				.value("info", Utils.gson.toJson(info))
 				.executeNoResult();
 	}
+
+	// region Server rules
+
+	public static List<ServerRule> getServerRules(boolean includeDeleted) throws SQLException{
+		SQLQueryBuilder b=new SQLQueryBuilder()
+				.selectFrom("rules")
+				.orderBy("priority DESC, id ASC");
+		if(!includeDeleted)
+			b.where("is_deleted=0");
+		return b.executeAsStream(ServerRule::fromResultSet)
+				.toList();
+	}
+
+	public static int createServerRule(String title, String description, int priority, String translationsJson) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertInto("rules")
+				.value("title", title)
+				.value("description", description)
+				.value("priority", priority)
+				.value("translations", translationsJson)
+				.executeAndGetID();
+	}
+
+	public static void updateServerRule(int id, String title, String description, int priority, String translationsJson) throws SQLException{
+		new SQLQueryBuilder()
+				.update("rules")
+				.value("title", title)
+				.value("description", description)
+				.value("priority", priority)
+				.value("translations", translationsJson)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static List<ServerRule> getServerRulesByIDs(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("rules")
+				.whereIn("id", ids)
+				.executeAsStream(ServerRule::fromResultSet)
+				.toList();
+	}
+
+	public static void deleteServerRule(int id) throws SQLException{
+		new SQLQueryBuilder()
+				.update("rules")
+				.value("is_deleted", true)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	// endregion
+	// region Announcements
+
+	public static List<ServerAnnouncement> getCurrentAndFutureAnnouncements() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("announcements")
+				.where("show_to>CURRENT_TIMESTAMP()")
+				.executeAsStream(ServerAnnouncement::fromResultSet)
+				.toList();
+	}
+
+	public static PaginatedList<ServerAnnouncement> getAllAnnouncements(int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("announcements")
+					.count()
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<ServerAnnouncement> announcements=new SQLQueryBuilder(conn)
+					.selectFrom("announcements")
+					.limit(count, offset)
+					.orderBy("id DESC")
+					.executeAsStream(ServerAnnouncement::fromResultSet)
+					.toList();
+			return new PaginatedList<>(announcements, total, offset, count);
+		}
+	}
+
+	public static ServerAnnouncement getAnnouncement(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("announcements")
+				.where("id=?", id)
+				.executeAndGetSingleObject(ServerAnnouncement::fromResultSet);
+	}
+
+	public static void createAnnouncement(String title, String description, String linkTitle, String linkUrl, Instant showFrom, Instant showTo, String translationsJson) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("announcements")
+				.value("title", title)
+				.value("description", description)
+				.value("link_text", linkTitle)
+				.value("link_url", linkUrl)
+				.value("show_from", showFrom)
+				.value("show_to", showTo)
+				.value("translations", translationsJson)
+				.executeNoResult();
+	}
+
+	public static void updateAnnouncement(int id, String title, String description, String linkTitle, String linkUrl, Instant showFrom, Instant showTo, String translationsJson) throws SQLException{
+		new SQLQueryBuilder()
+				.update("announcements")
+				.where("id=?", id)
+				.value("title", title)
+				.value("description", description)
+				.value("link_text", linkTitle)
+				.value("link_url", linkUrl)
+				.value("show_from", showFrom)
+				.value("show_to", showTo)
+				.value("translations", translationsJson)
+				.executeNoResult();
+	}
+
+	public static void deleteAnnouncement(int id) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("announcements")
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	// endregion
+	// region Group action log
+
+	public static void createGroupActionLogEntry(int groupID, GroupActionLogAction action, int adminID, Map<String, Object> info) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("group_action_log")
+				.value("group_id", groupID)
+				.value("action", action)
+				.value("admin_id", adminID==0 ? null : adminID)
+				.value("info", Utils.gson.toJson(info))
+				.executeNoResult();
+	}
+
+	public static PaginatedList<GroupActionLogEntry> getGroupActionLog(int groupID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("group_action_log")
+					.count()
+					.where("group_id=?", groupID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<GroupActionLogEntry> log=new SQLQueryBuilder(conn)
+					.selectFrom("group_action_log")
+					.where("group_id=?", groupID)
+					.orderBy("id DESC")
+					.limit(count, offset)
+					.executeAsStream(GroupActionLogEntry::fromResultSet)
+					.toList();
+			return new PaginatedList<>(log, total, offset, count);
+		}
+	}
+
+	// endregion
 }

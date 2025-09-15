@@ -3,30 +3,38 @@ package smithereen.model;
 import com.google.gson.annotations.SerializedName;
 
 import java.net.URI;
+import java.text.Format;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import smithereen.Config;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.media.SizedImageURLs;
 import smithereen.storage.ImgProxy;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public interface SizedImage{
-	URI getUriForSizeAndFormat(Type size, Format format);
+	URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback);
 	Dimensions getOriginalDimensions();
 	URI getOriginalURI();
+
+	default Dimensions getDimensionsForSize(Type size, Dimensions dimensions){
+		return size.getResizedDimensions(dimensions);
+	}
+
 	default Dimensions getDimensionsForSize(Type size){
-		return size.getResizedDimensions(getOriginalDimensions());
+		return getDimensionsForSize(size, getOriginalDimensions());
 	}
 
 	default List<SizedImageURLs> getURLsForPhotoViewer(){
 		ArrayList<SizedImageURLs> urls=new ArrayList<>();
 		Dimensions origSize=getOriginalDimensions();
+		boolean isLocal=this instanceof LocalImage;
 		for(Type t:List.of(Type.PHOTO_SMALL, Type.PHOTO_MEDIUM, Type.PHOTO_LARGE, Type.PHOTO_ORIGINAL)){
 			Dimensions size=getDimensionsForSize(t);
-			urls.add(new SizedImageURLs(t.suffix, size.width, size.height, Objects.toString(getUriForSizeAndFormat(t, Format.WEBP)), Objects.toString(getUriForSizeAndFormat(t, Format.JPEG))));
+			urls.add(new SizedImageURLs(t.suffix, size.width, size.height, Objects.toString(getUriForSizeAndFormat(t, Format.WEBP, false, isLocal)), Objects.toString(getUriForSizeAndFormat(t, Format.JPEG, false, isLocal))));
 			if(size.width>=origSize.width && size.height>=origSize.height)
 				break;
 		}
@@ -35,6 +43,10 @@ public interface SizedImage{
 
 	default String getUrlForSizeAndFormat(String size, String format){
 		return getUriForSizeAndFormat(Type.fromSuffix(size), Format.fromFileExtension(format)).toString();
+	}
+
+	default URI getUriForSizeAndFormat(Type size, Format format){
+		return getUriForSizeAndFormat(size, format, false, true);
 	}
 
 	default String generateHTML(Type size, List<String> additionalClasses, String styleAttr, int width, int height, boolean add2x, String altText){
@@ -86,7 +98,7 @@ public interface SizedImage{
 		sb.append(getUriForSizeAndFormat(size, format));
 		if(add2x){
 			sb.append(", ");
-			sb.append(getUriForSizeAndFormat(size.get2xType(), format));
+			sb.append(getUriForSizeAndFormat(size.get2xType(), format, true, true));
 			sb.append(" 2x");
 		}
 		sb.append("\" type=\"");
@@ -177,13 +189,15 @@ public interface SizedImage{
 			if(resizingType==ImgProxy.ResizingType.FILL){
 				return new Dimensions(maxWidth, maxHeight);
 			}
+			float ratio;
 			if(maxWidth==maxHeight){
-				float ratio=Math.min(1f, maxWidth/(float)Math.max(in.width, in.height));
-				return new Dimensions(Math.round(in.width*ratio), Math.round(in.height*ratio));
+				ratio=maxWidth/(float) Math.max(in.width, in.height);
 			}else{
-				float ratio=Math.min(1f, maxWidth/(float)in.width);
-				return new Dimensions(Math.round(in.width*ratio), Math.round(in.height*ratio));
+				ratio=maxWidth/(float) in.width;
 			}
+			if(this!=AVA_RECT && this!=AVA_RECT_LARGE)
+				ratio=Math.min(1f, ratio);
+			return new Dimensions(Math.round(in.width*ratio), Math.round(in.height*ratio));
 		}
 
 		public Type get2xType(){

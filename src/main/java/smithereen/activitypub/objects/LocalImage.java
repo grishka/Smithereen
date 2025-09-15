@@ -3,11 +3,13 @@ package smithereen.activitypub.objects;
 import com.google.gson.JsonObject;
 
 import java.net.URI;
+import java.util.Base64;
 
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.SerializerContext;
+import smithereen.controllers.UserDataExportWorker;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
 import smithereen.model.media.MediaFileRecord;
@@ -26,6 +28,12 @@ public class LocalImage extends Image implements SizedImage{
 	public long photoID;
 	public Rotation rotation;
 	public AvatarCropRects avaCropRects;
+
+	public LocalImage(){}
+
+	public LocalImage(long fileID){
+		this.fileID=fileID;
+	}
 
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
@@ -94,7 +102,15 @@ public class LocalImage extends Image implements SizedImage{
 			im.mediaType="image/jpeg";
 			obj.add("image", im.asActivityPubObject(null, serializerContext));
 		}
-		obj.addProperty("url", builder.build().toString());
+		if(serializerContext instanceof UserDataExportWorker.ExportSerializerContext esc){
+			String fileName=Base64.getUrlEncoder().withoutPadding().encodeToString(fileRecord.id().randomID())+"_"+
+					Base64.getUrlEncoder().withoutPadding().encodeToString(Utils.packLong(XTEA.obfuscateObjectID(fileID, ObfuscatedObjectIDType.MEDIA_FILE)))+
+					"."+fileRecord.id().type().getFileExtension();
+			obj.addProperty("url", "media/"+fileName);
+			esc.filesToInclude.add(fileRecord.id());
+		}else{
+			obj.addProperty("url", builder.build().toString());
+		}
 		obj.addProperty("width", croppedWidth);
 		obj.addProperty("height", croppedHeight);
 		if(mediaType==null)
@@ -103,9 +119,11 @@ public class LocalImage extends Image implements SizedImage{
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format){
+	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
 		if(fileRecord==null){
 			LOG.warn("Tried to get a URL for a LocalImage with fileRecord not set (file ID {})", fileID);
+			if(useFallback)
+				return Config.localURI(size==Type.AVA_SQUARE_SMALL || (is2x && size==Type.AVA_SQUARE_MEDIUM) ? "/res/broken_photo_small.svg" : "/res/broken_photo.svg");
 			return null;
 		}
 		ImgProxy.UrlBuilder builder=MediaFileStorageDriver.getInstance().getImgProxyURL(fileRecord.id())
@@ -139,12 +157,43 @@ public class LocalImage extends Image implements SizedImage{
 	}
 
 	@Override
+	public Dimensions getDimensionsForSize(Type size){
+		Dimensions d;
+		if(avaCropRects!=null){
+			int w, h;
+			if(rotation==Rotation._90 || rotation==Rotation._270){
+				w=height;
+				h=width;
+			}else{
+				w=width;
+				h=height;
+			}
+			if(size==Type.AVA_RECT || size==Type.AVA_RECT_LARGE){
+				AbsoluteImageRect profileCrop=avaCropRects.profile().makeAbsolute(w, h);
+				d=new Dimensions(profileCrop.getWidth(), profileCrop.getHeight());
+			}else if(size==Type.AVA_SQUARE_SMALL || size==Type.AVA_SQUARE_MEDIUM || size==Type.AVA_SQUARE_LARGE || size==Type.AVA_SQUARE_XLARGE){
+				AbsoluteImageRect profileCrop=avaCropRects.profile().makeAbsolute(w, h);
+				AbsoluteImageRect squareCrop=avaCropRects.thumb().makeAbsolute(profileCrop.getWidth(), profileCrop.getHeight());
+				int croppedSize=squareCrop.getWidth();
+				d=new Dimensions(croppedSize, croppedSize);
+			}else{
+				d=getOriginalDimensions();
+			}
+		}else{
+			d=getOriginalDimensions();
+		}
+		return SizedImage.super.getDimensionsForSize(size, d);
+	}
+
+	@Override
 	public Dimensions getOriginalDimensions(){
 		return rotation==Rotation._90 || rotation==Rotation._270 ? new Dimensions(height, width) : size;
 	}
 
 	@Override
 	public URI getOriginalURI(){
+		if(fileRecord==null)
+			return null;
 		if(rotation!=null){
 			return MediaFileStorageDriver.getInstance().getImgProxyURL(fileRecord.id())
 					.format(Format.WEBP)

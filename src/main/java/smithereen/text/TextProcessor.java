@@ -191,7 +191,7 @@ public class TextProcessor{
 
 	private static void makeLinksAndMentions(Node node, @Nullable MentionCallback mentionCallback){
 		if(node instanceof Element el){
-			if(el.tagName().equalsIgnoreCase("pre")){
+			if(el.tagName().equalsIgnoreCase("pre") || el.tagName().equalsIgnoreCase("code")){
 				return;
 			}else if(el.tagName().equalsIgnoreCase("a")){
 				if(el.hasClass("mention") && !el.hasAttr("data-user-id")){
@@ -525,7 +525,7 @@ public class TextProcessor{
 	public static String transliterate(String in){
 		if(in==null)
 			return null;
-		return unidecode.decode(in.trim()).replaceAll(Pattern.quote("[?]"), "");
+		return unidecode.decode(in.trim().replace('ё', 'е')).replaceAll(Pattern.quote("[?]"), "");
 	}
 
 	public static String substituteLinks(String str, Map<String, Object> links){

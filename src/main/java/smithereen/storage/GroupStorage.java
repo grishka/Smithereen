@@ -39,14 +39,20 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
-import smithereen.model.GroupAdmin;
-import smithereen.model.GroupInvitation;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
-import smithereen.model.UserNotifications;
+import smithereen.model.UserBanStatus;
+import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
+import smithereen.model.groups.GroupInvitation;
+import smithereen.model.groups.GroupLink;
 import smithereen.model.media.MediaFileRecord;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -131,7 +137,7 @@ public class GroupStorage{
 		String key=group.activityPubID.toString().toLowerCase();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			foreignGroupUpdateLocks.acquire(key);
-			int existingGroupID=new SQLQueryBuilder(conn)
+			final int existingGroupID=new SQLQueryBuilder(conn)
 					.selectFrom("groups")
 					.columns("id")
 					.where("ap_id=?", group.activityPubID.toString())
@@ -142,6 +148,14 @@ public class GroupStorage{
 				builder.insertInto("groups");
 			}else{
 				builder.update("groups").where("id=?", existingGroupID);
+			}
+
+			if(existingGroupID!=-1){
+				Group oldGroup=getById(existingGroupID);
+				if(!oldGroup.username.equals(group.username))
+					ModerationStorage.createGroupActionLogEntry(existingGroupID, GroupActionLogAction.CHANGE_USERNAME, 0, Map.of("old", oldGroup.username, "new", group.username));
+				if(!oldGroup.name.equals(group.name))
+					ModerationStorage.createGroupActionLogEntry(existingGroupID, GroupActionLogAction.CHANGE_NAME, 0, Map.of("old", oldGroup.name, "new", group.name));
 			}
 
 			builder.value("name", group.name)
@@ -163,7 +177,7 @@ public class GroupStorage{
 					.value("profile_fields", group.serializeProfileFields())
 					.valueExpr("last_updated", "CURRENT_TIMESTAMP()");
 
-			if(existingGroupID==0){
+			if(existingGroupID==-1){
 				group.id=builder.executeAndGetID();
 				new SQLQueryBuilder(conn)
 						.insertInto("qsearch_index")
@@ -181,49 +195,98 @@ public class GroupStorage{
 			}
 			removeFromCache(group);
 			synchronized(adminUpdateLock){
-				builder=new SQLQueryBuilder(conn)
-						.selectFrom("group_admins")
-						.columns("user_id", "title")
-						.where("group_id=?", group.id);
-				Map<Integer, GroupAdmin> admins=group.adminsForActivityPub.stream().collect(Collectors.toMap(adm->adm.user.id, adm->adm));
-				int count=0;
-				boolean needUpdate=false;
-				try(ResultSet res=builder.execute()){
-					while(res.next()){
-						count++;
-						int id=res.getInt(1);
-						String title=res.getString(2);
-						if(!admins.containsKey(id)){
-							needUpdate=true;
-							break;
+				List<GroupAdmin> existingAdmins;
+				if(existingGroupID==-1)
+					existingAdmins=List.of();
+				else
+					existingAdmins=getGroupAdmins(existingGroupID);
+				if(!existingAdmins.isEmpty() || !group.adminsForActivityPub.isEmpty()){
+					Map<Integer, GroupAdmin> existingAdminsByID=existingAdmins.stream().collect(Collectors.toMap(a->a.userID, Function.identity(), (a, b)->b));
+					for(GroupAdmin a:group.adminsForActivityPub){
+						GroupAdmin existingAdmin=existingAdminsByID.get(a.userID);
+						if(existingAdmin==null){
+							new SQLQueryBuilder(conn)
+									.insertInto("group_admins")
+									.value("group_id", group.id)
+									.value("user_id", a.userID)
+									.value("title", a.title)
+									.value("level", Group.AdminLevel.MODERATOR)
+									.value("display_order", a.displayOrder)
+									.executeNoResult();
+							if(existingGroupID!=-1)
+								ModerationStorage.createGroupActionLogEntry(existingGroupID, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, 0, Map.of("user", a.userID, "old", Group.AdminLevel.REGULAR.toString(), "new", Group.AdminLevel.MODERATOR.toString()));
+						}else if(!Objects.equals(a.title, existingAdmin.title) || a.displayOrder!=existingAdmin.displayOrder){
+							new SQLQueryBuilder(conn)
+									.update("group_admins")
+									.where("group_id=? AND user_id=?", group.id, a.userID)
+									.value("title", a.title)
+									.value("display_order", a.displayOrder)
+									.executeNoResult();
 						}
-						GroupAdmin existing=admins.get(id);
-						if(!Objects.equals(title, existing.title)){
-							needUpdate=true;
-							break;
+					}
+					Set<Integer> newAdminIDs=group.adminsForActivityPub.stream().map(l->l.userID).collect(Collectors.toSet());
+					HashSet<Integer> removedAdminIDs=new HashSet<>();
+					for(GroupAdmin a:existingAdmins){
+						if(!newAdminIDs.contains(a.userID))
+							removedAdminIDs.add(a.userID);
+					}
+					if(!removedAdminIDs.isEmpty()){
+						new SQLQueryBuilder(conn)
+								.deleteFrom("group_admins")
+								.whereIn("user_id", removedAdminIDs)
+								.andWhere("group_id=?", group.id)
+								.executeNoResult();
+						for(int id:removedAdminIDs){
+							GroupAdmin admin=existingAdmins.get(id);
+							ModerationStorage.createGroupActionLogEntry(existingGroupID, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, 0, Map.of("user", id, "old", admin.level.toString(), "new", Group.AdminLevel.REGULAR.toString()));
 						}
 					}
 				}
-				if(!needUpdate && count!=group.adminsForActivityPub.size())
-					needUpdate=true;
 
-				// TODO only update whatever has actually changed
-				if(needUpdate){
-					new SQLQueryBuilder(conn)
-							.deleteFrom("group_admins")
-							.where("group_id=?", group.id)
-							.executeNoResult();
-					int order=0;
-					for(GroupAdmin admin: group.adminsForActivityPub){
+
+				List<GroupLink> existingLinks;
+				if(existingGroupID==-1)
+					existingLinks=List.of();
+				else
+					existingLinks=getGroupLinks(existingGroupID);
+				if(!existingLinks.isEmpty() || !group.linksFromActivityPub.isEmpty()){
+					Map<URI, GroupLink> existingLinksByID=existingLinks.stream().collect(Collectors.toMap(l->l.apID, Function.identity(), (a, b)->b));
+					for(GroupLink l:group.linksFromActivityPub){
+						GroupLink existingLink=existingLinksByID.get(l.apID);
+						if(existingLink==null){
+							new SQLQueryBuilder(conn)
+									.insertInto("group_links")
+									.value("group_id", group.id)
+									.value("url", l.url.toString())
+									.value("title", l.title)
+									.value("object_type", l.object==null ? null : l.object.type().id)
+									.value("object_id", l.object==null ? null : l.object.id())
+									.value("ap_image_url", l.apImageURL==null ? null : l.apImageURL.toString())
+									.value("display_order", l.displayOrder)
+									.value("ap_id", l.apID.toString())
+									.value("is_unresolved_ap_object", l.isUnresolvedActivityPubObject)
+									.executeNoResult();
+						}else if(!Objects.equals(l.title, existingLink.title) || l.displayOrder!=existingLink.displayOrder){
+							new SQLQueryBuilder(conn)
+									.update("group_links")
+									.where("ap_id=? AND group_id=?", l.apID, group.id)
+									.value("title", l.title)
+									.value("display_order", l.displayOrder)
+									.executeNoResult();
+						}
+					}
+					Set<URI> newLinkIDs=group.linksFromActivityPub.stream().map(l->l.apID).collect(Collectors.toSet());
+					HashSet<Long> removedLinkIDs=new HashSet<>();
+					for(GroupLink l:existingLinks){
+						if(!newLinkIDs.contains(l.apID))
+							removedLinkIDs.add(l.id);
+					}
+					if(!removedLinkIDs.isEmpty()){
 						new SQLQueryBuilder(conn)
-								.insertInto("group_admins")
-								.value("group_id", group.id)
-								.value("user_id", admin.user.id)
-								.value("title", admin.title)
-								.value("level", Group.AdminLevel.MODERATOR.ordinal())
-								.value("display_order", order)
+								.deleteFrom("group_links")
+								.whereIn("id", removedLinkIDs)
+								.andWhere("group_id=?", group.id)
 								.executeNoResult();
-						order++;
 					}
 				}
 			}
@@ -674,7 +737,6 @@ public class GroupStorage{
 	public static List<GroupAdmin> getGroupAdmins(int groupID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("group_admins")
-				.columns("level", "user_id", "title")
 				.where("group_id=?", groupID)
 				.orderBy("display_order ASC")
 				.executeAsStream(GroupAdmin::fromResultSet)
@@ -684,9 +746,16 @@ public class GroupStorage{
 	public static GroupAdmin getGroupAdmin(int groupID, int userID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("group_admins")
-				.columns("level", "user_id", "title")
 				.where("group_id=? AND user_id=?", groupID, userID)
 				.executeAndGetSingleObject(GroupAdmin::fromResultSet);
+	}
+
+	public static List<GroupAdmin> getUserManagedGroupsWithLevels(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("group_admins")
+				.where("user_id=?", userID)
+				.executeAsStream(GroupAdmin::fromResultSet)
+				.toList();
 	}
 
 	public static void addOrUpdateGroupAdmin(int groupID, int userID, String title, @Nullable Group.AdminLevel level) throws SQLException{
@@ -804,6 +873,7 @@ public class GroupStorage{
 				.executeNoResult();
 
 		group.name=name;
+		group.username=username;
 		new SQLQueryBuilder()
 				.update("qsearch_index")
 				.value("string", getQSearchStringForGroup(group))
@@ -833,7 +903,7 @@ public class GroupStorage{
 	public static void blockUser(int selfID, int targetID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			new SQLQueryBuilder(conn)
-					.insertInto("blocks_group_user")
+					.insertIgnoreInto("blocks_group_user")
 					.value("owner_id", selfID)
 					.value("user_id", targetID)
 					.executeNoResult();
@@ -878,7 +948,7 @@ public class GroupStorage{
 
 	public static void blockDomain(int selfID, String domain) throws SQLException{
 		new SQLQueryBuilder()
-				.insertInto("blocks_group_domain")
+				.insertIgnoreInto("blocks_group_domain")
 				.value("owner_id", selfID)
 				.value("domain", domain)
 				.executeNoResult();
@@ -957,7 +1027,7 @@ public class GroupStorage{
 		Set<Integer> needGroups=ids.stream().map(IntPair::first).collect(Collectors.toSet());
 		Set<Integer> needUsers=ids.stream().map(IntPair::second).collect(Collectors.toSet());
 		Map<Integer, Group> groups=getById(needGroups);
-		Map<Integer, User> users=UserStorage.getById(needUsers);
+		Map<Integer, User> users=UserStorage.getById(needUsers, false);
 		// All groups and users must exist, this is taken care of by schema constraints
 		return ids.stream().map(i->new GroupInvitation(groups.get(i.first()), users.get(i.second()))).collect(Collectors.toList());
 	}
@@ -1192,10 +1262,186 @@ public class GroupStorage{
 			for(int id:filteredIDs){
 				new SQLQueryBuilder(conn)
 						.update("group_memberships")
-						.where("user_id=? AND mutual=1", id)
+						.where("user_id=?", id)
 						.valueExpr("hints_rank", "FLOOR(hints_rank/2)")
 						.executeNoResult();
 			}
 		}
 	}
+
+	public static void setGroupBanStatus(Group group, GroupBanStatus banStatus, String banInfo) throws SQLException{
+		new SQLQueryBuilder()
+				.update("groups")
+				.where("id=?", group.id)
+				.value("ban_status", banStatus)
+				.value("ban_info", banInfo)
+				.executeNoResult();
+		removeFromCache(group);
+	}
+
+	public static void deleteGroup(Group group) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			// Delete media file refs first because triggers don't trigger on cascade deletes. Argh.
+			new SQLQueryBuilder(conn)
+					.deleteFrom("media_file_refs")
+					.where("owner_group_id=?", group.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.deleteFrom("groups")
+					.where("id=?", group.id)
+					.executeNoResult();
+			removeFromCache(group);
+		}
+	}
+
+	public static List<Group> getTerminallyBannedGroups() throws SQLException{
+		return getByIdAsList(new SQLQueryBuilder()
+				.selectFrom("groups")
+				.columns("id")
+				.whereIn("ban_status", GroupBanStatus.SELF_DEACTIVATED, GroupBanStatus.SUSPENDED)
+				.andWhere("ap_id IS NULL")
+				.executeAndGetIntList());
+	}
+
+	public static void updateUsername(Group group, String username) throws SQLException{
+		new SQLQueryBuilder()
+				.update("groups")
+				.where("id=?", group.id)
+				.value("username", username)
+				.executeNoResult();
+		group.username=username;
+		new SQLQueryBuilder()
+				.update("qsearch_index")
+				.value("string", getQSearchStringForGroup(group))
+				.where("group_id=?", group.id)
+				.executeNoResult();
+		removeFromCache(group);
+	}
+
+	// region Links
+
+	public static long createLink(int groupID, String url, String title, ObjectLinkResolver.ObjectTypeAndID object, long imageID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int displayOrder=new SQLQueryBuilder(conn)
+					.selectFrom("group_links")
+					.selectExpr("IFNULL(MAX(display_order), -1)+1")
+					.where("group_id=?", groupID)
+					.executeAndGetInt();
+			return new SQLQueryBuilder(conn)
+					.insertInto("group_links")
+					.value("group_id", groupID)
+					.value("url", url)
+					.value("title", title)
+					.value("object_type", object==null ? null : object.type().id)
+					.value("object_id", object==null ? null : object.id())
+					.value("image_id", imageID==0 ? null : imageID)
+					.value("display_order", displayOrder)
+					.executeAndGetIDLong();
+		}
+	}
+
+	public static List<GroupLink> getGroupLinks(int groupID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			List<GroupLink> links=new SQLQueryBuilder(conn)
+					.selectFrom("group_links")
+					.where("group_id=?", groupID)
+					.orderBy("display_order ASC")
+					.executeAsStream(GroupLink::fromResultSet)
+					.toList();
+			Set<Long> needFiles=links.stream()
+					.map(l->l.image instanceof LocalImage li ? li : null)
+					.filter(Objects::nonNull)
+					.map(li->li.fileID)
+					.collect(Collectors.toSet());
+			if(!needFiles.isEmpty()){
+				Map<Long, MediaFileRecord> files=MediaStorage.getMediaFileRecords(needFiles);
+				for(GroupLink link:links){
+					if(link.image instanceof LocalImage li){
+						MediaFileRecord mfr=files.get(li.fileID);
+						if(mfr!=null)
+							li.fillIn(mfr);
+					}
+				}
+			}
+			return links;
+		}
+	}
+
+	public static GroupLink getGroupLink(int groupID, long linkID) throws SQLException{
+		GroupLink link=new SQLQueryBuilder()
+				.selectFrom("group_links")
+				.where("group_id=? AND id=?", groupID, linkID)
+				.executeAndGetSingleObject(GroupLink::fromResultSet);
+		if(link!=null){
+			if(link.image instanceof LocalImage li){
+				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
+		}
+		return link;
+	}
+
+	public static void setLinkOrder(int groupID, long linkID, int newOrder) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+//			synchronized(adminUpdateLock){
+				int order=new SQLQueryBuilder(conn)
+						.selectFrom("group_links")
+						.columns("display_order")
+						.where("group_id=? AND id=?", groupID, linkID)
+						.executeAndGetInt();
+				if(order==-1 || order==newOrder)
+					return;
+				int count=new SQLQueryBuilder(conn).selectFrom("group_links").count().where("group_id=?", groupID).executeAndGetInt();
+				if(newOrder>=count)
+					return;
+				new SQLQueryBuilder(conn)
+						.update("group_links")
+						.where("group_id=? AND id=?", groupID, linkID)
+						.value("display_order", newOrder)
+						.executeNoResult();
+				if(newOrder<order){
+					new SQLQueryBuilder(conn)
+							.update("group_links")
+							.where("group_id=? AND display_order>=? AND display_order<? AND id<>?", groupID, newOrder, order, linkID)
+							.valueExpr("display_order", "display_order+1")
+							.executeNoResult();
+				}else{
+					new SQLQueryBuilder(conn)
+							.update("group_links")
+							.where("group_id=? AND display_order<=? AND display_order>? AND id<>?", groupID, newOrder, order, linkID)
+							.valueExpr("display_order", "display_order-1")
+							.executeNoResult();
+				}
+//			}
+		}
+	}
+
+	public static void updateLinkTitle(int groupID, long linkID, String title) throws SQLException{
+		new SQLQueryBuilder()
+				.update("group_links")
+				.where("group_id=? AND id=?", groupID, linkID)
+				.value("title", title)
+				.executeNoResult();
+	}
+
+	public static void deleteLink(int groupID, long linkID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("group_links")
+				.where("group_id=? AND id=?", groupID, linkID)
+				.executeNoResult();
+	}
+
+	public static void resolveLink(int groupID, long linkID, ObjectLinkResolver.ObjectTypeAndID obj) throws SQLException{
+		new SQLQueryBuilder()
+				.update("group_links")
+				.where("group_id=? AND id=?", groupID, linkID)
+				.value("is_unresolved_ap_object", false)
+				.value("object_type", obj.type().id)
+				.value("object_id", obj.id())
+				.executeNoResult();
+	}
+
+	// endregion
 }

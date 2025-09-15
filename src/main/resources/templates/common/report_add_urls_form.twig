@@ -1,0 +1,4 @@
+{% import "forms" as form %}
+{{ form.start("reportAddUrls") }}
+	{{ form.textArea('urls', L('admin_report_add_links'), '', {'explanation': L('admin_report_add_links_one_per_line'), 'required': true}) }}
+{{ form.end() }}

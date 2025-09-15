@@ -24,14 +24,20 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.activitypub.ActivityPub;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InaccessibleGroupException;
 import smithereen.exceptions.InaccessibleProfileException;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserContentUnavailableException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.MessagesPrivacyGrant;
 import smithereen.model.OwnedContentObject;
@@ -40,14 +46,13 @@ import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.UserContentUnavailableException;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.admin.UserRole;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.friends.FriendList;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
@@ -68,9 +73,17 @@ public class PrivacyController{
 	}
 
 	public void enforceObjectPrivacy(@Nullable User self, @NotNull OwnedContentObject object){
+		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(object);
+		if(oaa.owner() instanceof User user)
+			enforceUserProfileAccess(self, user);
+		else if(oaa.owner() instanceof Group group)
+			enforceUserAccessToGroupProfile(self, group);
 		if(object instanceof Post post){
 			if(post.ownerID<0){
-				enforceUserAccessToGroupContent(self, context.getGroupsController().getGroupOrThrow(-post.ownerID));
+				Group group=context.getGroupsController().getGroupOrThrow(-post.ownerID);
+				enforceUserAccessToGroupContent(self, group);
+				if(group.wallState==GroupFeatureState.DISABLED)
+					throw new UserActionNotAllowedException("err_access_content");
 			}else if(post.ownerID!=post.authorID){
 				if(post.getReplyLevel()==0){
 					enforceUserPrivacy(self, context.getUsersController().getUserOrThrow(post.ownerID), UserPrivacySettingKey.WALL_OTHERS_POSTS);
@@ -106,14 +119,31 @@ public class PrivacyController{
 	}
 
 	public void enforceUserAccessToGroupProfile(@Nullable User self, @NotNull Group group){
+		switch(group.banStatus){
+			case NONE -> {}
+			case SUSPENDED -> {
+				if(!canAccessBannedGroups(self))
+					throw new UserErrorException(group.isEvent() ? "event_banned" : "group_banned");
+			}
+			case HIDDEN -> {
+				if(self==null)
+					throw new InaccessibleGroupException(group);
+			}
+			case SELF_DEACTIVATED -> {
+				if(!canAccessBannedGroups(self))
+					throw new UserErrorException(group.isEvent() ? "event_deactivated" : "group_deactivated");
+			}
+		}
+		if(group.banInfo!=null && group.banInfo.suspendedOnRemoteServer() && !canAccessBannedGroups(self))
+			throw new UserErrorException(group.isEvent() ? "event_banned" : "group_banned");
 		// For closed groups, the profile is still accessible by everyone.
 		// For private groups, the profile is only accessible if you're a member or have a pending invite.
 		if(group.accessType==Group.AccessType.PRIVATE){
 			if(self==null)
-				throw new UserActionNotAllowedException();
+				throw new UserActionNotAllowedException(group.isEvent() ? "event_private_no_access" : "group_private_no_access");
 			Group.MembershipState state=context.getGroupsController().getUserMembershipState(group, self);
 			if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.INVITED)
-				throw new UserActionNotAllowedException();
+				throw new UserActionNotAllowedException(group.isEvent() ? "event_private_no_access" : "group_private_no_access");
 		}
 	}
 
@@ -267,6 +297,29 @@ public class PrivacyController{
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(obj);
 		if(oaa.owner() instanceof Group g){
 			enforceGroupContentAccess(req, g);
+			switch(obj){
+				case Post post -> {
+					if(g.wallState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Wall is disabled in this group");
+				}
+				case PhotoAlbum pa -> {
+					if(g.photosState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Photo albums are disabled in this group");
+				}
+				case Photo photo -> {
+					if(g.photosState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Photo albums are disabled in this group");
+				}
+				case Comment comment -> {
+					CommentableContentObject parent=context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+					enforceContentPrivacyForActivityPub(req, parent);
+				}
+				case BoardTopic topic -> {
+					if(g.boardState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Discussion board is disabled in this group");
+				}
+				default -> {}
+			}
 		}else if(oaa.owner() instanceof User u){
 			switch(obj){
 				case Post post when post.ownerID!=post.authorID && post.getReplyLevel()==0 -> {
@@ -361,10 +414,6 @@ public class PrivacyController{
 	}
 
 	public void enforcePostPrivacy(@Nullable User self, Post post){
-		if(post.ownerID>0){
-			User owner=context.getUsersController().getUserOrThrow(post.ownerID);
-			enforceUserProfileAccess(self, owner);
-		}
 		if(!checkPostPrivacy(self, post))
 			throw new UserContentUnavailableException();
 	}
@@ -378,16 +427,42 @@ public class PrivacyController{
 		posts.removeIf(post->!checkPostPrivacy(self, post.post));
 	}
 
+	private boolean canAccessBannedProfiles(@Nullable User self){
+		if(self!=null && !(self instanceof ForeignUser)){
+			Account account=context.getUsersController().getAccountForUser(self);
+			if(account.roleID!=0)
+				return Config.userRoles.get(account.roleID).hasPermission(UserRole.Permission.MANAGE_USERS);
+		}
+		return false;
+	}
+
+	private boolean canAccessBannedGroups(@Nullable User self){
+		if(self!=null && !(self instanceof ForeignUser)){
+			Account account=context.getUsersController().getAccountForUser(self);
+			if(account.roleID!=0)
+				return Config.userRoles.get(account.roleID).hasPermission(UserRole.Permission.MANAGE_GROUPS);
+		}
+		return false;
+	}
+
 	public void enforceUserProfileAccess(@Nullable User self, User target){
 		switch(target.banStatus){
 			case NONE -> {}
-			case FROZEN, SUSPENDED -> throw new UserErrorException("profile_banned");
+			case FROZEN, SUSPENDED -> {
+				if(!canAccessBannedProfiles(self))
+					throw new UserErrorException("profile_banned");
+			}
 			case HIDDEN -> {
 				if(self==null)
 					throw new InaccessibleProfileException(target);
 			}
-			case SELF_DEACTIVATED -> throw new UserErrorException("profile_deactivated");
+			case SELF_DEACTIVATED -> {
+				if(!canAccessBannedProfiles(self))
+					throw new UserErrorException("profile_deactivated");
+			}
 		}
+		if(target.banInfo!=null && target.banInfo.suspendedOnRemoteServer() && !canAccessBannedProfiles(self))
+			throw new UserErrorException("profile_banned");
 	}
 
 	void populatePrivacySettingsFriendListUsers(User self, Collection<PrivacySetting> settings){
@@ -466,6 +541,22 @@ public class PrivacyController{
 				PhotoStorage.updateUserAlbumPrivacy(album.id, album.viewPrivacy, album.commentPrivacy);
 				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
 			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<User> getBlockedUsers(User self){
+		try{
+			return UserStorage.getBlockedUsers(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<String> getBlockedDomains(User self){
+		try{
+			return UserStorage.getBlockedDomains(self.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

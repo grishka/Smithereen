@@ -8,15 +8,29 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Event;
+import smithereen.activitypub.objects.LocalImage;
+import smithereen.activitypub.objects.PropertyValue;
 import smithereen.jsonld.JLD;
+import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
+import smithereen.model.groups.GroupFeatureState;
+import smithereen.model.groups.GroupLink;
 import smithereen.storage.DatabaseUtils;
+import smithereen.text.TextProcessor;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
+import smithereen.util.TranslatableEnum;
 import spark.utils.StringUtils;
 
 public class Group extends Actor{
@@ -26,6 +40,12 @@ public class Group extends Actor{
 	public Type type=Type.GROUP;
 	public Instant eventStartTime, eventEndTime;
 	public AccessType accessType;
+	public GroupFeatureState wallState=GroupFeatureState.ENABLED_OPEN;
+	public GroupFeatureState photosState=GroupFeatureState.ENABLED_RESTRICTED;
+	public GroupFeatureState boardState=GroupFeatureState.ENABLED_RESTRICTED;
+	public String website, location;
+	public GroupBanStatus banStatus=GroupBanStatus.NONE;
+	public GroupBanInfo banInfo;
 
 	public List<GroupAdmin> adminsForActivityPub;
 
@@ -69,6 +89,10 @@ public class Group extends Actor{
 		return Config.localURI("/groups/"+id+"/albums");
 	}
 
+	public URI getBoardTopicsURL(){
+		return Config.localURI("/group/"+id+"/topics");
+	}
+
 	@Override
 	public String getTypeAndIdForURL(){
 		return "/groups/"+id;
@@ -84,6 +108,13 @@ public class Group extends Actor{
 		JsonObject o=new JsonObject();
 		if(status!=null)
 			o.add("status", Utils.gson.toJsonTree(status));
+		o.addProperty("wall", wallState.toString());
+		o.addProperty("photos", photosState.toString());
+		o.addProperty("board", boardState.toString());
+		if(StringUtils.isNotEmpty(website))
+			o.addProperty("web", website);
+		if(StringUtils.isNotEmpty(location))
+			o.addProperty("loc", location);
 		return o.toString();
 	}
 
@@ -111,7 +142,7 @@ public class Group extends Actor{
 			Event event=new Event();
 			event.startTime=eventStartTime;
 			event.endTime=eventEndTime;
-			attachment=List.of(event);
+			attachment=new ArrayList<>(List.of(event));
 		}
 
 		String fields=res.getString("profile_fields");
@@ -120,6 +151,31 @@ public class Group extends Actor{
 			if(o.has("status")){
 				status=Utils.gson.fromJson(o.get("status"), ActorStatus.class);
 			}
+			if(o.has("wall"))
+				wallState=Utils.enumValue(o.get("wall").getAsString(), GroupFeatureState.class);
+			if(o.has("photos"))
+				photosState=Utils.enumValue(o.get("photos").getAsString(), GroupFeatureState.class);
+			if(o.has("board"))
+				boardState=Utils.enumValue(o.get("board").getAsString(), GroupFeatureState.class);
+			website=optString(o, "web");
+			location=optString(o, "loc");
+		}
+
+		if(StringUtils.isNotEmpty(website)){
+			if(attachment==null)
+				attachment=new ArrayList<>();
+			String url=TextProcessor.escapeHTML(website);
+			PropertyValue pv=new PropertyValue();
+			pv.name="Website";
+			pv.value="<a href=\""+url+"\" rel=\"me\">"+url+"</a>";
+			pv.parsed=true;
+			attachment.add(pv);
+		}
+
+		banStatus=GroupBanStatus.values()[res.getInt("ban_status")];
+		String _banInfo=res.getString("ban_info");
+		if(StringUtils.isNotEmpty(_banInfo)){
+			banInfo=Utils.gson.fromJson(_banInfo, GroupBanInfo.class);
 		}
 	}
 
@@ -127,24 +183,27 @@ public class Group extends Actor{
 	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
 		obj=super.asActivityPubObject(obj, serializerContext);
 
-		String userURL=activityPubID.toString();
+		String groupURL=activityPubID.toString();
+		serializerContext.addSmAlias("displayOrder");
 		JsonArray ar=new JsonArray();
-		for(GroupAdmin admin : adminsForActivityPub){
+		Map<Integer, User> users=serializerContext.appContext.getUsersController().getUsers(adminsForActivityPub.stream().map(a->a.userID).toList());
+		for(GroupAdmin admin:adminsForActivityPub){
 			JsonObject ja=new JsonObject();
 			ja.addProperty("type", "Person");
-			ja.addProperty("id", admin.user.activityPubID.toString());
+			ja.addProperty("id", users.get(admin.userID).activityPubID.toString());
+			ja.addProperty("displayOrder", admin.displayOrder);
 			if(StringUtils.isNotEmpty(admin.title))
 				ja.addProperty("title", admin.title);
 			ar.add(ja);
 		}
 		obj.add("attributedTo", ar);
 
-		obj.addProperty("members", userURL+"/members");
+		obj.addProperty("members", groupURL+"/members");
 		serializerContext.addType("members", "sm:members", "@id");
 		JsonObject capabilities=new JsonObject();
 
 		if(type==Type.EVENT){
-			obj.addProperty("tentativeMembers", userURL+"/tentativeMembers");
+			obj.addProperty("tentativeMembers", groupURL+"/tentativeMembers");
 			serializerContext.addType("tentativeMembers", "sm:tentativeMembers", "@id");
 			capabilities.addProperty("tentativeMembership", true);
 			serializerContext.addAlias("tentativeMembership", "sm:tentativeMembership");
@@ -160,15 +219,58 @@ public class Group extends Actor{
 		serializerContext.addAlias("capabilities", "litepub:capabilities");
 		serializerContext.addAlias("acceptsJoins", "litepub:acceptsJoins");
 		serializerContext.addAlias("litepub", JLD.LITEPUB);
+		serializerContext.addAlias("vcard", JLD.VCARD);
 
 		JsonObject endpoints=obj.getAsJsonObject("endpoints");
 		if(accessType!=AccessType.OPEN){
-			endpoints.addProperty("actorToken", userURL+"/actorToken");
+			endpoints.addProperty("actorToken", groupURL+"/actorToken");
 			serializerContext.addAlias("actorToken", "sm:actorToken");
 		}
 
 		serializerContext.addSmIdType("photoAlbums");
 		obj.addProperty("photoAlbums", getPhotoAlbumsURL().toString());
+
+		serializerContext.addSmAlias("featureState");
+		serializerContext.addSmIdType("board");
+		obj.add("featureState", new JsonObjectBuilder()
+				.add("wall", wallState.asActivityPubValue())
+				.add("photoAlbums", photosState.asActivityPubValue())
+				.add("board", boardState.asActivityPubValue())
+				.build());
+
+		serializerContext.addSmIdType("boardTopics");
+		serializerContext.addSmIdType("pinnedBoardTopics");
+		obj.addProperty("boardTopics", groupURL+"/topics");
+		obj.addProperty("pinnedBoardTopics", groupURL+"/pinnedTopics");
+
+		List<GroupLink> links=serializerContext.appContext.getGroupsController().getLinks(this);
+		if(!links.isEmpty()){
+			serializerContext.addSmIdType("links");
+			serializerContext.addSmAlias("displayOrder");
+			JsonArrayBuilder linkArr=new JsonArrayBuilder();
+			for(GroupLink link:links){
+				JsonObjectBuilder linkBuilder=new JsonObjectBuilder()
+						.add("type", "Link")
+						.add("href", link.url.toString())
+						.add("id", Config.localURI("/groups/"+id+"/links/"+link.id).toString())
+						.add("name", link.title)
+						.add("displayOrder", link.displayOrder);
+				if(link.image instanceof LocalImage li){
+					linkBuilder.add("icon", li.asActivityPubObject(new JsonObject(), serializerContext));
+				}
+				if(link.object!=null){
+					linkBuilder.add("mediaType", ActivityPub.CONTENT_TYPE);
+				}
+				linkArr.add(linkBuilder);
+			}
+			obj.add("links", linkArr.build());
+		}
+		if(StringUtils.isNotEmpty(location))
+			obj.addProperty("vcard:Address", location);
+
+		serializerContext.addAlias("toot", JLD.MASTODON);
+		serializerContext.addAlias("suspended", "toot:suspended");
+		obj.addProperty("suspended", banStatus==GroupBanStatus.SUSPENDED);
 
 		return obj;
 	}
@@ -183,7 +285,7 @@ public class Group extends Actor{
 		return URI.create(userURL+"/members");
 	}
 
-	public enum AdminLevel{
+	public enum AdminLevel implements TranslatableEnum<AdminLevel>{
 		REGULAR,
 		MODERATOR,
 		ADMIN,
@@ -195,6 +297,15 @@ public class Group extends Actor{
 
 		public boolean isAtLeast(String lvl){
 			return isAtLeast(valueOf(lvl));
+		}
+
+		@Override
+		public String getLangKey(){
+			return switch(this){
+				case REGULAR, OWNER -> "";
+				case ADMIN -> "group_access_admin";
+				case MODERATOR -> "group_access_moderator";
+			};
 		}
 	}
 

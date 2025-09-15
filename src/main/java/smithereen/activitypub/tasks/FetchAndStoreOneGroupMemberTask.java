@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 
 import smithereen.ApplicationContext;
+import smithereen.Utils;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -30,7 +31,7 @@ public class FetchAndStoreOneGroupMemberTask extends NoResultCallable{
 	protected void compute(){
 		try{
 			ForeignUser user=context.getObjectLinkResolver().resolve(userID, ForeignUser.class, true, false, false);
-			if(user.getGroupsURL()!=null)
+			if(user.getGroupsURL()!=null && !Utils.uriHostMatches(group.activityPubID, user.getGroupsURL()))
 				context.getObjectLinkResolver().ensureObjectIsInCollection(user, user.getGroupsURL(), group.activityPubID);
 			if(user.id==0)
 				context.getObjectLinkResolver().storeOrUpdateRemoteObject(user, user);

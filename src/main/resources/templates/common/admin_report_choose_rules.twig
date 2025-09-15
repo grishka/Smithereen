@@ -1,0 +1,9 @@
+{# @pebvariable name="serverRules" type="smithereen.model.ServerRule[]" #}
+<div id="reportSelectRules" onchange="var checkboxes=this.querySelectorAll('input'); for(var i=0;i<checkboxes.length;i++){checkboxes[i].required=!this.querySelectorAll('input:checked').length;}">
+{% for rule in serverRules %}
+<div class="radioButtonWrap">
+	<input type="checkbox" name="rules[{{ rule.id }}]" id="rule{{ rule.id }}" class="flL" required{% if selectedRules contains rule.id %} checked{% endif %}/>
+	<label for="rule{{ rule.id }}">{{ rule.getTranslatedTitle(getLocale()) }}</label>
+</div>
+{% endfor %}
+</div>

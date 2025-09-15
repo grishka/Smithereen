@@ -24,8 +24,8 @@
 <div class="postLayerActions" id="postFloatingActions{{ post.post.id }}_{{ randomID }}">
 	<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
 		<a href="{{ realPost.internalURL }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}&amp;rid={{ randomID }}" class="button like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPost{{ realPost.id }}_{{ randomID }}" data-obj-type="post" data-obj-id="{{ realPost.id }}_{{ randomID }}" data-popover-url="{{ realPost.internalURL }}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
-			{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{ realPost.id }}_{{ randomID }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
-			{{- interactions.likeCount -}}
+			{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{ realPost.id }}_{{ randomID }}" data-count="{{ interactions.likeCount }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+			{{- interactions.likeCount | numberformat -}}
 		</span></a>
 		<span class="popoverPlace likePopoverWrap"></span>
 	</span>
@@ -40,6 +40,9 @@
 	{% endif %}
 	{% if userPermissions is not null and userPermissions.canEditPost(realPost) %}
 	<a href="{{ realPost.internalURL }}/edit?rid={{ randomID }}&fromLayer" data-ajax class="button tertiary">{{ L('edit') }}</a>
+	{% endif %}
+	{% if currentUser is not null and realPost.ownerID==currentUser.id and realPost.authorID==currentUser.id %}
+	<a href="{{ realPost.internalURL }}/{{ isPinned ? 'unpin' : 'pin' }}?csrf={{ csrf }}&rid={{ randomID }}" id="postPinButton{{ realPost.id }}_{{ randomID }}" data-ajax class="button tertiary ajaxReplaceWithLoader">{{ L(isPinned ? 'wall_unpin_post' : 'wall_pin_post') }}</a>
 	{% endif %}
 	{% if userPermissions is not null and userPermissions.canReport(realPost) %}
 	<a href="/system/reportForm?type=post&id={{ realPost.id }}" data-ajax-box class="button tertiary">{{ L('report') }}</a>
@@ -77,7 +80,7 @@
 {% if currentUser is not null %}
 {% if interactions.canComment %}
 {% include "wall_post_form" with {'id': "commentReplyPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'hidden': true, 'randomID': randomID} %}
-{% include "wall_post_form" with {'id': "commentPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'addClasses': "collapsed postLayerCommentForm", 'randomID': randomID} %}
+{% include "wall_post_form" with {'id': "commentPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'addClasses': "collapsed postLayerCommentForm", 'showOwnAvatar': true, 'randomID': randomID} %}
 {% else %}
 <div class="postLayerCommentForm commentsRestricted">{{ L('commenting_restricted') }}</div>
 {% endif %}

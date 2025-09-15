@@ -22,9 +22,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.PostSource;
 import smithereen.model.User;
@@ -40,6 +42,7 @@ import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.XTEA;
 
 public class CommentStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(CommentStorage.class);
@@ -79,6 +82,16 @@ public class CommentStorage{
 						.value("object_id", parentID.id())
 						.executeNoResult();
 				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(parentID));
+			}
+
+			if(parentID.type()==CommentableObjectType.BOARD_TOPIC){
+				new SQLQueryBuilder(conn)
+						.update("board_topics")
+						.where("id=?", parentID.id())
+						.valueExpr("num_comments", "num_comments+1")
+						.valueExpr("updated_at", "CURRENT_TIMESTAMP()")
+						.value("last_comment_author_id", authorID)
+						.executeNoResult();
 			}
 
 			return id;
@@ -303,6 +316,29 @@ public class CommentStorage{
 						.andWhere("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
 						.executeNoResult();
 			}
+
+			if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
+				Timestamp updatedAt;
+				int lastAuthorID;
+				try(ResultSet res=new SQLQueryBuilder(conn)
+						.selectFrom("comments")
+						.columns("created_at", "author_id")
+						.where("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
+						.orderBy("created_at DESC")
+						.limit(1, 0)
+						.execute()){
+					res.next();
+					updatedAt=res.getTimestamp(1);
+					lastAuthorID=res.getInt(2);
+				}
+				new SQLQueryBuilder(conn)
+						.update("board_topics")
+						.where("id=?", comment.parentObjectID.id())
+						.valueExpr("num_comments", "num_comments-1")
+						.value("updated_at", updatedAt)
+						.value("last_comment_author_id", lastAuthorID)
+						.executeNoResult();
+			}
 			BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(comment.parentObjectID));
 		}
 	}
@@ -390,6 +426,27 @@ public class CommentStorage{
 				.collect(Collectors.toSet());
 	}
 
+	public static Set<URI> getObjectForeignComments(CommentParentObjectID id, Set<URI> filter) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.columns("ap_id")
+				.whereIn("ap_id", filter.stream().map(Object::toString).collect(Collectors.toSet()))
+				.andWhere("parent_object_type=? AND parent_object_id=?", id.type(), id.id())
+				.executeAsStream(r->URI.create(r.getString(1)))
+				.collect(Collectors.toSet());
+	}
+
+	public static Set<Long> getObjectLocalComments(CommentParentObjectID id, Set<Long> filter) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.columns("id")
+				.whereIn("id", filter)
+				.andWhere("parent_object_type=? AND parent_object_id=?", id.type(), id.id())
+				.executeAndGetLongStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
 	public static PaginatedList<Comment> getCommentReplies(CommentParentObjectID parentID, List<Long> replyKey, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			SQLQueryBuilder b=new SQLQueryBuilder(conn)
@@ -446,6 +503,28 @@ public class CommentStorage{
 							.update("comments")
 							.valueExpr("reply_count", "reply_count+1")
 							.whereIn("id", comment.replyKey)
+							.executeNoResult();
+				}
+				if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
+					Timestamp updatedAt;
+					int lastAuthorID;
+					try(ResultSet res=new SQLQueryBuilder(conn)
+							.selectFrom("comments")
+							.columns("created_at", "author_id")
+							.where("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
+							.orderBy("created_at DESC")
+							.limit(1, 0)
+							.execute()){
+						res.next();
+						updatedAt=res.getTimestamp(1);
+						lastAuthorID=res.getInt(2);
+					}
+					new SQLQueryBuilder(conn)
+							.update("board_topics")
+							.where("id=?", comment.parentObjectID.id())
+							.valueExpr("num_comments", "num_comments+1")
+							.value("updated_at", updatedAt)
+							.value("last_comment_author_id", lastAuthorID)
 							.executeNoResult();
 				}
 			}else{
@@ -513,6 +592,66 @@ public class CommentStorage{
 				.toList();
 		postprocessComments(comments);
 		return comments;
+	}
+
+	public static Set<URI> getInboxesForCommentInteractionForwarding(CommentParentObjectID parentID, Set<Integer> exceptUsers) throws SQLException{
+		SQLQueryBuilder b=new SQLQueryBuilder()
+				.selectFrom("users")
+				.distinct()
+				.selectExpr("IFNULL(ap_shared_inbox, ap_inbox)")
+				.where("id IN (SELECT DISTINCT author_id FROM comments WHERE parent_object_type=? AND parent_object_id=?) AND ap_id IS NOT NULL", parentID.type(), parentID.id());
+
+		if(!exceptUsers.isEmpty())
+			b.andWhere("id NOT IN ("+String.join(", ", Collections.nCopies(exceptUsers.size(), "?"))+")", exceptUsers.toArray());
+
+		return b.executeAsStream(r->URI.create(r.getString(1)))
+				.collect(Collectors.toSet());
+	}
+
+	public static int getCommentIndex(CommentParentObjectID parentID, long id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.selectExpr("ROW_NUMBER() OVER(ORDER BY created_at ASC) AS rownum")
+				.where("parent_object_type=? AND parent_object_id=?", parentID.type(), parentID.id())
+				.orderBy("(id="+id+") DESC")
+				.limit(1, 0)
+				.executeAndGetInt();
+	}
+
+	public static PaginatedList<Comment> getAllCommentsByAuthor(int userID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.count()
+					.where("author_id=?", userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<Comment> comments=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.where("author_id=?", userID)
+					.limit(count, offset)
+					.orderBy("created_at DESC")
+					.executeAsStream(Comment::fromResultSet)
+					.toList();
+			postprocessComments(comments);
+			return new PaginatedList<>(comments, total, offset, count);
+		}
+	}
+
+	public static Map<Long, URI> getCommentActivityPubIDsByLocalIDs(Collection<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("comments")
+				.columns("id", "ap_id")
+				.whereIn("id", ids)
+				.executeAsStream(res->new Pair<>(res.getLong("id"), res.getString("ap_id")))
+				.collect(Collectors.toMap(Pair::first, p->{
+					String apID=p.second();
+					if(apID==null)
+						return Config.localURI("/comments/"+XTEA.encodeObjectID(p.first(), ObfuscatedObjectIDType.COMMENT));
+					return URI.create(apID);
+				}));
 	}
 
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{

@@ -30,7 +30,7 @@ public final class CachedRemoteImage extends RemoteImage{
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format){
+	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
 		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalMediaCache+"/"+cacheKey+".webp")
 				.resize(size.getMaxWidth(), size.getMaxHeight())
 				.format(format)

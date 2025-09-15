@@ -1,8 +1,14 @@
 package smithereen.templates;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 import io.pebbletemplates.pebble.error.ParserException;
 import io.pebbletemplates.pebble.extension.NodeVisitor;
-import io.pebbletemplates.pebble.extension.escaper.SafeString;
 import io.pebbletemplates.pebble.lexer.Token;
 import io.pebbletemplates.pebble.lexer.TokenStream;
 import io.pebbletemplates.pebble.node.AbstractRenderableNode;
@@ -13,13 +19,6 @@ import io.pebbletemplates.pebble.template.EvaluationContextImpl;
 import io.pebbletemplates.pebble.template.PebbleTemplateImpl;
 import io.pebbletemplates.pebble.template.Scope;
 import io.pebbletemplates.pebble.tokenParser.TokenParser;
-
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 public class EnqueueScriptTokenParser implements TokenParser{
 	@Override
@@ -80,7 +79,7 @@ public class EnqueueScriptTokenParser implements TokenParser{
 			StringWriter sw=new StringWriter();
 			content.render(self, sw, context);
 			List<Scope> scopes=context.getScopeChain().getGlobalScopes();
-			Scope lastScope=scopes.get(scopes.size()-1);
+			Scope lastScope=scopes.getLast();
 			String bottomScripts=(String) Objects.requireNonNullElse(lastScope.get("_bottomScripts"), "");
 			lastScope.put("_bottomScripts", bottomScripts+sw.toString().trim()+"\n");
 		}
@@ -88,6 +87,7 @@ public class EnqueueScriptTokenParser implements TokenParser{
 		@Override
 		public void accept(NodeVisitor visitor){
 			visitor.visit(this);
+			visitor.visit(content);
 		}
 	}
 }

@@ -11,7 +11,7 @@ import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.User;
-import smithereen.model.UserNotifications;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;

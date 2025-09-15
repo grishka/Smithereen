@@ -62,10 +62,6 @@ public class DatabaseUtils{
 	}
 
 	public static boolean runWithUniqueUsername(String username, DatabaseRunnable action) throws SQLException{
-		if(!Utils.isValidUsername(username))
-			return false;
-		if(Utils.isReservedUsername(username))
-			return false;
 		String key=username.toLowerCase();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			usernameMutexes.acquire(key);

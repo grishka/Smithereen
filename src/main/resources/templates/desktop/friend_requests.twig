@@ -1,4 +1,4 @@
-{# @pebvariable name="items" type="java.util.List<smithereen.model.FriendRequest>" #}
+{# @pebvariable name="items" type="java.util.List<smithereen.model.friends.FriendRequest>" #}
 {%extends "page"%}
 {%block content%}
 {% include 'friends_tabbar' with {'tab': 'requests'} %}
@@ -33,6 +33,7 @@
 					<div>{{ req.message }}</div>
 					{% endif %}
 					<div class="unlabeled">
+					{% if onlines contains req.from.id and onlines[req.from.id].isOnline %}<div class="onlineText">{{ L('user_online') }}{% if onlines[req.from.id].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>{% endif %}
 					{% if req.mutualFriendsCount>0 %}
 						<div class="mutual">
 							<span class="grayText">

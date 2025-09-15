@@ -1,8 +1,10 @@
-{# @pebvariable name="items" type="smithereen.model.ViolationReport[]" #}
+{# @pebvariable name="items" type="smithereen.model.admin.ViolationReport[]" #}
 {% extends "page" %}
 {% block content %}
 {% if filteredByUser is not null %}
 {% include "reports_user_tabbar" with {'user': filteredByUser} %}
+{% elseif filteredByGroup is not null %}
+{% include "admin_groups_info_tabbar" with {'group': filteredByGroup, 'tab': 'reports'} %}
 {% else %}
 {% include "reports_tabbar" %}
 {% endif %}

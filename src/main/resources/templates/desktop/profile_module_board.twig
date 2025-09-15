@@ -1,0 +1,12 @@
+{# @pebvariable name="topics" type="smithereen.model.board.BoardTopic[]" #}
+{% extends "profile_module" %}
+{% block moduleContent %}
+{% for topic in topics %}
+<div class="topicRow">
+	<div><b><a href="{{ topic.url }}">{{ topic.title }}</a></b></div>
+	<small>{{ L('board_topic_info', {'posts': topic.numComments, 'authorName': users[topic.lastCommentAuthorID] | name('fullAndGender'), 'date': LD(topic.updatedAt)}, {'author': {'href': profileURL(topic.lastCommentAuthorID)} }) }} <a href="{{ topic.url }}?last" class="last">&rarr;</a></small>
+</div>
+{% else %}
+<div class="profileCenteredTextModule">{{ L('board_no_topics') }}</div>
+{% endfor %}
+{% endblock %}

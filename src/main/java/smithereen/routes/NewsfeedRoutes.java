@@ -14,11 +14,13 @@ import smithereen.Utils;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
+import smithereen.model.LikeableContentObject;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPresence;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.CommentsNewsfeedObjectType;
@@ -100,35 +102,71 @@ public class NewsfeedRoutes{
 				})
 				.collect(Collectors.toSet());
 
+		Set<LikeableContentObject> commentsForInteractions=new HashSet<>();
+
 		if(!needPhotos.isEmpty()){
 			Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
 			for(Photo photo:photos.values()){
 				if(photo.ownerID>0)
 					needUsers.add(photo.ownerID);
-				else
+				else if(photo.ownerID<0)
 					needGroups.add(-photo.ownerID);
 				needUsers.add(photo.authorID);
 			}
 			model.with("photos", photos);
 			if(needNonPostInteractions)
 				model.with("photosInteractions", ctx.getUserInteractionsController().getUserInteractions(photos.values(), self.user));
+
+			if(needNonPostInteractions){
+				Map<CommentParentObjectID, PaginatedList<CommentViewModel>> comments=ctx.getCommentsController().getCommentsForFeed(needPhotos.stream()
+						.map(id->new CommentParentObjectID(CommentableObjectType.PHOTO, id))
+						.collect(Collectors.toSet()), self.prefs.commentViewType==CommentViewType.FLAT, 3);
+
+				CommentViewModel.collectUserIDs(comments.values().stream().flatMap(pl->pl.list.stream()).toList(), needUsers);
+
+				model.with("photosComments", comments.entrySet().stream()
+						.filter(e->e.getKey().type()==CommentableObjectType.PHOTO)
+						.collect(Collectors.toMap(e->e.getKey().id(), Map.Entry::getValue)));
+
+				comments.values().stream().flatMap(l->l.list.stream().map(cvm->cvm.post)).forEach(commentsForInteractions::add);
+			}
 		}
 
-		if(needNonPostInteractions && !needPhotos.isEmpty()){
-			Map<CommentParentObjectID, PaginatedList<CommentViewModel>> comments=ctx.getCommentsController().getCommentsForFeed(needPhotos.stream()
-					.map(id->new CommentParentObjectID(CommentableObjectType.PHOTO, id))
-					.collect(Collectors.toSet()), self.prefs.commentViewType==CommentViewType.FLAT, 3);
+		Set<Long> needTopics=feed.stream()
+				.filter(e->e.type==NewsfeedEntry.Type.BOARD_TOPIC || (e instanceof GroupedNewsfeedEntry gne && gne.childEntriesType==NewsfeedEntry.Type.BOARD_TOPIC))
+				.flatMap(e->switch(e){
+					case GroupedNewsfeedEntry gne -> gne.childEntries.stream().map(ce->ce.objectID);
+					default -> Stream.of(e.objectID);
+				})
+				.collect(Collectors.toSet());
 
-			CommentViewModel.collectUserIDs(comments.values().stream().flatMap(pl->pl.list.stream()).toList(), needUsers);
-			Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(comments.values().stream().flatMap(l->l.list.stream().map(cvm->cvm.post)).toList(), self.user);
-			model.with("commentInteractions", interactions);
+		if(!needTopics.isEmpty()){
+			Map<Long, BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(needTopics);
+			for(BoardTopic topic:topics.values()){
+				needGroups.add(topic.groupID);
+				needUsers.add(topic.authorID);
+			}
+			model.with("topics", topics);
 
-			model.with("photosComments", comments.entrySet().stream()
-					.filter(e->e.getKey().type()==CommentableObjectType.PHOTO)
-					.collect(Collectors.toMap(e->e.getKey().id(), Map.Entry::getValue)));
+			if(needNonPostInteractions){
+				Map<CommentParentObjectID, PaginatedList<CommentViewModel>> comments=ctx.getCommentsController().getCommentsForFeed(needTopics.stream()
+						.map(id->new CommentParentObjectID(CommentableObjectType.BOARD_TOPIC, id))
+						.collect(Collectors.toSet()), true, 3);
+
+				CommentViewModel.collectUserIDs(comments.values().stream().flatMap(pl->pl.list.stream()).toList(), needUsers);
+
+				model.with("topicsComments", comments.entrySet().stream()
+						.filter(e->e.getKey().type()==CommentableObjectType.BOARD_TOPIC)
+						.collect(Collectors.toMap(e->e.getKey().id(), Map.Entry::getValue)));
+
+				comments.values().stream().flatMap(l->l.list.stream().map(cvm->cvm.post)).forEach(commentsForInteractions::add);
+			}
 		}
 
-		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
+		Map<Long, UserInteractions> commentInteractions=ctx.getUserInteractionsController().getUserInteractions(commentsForInteractions, self.user);
+		model.with("commentInteractions", commentInteractions);
+
+		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers, true);
 		Map<Integer, Group> groups=ctx.getGroupsController().getGroupsByIdAsMap(needGroups);
 
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(feedPosts, self.user);

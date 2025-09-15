@@ -1,11 +1,14 @@
 package smithereen.activitypub.handlers;
 
+import java.net.URI;
+
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
 import smithereen.activitypub.objects.LocalPostNote;
 import smithereen.activitypub.objects.LocalPostQuestion;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.QuoteRequest;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -45,6 +48,10 @@ public class QuoteRequestNoteHandler extends ActivityTypeHandler<ForeignUser, Qu
 			throw new BadRequestException("`instrument` must contain a Note or point to one");
 		}
 		Post repost=repostSource.asNativePost(context.appContext);
+		URI quoteRepostID=repostSource.getQuoteRepostID();
+		if(quoteRepostID==null)
+			throw new BadRequestException("The `instrument` post is not a quote repost");
+		repost.setRepostedPost(context.appContext.getObjectLinkResolver().resolveLocally(quoteRepostID, Post.class));
 		if(repost.repostOf!=post.id)
 			throw new UserActionNotAllowedException("Quote URL does not match `object`");
 

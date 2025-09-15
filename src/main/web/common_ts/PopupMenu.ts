@@ -395,7 +395,7 @@ function showSimplePopupMenu(opener:HTMLElement, field:HTMLInputElement, onChang
 		opener.customData={};
 	}
 	if(!opener.customData.popupMenu){
-		menu=new PopupMenu(opener.closest("div.popupMenuW"), id=>{
+		menu=new PopupMenu(opener.closest(".popupMenuW"), id=>{
 			var item=menu.findItem(id);
 			opener.innerHTML=item.innerHTML;
 			field.value=item.dataset.act;
@@ -408,6 +408,28 @@ function showSimplePopupMenu(opener:HTMLElement, field:HTMLInputElement, onChang
 		menu=opener.customData.popupMenu as PopupMenu;
 	}
 	menu.setSelectedItem(field.value);
+	menu.show();
+	return false;
+}
+
+function showSimplePopupMenuWithoutInput(opener:HTMLElement, selectedItem:string, onChange:{(id:string):void}){
+	var menu:PopupMenu;
+	if(!opener.customData){
+		opener.customData={};
+	}
+	if(!opener.customData.popupMenu){
+		menu=new PopupMenu(opener.closest(".popupMenuW"), id=>{
+			var item=menu.findItem(id);
+			opener.innerHTML=item.innerHTML;
+			if(onChange)
+				onChange(id);
+			return false;
+		}, false, true);
+		opener.customData.popupMenu=menu;
+	}else{
+		menu=opener.customData.popupMenu as PopupMenu;
+	}
+	menu.setSelectedItem(selectedItem);
 	menu.show();
 	return false;
 }

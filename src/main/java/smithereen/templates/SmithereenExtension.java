@@ -22,11 +22,13 @@ import smithereen.templates.functions.AddQueryParamsFunction;
 import smithereen.templates.functions.ArraysEqualFunction;
 import smithereen.templates.functions.DescribeAttachmentsFunction;
 import smithereen.templates.functions.FormatTimeFunction;
+import smithereen.templates.functions.GetLocaleFunction;
 import smithereen.templates.functions.InlineTextResourceFunction;
 import smithereen.templates.functions.InstantToDateFunction;
 import smithereen.templates.functions.InstantToTimeFunction;
 import smithereen.templates.functions.JsonFunction;
 import smithereen.templates.functions.LangDateFunction;
+import smithereen.templates.functions.FormatFileSizeFunction;
 import smithereen.templates.functions.LangFunction;
 import smithereen.templates.functions.ProfileRelFunction;
 import smithereen.templates.functions.ProfileUrlFunction;
@@ -54,6 +56,8 @@ public class SmithereenExtension extends AbstractExtension{
 		f.put("renderPhotoGrid", new RenderPhotoGridFunction());
 		f.put("inlineTextResource", new InlineTextResourceFunction());
 		f.put("addScriptFile", new AddExtraScriptFunction());
+		f.put("getLocale", new GetLocaleFunction());
+		f.put("formatFileSize", new FormatFileSizeFunction());
 		return f;
 	}
 

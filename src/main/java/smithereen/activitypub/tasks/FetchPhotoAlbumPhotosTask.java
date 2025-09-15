@@ -12,9 +12,9 @@ import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
-import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.controllers.PhotosController;
 import smithereen.model.photos.Photo;
@@ -61,7 +61,7 @@ public class FetchPhotoAlbumPhotosTask extends ForwardPaginatingCollectionTask{
 	}
 
 	@Override
-	protected void doOneCollectionPage(CollectionPage page){
+	protected void doOneCollectionPage(ActivityPubCollection page){
 		try{
 			ArrayList<Pair<Photo, ActivityPubPhoto>> photos=new ArrayList<>();
 			for(LinkOrObject lo:page.items){
@@ -76,10 +76,10 @@ public class FetchPhotoAlbumPhotosTask extends ForwardPaginatingCollectionTask{
 				}
 				Photo nPhoto=photo.asNativePhoto(context);
 				photos.add(new Pair<>(nPhoto, photo));
-				seenPhotos.add(nPhoto.id);
 			}
 			if(!photos.isEmpty()){
 				context.getPhotosController().putOrUpdateForeignPhotos(photos);
+				photos.stream().map(p->p.first().id).forEach(seenPhotos::add);
 			}
 		}catch(Exception x){
 			LOG.warn("Error processing photo album page", x);

@@ -56,6 +56,12 @@ h4{
 	font-size: 11px;
 }
 
+h5{
+	font-weight: bold;
+	margin: 4px 0;
+	font-size: 11px;
+}
+
 small{
 	font-size: 10px;
 }
@@ -337,6 +343,9 @@ small{
 		pre{
 			overflow-x: auto;
 		}
+		.feedIcon{
+			margin: 0 5px 0 0;
+		}
 	}
 	&.standalone{
 		border-bottom: none;
@@ -359,7 +368,7 @@ small{
 	}
 	.repost{
 		padding-left: 8px;
-		border-left: solid 2px #bac087;
+		border-left: solid 2px $repostBorderLeft;
 	}
 	&.comment{
 		.postAvaWrap{
@@ -382,17 +391,23 @@ small{
 		width: 13px;
 		height: 13px;
 		border: solid 1px transparent;
-		background: svg-load('img/post_actions.svg', fill: #91a20b) no-repeat;
-		opacity: .4;
-		transition: opacity 0.3s ease;
 		margin-left: 5px;
-		&:hover{
+		.icon{
+			background: svg-load('img/post_actions.svg', fill: $postIconActionColor) no-repeat;
+			display: block;
+			width: 100%;
+			height: 100%;
+			opacity: .4;
+			transition: opacity 0.3s ease;
+			pointer-events: none;
+		}
+		&:hover .icon{
 			opacity: 1;
 		}
-		&.actionEdit{
+		&.actionEdit .icon{
 			background-position: 0 -12px;
 		}
-		&.actionReport{
+		&.actionReport .icon{
 			background-position: 0 -24px;
 		}
 	}
@@ -478,6 +493,18 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	}
 }
 
+.wallShowExtraPosts{
+	display: block;
+	height: 30px;
+	width: 100%;
+	line-height: 31px;
+	text-align: center;
+	background-color: $menuItemsSeparator;
+	margin: -11px 0 10px;
+	&:hover{
+		text-decoration: none;
+	}
+}
 
 #elevator{
 	position: fixed;
@@ -720,10 +747,13 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	}
 	.blockSubheader{
 		height: 19px;
-		background: $wallCommentSeparator;
+		background: $blockUnderboxBackground;
 		border-top: solid 1px $blockBorderBottom;
 		color: $auxiliaryGrey;
 		padding: 3px 8px;
+		a{
+			float: right;
+		}
 	}
 }
 
@@ -871,8 +901,8 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	color: $normalLink;
 	text-align: center;
 	padding: 1px 5px 7px;
-	border-bottom: solid 1px #ffe222;
-	background: #fff8cc;
+	border-bottom: solid 1px $avaPlaceholderOwnBorderColor;
+	background: $avaPlaceholderOwnBackgroundColor;
 }
 
 .membersRow td{
@@ -883,18 +913,22 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	}
 }
 
-.oneMemberRow{
-	td{
-		padding-top: 8px;
-		padding-left: 8px;
+.memberList{
+	display: grid;
+	grid-template-columns: 32px auto;
+	padding: 10px 8px;
+	grid-gap: 8px 6px;
+	.nameAndInfo{
+		align-self: center;
+		padding-bottom: 1px;
 	}
 	.info{
-		margin-top: 4px;
-		color: $grayText;
+		color: $auxiliaryGrey;
+		font-size: 10px;
 	}
 }
 
-.postInfo, .postLink:link, .postLink:visited{
+.postInfo, .postLink, .postLink:visited{
 	padding-top: 4px;
 	font-size: 10px;
 	color: $auxiliaryGrey;
@@ -1134,7 +1168,8 @@ select, .comboBoxW input{
 		float: right;
 		padding: 0;
 		margin-right: 0;
-		line-height: 23px;
+		padding: 5px 0;
+		line-height: 13px;
 	}
 }
 
@@ -1184,6 +1219,12 @@ select, .comboBoxW input{
 	.lists{
 		padding-top: 8px;
 	}
+	.onlineText+.lists{
+		padding-top: 5px;
+	}
+	.onlineText{
+		padding-top: 1px;
+	}
 }
 
 .form{
@@ -1211,6 +1252,14 @@ select, .comboBoxW input{
 	}
 	.footer td{
 		padding-top: 5px;
+	}
+	.controlWithExtraLink{
+		display: flex;
+		align-items: center;
+		a{
+			flex: none;
+			margin-left: 5px;
+		}
 	}
 }
 
@@ -1570,7 +1619,7 @@ select, .comboBoxW input{
 		display: inline-block;
 		width: 10px;
 		height: 9px;
-		background: svg-load(img/like.svg, fill: #91a20b) no-repeat;
+		background: svg-load(img/like.svg, fill: $postIconActionColor) no-repeat;
 		position: relative;
 	}
 	.like .icon{
@@ -1834,17 +1883,6 @@ select, .comboBoxW input{
 		font-size: 11px;
 		color: $boldHeaders;
 	}
-	.attachDelete{
-		display: inline-block;
-		width: 16px;
-		height: 16px;
-		background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
-		opacity: .7;
-		transition: opacity .2s ease;
-		&:hover{
-			opacity: 1;
-		}
-	}
 	&.postFormCW input, &.postFormPoll input[type=text]{
 		width: 100%;
 	}
@@ -1862,6 +1900,19 @@ select, .comboBoxW input{
 	}
 	.pollSetting{
 		display: block;
+	}
+}
+
+.postFormNonThumb .attachDelete, .deleteButton{
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	background: svg-load('img/box_close.svg', fill: $iconColor) no-repeat center;
+	opacity: .7;
+	transition: opacity .2s ease;
+	vertical-align: middle;
+	&:hover{
+		opacity: 1;
 	}
 }
 
@@ -2173,6 +2224,9 @@ select, .comboBoxW input{
 	&.noPadTop{
 		padding-top: 0;
 	}
+	&.largerPadding{
+		padding: 13px 15px 0;
+	}
 }
 
 .bottomSummaryWrap, .realBottomSummaryWrap{
@@ -2207,10 +2261,44 @@ textarea{
 	}
 }
 
-.hasJS .wallPostForm.collapsed textarea{
-	min-height: 21px;
-	height: 21px;
+.hasJS .wallPostForm.collapsed{
+	textarea{
+		min-height: 21px;
+		height: 21px;
+	}
+	.ownAvaW .ava{
+		display: none;
+	}
 }
+
+.wallPostForm.withAvatar{
+	.ownAvaW{
+		display: flex;
+		.ava{
+			flex: none;
+			margin-right: 15px;
+		}
+		.formContent{
+			flex-grow: 1;
+		}
+	}
+	.commentReplying{
+		padding-left: 65px;
+	}
+	&.postLayerCommentForm .commentReplying{
+		padding-left: 60px;
+	}
+	&.postLayerCommentForm .ownAvaW .ava{
+		margin-right: 10px;
+	}
+	.bottomBar{
+		margin-top: 10px;
+	}
+	textarea{
+		min-height: 50px;
+	}
+}
+
 
 .profileColumnBorder{
 	position: relative;
@@ -2284,7 +2372,7 @@ textarea{
 	padding: 0 10px;
 }
 
-.boxContent .emptyState, .mediaGridW .emptyState, .layerWithTitle .emptyState, .dataTable .emptyState{
+.boxContent .emptyState, .mediaGridW .emptyState, .layerWithTitle .emptyState, .dataTable .emptyState, .emptyState.compact{
 	height: auto;
 	padding: 50px 0;
 	border: none;
@@ -2882,10 +2970,20 @@ label.pretendLink{
 	>.spanAll{
 		grid-column-start: span 3;
 	}
+	>.span2{
+		grid-column-start: span 2;
+	}
+	>.vSpanAll{
+		grid-row: 1/-1;
+	}
 }
 
 .borderBottom{
 	border-bottom: solid 1px $wallPostSeparator;
+}
+
+.borderTop{
+	border-top: solid 1px $wallPostSeparator;
 }
 
 .searchFieldWrap{
@@ -3122,9 +3220,9 @@ label.pretendLink{
 				border-bottom: solid 1px transparent;
 			}
 			&.selected{
-				background: #6c8300;
+				background: $completionSelectedBackgroundColor;
 				color: #FFFFFF;
-				border-color: #2e6200;
+				border-color: $completionSelectedBorderColor;
 				z-index: 1;
 				b{
 					background: $normalLink;
@@ -3157,10 +3255,10 @@ label.pretendLink{
 		border-bottom: solid 1px #ccc;
 		opacity: 0.95;
 		&.firstSelected{
-			border-top: solid 1px #2e6200;
+			border-top: solid 1px $completionSelectedBorderColor;
 		}
 		&.lastSelected{
-			border-bottom: solid 1px #2e6200;
+			border-bottom: solid 1px $completionSelectedBorderColor;
 		}
 	}
 }
@@ -3256,6 +3354,9 @@ label.pretendLink{
 		color: $auxiliaryGrey;
 		font-size: 9px;
 	}
+	.onlineText{
+		padding: 4px 0;
+	}
 	.msgInfo{
 		padding-left: 10px;
 	}
@@ -3273,22 +3374,22 @@ label.pretendLink{
 		margin: 10px 0;
 	}
 	.text{
-		color: #a4ab3b;
+		color: $mailMessageRow;
 	}
 	&:last-child{
 		border-bottom: 0;
 	}
 	&.unread{
-		background: #fef8ee;
+		background: $mailMessageRowUnreadBackgroundColor;
 		border-bottom-color: $wallPostSeparator;
 		.time{
-			color: #949760;
+			color: $mailMessageRowUnreadTime;
 		}
 	}
 	&.deleted{
-		background: #FEFAE4;
-		border-bottom: 1px solid #E2DAA6;
-		color: #908851;
+		background: $mailMessageRowDeletedBackgroundColor;
+		border-bottom: 1px solid $mailMessageRowDeletedBorderColor;
+		color: $mailMessageRowDeleted;
 		min-height: 71px;
 		.restore{
 			grid-column-start: 3;
@@ -3393,7 +3494,7 @@ h2, h3, h4{
 		grid-gap: 10px;
 		padding: 5px;
 		&.unread{
-			background: #fef8ee;
+			background: $mailMessageRowUnreadBackgroundColor;
 		}
 		>*{
 			min-width: 0;
@@ -3405,7 +3506,7 @@ h2, h3, h4{
 				display: block;
 			}
 			&.self a{
-				color: #a4ae46;
+				color: $mailHistorySelf;
 			}
 		}
 		>.content{
@@ -3476,6 +3577,16 @@ h2, h3, h4{
 	&:last-child{
 		border-bottom: none;
 	}
+	&.checkable{
+		display: flex;
+		>input{
+			flex: none;
+			margin-right: 10px;
+		}
+		>*{
+			flex-grow: 1;
+		}
+	}
 }
 
 a.clickableListItem:hover{
@@ -3494,7 +3605,7 @@ a.clickableListItem:hover{
 
 .secondaryTabBar{
 	background: $gray;
-	border-bottom: solid 1px #dde6c7;
+	border-bottom: solid 1px $secondaryTabBarBorder;
 	padding: 13px 10px 12px;
 	display: flex;
 	flex-wrap: wrap;
@@ -3770,10 +3881,10 @@ label.largeAccented{
 }
 
 .photoGridUpload{
-	background: #f2f1ea;
+	background: $photoGripUploadBackgroundColor;
 	border-bottom: solid 1px $mainHeaderSeparator;
 	height: 65px;
-	color: #86844d;
+	color: $photoGripUpload;
 	user-select: none;
 	position: relative;
 	.uploadText{
@@ -3804,7 +3915,7 @@ label.largeAccented{
 			align-items: center;
 			height: 100%;
 			background: $bg;
-			border: dashed 1px #86844d;
+			border: dashed 1px $photoGripUpload;
 		}
 	}
 	.photoUploadSummary{
@@ -4019,6 +4130,17 @@ label.largeAccented{
 				border-radius: 2px;
 				margin: -1px 0 0 -1px;
 			}
+		}
+		.errorOverlay{
+			position: absolute;
+			left: 20px;
+			right: 20px;
+			top: 50%;
+			z-index: 3;
+			text-align: center;
+			font-size: 13px;
+			margin-top: 86px;
+			color: $grayText;
 		}
 	}
 	.pvLoader{
@@ -4379,7 +4501,7 @@ label.largeAccented{
 .profileCounterWithIcon{
 	float: right;
 	font-size: 9px;
-	color: #969659;
+	color: $profileCounter;
 	margin-top: 1px;
 	.icon{
 		display: inline-block;
@@ -4582,7 +4704,7 @@ label.largeAccented{
 	}
 	&.commentsRestricted{
 		position: static;
-		color: #7e8d31;
+		color: $postLayerCommentsRestricted;
 		font-weight: bold;
 	}
 }
@@ -4696,7 +4818,7 @@ label.largeAccented{
 	color: #aaa;
 }
 
-.postAvaWrap .onlineText{
+.postAvaWrap .onlineText, .messageViewHeader .onlineText{
 	text-align: center;
 	margin: 7px -10px 0;
 }
@@ -4796,8 +4918,8 @@ label.largeAccented{
 }
 
 .notificationOwnReply{
-	border: solid 1px #e2debe;
-	background: #f3f1e3;
+	border: solid 1px $notificationOwnReplyBorderColor;
+	background: $notificationOwnReplyBackgroundColor;
 	margin-top: 10px;
 	padding: 10px;
 	position: relative;
@@ -4811,8 +4933,8 @@ label.largeAccented{
 	.tip{
 		width: 15px;
 		height: 15px;
-		border: solid 1px #e2debe;
-		background: #f3f1e3;
+		border: solid 1px $notificationOwnReplyBorderColor;
+		background: $notificationOwnReplyBackgroundColor;
 		transform-origin: 0 0;
 		transform: rotate(45deg);
 		margin-left: 25px;
@@ -4825,11 +4947,11 @@ label.largeAccented{
 	}
 	&.wallPostForm{
 		display: flex;
-		border: solid 1px #dad7b7;
-		background: #eae7d2;
+		border: solid 1px $notificationOwnReplyWallPostFormBorderColor;
+		background: $notificationOwnReplyWallPostFormBackgroundColor;
 		.tip{
-			border: solid 1px #dad7b7;
-			background: #eae7d2;
+			border: solid 1px $notificationOwnReplyWallPostFormBorderColor;
+			background: $notificationOwnReplyWallPostFormBackgroundColor;
 		}
 		.ownAvaW{
 			width: 39px;
@@ -4951,3 +5073,303 @@ label.largeAccented{
 		}
 	}
 }
+
+.boardNewTopic{
+	padding: 16px 40px 20px;
+	textarea{
+		min-height: 242px;
+	}
+}
+
+.formWithBoldHeaders{
+	h4{
+		font-size: 12px;
+		margin-bottom: 7px;
+	}
+	input[type=date], input[type=email], input[type=number], input[type=password], input[type=text], input[type=time], select, textarea{
+		padding: 5px;
+		margin-bottom: 16px;
+	}
+}
+
+.profileBlock .topicRow{
+	padding: 10px 8px;
+	border-bottom: solid 1px $wallPostSeparator;
+	&:last-child{
+		border-bottom: none;
+	}
+	small span{
+		color: $auxiliaryGrey;
+	}
+	div{
+		margin-bottom: 7px;
+	}
+	.last{
+		display: inline-block;
+		padding: 4px;
+		margin: -4px 0;
+		&:hover{
+			text-decoration: none;
+			background: $blockBackground;
+		}
+	}
+}
+
+.boardTopicHeader{
+	padding: 10px 15px 9px;
+	border-bottom: solid 1px $wallPostSeparator;
+	.title{
+		display: block;
+		border-bottom: none;
+		font-size: 12px;
+		margin-bottom: 6px;
+		font-weight: bold;
+		a{
+			color: $boldHeaders;
+		}
+	}
+}
+
+.boardComments{
+	>.post{
+		>.postContentWrap{
+			padding-left: 15px;
+		}
+		>.postAvaWrap .ava, >.postAvaWrap .ava img{
+			width: 50px;
+			height: 50px;
+		}
+		.postInfo, .postLink{
+			font-size: 11px;
+		}
+	}
+	>.post:last-child{
+		border-bottom: none;
+		padding-bottom: 0;
+		margin-bottom: 0;
+	}
+}
+
+.boardCommentForm{
+	padding: 15px;
+	border-bottom: none;
+	position: sticky;
+	bottom: 0;
+	textarea{
+		line-height: 14px;
+		padding: 6px;
+		max-height: min(40vh, 600px);
+	}
+	&.floating{
+		box-shadow: 0 -2px 0 rgba(0,0,0,0.08);
+	}
+}
+
+.boardTopicListItem{
+	padding: 10px 0;
+	margin: 0 10px;
+	border-bottom: solid 1px $wallPostSeparator;
+	display: flex;
+	align-items: flex-start;
+	.mainW{
+		padding: 7px 15px 0;
+		flex-grow: 1;
+	}
+	.title{
+		font-size: 12px;
+		font-weight: bold;
+	}
+	.info{
+		padding-top: 4px;
+	}
+	.postCount{
+		padding: 2px 0;
+		display: inline-block;
+	}
+	.pageLinks{
+		padding: 0 5px;
+		color: $auxiliaryGrey;
+		a{
+			padding: 2px 4px;
+			display: inline-block;
+			&:hover{
+				background: $blockBackground;
+				text-decoration: none;
+			}
+		}
+	}
+	.lastPost{
+		width: 190px;
+		flex: none;
+		.ava{
+			float: left;
+			margin: 8px;
+		}
+		.name{
+			padding: 9px 2px 0;
+		}
+		.date{
+			padding: 3px 2px 0;
+			color: $secondaryLink;
+		}
+		&:hover{
+			background: $audioAreaOnHover;
+			text-decoration: none;
+		}
+	}
+	.closed{
+		padding: 0 10px;
+	}
+	&:last-child{
+		border-bottom: none;
+	}
+}
+
+.summaryWrap .order{
+	background: svg-load('img/photoorder.svg', fill: $lightIconColor);
+	display: block;
+	width: 15px;
+	height: 11px;
+	margin-top: 3px;
+	&.reverse{
+		background-position: 0 -14px;
+	}
+}
+
+.searchWithTabs{
+	display: flex;
+	.searchFieldWrap{
+		flex-grow: 1;
+	}
+	.secondaryTabBar, .buttonW{
+		flex: none;
+		border: none;
+		padding-left: 0;
+	}
+	.secondaryTabBar>a:last-child{
+		margin-right: 0;
+	}
+	.buttonW{
+		padding: 10px 10px 10px 0;
+	}
+}
+
+ol.largeNumbers{
+	list-style-type: none;
+	padding-left: 30px;
+	margin: 10px 0;
+	li{
+		margin-bottom: 15px;
+		&:last-child{
+			margin-bottom: 0;
+		}
+	}
+	.number{
+		float: left;
+		display: block;
+		width: 20px;
+		line-height: 20px;
+		background: $blockBackground;
+		margin: -3px 0 0 -30px;
+		font-weight: bold;
+		text-align: center;
+		color: $boldHeaders;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+}
+
+.singleColumn ol.largeNumbers:last-child{
+	margin-bottom: 0;
+}
+
+.userBanPage .post{
+	border-bottom: none;
+}
+
+.bottomActionBar{
+	position: sticky;
+	bottom: 0;
+	.buttonBarAux{
+		padding-left: 10px;
+	}
+}
+
+.actionBarTitle{
+	color: $normalLink;
+	margin-left: 5px;
+	font-weight: bold;
+}
+
+.lightTabBar{
+	background: $bgGrey;
+	padding: 12px 0 0 10px;
+	display: flex;
+	flex-wrap: wrap;
+	border-bottom: solid 1px $wallPostSeparator;
+	a{
+		padding: 4px 10px 6px;
+		border: solid 1px $lightTabBorder;
+		border-bottom: none;
+		margin-right: 6px;
+		background: $lightTabBackground;
+		box-shadow: 0 -2px 0 inset rgba(0,0,0,0.03);
+		&:hover{
+			text-decoration: none;
+			background: $bg;
+		}
+		&.selected{
+			margin-bottom: -1px;
+			padding-bottom: 7px;
+			background: $bg;
+			box-shadow: none;
+		}
+	}
+}
+
+.groupEditLink{
+	display: flex;
+	picture{
+		display: block;
+	}
+	.ava{
+		flex: none;
+		margin-right: 10px;
+	}
+	.linkContent{
+		flex-grow: 1;
+		a{
+			font-weight: bold;
+		}
+	}
+	.actionList{
+		flex: none;
+	}
+}
+
+.groupEditLink{
+	border-bottom: solid 1px $wallPostSeparator;
+	padding: 10px 0;
+}
+
+.groupEditLinkW:last-child .groupEditLink{
+	border-bottom: solid 1px transparent;
+}
+
+.groupEditLinkW.beingDragged .groupEditLink{
+	background: $bg;
+	border-bottom: solid 1px transparent;
+	box-shadow: -10px 0 0 $bg, 10px 0 0 $bg;
+}
+
+#groupLinksReorderable{
+	margin: -10px 0;
+}
+
+.listItemWithDivider+.ajaxEndlessPagination{
+	margin-top: -10px;
+	a{
+		border-top: none;
+	}
+}
+

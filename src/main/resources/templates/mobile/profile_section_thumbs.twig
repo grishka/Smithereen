@@ -1,17 +1,21 @@
 {# @pebvariable name="actor" type="smithereen.activitypub.objects.Actor" #}
-{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or actor.followingCount>0 or groups is not empty %}
+{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) or actor.followingCount>0 or groups is not empty or (actor.ownerID<0 and actor.boardState!='DISABLED' and (canCreateTopics or boardTopics.list is not empty)) %}
 <div class="card profileSectionThumbs">
-{% if photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup) %}
+{% if (photoAlbumCount>0 or (actor.ownerID<0 and canEditGroup)) and (actor.ownerID>0 or actor.photosState!='DISABLED') %}
 	<a href="{{ actor.typeAndIdForURL }}/albums">
 		<div class="titleW">
 			<div class="title">{{ L('photo_albums') }}</div>
-			<div class="count">{{ photoAlbumCount | numberformat }}</div>
+			{% if photoAlbumCount>0 %}<div class="count">{{ photoAlbumCount | numberformat }}</div>{% endif %}
 		</div>
-		<div class="thumb singlePhoto">
 		{% if albums is not empty and albums[0].coverID!=0 %}
+		<div class="thumb singlePhoto">
 		{{ covers[albums[0].coverID].image | pictureForPhoto('s') }}
-		{% endif %}
 		</div>
+		{% else %}
+		<div class="thumb iconWithText">
+			<div class="icon iconPhoto"></div>
+		</div>
+		{% endif %}
 	</a>
 {% endif %}
 {% if actor.followingCount>0 %}
@@ -28,7 +32,7 @@
 		</div>
 	</a>
 {% endif %}
-{% if groups is not empty %}
+{% if groups is not empty and actor.ownerID>0 %}
 	<a href="{{ actor.typeAndIdForURL }}/groups">
 		<div class="titleW">
 			<div class="title">{{ L('groups') }}</div>
@@ -39,6 +43,21 @@
 			    {{ group | pictureForAvatar('a', 42) }}
 			{% endfor %}
 			{% for i in range(groups | length, 5, 1) %}<div class="placeholder"></div>{% endfor %}
+		</div>
+	</a>
+{% endif %}
+{% if actor.ownerID<0 and actor.boardState!='DISABLED' and (canCreateTopics or boardTopics.list is not empty) %}
+	<a href="{{ actor.typeAndIdForURL }}/board">
+		<div class="titleW">
+			<div class="title">{{ L('group_board') }}</div>
+			{% if boardTopics.total>0 %}<div class="count">{{ boardTopics.total | numberformat }}</div>{% endif %}
+		</div>
+		<div class="thumb iconWithText">
+			<div class="icon iconBoard"></div>
+			{% if boardTopics.list is not empty %}
+			<div class="thumbTitle ellipsize">{{ boardTopics.list.first.title }}</div>
+			<div class="thumbSubtitle ellipsize">{{ LD(boardTopics.list.first.updatedAt) }}</div>
+			{% endif %}
 		</div>
 	</a>
 {% endif %}

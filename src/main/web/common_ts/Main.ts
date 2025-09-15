@@ -4,7 +4,10 @@
 declare var userConfig:any;
 declare var langKeys:{[key:string]:string|string[]};
 declare var mobile:boolean;
+// State specific to the current page goes here. Reset on ajax navigation
 var cur:any={};
+// Ajax navigation callbacks. Called during successful ajax navigation, before the page content is replaced
+var ajaxNavCallbacks:{():void}[]=[];
 
 // Use Cmd instead of Ctrl on Apple devices.
 var isApple:boolean=navigator.platform.indexOf("Mac")==0 || navigator.platform=="iPhone" || navigator.platform=="iPad" || navigator.platform=="iPod touch";

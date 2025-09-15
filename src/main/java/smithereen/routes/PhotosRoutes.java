@@ -20,11 +20,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
-import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.controllers.FriendsController;
+import smithereen.controllers.PhotosController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -46,8 +46,9 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
-import smithereen.model.ViolationReport;
+import smithereen.model.admin.ViolationReport;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.ViolationReportAction;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
@@ -192,13 +193,15 @@ public class PhotosRoutes{
 			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
 		model.with("owner", owner).headerBack(owner).pageTitle(album.getLocalizedTitle(lang(req), self, owner));
 		int offset=offset(req);
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100, false);
-		model.paginate(photos);
+		boolean reverse=req.queryParams("rev")!=null;
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100, reverse);
+		model.paginate(photos)
+				.with("reverseOrder", reverse);
 
 		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
 		int i=0;
 		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString(), p.image.getURLsForPhotoViewer()));
+			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString()+(reverse ? "/rev" : ""), p.image.getURLsForPhotoViewer()));
 			i++;
 		}
 		model.with("photoViewerData", pvData);
@@ -262,6 +265,8 @@ public class PhotosRoutes{
 	public static Object editAlbumForm(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
 		PhotoAlbum album=ctx.getPhotosController().getAlbum(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), info.account.user);
 		if(!info.permissions.canEditPhotoAlbum(album))
+			throw new UserActionNotAllowedException();
+		if(album.systemType!=null && isMobile(req))
 			throw new UserActionNotAllowedException();
 		RenderedTemplateResponse model=new RenderedTemplateResponse("photo_album_edit", req)
 				.with("album", album)
@@ -332,18 +337,31 @@ public class PhotosRoutes{
 
 	public static Object deletePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
 		Photo photo=getPhotoForRequest(req);
-		ctx.getPhotosController().deletePhoto(self.user, photo);
+		PhotosController.PhotoDeletionResult deletionResult=ctx.getPhotosController().deletePhoto(self.user, photo);
 		if(isAjax(req)){
 			String from=req.queryParams("from");
 			if("edit".equals(from)){
-				return new WebDeltaResponse(resp).remove("photoEditRow_"+photo.getIdString());
+				WebDeltaResponse response=new WebDeltaResponse(resp).remove("photoEditRow_"+photo.getIdString());
+				if(deletionResult.noPhotosRemainingInAlbum()){
+					response.remove("editPhotosBlock");
+				}
+				if(deletionResult.newAlbumCoverID()==0){
+					response.setContent("photoAlbumCover", "");
+				}else if(deletionResult.newAlbumCoverID()>0){
+					Photo cover=ctx.getPhotosController().getPhotoIgnoringPrivacy(deletionResult.newAlbumCoverID());
+					var type=SizedImage.Type.PHOTO_THUMB_MEDIUM;
+					SizedImage.Dimensions size=cover.image.getDimensionsForSize(type);
+					String html=cover.image.generateHTML(type, null, null, size.width, size.height, false, null);
+					response.setContent("photoAlbumCover", html);
+				}
+				return response;
 			}else if("viewer".equals(from)){
 				return new WebDeltaResponse(resp)
 						.runScript("LayerManager.getMediaInstance().getTopLayer().dismiss();")
 						.remove("photo"+photo.getIdString());
 			}
 		}
-		return ajaxAwareRedirect(req, resp, back(req));
+		return ajaxAwareRedirect(req, resp, "/albums/"+XTEA.encodeObjectID(photo.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM));
 	}
 
 	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User self, User author, Instant createdAt, AttachmentHostContentObject parent, int index, EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions){
@@ -375,7 +393,6 @@ public class PhotosRoutes{
 		}
 		if(isMobile(req)){
 			html=StringUtils.isNotEmpty(pa.description) ? TextProcessor.escapeHTML(pa.description).replace("\n", "<br/>") : "";
-			origURL=pa.image.getOriginalURI().toString();
 		}else{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
 			model.with("description", pa.description==null ? null : pa.description.replace("\n", "<br/>"))
@@ -388,8 +405,8 @@ public class PhotosRoutes{
 						.with("saveElementID", saveType+"_"+saveID+"_"+index);
 			}
 			html=model.renderToString();
-			origURL=null;
 		}
+		origURL=Objects.toString(pa.image.getOriginalURI(), null);
 		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, null,
 				allowedActions, pa.image.getURLsForPhotoViewer(), null, origURL, null, null, saveURL);
 	}
@@ -441,7 +458,6 @@ public class PhotosRoutes{
 			}else{
 				pvInteractions=null;
 			}
-			origURL=photo.image.getOriginalURI().toString();
 		}else{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
 			model.with("description", photo.description)
@@ -462,7 +478,6 @@ public class PhotosRoutes{
 			}
 			html=model.renderToString();
 			pvInteractions=null;
-			origURL=null;
 			if(self!=null){
 				for(PhotoTag tag:tags){
 					if(tag.userID()==self.user.id && !tag.approved()){
@@ -476,6 +491,7 @@ public class PhotosRoutes{
 				}
 			}
 		}
+		origURL=Objects.toString(photo.image.getOriginalURI(), null);
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.getLocalizedTitle(lang(req), self!=null ? self.user : null, owner),
 				html, topHTML, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString(), null);
@@ -618,7 +634,7 @@ public class PhotosRoutes{
 			case "albums" -> {
 				long albumID=XTEA.deobfuscateObjectID(decodeLong(listParts[1]), ObfuscatedObjectIDType.PHOTO_ALBUM);
 				PhotoAlbum album=ctx.getPhotosController().getAlbum(albumID, self);
-				PaginatedList<Photo> _photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 10, false);
+				PaginatedList<Photo> _photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset(req), 10, listParts.length>2 && listParts[2].equals("rev"));
 				total=_photos.total;
 				title=album.getLocalizedTitle(lang(req), self, ctx.getWallController().getContentAuthorAndOwner(album).owner());
 				yield makePhotoInfosForPhotoList(req, _photos.list, ctx, selfAccount, Map.of(album.id, album));
@@ -768,30 +784,40 @@ public class PhotosRoutes{
 			throw new BadRequestException();
 		ViolationReport report=ctx.getModerationController().getViolationReportByID(safeParseInt(listParts[1]), true);
 		long objID=safeParseLong(listParts[3]);
+		List<ReportableContentObject> content=report.content;
+		int action=safeParseInt(req.queryParams("action"));
+		if(action>0){
+			ViolationReportAction act=ctx.getModerationController().getViolationReportAction(report, action);
+			if(act.actionType()==ViolationReportAction.ActionType.ADD_CONTENT || act.actionType()==ViolationReportAction.ActionType.REMOVE_CONTENT){
+				content=act.extra().getAsJsonArray("content").asList().stream()
+						.map(el->ViolationReport.deserializeContentObject(report.id, el.getAsJsonObject())).toList();
+				ctx.getModerationController().populateFilesInReportableContent(content);
+			}
+		}
 		ReportableContentObject obj=switch(listParts[2]){
 			case "posts" -> {
-				for(ReportableContentObject co:report.content){
+				for(ReportableContentObject co:content){
 					if(co instanceof Post post && post.id==objID)
 						yield co;
 				}
 				throw new ObjectNotFoundException();
 			}
 			case "messages" -> {
-				for(ReportableContentObject co:report.content){
+				for(ReportableContentObject co:content){
 					if(co instanceof MailMessage msg && msg.id==objID)
 						yield co;
 				}
 				throw new ObjectNotFoundException();
 			}
 			case "photos" -> {
-				for(ReportableContentObject co:report.content){
+				for(ReportableContentObject co:content){
 					if(co instanceof Photo photo && photo.getIdString().equals(listParts[3]))
 						yield co;
 				}
 				throw new ObjectNotFoundException();
 			}
 			case "comments" -> {
-				for(ReportableContentObject co:report.content){
+				for(ReportableContentObject co:content){
 					if(co instanceof Comment comment && comment.id==XTEA.decodeObjectID(listParts[3], ObfuscatedObjectIDType.COMMENT))
 						yield co;
 				}

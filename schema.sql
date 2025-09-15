@@ -38,6 +38,22 @@ CREATE TABLE `accounts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `announcements`
+--
+
+CREATE TABLE `announcements` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `title` varchar(300) DEFAULT NULL,
+  `description` text NOT NULL,
+  `link_text` varchar(300) DEFAULT NULL,
+  `link_url` varchar(300) DEFAULT NULL,
+  `show_from` timestamp NOT NULL,
+  `show_to` timestamp NOT NULL,
+  `translations` json NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `ap_id_index`
 --
 
@@ -146,6 +162,33 @@ CREATE TABLE `blocks_user_user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `board_topics`
+--
+
+CREATE TABLE `board_topics` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `title` tinytext NOT NULL,
+  `author_id` int unsigned NOT NULL,
+  `group_id` int unsigned NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `pinned_at` timestamp NULL DEFAULT NULL,
+  `num_comments` int unsigned NOT NULL DEFAULT '0',
+  `last_comment_author_id` int unsigned NOT NULL,
+  `is_closed` tinyint(1) NOT NULL DEFAULT '0',
+  `ap_url` varchar(300) DEFAULT NULL,
+  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+  `first_comment_id` bigint unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `group_id` (`group_id`),
+  KEY `updated_at` (`updated_at`),
+  KEY `created_at` (`created_at`),
+  KEY `pinned_at` (`pinned_at`),
+  CONSTRAINT `board_topics_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `bookmarks_group`
 --
 
@@ -217,6 +260,18 @@ CREATE TABLE `config` (
   `key` varchar(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT '',
   `value` mediumtext NOT NULL,
   PRIMARY KEY (`key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `deleted_user_bans`
+--
+
+CREATE TABLE `deleted_user_bans` (
+  `user_id` int unsigned NOT NULL,
+  `domain` varchar(100) DEFAULT NULL,
+  `ban_status` tinyint unsigned NOT NULL DEFAULT '0',
+  `ban_info` json NOT NULL,
+  PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -342,6 +397,22 @@ CREATE TABLE `friend_requests` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `group_action_log`
+--
+
+CREATE TABLE `group_action_log` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `action` int unsigned NOT NULL,
+  `group_id` int unsigned NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `admin_id` int unsigned DEFAULT NULL,
+  `info` json NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `group_id` (`group_id`),
+  CONSTRAINT `group_action_log_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `group_admins`
 --
 
@@ -381,6 +452,28 @@ CREATE TABLE `group_invites` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `group_links`
+--
+
+CREATE TABLE `group_links` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `group_id` int unsigned NOT NULL,
+  `url` varchar(300) NOT NULL,
+  `title` varchar(300) NOT NULL,
+  `object_type` int unsigned DEFAULT NULL,
+  `object_id` bigint unsigned DEFAULT NULL,
+  `image_id` bigint DEFAULT NULL,
+  `ap_image_url` varchar(300) DEFAULT NULL,
+  `display_order` int unsigned NOT NULL DEFAULT '0',
+  `ap_id` varchar(300) DEFAULT NULL,
+  `is_unresolved_ap_object` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ap_id` (`ap_id`),
+  KEY `group_id` (`group_id`),
+  CONSTRAINT `group_links_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `group_memberships`
 --
 
@@ -397,6 +490,21 @@ CREATE TABLE `group_memberships` (
   KEY `hints_rank` (`hints_rank`),
   CONSTRAINT `group_memberships_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `group_memberships_ibfk_2` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `group_staff_notes`
+--
+
+CREATE TABLE `group_staff_notes` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `target_id` int unsigned NOT NULL,
+  `author_id` int unsigned NOT NULL,
+  `text` text NOT NULL,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `target_id` (`target_id`),
+  CONSTRAINT `group_staff_notes_ibfk_1` FOREIGN KEY (`target_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -427,10 +535,13 @@ CREATE TABLE `groups` (
   `flags` bigint unsigned NOT NULL DEFAULT '0',
   `endpoints` json DEFAULT NULL,
   `access_type` tinyint NOT NULL DEFAULT '0',
+  `ban_status` tinyint unsigned NOT NULL DEFAULT '0',
+  `ban_info` json DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`,`domain`),
   UNIQUE KEY `ap_id` (`ap_id`),
-  KEY `type` (`type`)
+  KEY `type` (`type`),
+  KEY `ban_status` (`ban_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -621,7 +732,11 @@ CREATE TABLE `notifications` (
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `owner_id` (`owner_id`),
-  KEY `time` (`time`)
+  KEY `time` (`time`),
+  KEY `object_type` (`object_type`,`object_id`),
+  KEY `type` (`type`),
+  KEY `related_object_type` (`related_object_type`,`related_object_id`),
+  KEY `actor_id` (`actor_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -809,11 +924,29 @@ CREATE TABLE `reports` (
   `server_domain` varchar(100) DEFAULT NULL,
   `content` json DEFAULT NULL,
   `state` tinyint unsigned NOT NULL DEFAULT '0',
+  `has_file_refs` tinyint(1) NOT NULL DEFAULT '1',
+  `rules` tinyblob,
+  `reason` int unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `reporter_id` (`reporter_id`),
   KEY `moderator_id` (`moderator_id`),
   KEY `state` (`state`),
-  KEY `target_id` (`target_id`)
+  KEY `target_id` (`target_id`),
+  KEY `has_file_refs` (`has_file_refs`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `rules`
+--
+
+CREATE TABLE `rules` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `title` varchar(300) NOT NULL,
+  `description` text NOT NULL,
+  `translations` json NOT NULL,
+  `priority` int NOT NULL DEFAULT '0',
+  `is_deleted` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -927,6 +1060,20 @@ CREATE TABLE `user_agents` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `user_data_exports`
+--
+
+CREATE TABLE `user_data_exports` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int unsigned NOT NULL,
+  `state` tinyint unsigned NOT NULL,
+  `size` bigint unsigned NOT NULL DEFAULT '0',
+  `file_id` bigint DEFAULT NULL,
+  `requested_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `user_roles`
 --
 
@@ -995,6 +1142,20 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `wall_pinned_posts`
+--
+
+CREATE TABLE `wall_pinned_posts` (
+  `owner_user_id` int unsigned NOT NULL,
+  `post_id` int unsigned NOT NULL,
+  `display_order` int unsigned NOT NULL,
+  PRIMARY KEY (`owner_user_id`,`post_id`),
+  KEY `post_id` (`post_id`),
+  CONSTRAINT `wall_pinned_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `wall_pinned_posts_ibfk_2` FOREIGN KEY (`post_id`) REFERENCES `wall_posts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `wall_posts`
 --
 
@@ -1056,4 +1217,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-04-27  4:28:05
+-- Dump completed on 2025-09-15  5:36:28

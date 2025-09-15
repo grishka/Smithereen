@@ -153,6 +153,18 @@ public class User extends Actor{
 		return user;
 	}
 
+	public static User fromDeletedBannedResultSet(ResultSet res) throws SQLException{
+		String domain=res.getString("domain");
+		User user=domain.isEmpty() ? new User() : new ForeignUser();
+		user.id=res.getInt("user_id");
+		user.domain=domain;
+		user.banStatus=UserBanStatus.values()[res.getInt("ban_status")];
+		user.banInfo=Utils.gson.fromJson(res.getString("ban_info"), UserBanInfo.class);
+		user.username="id"+user.id;
+		user.firstName="DELETED";
+		return user;
+	}
+
 	protected void fillFromResultSet(ResultSet res) throws SQLException{
 		super.fillFromResultSet(res);
 		id=res.getInt("id");
@@ -253,16 +265,40 @@ public class User extends Actor{
 			privacySettings=Utils.gson.fromJson(privacy, new TypeToken<>(){});
 		}
 		banStatus=UserBanStatus.values()[res.getInt("ban_status")];
-		if(banStatus!=UserBanStatus.NONE){
-			String _banInfo=res.getString("ban_info");
-			if(StringUtils.isNotEmpty(_banInfo)){
-				banInfo=Utils.gson.fromJson(_banInfo, UserBanInfo.class);
-			}
+		String _banInfo=res.getString("ban_info");
+		if(StringUtils.isNotEmpty(_banInfo)){
+			banInfo=Utils.gson.fromJson(_banInfo, UserBanInfo.class);
 		}
 
 		numFollowers=res.getLong("num_followers");
 		numFollowing=res.getLong("num_following");
 		numFriends=res.getLong("num_friends");
+
+		if(attachment==null)
+			attachment=new ArrayList<>();
+		if(StringUtils.isNotEmpty(website)){
+			String url=TextProcessor.escapeHTML(website);
+			PropertyValue pv=new PropertyValue();
+			pv.name="Website";
+			pv.value="<a href=\""+url+"\" rel=\"me\">"+url+"</a>";
+			pv.parsed=true;
+			attachment.add(pv);
+		}
+		for(ContactInfoKey key:ContactInfoKey.values()){
+			if(contacts.containsKey(key)){
+				String value=contacts.get(key);
+				String url=TextProcessor.getContactInfoValueURL(key, value);
+				PropertyValue pv=new PropertyValue();
+				pv.parsed=true;
+				pv.name=key.getFieldName();
+				if(url!=null){
+					pv.value="<a href=\""+TextProcessor.escapeHTML(url)+"\" rel=\"me\">"+TextProcessor.escapeHTML(value)+"</a>";
+				}else{
+					pv.value=TextProcessor.escapeHTML(value);
+				}
+				attachment.add(pv);
+			}
+		}
 	}
 
 	@Override
@@ -435,31 +471,6 @@ public class User extends Actor{
 
 		if(StringUtils.isNotEmpty(location))
 			obj.addProperty("vcard:Address", location);
-		JsonArrayBuilder attachment=new JsonArrayBuilder();
-		if(StringUtils.isNotEmpty(website)){
-			String url=TextProcessor.escapeHTML(website);
-			PropertyValue pv=new PropertyValue();
-			pv.name="Website";
-			pv.value="<a href=\""+url+"\" rel=\"me\">"+url+"</a>";
-			attachment.add(pv.asActivityPubObject(new JsonObject(), serializerContext));
-		}
-		for(ContactInfoKey key:ContactInfoKey.values()){
-			if(contacts.containsKey(key)){
-				String value=contacts.get(key);
-				String url=TextProcessor.getContactInfoValueURL(key, value);
-				PropertyValue pv=new PropertyValue();
-				pv.name=key.getFieldName();
-				if(url!=null){
-					pv.value="<a href=\""+TextProcessor.escapeHTML(url)+"\" rel=\"me\">"+TextProcessor.escapeHTML(value)+"</a>";
-				}else{
-					pv.value=TextProcessor.escapeHTML(value);
-				}
-				attachment.add(pv.asActivityPubObject(new JsonObject(), serializerContext));
-			}
-		}
-		JsonArray att=attachment.build();
-		if(!att.isEmpty())
-			obj.add("attachment", att);
 
 		if(StringUtils.isNotEmpty(hometown)){
 			serializerContext.addSmAlias("hometown");
@@ -499,6 +510,7 @@ public class User extends Actor{
 				jb.add(switch(type){
 					case POSTS -> null;
 					case PHOTOS -> "sm:Photos";
+					case TOPICS -> "sm:BoardTopics";
 					case FRIENDS -> "sm:Friends";
 					case GROUPS -> "sm:Groups";
 					case EVENTS -> "sm:Events";
@@ -506,6 +518,8 @@ public class User extends Actor{
 					case PERSONAL_INFO -> "sm:PersonalInfo";
 				});
 			}
+			if(jb.isEmpty())
+				jb.add("sm:None");
 			obj.add("newsfeedUpdatesPrivacy", jb.build());
 		}
 
@@ -520,6 +534,13 @@ public class User extends Actor{
 			obj.addProperty("movedTo", movedToApID.toString());
 			serializerContext.addType("movedTo", "as:movedTo", "@id");
 		}
+
+		serializerContext.addAlias("toot", JLD.MASTODON);
+		serializerContext.addAlias("suspended", "toot:suspended");
+		obj.addProperty("suspended", banStatus==UserBanStatus.SUSPENDED);
+
+		serializerContext.addType("featured", "toot:featured", "@id");
+		obj.addProperty("featured", getPinnedPostsURL().toString());
 
 		return obj;
 	}
@@ -542,10 +563,11 @@ public class User extends Actor{
 		JsonArray custom=null;
 		if(attachment!=null){
 			for(ActivityPubObject att:attachment){
-				if(att instanceof PropertyValue){
+				if(att instanceof PropertyValue pv){
+					if(pv.parsed)
+						continue;
 					if(custom==null)
 						custom=new JsonArray();
-					PropertyValue pv=(PropertyValue) att;
 					JsonObject fld=new JsonObject();
 					fld.addProperty("n", pv.name);
 					fld.addProperty("v", pv.value);
@@ -677,6 +699,10 @@ public class User extends Actor{
 		return Config.localURI("/users/"+id+"/tagged");
 	}
 
+	public URI getPinnedPostsURL(){
+		return Config.localURI("/users/"+id+"/pinnedPosts");
+	}
+
 	@Override
 	public String getTypeAndIdForURL(){
 		return "/users/"+id;
@@ -718,6 +744,10 @@ public class User extends Actor{
 
 	public long getFollowingCount(){
 		return numFollowing-numFriends;
+	}
+
+	public boolean isSuspended(){
+		return banStatus==UserBanStatus.SUSPENDED || (banInfo!=null && banInfo.suspendedOnRemoteServer());
 	}
 
 	public enum Gender{

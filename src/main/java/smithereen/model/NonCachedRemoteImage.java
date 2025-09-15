@@ -3,6 +3,8 @@ package smithereen.model;
 import java.net.URI;
 
 import smithereen.Utils;
+import smithereen.model.comments.Comment;
+import smithereen.model.groups.GroupLink;
 import smithereen.model.photos.Photo;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
@@ -19,10 +21,14 @@ public final class NonCachedRemoteImage extends RemoteImage{
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format){
+	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
 		UriBuilder builder=UriBuilder.local().path("system", "downloadExternalMedia");
 		args.addToUriBuilder(builder);
 		builder.queryParam("size", size.suffix()).queryParam("format", format.fileExtension());
+		if(is2x)
+			builder.queryParam("2x", "");
+		if(useFallback)
+			builder.queryParam("fb", "");
 		return builder.build();
 	}
 
@@ -111,6 +117,38 @@ public final class NonCachedRemoteImage extends RemoteImage{
 		protected void addToUriBuilder(UriBuilder builder){
 			builder.queryParam("type", "album_photo");
 			builder.queryParam("photo_id", Utils.encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)));
+		}
+	}
+
+	public static class CommentArgs extends Args{
+		private final Comment comment;
+		private final int index;
+
+		public CommentArgs(Comment comment, int index){
+			this.comment=comment;
+			this.index=index;
+		}
+
+		@Override
+		protected void addToUriBuilder(UriBuilder builder){
+			builder.queryParam("type", "comment_photo");
+			builder.queryParam("comment_id", XTEA.encodeObjectID(comment.id, ObfuscatedObjectIDType.COMMENT));
+			builder.queryParam("index", index+"");
+		}
+	}
+
+	public static class GroupLinkArgs extends Args{
+		private final GroupLink link;
+
+		public GroupLinkArgs(GroupLink link){
+			this.link=link;
+		}
+
+		@Override
+		protected void addToUriBuilder(UriBuilder builder){
+			builder.queryParam("type", "group_link");
+			builder.queryParam("group", link.groupID+"");
+			builder.queryParam("link", link.id+"");
 		}
 	}
 }

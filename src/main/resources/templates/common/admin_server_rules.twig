@@ -1,0 +1,29 @@
+{% extends "page" %}
+{% block content %}
+{% include "admin_tabbar" with {'tab': 'rules'} %}
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">
+		{{ L('admin_server_rules_summary', {'count': rules | length}) }}
+		<span class="auxText"> | <a href="/settings/admin/rules/createForm">{{ L('admin_server_rules_create') }}</a></span>
+	</div>
+</div>
+{% else %}
+<a href="/settings/admin/rules/createForm" class="fab iconAdd" title="{{ L('admin_server_rules_create') }}"></a>
+{% endif %}
+<div class="singleColumn">
+	{% if message is not empty %}<div class="settingsMessage">{{ message }}</div>{% endif %}
+{% for rule in rules %}
+	<div class="listItemWithDivider" id="rule{{ rule.id }}">
+		<div><b>{{ rule.title }}</b></div>
+		{% if rule.description is not empty %}<div class="smallVMargin">{{ rule.description }}</div>{% endif %}
+		<div class="smallVMargin">
+			<a href="/settings/admin/rules/{{ rule.id }}/edit">{{ L('edit') }}</a>
+			| <a href="/settings/admin/rules/{{ rule.id }}/confirmDelete" data-confirm-title="{{ L('admin_server_rule_deletion') }}" data-confirm-message="{{ L('admin_server_rule_delete_confirm') }}" data-confirm-button="{{ L('delete') }}" data-confirm-action="/settings/admin/rules/{{ rule.id }}/delete">{{ L('delete') }}</a>
+		</div>
+	</div>
+{% else %}
+	<div class="emptyState">{{ L('admin_server_rules_empty') }}</div>
+{% endfor %}
+</div>
+{% endblock %}

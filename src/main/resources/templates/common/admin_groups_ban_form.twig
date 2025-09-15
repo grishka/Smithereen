@@ -1,0 +1,20 @@
+{% import "forms" as form %}
+{{ form.start("groupBan") }}
+	{% if group.domain is empty %}
+	{{ form.radioGroup('status', '', [
+		{'value': 'NONE', 'label': L('admin_group_no_restrictions'), 'selected': status=='NONE', 'skip': hideNone},
+		{'value': 'SUSPENDED', 'label': L('admin_group_suspend'), 'explanation': L('admin_group_suspend_explain', {'numDays': numDaysUntilDeletion}), 'selected': status=='SUSPENDED'},
+		{'value': 'HIDDEN', 'label': L('admin_group_hide'), 'explanation': L('admin_group_hide_explain'), 'selected': status=='HIDDEN'}
+	], {'required': true}) }}
+	{{ form.textInput('message', L('admin_group_ban_message'), message, {'explanation': L('admin_group_ban_message_explain')}) }}
+	{% else %}
+	{{ form.radioGroup('status', '', [
+		{'value': 'NONE', 'label': L('admin_group_no_restrictions'), 'selected': status=='NONE', 'skip': hideNone},
+		{'value': 'SUSPENDED', 'label': L('admin_group_suspend'), 'explanation': L('admin_group_foreign_suspend_explain'), 'selected': status=='SUSPENDED'},
+		{'value': 'HIDDEN', 'label': L('admin_group_hide'), 'explanation': L('admin_group_hide_explain'), 'selected': status=='HIDDEN'}
+	], {'required': true}) }}
+	{% endif %}
+	{% if deleteReportContent %}
+	{{ form.checkBox('confirmReportContentDeletion', '', L('report_delete_content_checkbox'), false, {'explanation': L('report_delete_content_checkbox_explanation'), 'required': true}) }}
+	{% endif %}
+{{ form.end() }}

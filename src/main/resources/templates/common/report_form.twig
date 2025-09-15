@@ -5,6 +5,8 @@
 {# @pebvariable name="otherServerDomain" type="String" #}
 {# @pebvariable name="textAreaPlaceholder" type="String" #}
 {# @pebvariable name="reportTitleText" type="String" #}
+{# @pebvariable name="serverRules" type="smithereen.model.ServerRule[]" #}
+{% if reportTitle is not empty %}
 <h2>{{ reportTitleText }}</h2>
 <div class="reportFormHeader">
 	<div class="flL">{{ actorForAvatar | pictureForAvatar('a') }}</div>
@@ -12,8 +14,38 @@
 	<div class="ellipsize">{{ reportSubtitle }}</div>
 	<div class="clear"></div>
 </div>
+{% endif %}
+<div onchange="var rules=ge('reportSelectRules'); var checkboxes=rules.querySelectorAll('input'); if(this.qs('input:checked').value=='SERVER_RULES'){rules.show();for(var i=0;i<checkboxes.length;i++){checkboxes[i].required=!rules.querySelectorAll('input:checked').length;}}else{rules.hide();for(var i=0;i<checkboxes.length;i++){checkboxes[i].required=false;}}">
+	<div class="radioButtonWrap">
+		<input type="radio" name="reason" value="SPAM" id="reportReasonSpam" class="flL" required/>
+		<label for="reportReasonSpam">{{ L('report_reason_spam') }}</label>
+	</div>
+	{% if serverRules is not empty %}
+	<div class="radioButtonWrap">
+		<input type="radio" name="reason" value="SERVER_RULES" id="reportReasonServerRules" class="flL" required/>
+		<label for="reportReasonServerRules">{{ L('report_reason_rules') }}</label>
+	</div>
+	{% endif %}
+	<div class="radioButtonWrap">
+		<input type="radio" name="reason" value="ILLEGAL" id="reportReasonIllegal" class="flL" required/>
+		<label for="reportReasonIllegal">{{ L('report_reason_illegal') }}</label>
+	</div>
+	<div class="radioButtonWrap">
+		<input type="radio" name="reason" value="OTHER" id="reportReasonOther" class="flL" required/>
+		<label for="reportReasonOther">{{ L('report_reason_other') }}</label>
+	</div>
+</div>
+<div id="reportSelectRules" style="display: none" onchange="var checkboxes=this.querySelectorAll('input'); for(var i=0;i<checkboxes.length;i++){checkboxes[i].required=!this.querySelectorAll('input:checked').length;}">
+<h3>{{ L('report_select_rules') }}</h3>
+{% for rule in serverRules %}
+<div class="radioButtonWrap">
+	<input type="checkbox" name="rules[{{ rule.id }}]" id="rule{{ rule.id }}" class="flL"/>
+	<label for="rule{{ rule.id }}">{{ rule.getTranslatedTitle(getLocale()) }}</label>
+</div>
+{% endfor %}
+</div>
 <div>
-	<textarea style="width: 100%;" name="reportText" placeholder="{{ textAreaPlaceholder }}"></textarea>
+	<textarea style="width: 100%;" name="reportText" placeholder="{{ L('report_comment_placeholder') }}"></textarea>
 </div>
 {% if otherServerDomain is not empty %}
 <div class="radioButtonWrap" style="margin-bottom: 0">

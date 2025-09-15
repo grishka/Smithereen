@@ -15,6 +15,7 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityTypeHandler;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
@@ -23,6 +24,10 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Mention;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Create;
+import smithereen.controllers.ObjectLinkResolver;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
@@ -32,9 +37,11 @@ import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoMetadata;
 import smithereen.storage.PhotoStorage;
@@ -59,7 +66,22 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 		if(post.target!=null){
 			if(post.target.attributedTo!=null){
 				owner=context.appContext.getObjectLinkResolver().resolve(post.target.attributedTo, Actor.class, true, true, false);
-				if(!Objects.equals(owner.getWallURL(), post.target.activityPubID)){
+				if(post.target instanceof ActivityPubBoardTopic apTopic && !(owner instanceof ForeignActor)){
+					Comment comment=post.asNativeComment(context.appContext);
+					if(comment.id!=0 || !Config.isLocal(apTopic.activityPubID))
+						return;
+					ObjectLinkResolver.ObjectTypeAndID typeAndID=ObjectLinkResolver.getObjectIdFromLocalURL(apTopic.activityPubID);
+					if(typeAndID==null || typeAndID.type()!=ObjectLinkResolver.ObjectType.BOARD_TOPIC)
+						throw new ObjectNotFoundException("Invalid `target`");
+					BoardTopic topic=context.appContext.getBoardController().getTopicIgnoringPrivacy(typeAndID.id());
+					if(!context.appContext.getBoardController().canPostInTopic(actor, topic))
+						throw new UserActionNotAllowedException("This user can't post in this topic");
+
+					context.appContext.getWallController().loadAndPreprocessRemotePostMentions(comment, post);
+					context.appContext.getCommentsController().putOrUpdateForeignComment(comment);
+					context.appContext.getActivityPubWorker().sendAddComment(owner, comment, topic);
+					return;
+				}else if(!Objects.equals(owner.getWallURL(), post.target.activityPubID)){
 					if(post.inReplyTo!=null && !(owner instanceof ForeignActor)){
 						// Comments always have inReplyTo, and Create{Note} for them is only meant to be sent to the collection owner
 						CommentReplyParent replyParent=context.appContext.getObjectLinkResolver().resolveNative(post.inReplyTo, CommentReplyParent.class, true, true, false, owner, true);
@@ -189,6 +211,12 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				checkNotBlocked(owner, actor, true);
 				if(owner instanceof User u)
 					context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_COMMENTING);
+				if(owner instanceof Group g){
+					if(g.wallState==GroupFeatureState.DISABLED)
+						throw new UserActionNotAllowedException("Wall is disabled in this group");
+					if(g.wallState==GroupFeatureState.ENABLED_CLOSED)
+						throw new UserActionNotAllowedException("Wall commenting is disabled in this group");
+				}
 
 				boolean isNew=nativePost.id==0;
 				context.appContext.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
@@ -222,6 +250,12 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				context.appContext.getActivityPubWorker().fetchWallReplyThread(post);
 			}
 		}else{
+			if(owner instanceof Group g){
+				if(g.wallState==GroupFeatureState.DISABLED)
+					throw new UserActionNotAllowedException("Wall is disabled in this group");
+				if((g.wallState==GroupFeatureState.ENABLED_RESTRICTED || g.wallState==GroupFeatureState.ENABLED_CLOSED) && !context.appContext.getGroupsController().getMemberAdminLevel(g, actor).isAtLeast(Group.AdminLevel.MODERATOR))
+					throw new UserActionNotAllowedException("Only admins can post on this group's wall");
+			}
 			Post nativePost=post.asNativePost(context.appContext);
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 			URI repostID=post.getQuoteRepostID();
@@ -246,6 +280,8 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 			if(nativePost.ownerID!=nativePost.authorID){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
+				if(nativePost.ownerID<0)
+					context.appContext.getNewsfeedController().clearGroupsFeedCache();
 			}else{
 				context.appContext.getNewsfeedController().clearFriendsFeedCache();
 			}

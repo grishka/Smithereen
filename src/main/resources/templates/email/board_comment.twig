@@ -1,0 +1,7 @@
+{# @pebvariable name="parent" type="smithereen.model.photos.Photo" #}
+{% extends "commentable_object" %}
+{% block commentParent %}
+<div style="padding-bottom: 5px">
+	{{ L('board_topic') }} <a href="{{ parent.absoluteURL }}">{{ parent.title }}</a>
+</div>
+{% endblock %}

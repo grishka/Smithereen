@@ -43,16 +43,17 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
-import smithereen.model.UserNotifications;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.RealtimeNotification;
@@ -169,6 +170,8 @@ public class PhotosController{
 		try{
 			if(owner instanceof Group group){
 				context.getPrivacyController().enforceGroupContentAccess(req, group);
+				if(group.photosState==GroupFeatureState.DISABLED)
+					throw new UserActionNotAllowedException("Photo albums are disabled in this group");
 			}
 			List<PhotoAlbum> albums=albumListCache.get(owner.getOwnerID());
 			if(albums==null){
@@ -213,6 +216,8 @@ public class PhotosController{
 		}else{
 			Group owner=context.getGroupsController().getGroupOrThrow(-album.ownerID);
 			context.getPrivacyController().enforceUserAccessToGroupContent(self, owner);
+			if(owner.photosState==GroupFeatureState.DISABLED)
+				throw new UserActionNotAllowedException("err_access_content");
 		}
 		return album;
 	}
@@ -596,9 +601,13 @@ public class PhotosController{
 		}
 	}
 
-	public void deletePhoto(User self, Photo photo){
+	public record PhotoDeletionResult(Boolean noPhotosRemainingInAlbum, long newAlbumCoverID){
+	}
+
+	public PhotoDeletionResult deletePhoto(User self, Photo photo){
 		enforcePhotoManagementPermission(self, photo);
 		PhotoAlbum album=getAlbumIgnoringPrivacy(photo.albumID);
+		long oldCoverId=album.coverID;
 		try{
 			deletePhotoInternal(photo, album);
 		}catch(SQLException x){
@@ -613,6 +622,7 @@ public class PhotosController{
 				throw new IllegalStateException();
 			}
 		}
+		return new PhotoDeletionResult(album.numPhotos==0, album.coverID==oldCoverId ? -1 : album.coverID);
 	}
 
 	public void deletePhoto(Group self, Photo photo){
@@ -672,6 +682,9 @@ public class PhotosController{
 			album.numPhotos=numPhotos;
 		else
 			album.numPhotos--;
+		if(needUpdateCover){
+			album.coverID=newCoverID;
+		}
 		LikeStorage.deleteAllLikesForObject(photo.id, Like.ObjectType.PHOTO);
 		context.getCommentsController().deleteCommentsForObject(photo);
 		NotificationsStorage.deleteNotificationsForObject(Notification.ObjectType.PHOTO, photo.id);
@@ -1516,5 +1529,13 @@ public class PhotosController{
 			return Map.of();
 
 		return getPhotosIgnoringPrivacy(needPhotos).values().stream().collect(Collectors.toMap(ph->ph.ownerID, Function.identity()));
+	}
+
+	public PaginatedList<Photo> getAllPhotosByAuthor(User author, int offset, int count){
+		try{
+			return PhotoStorage.getAllPhotosByAuthor(author.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }

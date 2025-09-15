@@ -4,7 +4,7 @@
 {% include "admin_users_tabbar" with {'tab': 'users'} %}
 <div class="gray borderBottom">
 	<div class="searchFieldWrap singleColumn">
-		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('search_users') }}" value="{{ query }}" id="userSearch" data-base-url="{{ urlPath }}" data-extra-fields="emailDomain,lastIP,role"/>
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('search_users') }}" value="{{ query }}" id="userSearch" data-base-url="{{ urlPath }}" data-extra-fields="emailDomain,lastIP,role,banStatus"/>
 	{% script %}
 		initAjaxSearch("userSearch");
 	{% endscript %}
@@ -73,6 +73,18 @@
 					{% for role in allRoles %}
 					<option value="{{ role.id }}"{{ roleID==role.id ? ' selected' : '' }}>{{ role.langKey is empty ? role.name : L(role.langKey) }}</option>
 					{% endfor %}
+				</select>
+			</div>
+			<div class="filterFieldBlock">
+				<label for="banStatus">{{ L('admin_users_ban_status') }}</label>
+				<select name="banStatus" id="banStatus">
+					<option{{ banStatus is null ? ' selected' : '' }}>{{ L('admin_users_any_ban_status') }}</option>
+					<option value="NONE"{{ banStatus=='NONE' ? ' selected' : '' }}>{{ L('admin_users_ban_status_none') }}</option>
+					<option value="FROZEN"{{ banStatus=='FROZEN' ? ' selected' : '' }}>{{ L('admin_users_ban_status_frozen') }}</option>
+					<option value="SUSPENDED"{{ banStatus=='SUSPENDED' ? ' selected' : '' }}>{{ L('admin_users_ban_status_suspended') }}</option>
+					<option value="HIDDEN"{{ banStatus=='HIDDEN' ? ' selected' : '' }}>{{ L('admin_users_ban_status_hidden') }}</option>
+					<option value="SELF_DEACTIVATED"{{ banStatus=='SELF_DEACTIVATED' ? ' selected' : '' }}>{{ L('admin_users_ban_status_self_deactivated') }}</option>
+					<option value="REMOTE_SUSPENDED"{{ banStatus=='REMOTE_SUSPENDED' ? ' selected' : '' }}>{{ L('admin_users_ban_status_remote_suspended') }}</option>
 				</select>
 			</div>
 		</div>

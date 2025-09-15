@@ -2,7 +2,7 @@ package smithereen.sparkext;
 
 import smithereen.Utils;
 import smithereen.model.SessionInfo;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import spark.Request;
 import spark.Response;
 import spark.Route;

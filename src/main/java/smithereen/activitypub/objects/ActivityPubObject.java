@@ -43,10 +43,13 @@ import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
+import smithereen.activitypub.objects.activities.TopicCreationRequest;
+import smithereen.activitypub.objects.activities.TopicRenameRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.board.BoardTopic;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.UriBuilder;
 import smithereen.util.JsonArrayBuilder;
@@ -98,7 +101,7 @@ public abstract class ActivityPubObject{
 		return asRootActivityPubObject(serializerContext);
 	}
 
-	private JsonObject asRootActivityPubObject(SerializerContext serializerContext){
+	public JsonObject asRootActivityPubObject(SerializerContext serializerContext){
 		JsonObject obj=asActivityPubObject(new JsonObject(), serializerContext);
 		obj.add("@context", serializerContext.getJLDContext());
 		return obj;
@@ -612,6 +615,7 @@ public abstract class ActivityPubObject{
 			case "OrderedCollectionPage" -> new CollectionPage(true);
 			case "CollectionQueryResult" -> new CollectionQueryResult();
 			case "PhotoAlbum" -> new ActivityPubPhotoAlbum();
+			case "BoardTopic" -> new ActivityPubBoardTopic();
 
 			// Activities
 			case "Accept" -> new Accept();
@@ -634,6 +638,8 @@ public abstract class ActivityPubObject{
 			case "Read" -> new Read();
 			case "Move" -> new Move();
 			case "QuoteRequest" -> new QuoteRequest();
+			case "TopicCreationRequest" -> new TopicCreationRequest();
+			case "TopicRenameRequest" -> new TopicRenameRequest();
 
 			default -> {
 				LOG.debug("Unknown object type {}", type);

@@ -19,12 +19,15 @@
 		{% if userPermissions is not null and userPermissions.canReport(group) %}
 			{% set _=options.add({'label': L('report').toString(), 'type': 'link', 'ajax': 'box', 'href': "/system/reportForm?type=group&id="+group.id}) %}
 		{% endif %}
+		{% if userPermissions.hasPermission('MANAGE_GROUPS') %}
+			{% set _=options.add({'label': L('admin_manage_group').toString(), 'type': 'link', 'href': "/groups/#{group.id}/groupinfo"}) %}
+		{% endif %}
 	{% endif %}
 	{% block optionsButton %}
 	{% if options is not empty %}
-    <button title="{{ L('more_options') }}" class="actionButton iconMore" onclick="new MobileOptionsBox({{ json(options) }}).show()" id="profileMoreButton"></button>
-    {% endif %}
-    {% endblock %}
+	<button title="{{ L('more_options') }}" class="actionButton iconMore" onclick="new MobileOptionsBox({{ json(options) }}).show()" id="profileMoreButton"></button>
+	{% endif %}
+	{% endblock %}
 {% endblock %}
 {%block content%}
 <div class="cardsBackdrop">
@@ -34,6 +37,28 @@
 	<a href="{{group.url}}" target="_blank">{{L('open_on_server_X', {'domain': group.domain})}}</a>
 </div>
 {%endif%}
+{% if group.banInfo is not null and currentUser is not null and userPermissions.hasPermission('MANAGE_GROUPS') %}
+{% if group.domain is empty and movedTo is null %}<div class="marginsAreMessy"></div>{% endif %}
+{% set banModerator=users[group.banInfo.moderatorID] %}
+<div class="card padded textByItself">
+	{% if group.banStatus=='SUSPENDED' %}
+	{% if group.domain is empty %}
+	<p>{{ L('admin_group_state_suspended', {'deletionTime': LD(deletionTime)}) }}</p>
+	{% else %}
+	<p>{{ L('admin_group_state_suspended_foreign') }}</p>
+	{% endif %}
+	{% elseif group.banStatus=='HIDDEN' %}
+	<p>{{ L('admin_group_state_hidden') }}</p>
+	{% elseif group.banStatus=='SELF_DEACTIVATED' %}
+	<p>{{ L('admin_group_state_self_deactivated', {'deletionTime': LD(deletionTime)}) }}</p>
+	{% endif %}
+	{% if group.banInfo is not null %}
+	{% if group.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_group_suspended_remotely') }}</p>{% endif %}
+	<p>{% if banModerator is not null %}<a href="{{ banModerator.profileURL }}">{{ banModerator | name }}</a>, {% endif %}{{ LD(group.banInfo.bannedAt()) }}</p>
+	{% if group.banInfo.message is not empty %}<p>{{ L('admin_group_ban_message') }}: {{ group.banInfo.message }}</p>{% endif %}
+	{% endif %}
+</div>
+{% endif %}
 <input type="checkbox" id="profileInfoToggler" class="toggler"/>
 <div class="toggled">
 <div class="card singleColumn">
@@ -67,9 +92,9 @@
 		{% endif %}
 		{% endif %}
 			{% if group.accessType!='OPEN' %}
-			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'confirm', 'title': L(group.event ? 'leave_event' : 'leave_group').toString(), 'msg':  L(group.event ? 'confirm_leave_event' : 'confirm_leave_group', {'type': group.accessType}).toString() | replace({"\n": '<br/>'}), 'href': "/groups/#{group.id}/leave", 'url': "/groups/#{group.id}/leave"}) %}
+			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'confirm', 'title': L(group.event ? 'leave_event' : 'leave_group').toString(), 'msg':  L(group.event ? 'confirm_leave_event' : 'confirm_leave_group', {'type': group.accessType}).toString() | replace({"\n": '<br/>'}), 'href': "/groups/#{group.id}/leave?csrf=#{csrf}", 'url': "/groups/#{group.id}/leave?csrf=#{csrf}"}) %}
 			{% else %}
-			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'link', 'ajax': 'box', 'href': "/groups/#{group.id}/leave"}) %}
+			{% set _=membershipOptions.add({'label': L(group.event ? 'leave_event' : 'leave_group').toString(), 'type': 'link', 'ajax': 'box', 'href': "/groups/#{group.id}/leave?csrf=#{csrf}"}) %}
 			{% endif %}
 		{% endif %}
 
@@ -103,6 +128,12 @@
 			<span class="text">{{ group.statusText }}</span>
 		</div></li>
 		{% endif %}
+		{% if group.location is not empty %}
+		<li><div class="item">
+			<span class="icon iconLocation"></span>
+			<span class="text ellipsize">{{ group.location }}</span>
+		</div></li>
+		{% endif %}
 		{% if group.event %}
 		<li><div class="item">
 			<span class="icon iconTime"></span>
@@ -116,7 +147,7 @@
 			<span class="accessory avatarPile">
 			{% if members is not empty %}
 			{% for user in members | slice(0, min(members | length, 3)) %}
-			    {{ user | pictureForAvatar('s', 28) }}
+				{{ user | pictureForAvatar('s', 28) }}
 			{% endfor %}
 			{% endif %}
 			</span>
@@ -129,16 +160,36 @@
 			<span class="icon iconMore"></span>
 			<span class="text ellipsize">{{ L('profile_show_info') }}</span>
 		</label></li>
+		{% if group.website is not empty %}
+		<li><a class="item showMore" href="{{ group.website }}" target="_blank">
+			<span class="icon iconLink"></span>
+			<span class="text ellipsize">{{ group.website }}</span>
+		</a></li>
+		{% endif %}
 	</ul>
 </div>
 
 <div class="showWhenOn">
+	{% if profileFields is not empty %}
 	<div class="card profileFields">
 	{% for fld in profileFields %}
 		<div class="profileFieldName">{{ fld.name }}</div>
 		<div class="profileFieldValue">{{ fld.value | postprocessHTML }}</div>
 	{% endfor %}
 	</div>
+	{% endif %}
+	{% if links is not empty or canEditGroup %}
+	<div class="card profileFields">
+		<div class="sectionHeader"><h4>{{ L('group_links') }}</h4></div>
+		{% if links is empty %}
+		<div class="singleColumn" style="text-align: center">
+			<div style="padding-bottom: 16px"><a href="/groups/{{ group.id }}/editLinks">{{ L('group_add_link') }}</a></div>
+		</div>
+		{% else %}
+		{% include "group_links_content" with {'extraClasses': ' noPadding', 'extraAttrs': ' style="padding-bottom: 16px;"' | raw} %}
+		{% endif %}
+	</div>
+	{% endif %}
 	<div class="card profileFields">
 		<div class="sectionHeader"><h4>{{ L(group.event ? 'event_organizers' : 'group_admins') }}</h4></div>
 		<div class="userList noPadding" style="padding-bottom: 16px;">
@@ -160,8 +211,9 @@
 </div>
 
 {% include "profile_section_thumbs" with {'actor': group} %}
-
-{% include "wall_profile_block" with {'wallOwner': group, 'isGroup': true} %}
+{% if group.wallState!='DISABLED' %}
+	{% include "wall_profile_block" with {'wallOwner': group, 'isGroup': true, 'wallPostCount': postCount} %}
+{% endif %}
 </div>
 {% script %}
 initProfileTitleHideOnScroll();

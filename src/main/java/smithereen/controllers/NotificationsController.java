@@ -39,10 +39,13 @@ import smithereen.model.PostLikeObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
-import smithereen.model.UserNotifications;
+import smithereen.model.UserDataExport;
+import smithereen.model.notifications.RealtimeNotificationSettingType;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPresence;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
@@ -245,6 +248,7 @@ public class NotificationsController{
 			case Post post -> Notification.ObjectType.POST;
 			case Photo photo -> Notification.ObjectType.PHOTO;
 			case Comment comment -> Notification.ObjectType.COMMENT;
+			case BoardTopic topic -> Notification.ObjectType.BOARD_TOPIC;
 			default -> throw new IllegalStateException("Unexpected value: " + obj);
 		};
 	}
@@ -294,6 +298,7 @@ public class NotificationsController{
 						}else if(plo instanceof Comment comment){
 							yield switch(comment.parentObjectID.type()){
 								case PHOTO -> EmailNotificationType.PHOTO_COMMENT;
+								case BOARD_TOPIC -> EmailNotificationType.COMMENT_REPLY;
 							};
 						}else{
 							throw new IllegalStateException("Unreachable");
@@ -309,7 +314,8 @@ public class NotificationsController{
 			}
 		}
 
-		if(account.prefs.notifierTypes!=null && !account.prefs.notifierTypes.contains(type.getSettingType()))
+		RealtimeNotificationSettingType settingType=type.getSettingType();
+		if(account.prefs.notifierTypes!=null && settingType!=null && !account.prefs.notifierTypes.contains(settingType))
 			return;
 
 		List<WebSocketConnection> connections=null;
@@ -328,11 +334,11 @@ public class NotificationsController{
 				Lang l=conn.lang;
 				ZoneId tz=conn.session.timeZone;
 				String title=l.get(switch(type){
-					case REPLY -> ((PostLikeObject)object).getReplyLevel()>1 ? "notification_title_reply" : "notification_title_comment";
+					case REPLY -> ((PostLikeObject)object).getReplyLevel()>1 || relatedObject instanceof BoardTopic ? "notification_title_reply" : "notification_title_comment";
 					case LIKE -> switch(objType){
 						case POST -> ((Post)object).getReplyLevel()>0 ? "notification_title_like_comment" : "notification_title_like_post";
 						case PHOTO -> "notification_title_like_photo";
-						case PHOTO_COMMENT -> "notification_title_like_comment";
+						case PHOTO_COMMENT, BOARD_COMMENT -> "notification_title_like_comment";
 						case null, default -> throw new IllegalStateException("Unexpected value: " + objType);
 					};
 					case MENTION -> "notification_title_mention";
@@ -347,6 +353,7 @@ public class NotificationsController{
 					case EVENT_INVITE -> "notification_title_event_invite";
 					case GROUP_REQUEST_ACCEPTED -> "notification_title_group_request_accepted";
 					case PHOTO_TAG -> "notification_title_photo_tag";
+					case EXPORT_READY -> "settings_data_export_title";
 				});
 				String content=switch(type){
 					case REPLY -> {
@@ -357,10 +364,11 @@ public class NotificationsController{
 						String text;
 						User u=(User)actor;
 						String objURL="";
-						if(comment.getReplyLevel()==1){
+						if(comment.getReplyLevel()==1 && !(relatedObject instanceof BoardTopic)){
 							if(comment instanceof Comment c){
 								text=switch(c.parentObjectID.type()){
 									case PHOTO -> l.get("notification_content_comment_photo", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
+									case BOARD_TOPIC -> null; // Comments on a board topic itself (no reply) don't make notifications
 								};
 								objURL=((CommentableContentObject)relatedObject).getURL();
 							}else{
@@ -390,9 +398,11 @@ public class NotificationsController{
 						case Comment comment -> {
 							User u=(User)actor;
 							CommentableContentObject parent=(CommentableContentObject) relatedObject;
-							String text=l.get(switch(parent.getCommentParentID().type()){
-								case PHOTO -> "notification_content_like_photo_comment";
-							}, Map.of("name", u.getFirstLastAndGender(), "gender", u.gender, "text", makePostPreview(comment, l, tz)));
+							String text=switch(parent.getCommentParentID().type()){
+								case PHOTO -> l.get("notification_content_like_photo_comment", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender, "text", makePostPreview(comment, l, tz)));
+								case BOARD_TOPIC -> l.get("notification_content_like_board_comment", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender, "text", makePostPreview(comment, l, tz),
+										"topic", TextProcessor.truncateOnWordBoundary(((BoardTopic)parent).title, 40)));
+							};
 							yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL()), "object", Map.of("href", parent.getURL())));
 						}
 						case null, default -> throw new IllegalStateException("Unexpected value: " + objType);
@@ -458,12 +468,14 @@ public class NotificationsController{
 						String text=l.get("notification_content_photo_tag", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
 						yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL())));
 					}
+					case EXPORT_READY -> l.get("notification_content_export_ready", Map.of("time", l.formatDate(((UserDataExport)object).requestedAt, tz, false)));
 				};
 				String url=switch(object){
 					case Post post -> post.getReplyLevel()>0 && relatedObject instanceof Post parentPost ? parentPost.getInternalURL().toString()+"#comment"+post.id : post.getInternalURL().toString();
 					case Photo photo -> photo.getURL();
 					case Comment comment when relatedObject instanceof CommentableContentObject parent -> parent.getURL()+"#comment"+comment.getIDString();
 					case MailMessage msg -> "/my/mail/messages/"+msg.encodedID;
+					case UserDataExport ude -> "/settings/export";
 					case null, default -> actor.getProfileURL();
 				};
 				String objID=switch(object){
@@ -475,7 +487,9 @@ public class NotificationsController{
 				};
 
 				RealtimeNotification.ImageURLs ava;
-				if(actor.hasAvatar()){
+				if(type==RealtimeNotification.Type.EXPORT_READY){
+					ava=RealtimeNotification.ImageURLs.ofSingle("/res/notification_export_ready.png");
+				}else if(actor.hasAvatar()){
 					SizedImage actorAva=actor.getAvatar();
 					ava=new RealtimeNotification.ImageURLs(
 							actorAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, SizedImage.Format.JPEG).toString(),
@@ -543,7 +557,7 @@ public class NotificationsController{
 					extraImage=null;
 				}
 
-				RealtimeNotification rn=new RealtimeNotification(id, type, objType, objID, actor.getLocalID(), title, content, url, ava, extraImage, extraAttrs);
+				RealtimeNotification rn=new RealtimeNotification(id, type, objType, objID, actor==null ? null : actor.getLocalID(), title, content, url, ava, extraImage, extraAttrs);
 				conn.send(rn);
 				conn.sendRaw(makeCountersWebsocketMessage(conn.session.account));
 			});
@@ -569,6 +583,7 @@ public class NotificationsController{
 			case Photo photo -> RealtimeNotification.ObjectType.PHOTO;
 			case Comment comment -> switch(comment.parentObjectID.type()){
 				case PHOTO -> RealtimeNotification.ObjectType.PHOTO_COMMENT;
+				case BOARD_TOPIC -> RealtimeNotification.ObjectType.BOARD_COMMENT;
 			};
 			case null, default -> null;
 		};

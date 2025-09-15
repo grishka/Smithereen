@@ -10,13 +10,17 @@
   "report_text_user": "Что вам кажется недопустимым на этой странице?",
   "report_text_group": "Что вам кажется недопустимым в этой группе?",
   "report_text_event": "Что вам кажется недопустимым в этой встрече?",
-  "report_placeholder_profile": "Например: непристойное изображение на аватаре",
-  "report_placeholder_content": "Например: спам",
   "report_sent": "Жалоба отправлена",
   "report_forward_to_domain": "Переслать на сервер <b>{domain}</b> (анонимно)",
   "report_submitted": "Ваша жалоба отправлена администрации сервера.",
   "report_title_message": "Жалоба на сообщение",
   "report_text_message": "Что вам кажется недопустимым в этом сообщении?",
   "report_title_photo": "Жалоба на фотографию",
-  "report_text_photo": "Что вам кажется недопустимым на этой фотографии?"
+  "report_text_photo": "Что вам кажется недопустимым на этой фотографии?",
+  "report_reason_spam": "Это спам",
+  "report_reason_rules": "Нарушены правила сервера",
+  "report_reason_illegal": "Это незаконно",
+  "report_reason_other": "Другая причина",
+  "report_comment_placeholder": "Комментарий к жалобе (необязательно)",
+  "report_select_rules": "Какие правила нарушаются?"
 }

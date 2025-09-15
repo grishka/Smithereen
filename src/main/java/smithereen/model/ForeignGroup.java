@@ -1,34 +1,50 @@
 package smithereen.model;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
-import smithereen.ApplicationContext;
 import smithereen.Utils;
+import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Event;
 import smithereen.activitypub.objects.ForeignActor;
+import smithereen.activitypub.objects.PropertyValue;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
+import smithereen.http.HttpContentType;
+import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
+import smithereen.model.groups.GroupFeatureState;
+import smithereen.model.groups.GroupLink;
 import smithereen.storage.DatabaseUtils;
+import smithereen.storage.FederationStorage;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public class ForeignGroup extends Group implements ForeignActor{
 
-	private URI wall, photoAlbums, wallComments;
+	private URI wall, photoAlbums, wallComments, boardTopics;
 	public URI actorTokenEndpoint;
 	public URI members;
 	public URI tentativeMembers;
 	public EnumSet<Capability> capabilities=EnumSet.noneOf(ForeignGroup.Capability.class);
+	public List<GroupLink> linksFromActivityPub=List.of();
 
 	public static ForeignGroup fromResultSet(ResultSet res) throws SQLException{
 		ForeignGroup g=new ForeignGroup();
@@ -57,6 +73,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 		members=tryParseURL(ep.groupMembers);
 		tentativeMembers=tryParseURL(ep.tentativeGroupMembers);
 		photoAlbums=tryParseURL(ep.photoAlbums);
+		boardTopics=tryParseURL(ep.boardTopics);
 	}
 
 	@Override
@@ -121,6 +138,93 @@ public class ForeignGroup extends Group implements ForeignActor{
 		ensureHostMatchesID(tentativeMembers, "tentativeMembers");
 		photoAlbums=tryParseURL(optString(obj, "photoAlbums"));
 		ensureHostMatchesID(photoAlbums, "photoAlbums");
+		boardTopics=tryParseURL(optString(obj, "boardTopics"));
+		ensureHostMatchesID(boardTopics, "boardTopics");
+
+		JsonObject featureState=optObject(obj, "featureState");
+		if(featureState!=null){
+			wallState=GroupFeatureState.fromActivityPubValue(optString(featureState, "wall"), wall==null ? GroupFeatureState.DISABLED : GroupFeatureState.ENABLED_OPEN);
+			photosState=GroupFeatureState.fromActivityPubValue(optString(featureState, "photoAlbums"), photoAlbums==null ? GroupFeatureState.DISABLED : GroupFeatureState.ENABLED_RESTRICTED);
+			boardState=GroupFeatureState.fromActivityPubValue(optString(featureState, "board"), boardTopics==null ? GroupFeatureState.DISABLED : GroupFeatureState.ENABLED_RESTRICTED);
+		}else{
+			if(wall==null)
+				wallState=GroupFeatureState.DISABLED;
+			if(photoAlbums==null)
+				photosState=GroupFeatureState.DISABLED;
+			if(boardTopics==null)
+				boardState=GroupFeatureState.DISABLED;
+		}
+
+		JsonArray links=optArrayCompact(obj, "links");
+		if(links!=null){
+			linksFromActivityPub=new ArrayList<>();
+			for(JsonElement el:links){
+				if(el instanceof JsonObject jLink && "Link".equals(optString(jLink, "type"))){
+					URI linkHref=tryParseURL(optString(jLink, "href"));
+					URI linkId=tryParseURL(optString(jLink, "id"));
+					String linkName=optString(jLink, "name");
+					int linkOrder=optInt(jLink, "displayOrder");
+					URI linkIconSrc=null;
+					JsonObject linkIcon=optObject(jLink, "icon");
+					if(linkIcon!=null){
+						linkIconSrc=tryParseURL(optString(linkIcon, "url"));
+					}
+					String linkMediaType=optString(jLink, "mediaType");
+					boolean linkIsAPObject=linkMediaType!=null && ActivityPub.EXPECTED_CONTENT_TYPE.matches(HttpContentType.from(linkMediaType));
+
+					if(linkHref!=null && linkId!=null && Utils.uriHostMatches(activityPubID, linkId) && linkName!=null){
+						GroupLink gl=new GroupLink();
+						gl.apID=linkId;
+						gl.url=linkHref;
+						gl.title=linkName;
+						gl.displayOrder=linkOrder;
+						gl.apImageURL=linkIconSrc;
+
+						if(linkIsAPObject){
+							try{
+								ObjectLinkResolver.ObjectTypeAndID objID=FederationStorage.getObjectTypeAndID(linkHref);
+								if(objID!=null){
+									gl.object=objID;
+								}else{
+									gl.isUnresolvedActivityPubObject=true;
+								}
+							}catch(SQLException x){
+								LOG.error("Failed to get AP object for {}", linkHref);
+							}
+						}
+
+						linksFromActivityPub.add(gl);
+					}
+				}
+			}
+		}
+
+		location=optString(obj, "vcard:Address");
+		if(attachment!=null && !attachment.isEmpty()){
+			for(ActivityPubObject att:attachment){
+				if(att instanceof PropertyValue pv && pv.name!=null){
+					// Get rid of Mastodon :emojis: and non-ASCII characters
+					String normalizedName=pv.name.toLowerCase().replaceAll(":[a-z0-9_]{2,}:", "").replaceAll("[^a-z0-9 -]", "").trim();
+					// Match against popular strings people use for these things
+					if(WEBSITE_FIELD_KEYS.contains(normalizedName)){
+						website=TextProcessor.stripHTML(pv.value, false);
+						break;
+					}
+				}
+			}
+		}
+
+		if(optBoolean(obj, "suspended")){
+			if(banInfo==null)
+				banInfo=new GroupBanInfo(Instant.now(), null, 0, 0, true);
+			else
+				banInfo=banInfo.withRemoteSuspensionStatus(true);
+		}else if(banInfo!=null){
+			if(banStatus==GroupBanStatus.NONE)
+				banInfo=null;
+			else
+				banInfo=banInfo.withRemoteSuspensionStatus(false);
+		}
 
 		return this;
 	}
@@ -133,12 +237,11 @@ public class ForeignGroup extends Group implements ForeignActor{
 			if(!"Person".equals(optString(adm, "type")))
 				return;
 			GroupAdmin admin=new GroupAdmin();
-			try{
-				admin.activityPubUserID=new URI(adm.get("id").getAsString());
-			}catch(URISyntaxException x){
-				throw new BadRequestException(x);
-			}
+			admin.activityPubUserID=tryParseURL(optString(adm, "id"));
+			if(admin.activityPubUserID==null)
+				return;
 			admin.title=Objects.requireNonNullElse(optString(adm, "title"), "");
+			admin.displayOrder=optInt(adm, "displayOrder");
 			adminsForActivityPub.add(admin);
 		}else if(_adm.isJsonPrimitive()){
 			URI adm=tryParseURL(_adm.getAsString());
@@ -176,6 +279,11 @@ public class ForeignGroup extends Group implements ForeignActor{
 	}
 
 	@Override
+	public URI getBoardTopicsURL(){
+		return boardTopics;
+	}
+
+	@Override
 	public boolean needUpdate(){
 		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.toEpochMilli()>24L*60*60*1000;
 	}
@@ -189,6 +297,8 @@ public class ForeignGroup extends Group implements ForeignActor{
 			ep.groupMembers=members.toString();
 		if(tentativeMembers!=null)
 			ep.tentativeGroupMembers=tentativeMembers.toString();
+		if(boardTopics!=null)
+			ep.boardTopics=boardTopics.toString();
 		return ep;
 	}
 

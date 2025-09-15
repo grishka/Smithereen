@@ -53,13 +53,19 @@ a, .link{
 	vertical-align: top;
 	margin: 0;
 	background-color: #fff;
-	background-image: svg-load("img/ava_question.svg", fill: #809528);
+	background-image: svg-load("img/ava_question.svg", fill: $avaPlaceholderColor);
 	background-repeat: no-repeat;
 	background-position: center;
 	background-size: contain;
-	border: solid 1px #ece5d1;
+	border: solid 1px $avaPlaceholderBorderColor;
 	box-sizing: border-box;
 	border-radius: 2px;
+	&.suspended{
+		background-image: svg-load("img/ava_exclamation.svg", fill: $avaPlaceholderColor);
+	}
+	&.deleted{
+		background-image: svg-load("img/ava_ghost.svg", fill: $avaPlaceholderColor);
+	}
 }
 
 .grayText, a.grayText{

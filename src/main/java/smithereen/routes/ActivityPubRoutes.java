@@ -44,6 +44,7 @@ import smithereen.activitypub.handlers.CreateNoteHandler;
 import smithereen.activitypub.handlers.CreatePhotoAlbumHandler;
 import smithereen.activitypub.handlers.CreatePhotoHandler;
 import smithereen.activitypub.handlers.DeleteActorStatusHandler;
+import smithereen.activitypub.handlers.DeleteGroupHandler;
 import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
 import smithereen.activitypub.handlers.DeletePhotoAlbumHandler;
@@ -51,8 +52,11 @@ import smithereen.activitypub.handlers.DeletePhotoHandler;
 import smithereen.activitypub.handlers.FlagHandler;
 import smithereen.activitypub.handlers.FollowGroupHandler;
 import smithereen.activitypub.handlers.FollowPersonHandler;
+import smithereen.activitypub.handlers.GroupAcceptTopicCreationRequestHandler;
 import smithereen.activitypub.handlers.GroupAddPersonHandler;
 import smithereen.activitypub.handlers.GroupBlockPersonHandler;
+import smithereen.activitypub.handlers.GroupCreateBoardTopicHandler;
+import smithereen.activitypub.handlers.GroupDeleteBoardTopicHandler;
 import smithereen.activitypub.handlers.GroupRemovePersonHandler;
 import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.InviteGroupHandler;
@@ -76,6 +80,8 @@ import smithereen.activitypub.handlers.RemoveActorStatusHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
 import smithereen.activitypub.handlers.RemoveNoteHandler;
 import smithereen.activitypub.handlers.GroupRemovePhotoHandler;
+import smithereen.activitypub.handlers.TopicCreationRequestHandler;
+import smithereen.activitypub.handlers.TopicRenameRequestHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoAnnounceNoteHandler;
@@ -91,6 +97,7 @@ import smithereen.activitypub.handlers.UpdatePhotoHandler;
 import smithereen.activitypub.handlers.UserRemovePhotoHandler;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubActorStatus;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
@@ -121,6 +128,8 @@ import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
+import smithereen.activitypub.objects.activities.TopicCreationRequest;
+import smithereen.activitypub.objects.activities.TopicRenameRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.controllers.ObjectLinkResolver;
@@ -128,10 +137,11 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.RemoteObjectFetchException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.CommentViewType;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.NodeInfo;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -145,10 +155,14 @@ import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.board.BoardTopic;
+import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.text.TextProcessor;
 import smithereen.util.UriBuilder;
 import smithereen.model.User;
@@ -190,7 +204,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, Announce.class, NoteOrQuestion.class, new AnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Announce.class, NoteOrQuestion.class, new UndoAnnounceNoteHandler());
 		registerActivityHandler(ForeignUser.class, Update.class, NoteOrQuestion.class, new UpdateNoteHandler());
-		registerActivityHandler(ForeignUser.class, Delete.class, NoteOrQuestion.class, new DeleteNoteHandler());
+		registerActivityHandler(Actor.class, Delete.class, NoteOrQuestion.class, new DeleteNoteHandler());
 		registerActivityHandler(Actor.class, Reject.class, Add.class, NoteOrQuestion.class, new RejectAddNoteHandler());
 		registerActivityHandler(ForeignUser.class, Read.class, NoteOrQuestion.class, new ReadNoteHandler());
 		registerActivityHandler(ForeignUser.class, QuoteRequest.class, NoteOrQuestion.class, new QuoteRequestNoteHandler());
@@ -226,6 +240,7 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Undo.class, Invite.class, ForeignGroup.class, new UndoInviteGroupHandler());
 		registerActivityHandler(ForeignGroup.class, Add.class, User.class, new GroupAddPersonHandler());
 		registerActivityHandler(ForeignGroup.class, Remove.class, User.class, new GroupRemovePersonHandler());
+		registerActivityHandler(ForeignGroup.class, Delete.class, ForeignGroup.class, new DeleteGroupHandler());
 
 		registerActivityHandler(Actor.class, Add.class, NoteOrQuestion.class, new AddNoteHandler());
 		registerActivityHandler(Actor.class, Remove.class, NoteOrQuestion.class, new RemoveNoteHandler());
@@ -247,6 +262,13 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignGroup.class, Remove.class, ActivityPubPhoto.class, new GroupRemovePhotoHandler());
 		registerActivityHandler(ForeignUser.class, Remove.class, ActivityPubPhoto.class, new UserRemovePhotoHandler());
 		registerActivityHandler(ForeignUser.class, Reject.class, ActivityPubPhoto.class, new RejectPhotoHandler());
+
+		// Discussion boards
+		registerActivityHandler(ForeignGroup.class, Create.class, ActivityPubBoardTopic.class, new GroupCreateBoardTopicHandler());
+		registerActivityHandler(ForeignUser.class, TopicCreationRequest.class, NoteOrQuestion.class, new TopicCreationRequestHandler());
+		registerActivityHandler(ForeignGroup.class, Accept.class, TopicCreationRequest.class, new GroupAcceptTopicCreationRequestHandler());
+		registerActivityHandler(ForeignUser.class, TopicRenameRequest.class, ActivityPubBoardTopic.class, new TopicRenameRequestHandler());
+		registerActivityHandler(ForeignGroup.class, Delete.class, ActivityPubBoardTopic.class, new GroupDeleteBoardTopicHandler());
 
 		// More general handlers at the end so they match last
 		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());
@@ -489,6 +511,8 @@ public class ActivityPubRoutes{
 		ApplicationContext ctx=context(req);
 		Group group=ctx.getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
 		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		if(group.wallState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("Wall is disabled in this group");
 		return actorWall(req, resp, offset, count, group);
 	}
 
@@ -514,6 +538,8 @@ public class ActivityPubRoutes{
 		ApplicationContext ctx=context(req);
 		Group group=ctx.getGroupsController().getLocalGroupOrThrow(safeParseInt(req.params(":id")));
 		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		if(group.wallState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("Wall is disabled in this group");
 		return actorWallComments(req, resp, offset, count, group);
 	}
 
@@ -619,7 +645,13 @@ public class ActivityPubRoutes{
 
 	private static ActivityPubCollectionPageResponse objectComments(Request req, Response resp, CommentableContentObject obj, int offset, int count){
 		ApplicationContext ctx=context(req);
-		PaginatedList<Comment> comments=ctx.getCommentsController().getCommentReplies(obj, null, offset, count);
+		PaginatedList<Comment> comments;
+		if(obj instanceof BoardTopic){
+			PaginatedList<CommentViewModel> cvms=ctx.getCommentsController().getComments(obj, List.of(), offset, count, 0, CommentViewType.FLAT);
+			comments=new PaginatedList<>(cvms, cvms.list.stream().map(cvm->cvm.post).toList());
+		}else{
+			comments=ctx.getCommentsController().getCommentReplies(obj, null, offset, count);
+		}
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
 	}
 
@@ -628,6 +660,34 @@ public class ActivityPubRoutes{
 		PhotoAlbum album=ctx.getPhotosController().getAlbumForActivityPub(XTEA.deobfuscateObjectID(Utils.decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), req);
 		PaginatedList<Comment> comments=ctx.getCommentsController().getPhotoAlbumComments(album, offset, count);
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(comments.list.stream().map(c->c.isLocal() ? new LinkOrObject(NoteOrQuestion.fromNativeComment(c, ctx)) : new LinkOrObject(c.getActivityPubID())).toList(), comments.total);
+	}
+
+	public static ActivityPubCollectionPageResponse groupTopics(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(parseIntOrDefault(req.params(":id"), 0));
+		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		if(group.boardState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("Discussion board is disabled in this group");
+		PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, offset, count, BoardTopicsSortOrder.CREATED_ASC);
+		return ActivityPubCollectionPageResponse.forObjects(new PaginatedList<>(topics, topics.list.stream().map(t->ActivityPubBoardTopic.fromNativeTopic(t, ctx)).toList()));
+	}
+
+	public static ActivityPubCollectionPageResponse groupPinnedTopics(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(parseIntOrDefault(req.params(":id"), 0));
+		ctx.getPrivacyController().enforceGroupContentAccess(req, group);
+		if(group.boardState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("Discussion board is disabled in this group");
+		PaginatedList<BoardTopic> topics=ctx.getBoardController().getPinnedTopicsIgnoringPrivacy(group, offset, count);
+		return ActivityPubCollectionPageResponse.forObjects(new PaginatedList<>(topics, topics.list.stream().map(t->ActivityPubBoardTopic.fromNativeTopic(t, ctx)).toList()));
+	}
+
+	public static ActivityPubCollectionPageResponse topic(Request req, Response resp, int offset, int count){
+		ApplicationContext ctx=context(req);
+		BoardTopic topic=ctx.getBoardController().getTopicIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.BOARD_TOPIC));
+		ctx.getPrivacyController().enforceContentPrivacyForActivityPub(req, topic);
+		return objectComments(req, resp, topic, offset, count)
+				.withCustomObject(ActivityPubBoardTopic.fromNativeTopic(topic, ctx));
 	}
 
 	public static Object userStatus(Request req, Response resp){
@@ -840,6 +900,10 @@ public class ActivityPubRoutes{
 			resp.status(403);
 			return "This actor is suspended from this server";
 		}
+		if(actor instanceof ForeignUser fu && fu.isServiceActor){
+			resp.status(403);
+			return "This is a service actor and it's not supposed to send activities";
+		}
 		if(fa.needUpdate() && canUpdate){
 			try{
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
@@ -952,7 +1016,8 @@ public class ActivityPubRoutes{
 					}else{
 						collectionOwner=null;
 					}
-					aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, activity instanceof Announce || activity instanceof Add || activity instanceof Invite, false, false, collectionOwner, true);
+					boolean allowFetching=activity instanceof Announce || activity instanceof Add || activity instanceof Invite;
+					aobj=ctx.getObjectLinkResolver().resolve(activity.object.link, ActivityPubObject.class, allowFetching, !allowFetching, false, collectionOwner, true);
 				}
 			}
 			for(ActivityTypeHandlerRecord r:typeHandlers){
@@ -1067,6 +1132,16 @@ public class ActivityPubRoutes{
 		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, offset, count);
 		Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(photos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(photos.list.stream().map(p->p.apID==null ? new LinkOrObject(ActivityPubPhoto.fromNativePhoto(p, albums.get(p.albumID), ctx)) : new LinkOrObject(p.apID)).toList(), photos.total);
+	}
+
+	public static Object userPinnedPosts(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		User user=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		List<NoteOrQuestion> posts=ctx.getWallController().getPinnedPosts(null, user).stream().map(p->NoteOrQuestion.fromNativePost(p, ctx)).toList();
+		ActivityPubCollection collection=new ActivityPubCollection(true);
+		collection.items=posts.stream().map(LinkOrObject::new).toList().reversed();
+		collection.totalItems=posts.size();
+		return collection;
 	}
 
 	public static Object serviceActor(Request req, Response resp){
@@ -1198,6 +1273,11 @@ public class ActivityPubRoutes{
 					if(album.ownerID!=owner.getOwnerID())
 						throw new BadRequestException("This photo album is not owned by this actor");
 					filteredItems=ctx.getPhotosController().getAlbumPhotosActivityPubIDs(album, items);
+				}else if(type==ObjectLinkResolver.ObjectType.BOARD_TOPIC){
+					BoardTopic topic=ctx.getBoardController().getTopicIgnoringPrivacy(id);
+					if(!(owner instanceof Group group) || group.id!=topic.groupID)
+						throw new ObjectNotFoundException();
+					filteredItems=ctx.getCommentsController().getObjectCommentIDs(topic, items);
 				}else{
 					throw new BadRequestException("Unknown collection ID");
 				}

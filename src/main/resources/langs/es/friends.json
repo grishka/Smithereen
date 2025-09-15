@@ -49,7 +49,7 @@
   "birthday_descr_past": "Cumplió {age, plural, one {# año} other {# años}}",
   "birthday_descr_today": "Cumple {age, plural, one {# año} other {# años}}",
   "birthday_descr_future": "Cumplirá {age, plural, one {# año} other {# años}}",
-  "friend_req_accepted": "Solicitud de amistad aceptada.",
+  "friend_req_accepted": "Solicitud de amistad aceptada",
   "friend_req_accepted_specify_lists": "Especificar listas",
   "friend_req_declined": "Solicitud de amistad rechazada",
   "select_friends_title": "Seleccionar amigos",

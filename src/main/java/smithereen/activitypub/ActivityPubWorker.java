@@ -3,6 +3,7 @@ package smithereen.activitypub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -33,10 +34,12 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubActorStatus;
+import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhoto;
 import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.CollectionPage;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.Note;
@@ -59,21 +62,27 @@ import smithereen.activitypub.objects.activities.QuoteRequest;
 import smithereen.activitypub.objects.activities.Read;
 import smithereen.activitypub.objects.activities.Reject;
 import smithereen.activitypub.objects.activities.Remove;
+import smithereen.activitypub.objects.activities.TopicCreationRequest;
+import smithereen.activitypub.objects.activities.TopicRenameRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.activitypub.tasks.FetchActorContentCollectionsTask;
 import smithereen.activitypub.tasks.FetchActorRelationshipCollectionsTask;
 import smithereen.activitypub.tasks.FetchAllWallRepliesTask;
+import smithereen.activitypub.tasks.FetchBoardTopicCommentsTask;
 import smithereen.activitypub.tasks.FetchCommentReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchPhotoAlbumPhotosTask;
+import smithereen.activitypub.tasks.FetchUserPinnedPostsTask;
 import smithereen.activitypub.tasks.FetchWallReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchRepostChainTask;
 import smithereen.activitypub.tasks.ForwardOneActivityRunnable;
 import smithereen.activitypub.tasks.RetryActivityRunnable;
 import smithereen.activitypub.tasks.SendActivitySequenceRunnable;
 import smithereen.activitypub.tasks.SendOneActivityRunnable;
+import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.ActorStatus;
 import smithereen.model.ForeignGroup;
@@ -90,12 +99,16 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.friends.FollowRelationship;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoTag;
+import smithereen.storage.BoardStorage;
+import smithereen.storage.CommentStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -135,6 +148,8 @@ public class ActivityPubWorker{
 	private final HashSet<URI> fetchingContentCollectionsActors=new HashSet<>();
 	private final HashMap<URI, Future<List<Post>>> fetchingRepostChains=new HashMap<>();
 	private final HashMap<URI, Future<Void>> fetchingPhotoAlbums=new HashMap<>();
+	private final HashMap<URI, Future<Void>> fetchingBoardTopics=new HashMap<>();
+	private final HashMap<URI, Future<Void>> fetchingUserPinnedPosts=new HashMap<>();
 
 	private final ApplicationContext context;
 
@@ -236,10 +251,13 @@ public class ActivityPubWorker{
 							if(context.getPrivacyController().checkUserPrivacy(mentionedUser, user, album.viewPrivacy))
 								inboxes.add(inbox);
 						}
+						if(album.viewPrivacy.baseRule==PrivacySetting.Rule.EVERYONE)
+							inboxes.addAll(CommentStorage.getInboxesForCommentInteractionForwarding(comment.parentObjectID, album.viewPrivacy.exceptUsers));
 					}else if(oaa.owner() instanceof Group group){
 						inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
 						if(group.accessType==Group.AccessType.OPEN){
 							mentionedUsers.stream().map(this::actorInbox).forEach(inboxes::add);
+							inboxes.addAll(CommentStorage.getInboxesForCommentInteractionForwarding(comment.parentObjectID, Set.of()));
 						}else{
 							for(User mentionedUser:mentionedUsers){
 								URI inbox=actorInbox(mentionedUser);
@@ -251,6 +269,27 @@ public class ActivityPubWorker{
 							}
 						}
 					}
+				}
+				case BoardTopic topic -> {
+					Group group=(Group) oaa.owner();
+					Collection<User> mentionedUsers=context.getUsersController().getUsers(comment.mentionedUserIDs).values();
+					inboxes.addAll(GroupStorage.getGroupMemberInboxes(group.id));
+					if(group.accessType==Group.AccessType.OPEN){
+						mentionedUsers.stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).forEach(inboxes::add);
+					}else{
+						for(User mentionedUser:mentionedUsers){
+							if(!(mentionedUser instanceof ForeignUser))
+								continue;
+							URI inbox=actorInbox(mentionedUser);
+							if(inboxes.contains(inbox))
+								continue;
+							Group.MembershipState state=context.getGroupsController().getUserMembershipState(group, mentionedUser);
+							if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER)
+								inboxes.add(inbox);
+						}
+					}
+					if(group.accessType==Group.AccessType.OPEN)
+						inboxes.addAll(CommentStorage.getInboxesForCommentInteractionForwarding(comment.parentObjectID, Set.of()));
 				}
 			}
 		}catch(SQLException x){
@@ -265,7 +304,18 @@ public class ActivityPubWorker{
 			LOG.trace("Inboxes: {}", inboxes);
 			for(URI inbox:inboxes){
 				SendOneActivityRunnable r=new SendOneActivityRunnable(this, context, activity, inbox, actor);
-				if(post.getReplyLevel()==0 && post.authorID!=post.ownerID)
+				Post topLevel;
+				if(post.getReplyLevel()==0){
+					topLevel=post;
+				}else{
+					try{
+						topLevel=context.getWallController().getPostOrThrow(post.replyKey.getFirst());
+					}catch(ObjectNotFoundException x){
+						LOG.debug("Top-level post for {} not found", post.getActivityPubID());
+						topLevel=post;
+					}
+				}
+				if(topLevel.authorID!=topLevel.ownerID)
 					r.requireFeature(Server.Feature.WALL_POSTS);
 				executor.submit(r);
 			}
@@ -369,32 +419,48 @@ public class ActivityPubWorker{
 		});
 	}
 
-	public void sendUnfriendActivity(User self, User target){
+	public void sendPinPostActivity(User self, Post post){
+		Add add=new Add()
+				.withActorAndObjectLinks(self, post)
+				.withTarget(self.getPinnedPostsURL())
+				.withObjectFragmentID("pin"+rand());
+		submitActivityForFollowers(add, self);
+	}
+
+	public void sendUnpinPostActivity(User self, Post post){
+		Remove remove=new Remove()
+				.withActorAndObjectLinks(self, post)
+				.withTarget(self.getPinnedPostsURL())
+				.withObjectFragmentID("unpin"+rand());
+		submitActivityForFollowers(remove, self);
+	}
+
+	public void sendUnfriendActivity(User self, User target, FollowRelationship relationship){
 		if(!(target instanceof ForeignUser))
 			return;
 
 		Follow follow=new Follow()
 				.withActorAndObjectLinks(self, target)
-				.withActorFragmentID("followUser"+target.id+"_"+rand());
+				.withActorFragmentID("followUser"+target.id+"_"+relationship.addedAt().getEpochSecond());
 		Undo undo=new Undo()
 				.withActorLinkAndObject(self, follow)
-				.withActorFragmentID("unfollowUser"+target.id+"_"+rand());
+				.withActorFragmentID("unfollowUser"+target.id+"_"+relationship.addedAt().getEpochSecond());
 
 		submitActivity(undo, self, target.inbox);
 	}
 
-	public void sendRemoveFromFriendsCollectionActivity(User self, User exFriend){
+	public void sendRemoveFromFriendsCollectionActivity(User self, User exFriend, FollowRelationship relationship){
 		Remove remove=new Remove()
 				.withActorAndObjectLinks(self, exFriend)
-				.withActorFragmentID("unfriendUserCollection"+exFriend.id+"_"+rand())
+				.withActorFragmentID("unfriendUserCollection"+exFriend.id+"_"+relationship.addedAt().getEpochSecond())
 				.withTarget(self.getFriendsURL());
 		submitActivityForFollowers(remove, self);
 	}
 
-	public void sendAddToFriendsCollectionActivity(User self, User friend){
+	public void sendAddToFriendsCollectionActivity(User self, User friend, FollowRelationship relationship){
 		Add add=new Add()
 				.withActorAndObjectLinks(self, friend)
-				.withActorFragmentID("addFriendUserCollection"+friend.id+"_"+rand())
+				.withActorFragmentID("addFriendUserCollection"+friend.id+"_"+relationship.addedAt().getEpochSecond())
 				.withTarget(self.getFriendsURL());
 		submitActivityForFollowers(add, self);
 	}
@@ -416,10 +482,10 @@ public class ActivityPubWorker{
 		submitActivityForFollowers(remove, self);
 	}
 
-	public void sendFollowUserActivity(User self, ForeignUser target){
+	public void sendFollowUserActivity(User self, ForeignUser target, FollowRelationship relationship){
 		Follow follow=new Follow()
 				.withActorAndObjectLinks(self, target)
-				.withActorFragmentID("followUser"+target.id+"_"+rand());
+				.withActorFragmentID("followUser"+target.id+"_"+relationship.addedAt().getEpochSecond());
 		submitActivity(follow, self, target.inbox);
 	}
 
@@ -437,14 +503,14 @@ public class ActivityPubWorker{
 		submitActivity(leave, self, target.inbox);
 	}
 
-	public void sendFriendRequestActivity(User self, ForeignUser target, String message){
+	public void sendFriendRequestActivity(User self, ForeignUser target, String message, FollowRelationship relationship){
 		Follow follow=new Follow()
 				.withActorAndObjectLinks(self, target)
 				.withActorFragmentID("follow"+target.id+"_"+rand());
 		if(target.supportsFriendRequests()){
 			Offer offer=new Offer()
 					.withActorLinkAndObject(self, new Follow().withActorAndObjectLinks(target, self))
-					.withActorFragmentID("friendRequest"+target.id+"_"+rand());
+					.withActorFragmentID("friendRequest"+target.id+"_"+relationship.addedAt().getEpochSecond());
 			if(StringUtils.isNotEmpty(message)){
 				offer.content=message;
 			}
@@ -454,7 +520,15 @@ public class ActivityPubWorker{
 		}
 	}
 
-	public void sendAcceptFollowActivity(ForeignUser actor, Actor self, Follow follow){
+	public void sendAcceptFollowActivity(ForeignUser actor, User self, Follow follow, FollowRelationship relationship){
+		self.ensureLocal();
+		Accept accept=new Accept()
+				.withActorLinkAndObject(self, follow)
+				.withActorFragmentID("acceptFollow"+actor.id+"_"+relationship.addedAt().getEpochSecond());
+		submitActivity(accept, self, actor.inbox);
+	}
+
+	public void sendAcceptFollowActivity(ForeignUser actor, Group self, Follow follow){
 		self.ensureLocal();
 		Accept accept=new Accept()
 				.withActorLinkAndObject(self, follow)
@@ -512,11 +586,46 @@ public class ActivityPubWorker{
 	}
 
 	public void sendUpdateGroupActivity(Group group){
-		Update update=new Update()
-				.withActorLinkAndObject(group, group)
-				.withActorFragmentID("updateProfile"+System.currentTimeMillis());
-		update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
-		submitActivityForMembers(update, group);
+		Runnable action=()->{
+			scheduledActorUpdates.remove(-group.id);
+			Group upToDateGroup;
+			try{
+				// Make sure that any updates to this group made between when this was scheduled and now are incorporated
+				upToDateGroup=context.getGroupsController().getGroupOrThrow(group.id);
+				upToDateGroup.adminsForActivityPub=context.getGroupsController().getAdmins(upToDateGroup);
+			}catch(ObjectNotFoundException x){
+				LOG.warn("Failed to send a delayed Update{Group} for group {} because the group somehow no longer exists", group.id);
+				return;
+			}
+			Update update=new Update()
+					.withActorLinkAndObject(upToDateGroup, upToDateGroup)
+					.withActorFragmentID("updateProfile"+System.currentTimeMillis());
+			update.to=Collections.singletonList(new LinkOrObject(ActivityPub.AS_PUBLIC));
+			submitActivityForMembers(update, upToDateGroup);
+		};
+		String mutexName="updateGroup"+group.id;
+		try{
+			mutex.acquire(mutexName);
+			if(scheduledActorUpdates.contains(-group.id)){
+				LOG.trace("Update{Group} for group {} is already scheduled", group.id);
+				return;
+			}
+			Instant removeBefore=Instant.now().minus(5, ChronoUnit.MINUTES);
+			lastActorUpdates.values().removeIf(removeBefore::isAfter);
+			Instant lastUpdate=lastActorUpdates.get(-group.id);
+			if(lastUpdate==null){
+				LOG.trace("Sending Update{Group} for group {} immediately", group.id);
+				lastActorUpdates.put(-group.id, Instant.now());
+				action.run();
+			}else{
+				long delay=lastUpdate.plus(5, ChronoUnit.MINUTES).toEpochMilli()-System.currentTimeMillis();
+				LOG.trace("Delaying Update{Group} for group {} by {}s", group.id, delay/1000.0);
+				scheduledActorUpdates.add(-group.id);
+				retryExecutor.schedule(action, delay, TimeUnit.MILLISECONDS);
+			}
+		}finally{
+			mutex.release(mutexName);
+		}
 	}
 
 	public void sendCreateStatusActivity(Actor actor, ActorStatus status){
@@ -766,6 +875,13 @@ public class ActivityPubWorker{
 		submitActivityForFollowers(del, self);
 	}
 
+	public void sendGroupDeleteSelf(Group self){
+		Delete del=new Delete()
+				.withActorAndObjectLinks(self, self)
+				.withActorFragmentID("deleteSelf");
+		submitActivityForMembers(del, self);
+	}
+
 	public void sendUserMoveSelf(User self, User destination){
 		Move move=new Move()
 				.withActorAndObjectLinks(self, self)
@@ -968,7 +1084,11 @@ public class ActivityPubWorker{
 
 	private void sendActivityForComment(Comment comment, Actor actor, CommentableContentObject parent, Activity activity){
 		Set<URI> inboxes=getInboxesForComment(comment, parent);
-		submitActivity(activity, actor, inboxes, comment.parentObjectID.getRqeuiredServerFeature());
+		Server.Feature requiredFeature=comment.parentObjectID.getRqeuiredServerFeature();
+		if(requiredFeature==null)
+			submitActivity(activity, actor, inboxes);
+		else
+			submitActivity(activity, actor, inboxes, requiredFeature);
 	}
 
 	private void sendActivityForCommentToBeForwarded(Comment comment, Actor actor, CommentableContentObject parent, Activity activity){
@@ -981,7 +1101,11 @@ public class ActivityPubWorker{
 				inboxes.add(actorInbox(oaa.owner()));
 			if(oaa.author() instanceof ForeignActor)
 				inboxes.add(actorInbox(oaa.author()));
-			submitActivity(activity, actor, inboxes, comment.parentObjectID.getRqeuiredServerFeature());
+			Server.Feature requiredFeature=comment.parentObjectID.getRqeuiredServerFeature();
+			if(requiredFeature==null)
+				submitActivity(activity, actor, inboxes);
+			else
+				submitActivity(activity, actor, inboxes, requiredFeature);
 		}
 	}
 
@@ -1049,6 +1173,86 @@ public class ActivityPubWorker{
 	}
 
 	// endregion
+	// region Board topics
+
+	private void sendActivityForBoardTopic(Activity activity, BoardTopic topic, Group owner){
+		try{
+			Set<URI> inboxes=new HashSet<>(GroupStorage.getGroupMemberInboxes(owner.id));
+			if(owner.accessType==Group.AccessType.OPEN){
+				inboxes.addAll(CommentStorage.getInboxesForCommentInteractionForwarding(topic.getCommentParentID(), Set.of()));
+			}
+			submitActivity(activity, owner, inboxes);
+		}catch(SQLException x){
+			LOG.error("Error getting member inboxes or topic participants for sending {} on behalf of group {}", activity.getType(), owner.id, x);
+		}
+	}
+
+	public void sendCreateBoardTopic(Group group, BoardTopic topic, Comment firstComment){
+		ActivityPubBoardTopic apTopic=ActivityPubBoardTopic.fromNativeTopic(topic, context);
+		CollectionPage firstPage=new CollectionPage(false);
+		firstPage.partOf=apTopic.activityPubID;
+		firstPage.totalItems=1;
+		if(firstComment.isLocal()){
+			firstPage.items=List.of(new LinkOrObject(NoteOrQuestion.fromNativeComment(firstComment, context)));
+		}else{
+			firstPage.items=List.of(new LinkOrObject(firstComment.getActivityPubID()));
+		}
+		apTopic.first=new LinkOrObject(firstPage);
+		Create create=new Create()
+				.withActorLinkAndObject(group, apTopic)
+				.withActorFragmentID("createTopic"+topic.getIdString())
+				.withTarget(group.getBoardTopicsURL());
+		submitActivityForMembers(create, group);
+	}
+
+	public void sendAcceptCreateBoardTopicRequest(Group group, User author, BoardTopic topic, TopicCreationRequest origRequest){
+		ActivityPubBoardTopic apTopic=ActivityPubBoardTopic.fromNativeTopic(topic, context);
+		Accept accept=new Accept()
+				.withActorLinkAndObject(group, origRequest)
+				.withActorFragmentID("acceptCreateTopic"+topic.getIdString());
+		accept.result=List.of(new LinkOrObject(apTopic));
+
+		// Sending this activity to author and getting a successful response before sending Create{BoardTopic} to all group members
+		// ensures that the comment will be up to date with its parent object set to the newly created topic
+		sendActivitySynchronously(accept, group, author.inbox);
+	}
+
+	public void sendCreateBoardTopicRequest(User self, ForeignGroup group, BoardTopic topic, Comment firstComment){
+		NoteOrQuestion note=NoteOrQuestion.fromNativeComment(firstComment, context);
+		note.target=null;
+		TopicCreationRequest req=new TopicCreationRequest()
+				.withActorLinkAndObject(self, note);
+		req.name=topic.title;
+		req.to=List.of(new LinkOrObject(group.activityPubID));
+		req.activityPubID=new UriBuilder(topic.getActivityPubID()).fragment("createRequest").build();
+		sendActivitySynchronously(req, self, group.inbox);
+	}
+
+	public void sendRenameBoardTopicRequest(User self, ForeignGroup group, BoardTopic topic, String newName){
+		TopicRenameRequest req=new TopicRenameRequest()
+				.withActorAndObjectLinks(self, topic)
+				.withActorFragmentID("renameTopic"+topic.getIdString()+"_"+rand());
+		req.name=newName;
+		sendActivitySynchronously(req, self, group.inbox);
+	}
+
+	public void sendUpdateBoardTopic(Group group, BoardTopic topic){
+		Update update=new Update()
+				.withActorLinkAndObject(group, ActivityPubBoardTopic.fromNativeTopic(topic, context))
+				.withActorFragmentID("updateTopic"+topic.getIdString()+"_"+rand());
+
+		sendActivityForBoardTopic(update, topic, group);
+	}
+
+	public void sendDeleteBoardTopic(Group group, BoardTopic topic){
+		Delete delete=new Delete()
+				.withActorAndObjectLinks(group, ActivityPubBoardTopic.fromNativeTopic(topic, context))
+				.withActorFragmentID("deleteTopic"+topic.getIdString());
+
+		sendActivityForBoardTopic(delete, topic, group);
+	}
+
+	// endregion
 
 	public synchronized Future<List<Post>> fetchWallReplyThread(NoteOrQuestion post){
 		return fetchingWallReplyThreads.computeIfAbsent(post.activityPubID, (uri)->executor.submit(new FetchWallReplyThreadRunnable(this, afterFetchWallReplyThreadActions, context, fetchingWallReplyThreads, post)));
@@ -1105,6 +1309,14 @@ public class ActivityPubWorker{
 
 	public synchronized Future<Void> fetchPhotoAlbumContents(ActivityPubPhotoAlbum album, PhotoAlbum nativeAlbum){
 		return fetchingPhotoAlbums.computeIfAbsent(album.activityPubID, uri->executor.submit(new FetchPhotoAlbumPhotosTask(context, album, nativeAlbum, this, fetchingPhotoAlbums)));
+	}
+
+	public synchronized Future<Void> fetchBoardTopicComments(ActivityPubBoardTopic topic, BoardTopic nativeTopic){
+		return fetchingBoardTopics.computeIfAbsent(topic.activityPubID, uri->executor.submit(new FetchBoardTopicCommentsTask(context, topic, nativeTopic, this, fetchingBoardTopics)));
+	}
+
+	public synchronized Future<Void> fetchUserPinnedPosts(ForeignUser user){
+		return fetchingUserPinnedPosts.computeIfAbsent(user.activityPubID, uri->executor.submit(new FetchUserPinnedPostsTask(context, user, fetchingUserPinnedPosts, this)));
 	}
 
 	public <R, T extends Callable<R>> List<Future<R>> invokeAll(Collection<T> tasks){
@@ -1204,6 +1416,16 @@ public class ActivityPubWorker{
 	public void submitActivity(Activity activity, Actor actor, Collection<URI> inboxes, Server.Feature requiredFeature){
 		for(URI inbox:inboxes){
 			submitActivity(activity, actor, inbox, requiredFeature);
+		}
+	}
+
+	public void sendActivitySynchronously(Activity activity, Actor actor, URI inbox){
+		try{
+			ActivityPub.postActivity(inbox, activity, actor, context, false, EnumSet.noneOf(Server.Feature.class), true);
+		}catch(UserActionNotAllowedException x){
+			throw x;
+		}catch(Exception x){
+			throw new FederationException(x);
 		}
 	}
 }

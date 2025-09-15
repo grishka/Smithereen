@@ -26,6 +26,7 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
+import smithereen.model.LikeableContentObject;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.PostSource;
@@ -33,8 +34,10 @@ import smithereen.model.SessionInfo;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
@@ -58,6 +61,7 @@ public class CommentsRoutes{
 				ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, photo);
 				yield photo;
 			}
+			case "topic" -> ctx.getBoardController().getTopic(self==null ? null : self.user, XTEA.decodeObjectID(parentID, ObfuscatedObjectIDType.BOARD_TOPIC));
 			default -> throw new BadRequestException();
 		};
 	}
@@ -98,10 +102,11 @@ public class CommentsRoutes{
 			if(StringUtils.isNotEmpty(rid))
 				ridSuffix="_"+rid;
 			boolean fromNotifications="notifications".equals(req.queryParams("from"));
+			boolean fromFeed="feed".equals(req.queryParams("from"));
 			String formID=req.queryParams("formID");
 			CommentViewModel pvm=new CommentViewModel(comment);
-			ArrayList<CommentViewModel> needInteractions=new ArrayList<>();
-			needInteractions.add(pvm);
+			ArrayList<LikeableContentObject> needInteractions=new ArrayList<>();
+			needInteractions.add(comment);
 			if(inReplyTo!=null)
 				pvm.parentAuthorID=inReplyTo.authorID;
 			RenderedTemplateResponse model;
@@ -110,13 +115,18 @@ public class CommentsRoutes{
 						.with("post", pvm)
 						.with("parentType", switch(parent.getCommentParentID().type()){
 							case PHOTO -> Notification.ObjectType.PHOTO;
+							case BOARD_TOPIC -> Notification.ObjectType.BOARD_TOPIC;
 						})
 						.with("postType", Notification.ObjectType.COMMENT);
 			}else{
 				model=new RenderedTemplateResponse("comment", req).with("post", pvm);
 			}
+			CommentViewType viewType=parent instanceof BoardTopic ? CommentViewType.FLAT : self.prefs.commentViewType;
 
-			model.with("replyFormID", "wallPostForm_commentReply_"+parent.getCommentParentID().getHtmlElementID());
+			Map<Long, UserInteractions> commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(needInteractions, self.user);
+			model.with("commentInteractions", commentsInteractions);
+
+			model.with("replyFormID", "wallPostForm_"+(viewType==CommentViewType.FLAT ? "comment_" : "commentReply_")+parent.getCommentParentID().getHtmlElementID());
 			Map<Integer, User> users=new HashMap<>();
 			users.put(self.user.id, self.user);
 			if(inReplyTo!=null && inReplyTo.authorID!=self.user.id){
@@ -126,8 +136,14 @@ public class CommentsRoutes{
 			}
 			model.with("users", users);
 			model.with("comments", Map.of(comment.id, comment));
-			model.with("commentViewType", self.prefs.commentViewType).with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
+			model.with("commentViewType", viewType);
 			model.with("canComment", true).with("parentObject", parent);
+			if(parent instanceof BoardTopic){
+				model.with("board", !fromFeed);
+				model.with("maxReplyDepth", 0);
+			}else{
+				model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
+			}
 			String postHTML=model.renderToString();
 			WebDeltaResponse rb;
 			if(fromNotifications){
@@ -135,14 +151,17 @@ public class CommentsRoutes{
 						.remove("notificationsOwnReply"+ridSuffix)
 						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "wallPostForm_"+formID, postHTML)
 						.addClass("wallPostForm_"+formID, "collapsed");
-			}else if(replyTo==0 || self.prefs.commentViewType==CommentViewType.FLAT){
+			}else if(replyTo==0 || viewType==CommentViewType.FLAT){
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "comments_"+parent.getCommentParentID().getHtmlElementID(), postHTML);
 			}else{
-				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "commentReplies"+switch(self.prefs.commentViewType){
+				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_END, "commentReplies"+switch(viewType){
 					case THREADED -> XTEA.encodeObjectID(replyTo, ObfuscatedObjectIDType.COMMENT);
 					case TWO_LEVEL -> XTEA.encodeObjectID(comment.replyKey.get(Math.min(comment.getReplyLevel()-1, 0)), ObfuscatedObjectIDType.COMMENT);
 					case FLAT -> throw new IllegalStateException();
 				}, postHTML).show("commentReplies"+replyTo);
+				if(req.attribute("mobile")==null){
+					rb.hide("wallPostForm_"+formID);
+				}
 			}
 			if(req.attribute("mobile")==null && replyTo==0){
 				rb.runScript("updatePostForms();");
@@ -153,11 +172,11 @@ public class CommentsRoutes{
 		return "";
 	}
 
-	public static void prepareCommentList(ApplicationContext ctx, List<CommentViewModel> wall, RenderedTemplateResponse model, Account self){
+	private static void prepareCommentList(ApplicationContext ctx, List<CommentViewModel> wall, RenderedTemplateResponse model, Account self, CommentableContentObject parent){
 		HashSet<Integer> needUsers=new HashSet<>();
 		CommentViewModel.collectUserIDs(wall, needUsers);
-		model.with("users", ctx.getUsersController().getUsers(needUsers))
-				.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
+				.with("maxReplyDepth", parent instanceof BoardTopic ? 0 : PostRoutes.getMaxReplyDepth(self)-1);
 	}
 
 	public static Object ajaxCommentPreview(Request req, Response resp){
@@ -172,15 +191,18 @@ public class CommentsRoutes{
 			throw new BadRequestException();
 
 		CommentViewType viewType=info!=null && info.account!=null ? info.account.prefs.commentViewType : CommentViewType.THREADED;
+		if(parent instanceof BoardTopic)
+			viewType=CommentViewType.FLAT;
 		PaginatedList<CommentViewModel> comments=ctx.getCommentsController().getCommentsWithMaxID(parent, maxID, 100, viewType==CommentViewType.FLAT);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("comment_list", req);
 		model.with("comments", comments.list).with("baseReplyLevel", 0);
-		prepareCommentList(ctx, comments.list, model, self);
+		prepareCommentList(ctx, comments.list, model, self, parent);
 		Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(comments.list.stream().map(cvm->cvm.post).toList(), self!=null ? self.user : null);
 		model.with("commentInteractions", interactions);
 
 		boolean canComment=switch(parent){
 			case Photo p -> ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(p.ownerID), ctx.getPhotosController().getAlbumIgnoringPrivacy(p.albumID).commentPrivacy);
+			case BoardTopic bt -> self!=null && ctx.getBoardController().canPostInTopic(self.user, bt);
 		};
 
 		String elementID=parent.getCommentParentID().getHtmlElementID();
@@ -230,9 +252,10 @@ public class CommentsRoutes{
 		}
 		Map<Long, UserInteractions> interactions=ctx.getUserInteractionsController().getUserInteractions(allReplies.stream().map(cvm->cvm.post).toList(), self!=null ? self.user : null);
 		model.with("commentInteractions", interactions);
-		prepareCommentList(ctx, comments.list, model, self);
+		prepareCommentList(ctx, comments.list, model, self, parent);
 		boolean canComment=switch(parent){
 			case Photo p -> ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, ctx.getUsersController().getUserOrThrow(p.ownerID), ctx.getPhotosController().getAlbumIgnoringPrivacy(p.albumID).commentPrivacy);
+			case BoardTopic bt -> self!=null && ctx.getBoardController().canPostInTopic(self.user, bt);
 		};
 		model.with("commentViewType", viewType).with("canComment", canComment);
 		WebDeltaResponse wdr=new WebDeltaResponse(resp)
@@ -374,10 +397,16 @@ public class CommentsRoutes{
 			pvm.parentAuthorID=ctx.getCommentsController().getCommentIgnoringPrivacy(comment.replyKey.getLast()).authorID;
 		HashSet<Integer> needUsers=new HashSet<>();
 		CommentViewModel.collectUserIDs(Set.of(pvm), needUsers);
-		return new RenderedTemplateResponse("comment_hover_card", req)
+		RenderedTemplateResponse model=new RenderedTemplateResponse("comment_hover_card", req)
 				.with("post", pvm)
-				.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1)
-				.with("users", ctx.getUsersController().getUsers(needUsers));
+				.with("users", ctx.getUsersController().getUsers(needUsers, true));
+		if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
+//			model.with("board", true);
+			model.with("maxReplyDepth", 0);
+		}else{
+			model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)-1);
+		}
+		return model;
 	}
 
 	private static Comment getCommentForRequest(Request req){
@@ -417,8 +446,13 @@ public class CommentsRoutes{
 		ApplicationContext ctx=context(req);
 		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.COMMENT));
 		CommentableContentObject parent=context(req).getCommentsController().getCommentParent(self, comment);
-		// TODO do this more correctly to make sure the right page of a long comment thread is shown
-		resp.redirect(parent.getURL()+"#comment"+comment.getIDString());
+		if(parent instanceof BoardTopic){
+			int index=ctx.getCommentsController().getCommentIndexForFlatView(comment);
+			resp.redirect(parent.getURL()+"?offset="+(index-(index%20))+"#comment"+comment.getIDString());
+		}else{
+			// TODO do this more correctly to make sure the right page of a long comment thread is shown
+			resp.redirect(parent.getURL()+"#comment"+comment.getIDString());
+		}
 		return "";
 	}
 }

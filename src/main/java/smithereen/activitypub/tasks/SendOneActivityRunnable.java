@@ -3,11 +3,13 @@ package smithereen.activitypub.tasks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.EnumSet;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.activitypub.ActivityDeliveryRetry;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.ActivityPubWorker;
@@ -59,9 +61,12 @@ public class SendOneActivityRunnable implements Runnable{
 	@Override
 	public void run(){
 		try{
-			ActivityPub.postActivity(destination, activity, actor, context, retryAttempt>0, requiredServerFeatures);
+			ActivityPub.postActivity(destination, activity, actor, context, retryAttempt>0, requiredServerFeatures, false);
 		}catch(Exception x){
-			LOG.error("Exception while sending activity", x);
+			if((x instanceof IOException || x instanceof FederationException) && !Config.DEBUG)
+				LOG.warn("Exception while sending {} activity to {}: {}", activity.getType(), destination, x.toString());
+			else
+				LOG.error("Exception while sending {} activity to {}", activity.getType(), destination, x);
 			if(!(x instanceof FederationException)){
 				ActivityDeliveryRetry retry=new ActivityDeliveryRetry(activity, destination, actor, retryAttempt+1);
 				apw.scheduleRetry(retry);

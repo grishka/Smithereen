@@ -1,0 +1,50 @@
+{% extends "page" %}
+{% block content %}
+<div class="singleColumn gray borderBottom">
+	<div class="textByItself marginAfter">
+		<p>{{ L('settings_exports_explanation') }}</p>
+		<p>{{ L('settings_exports_wait_days', {'days': waitDays}) }}</p>
+	</div>
+	{% if canRequest %}
+	<a href="/settings/requestExport" class="button" data-ajax-box>{{ L('settings_exports_request') }}</a>
+	{% else %}
+	<div class="marginsAreMessy"></div>
+	<div class="settingsMessage">{{ L('settings_exports_unavailable', {'date': LD(cooldownEndTime)}) }}</div>
+	{% endif %}
+</div>
+<div class="singleColumn">
+	<h2>{{ L('settings_exports_your_archives') }}</h2>
+	<div class="wideDataTableWrap marginBefore">
+		<table class="dataTable wideTable">
+			<tr class="tableHeader">
+				<th width="150">{{ L('settings_exports_request_date') }}</th>
+				<th width="150">{{ L('settings_exports_size') }}</th>
+				<th>{{ L('settings_exports_state') }}</th>
+			</tr>
+			{% for export in exports %}
+			<tr>
+				<td>{{ LD(export.requestedAt) }}</td>
+				<td>{{ export.size>0 ? formatFileSize(export.size) : "&mdash;" }}</td>
+				<td>
+				{% if export.state=='PREPARING' %}
+				{{ L('settings_exports_processing') }}
+				{% elseif export.state=='READY' %}
+				{{ L('settings_exports_ready', {}, {'download': {'href': fileURLs[export.fileID]} }) }}
+				{% elseif export.state=='FAILED' %}
+				{{ L('error') }}
+				{% elseif export.state=='EXPIRED' %}
+				{{ L('settings_exports_expired') }}
+				{% endif %}
+				</td>
+			</tr>
+			{% else %}
+			<tr>
+				<td colspan="3">
+					<div class="emptyState">{{ L('settings_exports_empty') }}</div>
+				</td>
+			</tr>
+			{% endfor %}
+		</table>
+	</div>
+</div>
+{% endblock %}

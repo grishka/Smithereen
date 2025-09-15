@@ -124,7 +124,7 @@ public class ExtendedHttpClient extends HttpClient{
 		if(req.headers().firstValue("user-agent").isPresent())
 			return req;
 		return HttpRequest.newBuilder(req, (k, v)->true)
-				.header("User-Agent", "Smithereen/"+BuildInfo.VERSION+" +https://"+Config.domain+"/")
+				.header("User-Agent", "Smithereen/"+BuildInfo.VERSION+" (+https://"+Config.domain+"/)")
 				.build();
 	}
 }

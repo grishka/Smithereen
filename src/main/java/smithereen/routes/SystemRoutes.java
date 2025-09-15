@@ -56,6 +56,7 @@ import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.NoteOrQuestion;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -77,6 +78,10 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
 import smithereen.model.Post;
+import smithereen.model.ServerRule;
+import smithereen.model.admin.ViolationReport;
+import smithereen.model.board.BoardTopic;
+import smithereen.model.groups.GroupLink;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
@@ -106,6 +111,7 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
+import spark.QueryParamsMap;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -233,7 +239,7 @@ public class SystemRoutes{
 						mime="image/jpeg";
 				}
 			}
-			case "post_photo", "message_photo" -> {
+			case "post_photo", "message_photo", "comment_photo" -> {
 				itemType=MediaCache.ItemType.PHOTO;
 				SessionInfo sess=sessionInfo(req);
 				Object contentObj=switch(type){
@@ -247,6 +253,10 @@ public class SystemRoutes{
 							yield null;
 						long msgID=decodeLong(req.queryParams("msg_id"));
 						yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
+					}
+					case "comment_photo" -> {
+						long id=XTEA.decodeObjectID(req.queryParams("comment_id"), ObfuscatedObjectIDType.COMMENT);
+						yield ctx.getCommentsController().getCommentIgnoringPrivacy(id);
 					}
 					default -> throw new IllegalStateException("Unexpected value: "+type);
 				};
@@ -289,6 +299,20 @@ public class SystemRoutes{
 				mime="image/webp";
 				itemType=MediaCache.ItemType.PHOTO;
 			}
+			case "group_link" -> {
+				requireQueryParams(req, "group", "link");
+				int groupID=safeParseInt(req.queryParams("group"));
+				long linkID=safeParseLong(req.queryParams("link"));
+				Account self=currentUserAccount(req);
+				Group g=ctx.getGroupsController().getGroupOrThrow(groupID);
+				ctx.getPrivacyController().enforceGroupContentAccess(req, g);
+				GroupLink link=ctx.getGroupsController().getLink(g, linkID);
+				if(link.apImageURL==null)
+					throw new BadRequestException();
+				uri=link.apImageURL;
+				mime="image/webp";
+				itemType=MediaCache.ItemType.PHOTO;
+			}
 			case null, default -> {
 				LOG.warn("unknown external file type {}", type);
 				return "";
@@ -310,7 +334,12 @@ public class SystemRoutes{
 					try{
 						SessionInfo sessionInfo=sessionInfo(req);
 						if(sessionInfo==null || sessionInfo.account==null){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
-							resp.redirect(uri.toString());
+							if(req.queryParams("fb")!=null){
+								boolean is2x=req.queryParams("2x")!=null;
+								resp.redirect(Config.localURI(sizeType==SizedImage.Type.AVA_SQUARE_SMALL || (is2x && sizeType==SizedImage.Type.AVA_SQUARE_MEDIUM) ? "/res/broken_photo_small.svg" : "/res/broken_photo.svg").toString());
+								return "";
+							}
+							resp.status(404);
 							return "";
 						}
 						LOG.debug("downloadExternalMedia: downloading {}", uri);
@@ -321,18 +350,30 @@ public class SystemRoutes{
 							item=(MediaCache.PhotoItem) cache.downloadAndPut(uri, mime, itemType, false, 0, 0);
 						if(item==null){
 							if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
-								if(user!=null){
-									ForeignUser updatedUser=context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
-									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
-									return "";
-								}else if(group!=null){
-									ForeignGroup updatedGroup=context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
-									resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying").toString());
-									return "";
-								}
+								try{
+									String extraParams="";
+									if(req.queryParams("fb")!=null)
+										extraParams+="&fb";
+									if(req.queryParams("2x")!=null)
+										extraParams+="&2x";
+									if(user!=null){
+										ForeignUser updatedUser=context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
+										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying"+extraParams).toString());
+										return "";
+									}else{
+										ForeignGroup updatedGroup=context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
+										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying"+extraParams).toString());
+										return "";
+									}
+								}catch(ObjectNotFoundException ignore){}
 							}
-							LOG.debug("downloadExternalMedia: redirecting to original url {}", uri);
-							resp.redirect(uri.toString());
+							LOG.debug("downloadExternalMedia: all attempts failed for {}", uri);
+							if(req.queryParams("fb")!=null){
+								boolean is2x=req.queryParams("2x")!=null;
+								resp.redirect(Config.localURI(sizeType==SizedImage.Type.AVA_SQUARE_SMALL || (is2x && sizeType==SizedImage.Type.AVA_SQUARE_MEDIUM) ? "/res/broken_photo_small.svg" : "/res/broken_photo.svg").toString());
+								return "";
+							}
+							resp.status(404);
 						}else{
 							LOG.debug("downloadExternalMedia: download finished {}", uri);
 							resp.redirect(new CachedRemoteImage(item, cropRegion, uri).getUriForSizeAndFormat(sizeType, format).toString());
@@ -341,7 +382,12 @@ public class SystemRoutes{
 					}catch(IOException x){
 						LOG.debug("Exception while downloading external media file from {}", uri, x);
 					}
-					resp.redirect(uri.toString());
+					if(req.queryParams("fb")!=null){
+						boolean is2x=req.queryParams("2x")!=null;
+						resp.redirect(Config.localURI(sizeType==SizedImage.Type.AVA_SQUARE_SMALL || (is2x && sizeType==SizedImage.Type.AVA_SQUARE_MEDIUM) ? "/res/broken_photo_small.svg" : "/res/broken_photo.svg").toString());
+						return "";
+					}
+					resp.status(404);
 				}
 			}finally{
 				downloadMutex.release(uriStr);
@@ -389,7 +435,8 @@ public class SystemRoutes{
 				.with("totalPosts", PostStorage.getLocalPostCount(false))
 				.with("totalGroups", GroupStorage.getLocalGroupCount())
 				.with("serverVersion", BuildInfo.VERSION)
-				.with("restrictedServers", ctx.getModerationController().getAllServers(0, 10000, null, true, null).list);
+				.with("restrictedServers", ctx.getModerationController().getAllServers(0, 10000, null, true, null).list)
+				.with("serverRules", ctx.getModerationController().getServerRules());
 
 		return model;
 	}
@@ -407,13 +454,24 @@ public class SystemRoutes{
 		resp.type("application/json");
 		Lang l=lang(req);
 		try{
-			return new JsonObjectBuilder().add("success", switch(ctx.getSearchController().loadRemoteObject(self.user, uri)){
+			Object obj=ctx.getSearchController().loadRemoteObject(self.user, uri);
+			if(req.queryParams("group")!=null && req.queryParams("link")!=null){
+				try{
+					Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.queryParams("group")));
+					GroupLink gl=ctx.getGroupsController().getLink(group, safeParseLong(req.queryParams("link")));
+					if(gl.isUnresolvedActivityPubObject && gl.url.toString().equals(uri)){
+						ctx.getGroupsController().setLinkResolved(group, gl, ObjectLinkResolver.getObjectIdFromObject(obj));
+					}
+				}catch(ObjectNotFoundException ignore){}
+			}
+			return new JsonObjectBuilder().add("success", switch(obj){
 				case Post post when post.getReplyLevel()>0 -> Config.localURI("/posts/"+post.replyKey.getFirst()+"#comment"+post.id).toString();
 				case Post post -> post.getInternalURL().toString();
 				case Actor actor -> actor.getProfileURL();
 				case PhotoAlbum album -> album.getURL();
 				case Photo photo -> photo.getURL();
 				case Comment comment -> ctx.getCommentsController().getCommentParent(self.user, comment).getURL();
+				case BoardTopic topic -> topic.getURL();
 				default -> throw new RemoteObjectFetchException(RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, null);
 			}).build();
 		}catch(RemoteObjectFetchException x){
@@ -525,19 +583,25 @@ public class SystemRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("report_form", req);
 		String rawID=req.queryParams("id");
 		Actor actorForAvatar;
-		String title, subtitle, boxTitle, textareaPlaceholder, titleText, otherServerDomain;
+		String title, subtitle, boxTitle, titleText, otherServerDomain;
 		Lang l=lang(req);
 		String type=req.queryParams("type");
 		switch(type){
 			case "post" -> {
 				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
-				User postAuthor=ctx.getUsersController().getUserOrThrow(post.authorID);
+				if(post.isMastodonStyleRepost()){
+					post=ctx.getWallController().getPostOrThrow(post.repostOf);
+					rawID=post.id+"";
+				}
+				User postAuthor=null;
+				try{
+					postAuthor=ctx.getUsersController().getUserOrThrow(post.authorID);
+				}catch(ObjectNotFoundException ignore){}
 				actorForAvatar=postAuthor;
-				title=postAuthor.getCompleteName();
+				title=postAuthor==null ? "DELETED" : postAuthor.getCompleteName();
 				subtitle=TextProcessor.truncateOnWordBoundary(post.text, 200);
 				boxTitle=l.get(post.getReplyLevel()>0 ? "report_title_comment" : "report_title_post");
-				textareaPlaceholder=l.get("report_placeholder_content");
 				titleText=l.get(post.getReplyLevel()>0 ? "report_text_comment" : "report_text_post");
 				otherServerDomain=Config.isLocal(post.getActivityPubID()) ? null : post.getActivityPubID().getHost();
 			}
@@ -549,7 +613,6 @@ public class SystemRoutes{
 				subtitle="";
 				boxTitle=l.get("report_title_user");
 				titleText=l.get("report_text_user");
-				textareaPlaceholder=l.get("report_placeholder_profile");
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
 			case "group" -> {
@@ -560,7 +623,6 @@ public class SystemRoutes{
 				subtitle="";
 				boxTitle=l.get(group.isEvent() ? "report_title_event" : "report_title_group");
 				titleText=l.get(group.isEvent() ? "report_text_event" : "report_text_group");
-				textareaPlaceholder=l.get("report_placeholder_profile");
 				otherServerDomain=group instanceof ForeignGroup fg ? fg.domain : null;
 			}
 			case "message" -> {
@@ -572,32 +634,35 @@ public class SystemRoutes{
 				subtitle=TextProcessor.truncateOnWordBoundary(msg.text, 200);
 				boxTitle=l.get("report_title_message");
 				titleText=l.get("report_text_message");
-				textareaPlaceholder=l.get("report_placeholder_content");
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
 			case "photo" -> {
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
 				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
 				ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
-				User user=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				User user=null;
+				try{
+					user=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				}catch(ObjectNotFoundException ignore){}
 				actorForAvatar=user;
-				title=user.getCompleteName();
+				title=user==null ? "DELETED" : user.getCompleteName();
 				subtitle=photo.description;
 				boxTitle=l.get("report_title_photo");
 				titleText=l.get("report_text_photo");
-				textareaPlaceholder=l.get("report_placeholder_content");
 				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
 			}
 			case "comment" -> {
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.COMMENT);
 				Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(id);
 				ctx.getPrivacyController().enforceObjectPrivacy(self.user, comment);
-				User user=ctx.getUsersController().getUserOrThrow(comment.authorID);
+				User user=null;
+				try{
+					user=ctx.getUsersController().getUserOrThrow(comment.authorID);
+				}catch(ObjectNotFoundException ignore){}
 				actorForAvatar=user;
-				title=user.getCompleteName();
+				title=user==null ? "DELETED" : user.getCompleteName();
 				subtitle=TextProcessor.truncateOnWordBoundary(comment.text, 200);
 				boxTitle=l.get("report_title_comment");
-				textareaPlaceholder=l.get("report_placeholder_content");
 				titleText=l.get("report_text_comment");
 				otherServerDomain=Config.isLocal(comment.getActivityPubID()) ? null : comment.getActivityPubID().getHost();
 			}
@@ -606,18 +671,40 @@ public class SystemRoutes{
 		model.with("actorForAvatar", actorForAvatar)
 				.with("reportTitle", title)
 				.with("reportSubtitle", subtitle)
-				.with("textAreaPlaceholder", textareaPlaceholder)
 				.with("reportTitleText", titleText)
-				.with("otherServerDomain", otherServerDomain);
+				.with("otherServerDomain", otherServerDomain)
+				.with("serverRules", ctx.getModerationController().getServerRules());
 		return wrapForm(req, resp, "report_form", "/system/submitReport?type="+type+"&id="+rawID, boxTitle, "send", model);
 	}
 
 	public static Object submitReport(Request req, Response resp, Account self, ApplicationContext ctx){
-		requireQueryParams(req, "type", "id");
+		requireQueryParams(req, "type", "id", "reason");
 		String rawID=req.queryParams("id");
 		String type=req.queryParams("type");
 		String comment=req.queryParamOrDefault("reportText", "");
+		ViolationReport.Reason reason=enumValue(req.queryParams("reason"), ViolationReport.Reason.class);
 		boolean forward="on".equals(req.queryParams("forward"));
+		Set<Integer> rules;
+		if(reason==ViolationReport.Reason.SERVER_RULES){
+			QueryParamsMap rulesMap=req.queryMap("rules");
+			if(rulesMap==null)
+				throw new BadRequestException();
+			Set<Integer> validRuleIDs=ctx.getModerationController()
+					.getServerRules()
+					.stream()
+					.map(ServerRule::id)
+					.collect(Collectors.toSet());
+			rules=rulesMap.toMap()
+					.keySet()
+					.stream()
+					.map(Utils::safeParseInt)
+					.filter(validRuleIDs::contains)
+					.collect(Collectors.toSet());
+			if(rules.isEmpty())
+				throw new BadRequestException();
+		}else{
+			rules=Set.of();
+		}
 
 		Actor target;
 		List<ReportableContentObject> content;
@@ -627,7 +714,11 @@ public class SystemRoutes{
 				int id=safeParseInt(rawID);
 				Post post=ctx.getWallController().getPostOrThrow(id);
 				content=List.of(post);
-				target=ctx.getUsersController().getUserOrThrow(post.authorID);
+				try{
+					target=ctx.getUsersController().getUserOrThrow(post.authorID);
+				}catch(ObjectNotFoundException x){
+					target=null;
+				}
 			}
 			case "user" -> {
 				int id=safeParseInt(rawID);
@@ -649,7 +740,11 @@ public class SystemRoutes{
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
 				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
 				ctx.getPrivacyController().enforceObjectPrivacy(self.user, photo);
-				target=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				try{
+					target=ctx.getUsersController().getUserOrThrow(photo.authorID);
+				}catch(ObjectNotFoundException x){
+					target=null;
+				}
 				content=List.of(photo);
 			}
 			case "comment" -> {
@@ -657,12 +752,16 @@ public class SystemRoutes{
 				Comment commentObj=ctx.getCommentsController().getCommentIgnoringPrivacy(id);
 				ctx.getPrivacyController().enforceObjectPrivacy(self.user, commentObj);
 				content=List.of(commentObj);
-				target=ctx.getUsersController().getUserOrThrow(commentObj.authorID);
+				try{
+					target=ctx.getUsersController().getUserOrThrow(commentObj.authorID);
+				}catch(ObjectNotFoundException x){
+					target=null;
+				}
 			}
 			default -> throw new BadRequestException("invalid type");
 		}
 
-		ctx.getModerationController().createViolationReport(self.user, target, content, comment, forward);
+		ctx.getModerationController().createViolationReport(self.user, target, content, reason, rules, comment, forward);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).showSnackbar(lang(req).get("report_submitted"));
 		}

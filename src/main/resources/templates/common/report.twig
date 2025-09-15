@@ -1,7 +1,8 @@
-{# @pebvariable name="report" type="smithereen.model.ViolationReport" #}
+{# @pebvariable name="report" type="smithereen.model.admin.ViolationReport" #}
 {% extends "page" %}
 {% block content %}
 {% include "reports_tabbar" with {'tab': 'view'} %}
+{% if message is not empty %}<div class="singleColumn"><div class="settingsMessage">{{ message | nl2br }}</div></div>{% endif %}
 <div class="singleColumn adminInfoGrid borderBottom" id="report{{ report.id }}">
 	<div class="spanAll">
 		{% if report.state=='OPEN' %}
@@ -37,6 +38,53 @@
 	<div class="ellipsize">
 		<span class="grayText">{{ L('report_sent_at') }}:</span> {{ LD(report.time) }}
 	</div>
+	<div style="overflow-x: visible">
+		<span class="grayText">{{ L('admin_report_reason') }}:</span>
+		{% if isMobile %}
+
+		<a href="javascript:void(0)" onclick="showOptions(this)" data-options="{{ json([
+			{'type': 'post', 'label': L('admin_report_reason_spam').toString(), 'href': "/settings/admin/reports/#{report.id}/setReason?reason=SPAM", 'ajax': 'box'},
+			{'type': 'post', 'label': L('admin_report_reason_rules').toString(), 'href': "/settings/admin/reports/#{report.id}/setReason?reason=SERVER_RULES", 'ajax': 'box'},
+			{'type': 'post', 'label': L('admin_report_reason_illegal').toString(), 'href': "/settings/admin/reports/#{report.id}/setReason?reason=ILLEGAL", 'ajax': 'box'},
+			{'type': 'post', 'label': L('admin_report_reason_other').toString(), 'href': "/settings/admin/reports/#{report.id}/setReason?reason=OTHER", 'ajax': 'box'}
+		]) }}">{{ L(report.reason.langKey) }}</a>
+		{% else %}
+		<span class="popupMenuW" id="reasonSelector">
+			<a href="javascript:void(0)" class="opener" onclick="cur.showReasonMenu(this)">{{ L(report.reason.langKey) }}</a>
+			<div class="popupMenu compact" style="display: none">
+				<ul>
+					<li data-act="SPAM">{{ L('admin_report_reason_spam') }}</li>
+					<li data-act="SERVER_RULES">{{ L('admin_report_reason_rules') }}</li>
+					<li data-act="ILLEGAL">{{ L('admin_report_reason_illegal') }}</li>
+					<li data-act="OTHER">{{ L('admin_report_reason_other') }}</li>
+				</ul>
+			</div>
+		</span>
+		<span class="inlineLoader" style="display: none" id="reasonLoader"></span>
+{% script %}
+cur.selectedReason="{{ report.reason }}";
+cur.showReasonMenu=function(el){
+	showSimplePopupMenuWithoutInput(el, cur.selectedReason, function(newReason){
+		if(cur.selectedReason==newReason)
+			return;
+		cur.selectedReason=newReason;
+		if(cur.selectedReason=="SERVER_RULES"){
+			LayerManager.getInstance().showBoxLoader();
+		}else{
+			ge("reasonSelector").hide();
+			ge("reasonLoader").show();
+		}
+		ajaxPostAndApplyActions("/settings/admin/reports/{{ report.id }}/setReason", {reason: newReason}, null, function(){
+			if(newReason!="SERVER_RULES"){
+				ge("reasonSelector").show();
+				ge("reasonLoader").hide();
+			}
+		}, true);
+	});
+};
+{% endscript %}
+		{% endif %}
+	</div>
 	{% if report.serverDomain is not empty %}
 	<div class="ellipsize">
 		<span class="grayText">{{ L('server') }}:</span> {{ report.serverDomain }}
@@ -47,15 +95,29 @@
 		<span class="grayText">{{ L('report_resolved_at') }}:</span> {{ LD(report.actionTime) }}
 	</div>
 	{% endif %}
+	{% if report.rules is not empty %}
+	<div class="spanAll">
+		<div class="grayText">{{ L('admin_report_violated_rules') }}: [ <a href="/settings/admin/reports/{{ report.id }}/rulesForm" data-ajax-box>{{ L('edit') }}</a> ]</div>
+		<ul class="actualList">
+		{% for rule in rules %}
+			{% if rule.deleted %}
+			<li><span><s>{{ rule.getTranslatedTitle(getLocale()) }}</s></span></li>
+			{% else %}
+			<li><span>{{ rule.getTranslatedTitle(getLocale()) }}</span></li>
+			{% endif %}
+		{% endfor %}
+		</ul>
+	</div>
+	{% endif %}
 	{% if report.comment is not empty %}
 	<div class="spanAll">
 		<div class="grayText">{{ L('report_comment') }}:</div>
 		{{ report.comment }}
 	</div>
 	{% endif %}
-	{% if content is not empty %}
+	{% if content is not empty or (report.state=='OPEN' and report.targetID>0) %}
 	<div class="spanAll">
-		<div class="grayText">{{ L('admin_report_content') }}:</div>
+		<div class="grayText">{{ L('admin_report_content') }}:{% if report.targetID>0 %} [ <a href="/users/{{ report.targetID }}/meminfo/content?report={{ report.id }}">{{ L('admin_report_add_content_list') }}</a> ] [ <a href="/settings/admin/reports/{{ report.id }}/addLinksForm" data-ajax-box>{{ L('admin_report_add_content_link') }}</a> ]</div>{% endif %}
 		{% for cont in content %}
 		<div>
 			{%- if cont.type=='post' %}
@@ -76,9 +138,12 @@
 			{%- endif %}
 			{%- if cont.type=='photo' %}
 			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" onclick="return openPhotoViewer(this)" data-pv="{{ json(cont.pvData) }}" data-pv-url="/photos/ajaxViewerInfoForReport">{{ L(langKey, {'id': cont.id}) }}</a>
+			{%- elseif cont.type=='actualComment' and cont.firstInTopic %}
+			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" data-ajax-box>{{ L('admin_report_content_topic', {'title': cont.topicTitle}) }}</a>
 			{%- else %}
 			<a href="{{ cont.url }}" style="{% if not exists %}text-decoration: line-through{% endif %}" data-ajax-box>{{ L(langKey, {'id': cont.id}) }}</a>
 			{% endif %}
+			{% if report.state=='OPEN' %}[ <a href="/settings/admin/reports/{{ report.id }}/removeContent?id={{ cont.id }}&type={{ cont.type }}&csrf={{ csrf }}" id="removeContentLink_{{ cont.type }}{{ cont.id }}" data-ajax data-ajax-show="removeContentLoader_{{ cont.type }}{{ cont.id }}" data-ajax-hide="removeContentLink_{{ cont.type }}{{ cont.id }}">{{ L('admin_report_exclude_content') }}</a><span class="inlineLoader" id="removeContentLoader_{{ cont.type }}{{ cont.id }}" style="display: none"></span> ]{% endif %}
 		</div>
 		{% endfor %}
 	</div>
@@ -102,8 +167,20 @@
 			{% if report.state=='OPEN' %}
 			<a href="/settings/admin/reports/{{ report.id }}/markResolved?csrf={{ csrf }}" class="button" data-ajax>{{ L('report_action_reject') }}</a>
 			{% if canDeleteContent %}<a href="/settings/admin/reports/{{ report.id }}/deleteContentForm" class="button" data-ajax-box>{{ L(isLocalTarget ? 'report_action_delete_content' : 'report_action_delete_content_locally') }}</a>{% endif %}
-			{% if report.targetID>0 %}<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}" class="button" data-ajax-box>{{ L('report_action_limit_user') }}</a>{% endif %}
-			{% if canDeleteContent and report.targetID>0 %}<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}&deleteContent" class="button" data-ajax-box>{{ L('report_action_delete_and_limit') }}</a>{% endif %}
+			{% if canBanTarget %}
+			{% if report.targetID>0 %}
+			<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}" class="button" data-ajax-box>{{ L('report_action_limit_user') }}</a>
+			{% else %}
+			<a href="/groups/{{ -report.targetID }}/banForm?report={{ report.id }}" class="button" data-ajax-box>{{ L('report_action_limit_group') }}</a>
+			{% endif %}
+			{% if canDeleteContent %}
+			{% if report.targetID>0 %}
+			<a href="/users/{{ report.targetID }}/banForm?report={{ report.id }}&deleteContent" class="button" data-ajax-box>{{ L('report_action_delete_and_limit') }}</a>
+			{% else %}
+			<a href="/groups/{{ -report.targetID }}/banForm?report={{ report.id }}&deleteContent" class="button" data-ajax-box>{{ L('report_action_delete_and_limit') }}</a>
+			{% endif %}
+			{% endif %}
+			{% endif %}
 			{% else %}
 			<a href="/settings/admin/reports/{{ report.id }}/markUnresolved?csrf={{ csrf }}" class="button" data-ajax>{{ L('mark_report_unresolved') }}</a>
 			{% endif %}

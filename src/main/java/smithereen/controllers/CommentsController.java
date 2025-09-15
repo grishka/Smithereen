@@ -27,6 +27,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.activitypub.objects.activities.Like;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -39,6 +40,7 @@ import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.PostSource;
 import smithereen.model.User;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentableContentObject;
@@ -47,6 +49,7 @@ import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.storage.CommentStorage;
+import smithereen.storage.LikeStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.utils.Pair;
@@ -74,11 +77,21 @@ public class CommentsController{
 				else if(album.flags.contains(PhotoAlbum.Flag.GROUP_DISABLE_COMMENTING))
 					throw new UserActionNotAllowedException();
 			}
+			case BoardTopic topic -> {
+				if(!context.getBoardController().canPostInTopic(self, topic))
+					throw new UserActionNotAllowedException();
+			}
 		}
 	}
 
 	public Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
 								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
+		return createComment(self, parent, inReplyTo, textSource, sourceFormat, contentWarning, attachmentIDs, attachAltTexts, false);
+	}
+
+	Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
+								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts,
+								 boolean skipFederation){
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(parent);
 		if(context.getPrivacyController().isUserBlocked(self, oaa.owner()))
 			throw new UserActionNotAllowedException();
@@ -149,10 +162,12 @@ public class CommentsController{
 				context.getGroupsController().incrementHintsRank(self, g, 3);
 			}
 
-			if(oaa.owner() instanceof ForeignActor){
-				context.getActivityPubWorker().sendCreateComment(self, comment, parent);
-			}else{
-				context.getActivityPubWorker().sendAddComment(oaa.owner(), comment, parent);
+			if(!skipFederation){
+				if(oaa.owner() instanceof ForeignActor){
+					context.getActivityPubWorker().sendCreateComment(self, comment, parent);
+				}else{
+					context.getActivityPubWorker().sendAddComment(oaa.owner(), comment, parent);
+				}
 			}
 
 			return comment;
@@ -229,8 +244,7 @@ public class CommentsController{
 			for(CommentViewModel post:replies){
 				if(post.post.getReplyLevel()>key.size()){
 					CommentViewModel parentVM=switch(type){
-						case THREADED -> postMap.get(post.post.replyKey.getLast());
-						case TWO_LEVEL -> postMap.get(post.post.replyKey.get(1));
+						case THREADED, TWO_LEVEL -> postMap.get(post.post.replyKey.getLast());
 						case FLAT -> throw new IllegalArgumentException();
 					};
 					if(parentVM!=null){
@@ -257,23 +271,30 @@ public class CommentsController{
 		if(comment.ownerID>0 && self.getOwnerID()!=comment.ownerID && self.getOwnerID()!=comment.authorID)
 			throw new UserActionNotAllowedException();
 		if(comment.ownerID<0){
-			if(self instanceof User user)
+			if(self instanceof User user && comment.authorID!=user.id)
 				context.getGroupsController().enforceUserAdminLevel(context.getGroupsController().getGroupOrThrow(-comment.ownerID), user, Group.AdminLevel.MODERATOR);
 			else if(self instanceof Group group && group.getOwnerID()!=comment.ownerID)
 				throw new UserActionNotAllowedException();
 		}
 		CommentableContentObject parent=self instanceof User user ? getCommentParent(user, comment) : getCommentParentIgnoringPrivacy(comment);
+		if(parent instanceof BoardTopic topic && topic.firstCommentID==comment.id)
+			if(self instanceof ForeignUser){
+				context.getBoardController().deleteTopic(topic);
+				return;
+			}else{
+				throw new UserActionNotAllowedException("Can't delete first comment in a board topic");
+			}
 		try{
 			CommentStorage.deleteComment(comment);
 			if(comment.isLocal() && comment.attachments!=null){
 				MediaStorage.deleteMediaFileReferences(comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT);
 			}
+			LikeStorage.deleteAllLikesForObject(comment.id, Like.ObjectType.COMMENT);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 
 		context.getNotificationsController().deleteNotificationsForObject(comment);
-		// TODO delete likes
 
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(comment);
 		if(self.getOwnerID()==comment.authorID){ // User deleted their own comment, send as Delete
@@ -289,7 +310,7 @@ public class CommentsController{
 			CommentParentObjectID parentID=parent.getCommentParentID();
 			for(List<Long> commentIDs=CommentStorage.getCommentIDsForDeletion(parentID);!commentIDs.isEmpty();commentIDs=CommentStorage.getCommentIDsForDeletion(parentID)){
 				MediaStorage.deleteMediaFileReferences(commentIDs, MediaFileReferenceType.COMMENT_ATTACHMENT);
-				// TODO delete likes
+				LikeStorage.deleteAllLikesForObjects(commentIDs, Like.ObjectType.COMMENT);
 				CommentStorage.deleteComments(commentIDs);
 			}
 			CommentStorage.deleteCommentBookmarks(parentID);
@@ -301,6 +322,7 @@ public class CommentsController{
 	public CommentableContentObject getCommentParentIgnoringPrivacy(Comment comment){
 		return switch(comment.parentObjectID.type()){
 			case PHOTO -> context.getPhotosController().getPhotoIgnoringPrivacy(comment.parentObjectID.id());
+			case BOARD_TOPIC -> context.getBoardController().getTopicIgnoringPrivacy(comment.parentObjectID.id());
 		};
 	}
 
@@ -448,6 +470,33 @@ public class CommentsController{
 		}
 	}
 
+	public Set<URI> getObjectCommentIDs(CommentableContentObject obj, Collection<URI> filter){
+		if(filter.isEmpty())
+			return Set.of();
+		try{
+			Set<URI> foreignIDs=filter.stream().filter(id->!Config.isLocal(id)).collect(Collectors.toSet());
+			Set<Long> localIDs=filter.stream()
+					.filter(Config::isLocal)
+					.map(ObjectLinkResolver::getObjectIdFromLocalURL)
+					.filter(id->id!=null && id.type()==ObjectLinkResolver.ObjectType.COMMENT)
+					.map(ObjectLinkResolver.ObjectTypeAndID::id)
+					.collect(Collectors.toSet());
+			HashSet<URI> res=new HashSet<>();
+			if(!foreignIDs.isEmpty()){
+				res.addAll(CommentStorage.getObjectForeignComments(obj.getCommentParentID(), foreignIDs));
+			}
+			if(!localIDs.isEmpty()){
+				CommentStorage.getObjectLocalComments(obj.getCommentParentID(), localIDs)
+						.stream()
+						.map(id->Config.localURI("/comments/"+XTEA.encodeObjectID(id, ObfuscatedObjectIDType.COMMENT)))
+						.forEach(res::add);
+			}
+			return res;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public PaginatedList<Comment> getCommentReplies(CommentableContentObject parent, Comment comment, int offset, int count){
 		try{
 			return CommentStorage.getCommentReplies(parent.getCommentParentID(), comment!=null ? comment.getReplyKeyForReplies() : null, offset, count);
@@ -488,6 +537,23 @@ public class CommentsController{
 		try{
 			List<Comment> comments=CommentStorage.getUserReplies(self.id, replyKeys);
 			return comments.stream().collect(Collectors.toMap(p->p.replyKey.getLast(), CommentViewModel::new, (p1, p2)->p1.post.id>p2.post.id ? p1 : p2));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getCommentIndexForFlatView(Comment comment){
+		try{
+			return CommentStorage.getCommentIndex(comment.parentObjectID, comment.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<CommentViewModel> getAllCommentsByAuthor(User author, int offset, int count){
+		try{
+			PaginatedList<Comment> comments=CommentStorage.getAllCommentsByAuthor(author.id, offset, count);
+			return CommentViewModel.wrap(comments);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

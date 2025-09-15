@@ -15,7 +15,8 @@
     "bookmarks.json",
     "photos.json",
     "audio.json",
-    "admin_fasp.json"
+    "admin_fasp.json",
+    "board.json"
   ],
   "languages": [
     {

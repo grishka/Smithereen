@@ -10,6 +10,7 @@ import smithereen.text.TextProcessor;
 public class PropertyValue extends ActivityPubObject{
 
 	public String value;
+	public boolean parsed;
 
 	public PropertyValue(){}
 

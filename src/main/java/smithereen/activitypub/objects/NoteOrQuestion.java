@@ -39,9 +39,12 @@ import smithereen.lang.Lang;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
 import smithereen.model.User;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
@@ -60,6 +63,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public URI quoteRepostID;
 	public String action;
 	public boolean canBeReposted;
+	public URI quoteRepostAuth;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -87,7 +91,11 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		}
 
 		// fix for Lemmy (and possibly something else)
-		boolean hasBogusURL=url!=null && !Utils.uriHostMatches(url, activityPubID);
+		// If the domain in `url` doesn't match `id`, a link will be appended to the text and `id` will be used instead of `url`
+		// for the purpose of opening this post on its origin server.
+		boolean hasBogusURL=url!=null && !Utils.uriHostMatches(url, activityPubID)
+				// Special case: Threads moved their web app from .net to .com in April 2025, but AP IDs remained on threads.net
+				&& !(activityPubID.getHost().equals("threads.net") && url.getHost().equals("www.threads.com"));
 
 		String text=content==null ? "" : content;
 		if(hasBogusURL)
@@ -275,7 +283,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 				noq.quoteRepostID=repost.getActivityPubID();
 				cc.add(context.getUsersController().getUserOrThrow(repost.authorID).activityPubID);
 
-				Document doc=Jsoup.parseBodyFragment(noq.content);
+				Document doc=Jsoup.parseBodyFragment(noq.content==null ? "" : noq.content);
 				doc.outputSettings().prettyPrint(false).indentAmount(0);
 				Element root=doc.body();
 				Element parentP;
@@ -298,6 +306,11 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 								))
 				);
 				noq.content=root.html();
+
+				if(repost.isLocal()){
+					noq.quoteRepostAuth=UriBuilder.local().path("posts", String.valueOf(repost.id), "quoteAuth", String.valueOf(post.id)).build();
+				}
+				// TODO request and store these to make Mastodon happy
 			}catch(ObjectNotFoundException ignore){}
 		}
 
@@ -421,7 +434,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		if(comment.getReplyLevel()>0){
 			Comment parentComment=context.getCommentsController().getCommentIgnoringPrivacy(comment.replyKey.getLast());
 			n.inReplyTo=parentComment.getActivityPubID();
-		}else{
+		}else if(comment.parentObjectID.type()!=CommentableObjectType.BOARD_TOPIC){
 			n.inReplyTo=parent.getActivityPubID();
 		}
 
@@ -434,7 +447,10 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		replies.first=new LinkOrObject(repliesPage);
 		n.replies=new LinkOrObject(replies);
 
-		ActivityPubCollection target=new ActivityPubCollection(false);
+		ActivityPubCollection target=switch(comment.parentObjectID.type()){
+			case BOARD_TOPIC -> new ActivityPubBoardTopic();
+			default -> new ActivityPubCollection(false);
+		};
 		target.attributedTo=parentOwner.activityPubID;
 		target.activityPubID=parent.getCommentCollectionID(context);
 		n.target=target;
@@ -490,23 +506,33 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		User author=context.getObjectLinkResolver().resolve(attributedTo, User.class, true, true, false);
 		comment.authorID=author.id;
 		comment.ownerID=owner.getOwnerID();
-		if(inReplyTo==null)
-			throw new FederationException("inReplyTo is required");
-		CommentReplyParent replyParent=context.getObjectLinkResolver().resolveNative(inReplyTo, CommentReplyParent.class, true, true, false, owner, true);
-		CommentableContentObject parentObj=switch(replyParent){
-			case CommentableContentObject _parentObj -> {
+		if(target instanceof ActivityPubBoardTopic topic){
+			comment.parentObjectID=new CommentParentObjectID(CommentableObjectType.BOARD_TOPIC, context.getBoardController().getTopicIDByActivityPubID(topic.activityPubID));
+			if(inReplyTo!=null){
+				Comment replyParent=context.getObjectLinkResolver().resolveNative(inReplyTo, Comment.class, true, true, false, owner, true);
+				comment.replyKey=replyParent.getReplyKeyForReplies();
+			}else{
 				comment.replyKey=List.of();
-				comment.parentObjectID=_parentObj.getCommentParentID();
-				yield _parentObj;
 			}
-			case Comment parentComment -> {
-				comment.replyKey=parentComment.getReplyKeyForReplies();
-				comment.parentObjectID=parentComment.parentObjectID;
-				yield context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
-			}
-		};
-		if(!Objects.equals(target.activityPubID, parentObj.getCommentCollectionID(context)))
-			throw new FederationException("target.id does not match the expected comment collection ID");
+		}else{
+			if(inReplyTo==null)
+				throw new FederationException("inReplyTo is required");
+			CommentReplyParent replyParent=context.getObjectLinkResolver().resolveNative(inReplyTo, CommentReplyParent.class, true, true, false, owner, true);
+			CommentableContentObject parentObj=switch(replyParent){
+				case CommentableContentObject _parentObj -> {
+					comment.replyKey=List.of();
+					comment.parentObjectID=_parentObj.getCommentParentID();
+					yield _parentObj;
+				}
+				case Comment parentComment -> {
+					comment.replyKey=parentComment.getReplyKeyForReplies();
+					comment.parentObjectID=parentComment.parentObjectID;
+					yield context.getCommentsController().getCommentParentIgnoringPrivacy(comment);
+				}
+			};
+			if(!Objects.equals(target.activityPubID, parentObj.getCommentCollectionID(context)))
+				throw new FederationException("target.id does not match the expected comment collection ID");
+		}
 
 		comment.setActivityPubID(activityPubID);
 		comment.activityPubURL=url==null ? activityPubID : url;
@@ -594,6 +620,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			// Pleroma, Akkoma and possibly other "*oma"s
 			quoteRepostID=tryParseURL(optString(obj, "quoteUrl"));
 		}
+		if(quoteRepostID==null){
+			quoteRepostID=tryParseURL(optString(obj, JLD.MASTODON_QUOTES_FEP+"quote"));
+		}
 		action=optString(obj, "action");
 
 		return this;
@@ -631,6 +660,10 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			serializerContext.addType("canQuote", "gts:canQuote", "@id");
 			serializerContext.addType("automaticApproval", "gts:automaticApproval", "@id");
 			obj.add("interactionPolicy",new JsonObjectBuilder().add("canQuote", new JsonObjectBuilder().add("automaticApproval", ActivityPub.AS_PUBLIC.toString())).build());
+		}
+		if(quoteRepostAuth!=null){
+			serializerContext.addAlias("quoteAuthorization", JLD.MASTODON_QUOTES_FEP+"quoteAuthorization");
+			obj.addProperty("quoteAuthorization", quoteRepostAuth.toString());
 		}
 
 		return obj;

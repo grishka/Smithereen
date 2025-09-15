@@ -155,6 +155,13 @@ class Notifier{
 				var el=ge("notifierNotification_"+m.id);
 				if(el){
 					Notifier.dismissNotification(el, false, false);
+				}else if(Notifier.notificationQueue.length){
+					for(var n of Notifier.notificationQueue){
+						if(n.id==m.id){
+							Notifier.notificationQueue.remove(n);
+							break;
+						}
+					}
 				}
 				break;
 			}
@@ -333,7 +340,7 @@ class Notifier{
 			siblingsAbove.push(wrap.children[i] as HTMLElement);
 		}
 
-		if(siblingsAbove.length){
+		if(siblingsAbove.length && fadeOut){
 			var offset=el.offsetHeight+10;
 			for(var sibling of siblingsAbove){
 				sibling.anim([{transform: "translateY(0)"}, {transform: `translateY(${offset}px)`}], {duration: 200, easing: "ease"});

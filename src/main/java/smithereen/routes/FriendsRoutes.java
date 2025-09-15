@@ -21,8 +21,8 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendRequest;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendRequest;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -187,6 +187,8 @@ public class FriendsRoutes{
 			));
 			model.addNavBarItem(group.name, group.getProfileURL()).addNavBarItem(lang(req).get("invite_friends_title"));
 			model.pageTitle(lang(req).get("invite_friends_title"));
+		}else if(self==null || user.id!=self.user.id){
+			model.headerBack(user);
 		}
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
@@ -199,6 +201,9 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
+
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(friends.list.stream().map(u->u.id).toList()));
+
 		if(isAjax(req)){
 			String baseURL=getRequestPathAndQuery(req);
 			String paginationID=req.queryParams("pagination");
@@ -254,6 +259,7 @@ public class FriendsRoutes{
 		model.pageTitle(lang(req).get("friends"));
 		model.with("tab", "mutual");
 		model.with("mutualCount", friends.total);
+		model.headerBack(user);
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
 		jsLangKey(req, "remove_friend", "yes", "no");
@@ -265,6 +271,9 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
+
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(friends.list.stream().map(u->u.id).toList()));
+
 		if(isAjax(req)){
 			String baseURL=getRequestPathAndQuery(req);
 			String paginationID=req.queryParams("pagination");
@@ -307,6 +316,9 @@ public class FriendsRoutes{
 			int mutualCount=ctx.getFriendsController().getMutualFriends(self.user, user, 0, 0, FriendsController.SortOrder.ID_ASCENDING).total;
 			model.with("mutualCount", mutualCount);
 		}
+		if(self==null || user.id!=self.user.id){
+			model.headerBack(user);
+		}
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
 		if(!isMobile(req)){
@@ -317,6 +329,9 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
+
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(followers.list.stream().map(u->u.id).toList()));
+
 		if(isAjax(req)){
 			String baseURL=getRequestPathAndQuery(req);
 			String paginationID=req.queryParams("pagination");
@@ -360,6 +375,9 @@ public class FriendsRoutes{
 			int mutualCount=ctx.getFriendsController().getMutualFriendsCount(self.user, user);
 			model.with("mutualCount", mutualCount);
 		}
+		if(self==null || user.id!=self.user.id){
+			model.headerBack(user);
+		}
 		if(user instanceof ForeignUser)
 			model.with("noindex", true);
 		jsLangKey(req, "unfollow", "yes", "no");
@@ -371,6 +389,9 @@ public class FriendsRoutes{
 							.collect(Collectors.toMap(p->p.ownerID, p->new PhotoViewerInlineData(0, "albums/"+XTEA.encodeObjectID(p.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM), p.image.getURLsForPhotoViewer())))
 					);
 		}
+
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(follows.list.stream().map(u->u.id).toList()));
+
 		if(isAjax(req)){
 			String baseURL=getRequestPathAndQuery(req);
 			String paginationID=req.queryParams("pagination");
@@ -393,6 +414,7 @@ public class FriendsRoutes{
 		PaginatedList<FriendRequest> requests=ctx.getFriendsController().getIncomingFriendRequests(self.user, offset(req), 20);
 		model.paginate(requests);
 		model.with("title", lang(req).get("friend_requests")).with("toolbarTitle", lang(req).get("friends")).with("owner", self.user);
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(requests.list.stream().map(r->r.from.id).toList()));
 		if(!isMobile(req)){
 			Map<Integer, Photo> userPhotos=ctx.getPhotosController().getUserProfilePhotos(requests.list.stream().map(r->r.from).toList());
 			model.with("avatarPhotos", userPhotos)

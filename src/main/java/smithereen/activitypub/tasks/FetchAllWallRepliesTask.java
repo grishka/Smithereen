@@ -13,6 +13,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.Actor;
@@ -93,7 +94,7 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 						}
 						doOneCollectionPage(page.items);
 					}catch(ObjectNotFoundException x){
-						LOG.warn("Failed to get replies collection page for post {}", post.getActivityPubID());
+						LOG.warn("Failed to get replies collection page for post {}: {}", post.getActivityPubID(), x.toString());
 						return post;
 					}
 				}
@@ -152,7 +153,10 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 			try{
 				task.get();
 			}catch(Exception x){
-				LOG.warn("error fetching reply via {}", task, x);
+				if(Config.DEBUG)
+					LOG.warn("error fetching reply via {}", task, x);
+				else
+					LOG.warn("error fetching reply via {}: {}", task, x.toString());
 			}
 		}
 	}

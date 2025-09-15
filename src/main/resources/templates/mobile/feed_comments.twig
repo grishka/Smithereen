@@ -2,7 +2,8 @@
 {% block headerActionButtons %}
 	<button title="{{ L('feed_filters') }}" class="actionButton iconFilterList" onclick="showMobileFeedFilters({{ json([
 		{'title': L('feed_type_posts').toString(), 'icon': 'Status', 'value': 'POST', 'selected': feedFilter contains 'POST'},
-		{'title': L('feed_type_photos').toString(), 'icon': 'Photo', 'value': 'PHOTO', 'selected': feedFilter contains 'PHOTO'}
+		{'title': L('feed_type_photos').toString(), 'icon': 'Photo', 'value': 'PHOTO', 'selected': feedFilter contains 'PHOTO'},
+		{'title': L('feed_type_board_topics').toString(), 'icon': 'Topic', 'value': 'BOARD_TOPIC', 'selected': feedFilter contains 'BOARD_TOPIC'}
 	]) }}, '/feed/comments/setFilters')"></button>
 {% endblock %}
 {%block content%}
@@ -37,8 +38,8 @@
 		<div class="postActions">
 			<a href="{{ photo.url }}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPhoto{{ photo.idString }}" data-obj-type="photo" data-obj-id="{{ photo.idString }}" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %}>
 				<span class="wideOnly">{{ L('like') }}</span>
-				<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPhoto{{ photo.idString }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
-					{{- interactions.likeCount -}}
+				<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPhoto{{ photo.idString }}" data-count="{{ interactions.likeCount }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+					{{- interactions.likeCount | numberformat -}}
 				</span>
 			</a>
 			<a href="{{ photo.url }}" class="action comment">
@@ -48,6 +49,24 @@
 				</span>{% endif %}
 			</a>
 			<div class="spacer"></div>
+		</div>
+	</div>
+	{% elseif entry.type=="BOARD_TOPIC" and topics[entry.objectID] is not null %}
+	{% set topic=topics[entry.objectID] %}
+	<div class="post pseudoPostWithoutActions">
+		<div class="postHeader">
+			<div class="avaW">
+				<a href="{{ profileURL(-topic.groupID) }}">{{ groups[topic.groupID] | pictureForAvatar('a', 40) }}</a>
+			</div>
+			<div class="headerRight">
+				<div class="singleLine authorNameW"><a href="{{ profileURL(-topic.groupID) }}" class="authorName">{{ groups[topic.groupID] | name }}</a></div>
+				<div class="singleLine timeW"><a href="{{ topic.url }}" class="postLink">{{ LD(topic.createdAt) }}</a></div>
+			</div>
+		</div>
+		<div class="postContentWrap">
+			<div>
+				<div class="postContent"><span class="feedIcon feedIconTopic"></span><span class="grayText">{{ L('board_topic') }}</span> <a href="{{ topic.url }}">{{ topic.title }}</a></div>
+			</div>
 		</div>
 	</div>
 	{% endif %}

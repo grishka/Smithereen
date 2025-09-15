@@ -1,0 +1,50 @@
+{# @pebvariable name="topic" type="smithereen.model.board.BoardTopic" #}
+{% extends "page" %}
+{% block content %}
+{% include "board_tabbar" with {'tab': 'topic'} %}
+<div class="gray boardTopicHeader">
+	<div class="title"><a href="{{ topic.url }}">{{ topic.title }}</a></div>
+	<a href="{{ profileURL(topic.authorID) }}">{{ users[topic.authorID] | name('complete') }}</a>
+	{% if topic.apURL is not empty %}| <a href="{{ topic.activityPubURL }}" target="_blank">{{ L('open_on_server_X', {'domain': topic.apURL.host}) }}</a>{% endif %}
+</div>
+<div class="summaryWrap largerPadding">
+  <div class="summary">{{ L('board_topic_summary', {'count': totalItems}) }}</div>
+  {% include "pagination" %}
+</div>
+{% if message %}<div class="singleColumnLargerPadding"><div class="settingsMessage"><b>{{ message }}</b><br/>{{ messageSubtitle }}</div></div>{% endif %}
+<div class="singleColumnLargerPadding boardComments" id="comments_{{ topic.commentParentID.htmlElementID }}">
+{% for comment in items %}
+	{% include "comment" with {'post': comment, 'replyFormID': "wallPostForm_comment_#{topic.commentParentID.htmlElementID}", 'parentObject': topic, 'baseReplyLevel': 0, 'canComment': canComment, 'first': loop.first, 'board': true, 'suppressDeletion': comment.post.id==topic.firstCommentID} %}
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% if canComment %}
+{% include "wall_post_form" with {'id': "comment_#{topic.commentParentID.htmlElementID}", 'action': "/comments/createComment?parentType=topic&parentID=#{topic.idString}", 'isComment': true, 'addClasses': "collapsed boardCommentForm", 'showReplyBar': true, 'showOwnAvatar': true} %}
+<div id="boardTopicScrollDetector"></div>
+{% script %}
+(function(){
+	var form=ge("wallPostForm_comment_{{ topic.commentParentID.htmlElementID }}");
+	var observer=new IntersectionObserver(function(entries){
+		var entry=entries[entries.length-1];
+		if(entry.isIntersecting)
+			form.classList.remove("floating");
+		else
+			form.classList.add("floating");
+	});
+	observer.observe(ge("boardTopicScrollDetector"));
+})();
+{% endscript %}
+{% endif %}
+{% script %}
+(function(){
+	if(window.location.hash && window.location.hash.indexOf("comment")==1){
+		var el=document.getElementById(window.location.hash.replace("#", ""));
+		if(el){
+			el.classList.add("highlight");
+			el.scrollIntoView();
+		}
+	}
+})();
+{% endscript %}
+{% endblock %}
+

@@ -35,12 +35,13 @@ import java.util.Properties;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.ObfuscatedObjectIDType;
-import smithereen.model.UserPermissions;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.util.CryptoUtils;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.TopLevelDomainList;
 import spark.utils.StringUtils;
@@ -89,6 +90,8 @@ public class Config{
 	public static SignupMode signupMode=SignupMode.CLOSED;
 	public static boolean signupConfirmEmail;
 	public static boolean signupFormUseCaptcha;
+	public static String commonCSS, desktopCSS, mobileCSS;
+	public static String combinedDesktopCSS, combinedMobileCSS, desktopCSSCacheHash, mobileCSSCacheHash;
 
 	public static String mailFrom;
 	public static String smtpServerAddress;
@@ -102,6 +105,8 @@ public class Config{
 	public static byte[] objectIdObfuscationKey;
 	public static int[][] objectIdObfuscationKeysByType=new int[ObfuscatedObjectIDType.values().length][];
 	public static byte[] emailUnsubscribeKey;
+
+	public static int userExportCooldownDays, userExportRetentionDays;
 
 	public static Map<Integer, UserRole> userRoles=new HashMap<>();
 
@@ -138,8 +143,18 @@ public class Config{
 		imgproxyUrl=props.getProperty("imgproxy.url_prefix");
 		imgproxyLocalUploads=props.getProperty("imgproxy.local_uploads");
 		imgproxyLocalMediaCache=props.getProperty("imgproxy.local_media_cache");
-		imgproxyKey=Utils.hexStringToByteArray(props.getProperty("imgproxy.key"));
-		imgproxySalt=Utils.hexStringToByteArray(props.getProperty("imgproxy.salt"));
+		String imgproxyKeyStr=props.getProperty("imgproxy.key");
+		try{
+			imgproxyKey=Utils.hexStringToByteArray(imgproxyKeyStr);
+		}catch(IllegalArgumentException x){
+			throw new RuntimeException("imgproxy key '"+imgproxyKeyStr+"' is not valid", x);
+		}
+		String imgproxySaltStr=props.getProperty("imgproxy.salt");
+		try{
+			imgproxySalt=Utils.hexStringToByteArray(imgproxySaltStr);
+		}catch(IllegalArgumentException x){
+			throw new RuntimeException("imgproxy salt '"+imgproxySaltStr+"' is not valid", x);
+		}
 		if(imgproxyUrl.charAt(0)!='/')
 			imgproxyUrl='/'+imgproxyUrl;
 
@@ -262,6 +277,14 @@ public class Config{
 			if(PublicSuffixList.lastUpdatedTime>0){
 				PublicSuffixList.update(Arrays.asList(dbValues.get("PSList_Data").split("\n")));
 			}
+
+			commonCSS=dbValues.get("CommonCSS");
+			desktopCSS=dbValues.get("DesktopCSS");
+			mobileCSS=dbValues.get("MobileCSS");
+			applyCSS(commonCSS, desktopCSS, mobileCSS);
+
+			userExportCooldownDays=Utils.parseIntOrDefault(dbValues.get("UserExportCooldown"), 7);
+			userExportRetentionDays=Utils.parseIntOrDefault(dbValues.get("UserExportRetention"), 2);
 		}
 	}
 
@@ -316,6 +339,49 @@ public class Config{
 		if(value==null)
 			throw new IllegalArgumentException("Config property `"+name+"` is required");
 		return value;
+	}
+
+	private static void applyCSS(String common, String desktop, String mobile){
+		if(StringUtils.isNotEmpty(common)){
+			desktop=StringUtils.isEmpty(desktop) ? common : common+"\n"+desktop;
+			mobile=StringUtils.isEmpty(mobile) ? common : common+"\n"+mobile;
+		}
+		if(desktop!=null)
+			desktop=desktop.trim();
+		if(mobile!=null)
+			mobile=mobile.trim();
+
+		if(StringUtils.isEmpty(desktop)){
+			combinedDesktopCSS=null;
+			desktopCSSCacheHash=null;
+		}else{
+			combinedDesktopCSS=desktop;
+			desktopCSSCacheHash=Utils.byteArrayToHexString(CryptoUtils.sha1(desktop.getBytes(StandardCharsets.UTF_8)));
+		}
+
+		if(StringUtils.isEmpty(mobile)){
+			combinedMobileCSS=null;
+			mobileCSSCacheHash=null;
+		}else{
+			combinedMobileCSS=mobile;
+			mobileCSSCacheHash=Utils.byteArrayToHexString(CryptoUtils.sha1(mobile.getBytes(StandardCharsets.UTF_8)));
+		}
+	}
+
+	public static void updateCSS(String common, String desktop, String mobile){
+		common=common.trim();
+		desktop=desktop.trim();
+		mobile=mobile.trim();
+
+		commonCSS=common;
+		desktopCSS=desktop;
+		mobileCSS=mobile;
+		try{
+			updateInDatabase(Map.of("CommonCSS", common, "DesktopCSS", desktop, "MobileCSS", mobile));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		applyCSS(common, desktop, mobile);
 	}
 
 	public enum SignupMode{

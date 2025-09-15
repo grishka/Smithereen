@@ -14,6 +14,7 @@ import java.util.Map;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
+import smithereen.model.User;
 import smithereen.templates.Templates;
 
 public class PictureForAvatarFilter implements Filter{
@@ -48,7 +49,9 @@ public class PictureForAvatarFilter implements Filter{
 		if(image==null){
 			if(args.containsKey("wrapperClasses"))
 				additionalClasses+=" "+args.get("wrapperClasses").toString();
-			return new SafeString("<span class=\"ava avaPlaceholder size"+typeStr.toUpperCase()+additionalClasses+"\""+(size>0 ? (" style=\"width: "+size+"px;height: "+size+"px\"") : "")+"></span>");
+			if(input==null)
+				additionalClasses+=" deleted";
+			return new SafeString("<span class=\"ava avaPlaceholder size"+typeStr.toUpperCase()+additionalClasses+"\""+(size>0 ? (" style=\"--ava-width: "+size+"px;--ava-height: "+size+"px\"") : "")+"></span>");
 		}
 
 		int width, height;
@@ -65,7 +68,8 @@ public class PictureForAvatarFilter implements Filter{
 		if(args.containsKey("classes")){
 			classes.add(args.get("classes").toString());
 		}
-		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(args.containsKey("wrapperClasses") ? (" "+args.get("wrapperClasses")) : "")+"\">"+image.generateHTML(type, classes, null, width, height, true, null)+"</span>");
+		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(args.containsKey("wrapperClasses") ? (" "+args.get("wrapperClasses")) : "")+"\""+(isRect || args.containsKey("size") ? (" style=\"--ava-width: "+width+"px;--ava-height: "+height+"px\"") : "")+">"
+				+image.generateHTML(type, classes, null, 0, 0, true, null)+"</span>");
 	}
 
 	@Override

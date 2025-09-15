@@ -4,17 +4,15 @@ package smithereen.routes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -28,22 +26,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import jakarta.servlet.MultipartConfigElement;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Part;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
-import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
-import smithereen.controllers.ObjectLinkResolver;
 import smithereen.controllers.UsersController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
@@ -51,11 +42,8 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
-import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
-import smithereen.model.ActorStatus;
 import smithereen.model.CommentViewType;
-import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.OtherSession;
 import smithereen.model.PrivacySetting;
@@ -63,24 +51,18 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.UserDataExport;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.UserRole;
+import smithereen.model.admin.UserRole;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.filtering.FilterContext;
 import smithereen.model.filtering.WordFilter;
-import smithereen.model.friends.FriendList;
-import smithereen.model.friends.PublicFriendList;
-import smithereen.model.media.ImageMetadata;
 import smithereen.model.media.MediaFileRecord;
-import smithereen.model.media.MediaFileReferenceType;
-import smithereen.model.media.MediaFileType;
 import smithereen.model.notifications.EmailNotificationFrequency;
 import smithereen.model.notifications.EmailNotificationType;
 import smithereen.model.notifications.RealtimeNotificationSettingType;
 import smithereen.model.photos.AvatarCropRects;
-import smithereen.model.photos.ImageRect;
-import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
@@ -350,15 +332,15 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object blocking(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object blocking(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking", req).pageTitle(lang(req).get("settings_blocking")).mobileToolbarTitle(lang(req).get("settings"));
-		model.with("blockedUsers", UserStorage.getBlockedUsers(self.user.id));
-		model.with("blockedDomains", UserStorage.getBlockedDomains(self.user.id));
+		model.with("blockedUsers", ctx.getPrivacyController().getBlockedUsers(self.user));
+		model.with("blockedDomains", ctx.getPrivacyController().getBlockedDomains(self.user));
 		jsLangKey(req, "unblock", "yes", "no", "cancel");
 		return model;
 	}
 
-	public static Object blockDomainForm(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object blockDomainForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("block_domain", req);
 		return wrapForm(req, resp, "block_domain", "/settings/blockDomain", lang(req).get("block_a_domain"), "block", model);
 	}
@@ -1205,5 +1187,62 @@ public class SettingsRoutes{
 			status=ctx.getGroupsController().getGroupOrThrow(groupID).getStatusText();
 		Lang l=lang(req);
 		return wrapForm(req, resp, "status_form", groupID>0 ? "/groups/"+groupID+"/updateStatus" : "/settings/updateStatus", l.get("update_status"), "save", new RenderedTemplateResponse("status_form", req).with("statusText", status));
+	}
+
+	public static Object dataExports(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		List<UserDataExport> exports=ctx.getUsersController().getUserDataExports(self.user);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_exports", req)
+				.with("waitDays", Config.userExportCooldownDays)
+				.pageTitle(l.get("settings_data_export_title"))
+				.addNavBarItem(l.get("menu_settings"), "/settings")
+				.addNavBarItem(l.get("settings_data_export_title"))
+				.with("exports", exports);
+
+		List<UserDataExport> needFiles=exports.stream().filter(e->e.state==UserDataExport.State.READY).toList();
+		if(!needFiles.isEmpty()){
+			try{
+				Map<Long, MediaFileRecord> records=MediaStorage.getMediaFileRecords(needFiles.stream().map(e->e.fileID).collect(Collectors.toSet()));
+				Map<Long, String> urls=new HashMap<>();
+				for(UserDataExport e:needFiles){
+					MediaFileRecord mfr=records.get(e.fileID);
+					if(mfr==null)
+						continue;
+					urls.put(mfr.id().id(), MediaFileStorageDriver.getInstance().getFilePublicURL(mfr.id(), e.getUserFriendlyFileName(self)).toString());
+				}
+				model.with("fileURLs", urls);
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+
+		Instant cooldownThreshold=Instant.now().minus(Config.userExportCooldownDays, ChronoUnit.DAYS);
+		Instant lastExport=ctx.getUsersController().getLastSuccessfulUserDataExportTime(self.user);
+		if(lastExport==null || lastExport.isBefore(cooldownThreshold)){
+			model.with("canRequest", true);
+		}else{
+			model.with("canRequest", false)
+					.with("cooldownEndTime", lastExport.plus(Config.userExportCooldownDays, ChronoUnit.DAYS));
+		}
+		return model;
+	}
+
+	public static Object requestDataExportForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		return wrapForm(req, resp, "request_data_export_form", "/settings/requestExport", lang(req).get("settings_data_export_title"), "settings_exports_request", "requestExport", List.of(), null, null);
+	}
+
+	public static Object requestDataExport(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "password");
+		String password=req.queryParams("password");
+		if(!ctx.getUsersController().checkPassword(self, password)){
+			return wrapForm(req, resp, "request_data_export_form", "/settings/requestExport", lang(req).get("settings_data_export_title"), "settings_exports_request", "requestExport", List.of(), null, lang(req).get("err_old_password_incorrect"));
+		}
+		Instant cooldownThreshold=Instant.now().minus(Config.userExportCooldownDays, ChronoUnit.DAYS);
+		Instant lastExport=ctx.getUsersController().getLastSuccessfulUserDataExportTime(self.user);
+		if(lastExport!=null && lastExport.isAfter(cooldownThreshold)){
+			throw new UserActionNotAllowedException();
+		}
+		ctx.getUserDataExportWorker().startExport(self);
+		return ajaxAwareRedirect(req, resp, "/settings/export");
 	}
 }

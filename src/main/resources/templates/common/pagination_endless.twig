@@ -5,7 +5,7 @@
 {# @pebvariable name="paginationFirstPageUrl" type="String" #}
 {% if totalItems>paginationOffset+paginationPerPage %}
 {% set paginationID=randomString() %}
-<div class="ajaxEndlessPagination" id="ajaxPagination_{{ paginationID }}" data-id="{{ paginationID }}">
+<div class="ajaxEndlessPagination" id="ajaxPagination_{{ paginationID }}" data-id="{{ paginationID }}"{% if noScrollEvents %} data-no-scroll-events{% endif %}>
 	<span class="loader" style="display: none"></span>
 	<a href="{{ paginationUrlPrefix }}{{ paginationOffset+paginationPerPage }}" id="ajaxPaginationLink_{{ paginationID }}">{{ paginationLinkText | default(L('load_more')) }}</a>
 </div>

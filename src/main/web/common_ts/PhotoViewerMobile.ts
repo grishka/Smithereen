@@ -121,7 +121,7 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 				pictureEl=ce("picture", {}, [
 					sourceWebp=ce("source", {type: "image/webp", src: lastURL.webp}),
 					sourceJpeg=ce("source", {type: "image/jpeg", src: lastURL.jpeg}),
-					imgEl=ce("img", {src: lastURL.jpeg})
+					imgEl=ce("img", {src: lastURL.jpeg, width: lastURL.width, height: lastURL.height})
 				]),
 				ce("div", {className: "overlayW"}, [
 					overlayTag=ce("div", {className: "overlayTag"})

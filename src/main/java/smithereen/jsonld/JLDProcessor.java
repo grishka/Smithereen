@@ -75,6 +75,8 @@ public class JLDProcessor{
 		// Mastodon aliases
 		lc.addProperty("blurhash", "toot:blurhash");
 		lc.addProperty("votersCount", "toot:votersCount");
+		lc.addProperty("suspended", "toot:suspended");
+		lc.add("featured", idAndTypeObject("toot:featured", "@id"));
 
 		// Misskey quote-reposts
 		lc.add("_misskey_quote", idAndTypeObject(JLD.MISSKEY+"_misskey_quote", "@id"));
@@ -119,6 +121,11 @@ public class JLDProcessor{
 		addSmAlias(lc, "TaggedPerson");
 		lc.add("rect", idAndContainerObject("sm:rect", "@list"));
 		addSmAlias(lc, "approved");
+		addSmIdAlias(lc, "boardTopics");
+		addSmIdAlias(lc, "pinnedBoardTopics");
+		addSmIdAlias(lc, "firstComment");
+		addSmIdAlias(lc, "author");
+		addSmAlias(lc, "BoardTopic");
 		// privacy settings keys
 		lc.addProperty("wallPosting", "sm:wallPosting");
 		lc.addProperty("wallPostVisibility", "sm:wallPostVisibility");
@@ -150,6 +157,11 @@ public class JLDProcessor{
 		addSmAlias(lc, "ActorStatus");
 		lc.add("status", idAndTypeObject("sm:status", "@id"));
 		lc.add("statusHistory", idAndTypeObject("sm:statusHistory", "@id"));
+		addSmAlias(lc, "featureState");
+		addSmIdAlias(lc, "board");
+		addSmAlias(lc, "TopicCreationRequest");
+		addSmAlias(lc, "TopicRenameRequest");
+		addSmIdAlias(lc, "links");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");
@@ -172,6 +184,10 @@ public class JLDProcessor{
 
 	private static void addSmAlias(JsonObject obj, String key){
 		obj.addProperty(key, "sm:"+key);
+	}
+
+	private static void addSmIdAlias(JsonObject obj, String key){
+		obj.add(key, idAndTypeObject("sm:"+key, "@id"));
 	}
 
 	public static JsonArray expandToArray(JsonElement src){

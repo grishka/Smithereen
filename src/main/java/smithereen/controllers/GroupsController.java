@@ -1,10 +1,15 @@
 package smithereen.controllers;
 
+import com.google.gson.JsonObject;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -26,33 +31,52 @@ import java.util.stream.IntStream;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
+import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LinkOrObject;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Join;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.ObjectNotFoundExceptionWithFallback;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
-import smithereen.model.EventReminder;
+import smithereen.model.OwnedContentObject;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
+import smithereen.model.admin.AuditLogEntry;
+import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
+import smithereen.model.groups.GroupLink;
+import smithereen.model.groups.GroupLinkParseResult;
+import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.notifications.EventReminder;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.FriendshipStatus;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
-import smithereen.model.GroupAdmin;
-import smithereen.model.GroupInvitation;
+import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupInvitation;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
-import smithereen.model.UserNotifications;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.FederationStorage;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.MediaStorage;
+import smithereen.storage.MediaStorageUtils;
+import smithereen.storage.ModerationStorage;
 import smithereen.storage.NotificationsStorage;
+import smithereen.storage.SessionStorage;
+import smithereen.storage.UserStorage;
 import smithereen.storage.utils.IntPair;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
@@ -235,10 +259,14 @@ public class GroupsController{
 			throw new UserActionNotAllowedException();
 	}
 
-	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd, String username, Group.AccessType accessType){
+	public void updateGroupInfo(@NotNull Group group, @NotNull User admin, String name, String aboutSrc, Instant eventStart, Instant eventEnd, String username, Group.AccessType accessType,
+								GroupFeatureState wallState, GroupFeatureState photosState, GroupFeatureState boardState, String website, String location){
 		try{
 			enforceUserAdminLevel(group, admin, Group.AdminLevel.ADMIN);
 			String about=StringUtils.isNotEmpty(aboutSrc) ? TextProcessor.preprocessPostHTML(aboutSrc, null) : null;
+			if(!group.name.equals(name)){
+				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_NAME, admin.id, Map.of("old", group.name, "new", name));
+			}
 			if(!group.username.equals(username)){
 				if(!Utils.isValidUsername(username))
 					throw new BadRequestException("err_group_invalid_username");
@@ -249,9 +277,37 @@ public class GroupsController{
 				});
 				if(!result)
 					throw new BadRequestException("err_group_username_taken");
+				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_USERNAME, admin.id, Map.of("old", group.username, "new", username));
 			}else{
 				GroupStorage.updateGroupGeneralInfo(group, name, username, aboutSrc, about, eventStart, eventEnd, accessType);
 			}
+			if(photosState==GroupFeatureState.ENABLED_OPEN || photosState==GroupFeatureState.ENABLED_CLOSED)
+				photosState=GroupFeatureState.ENABLED_RESTRICTED;
+			if(boardState==GroupFeatureState.ENABLED_CLOSED)
+				boardState=GroupFeatureState.ENABLED_RESTRICTED;
+			boolean needUpdateFields=false, needClearFeed=false;
+			if(group.wallState!=wallState || group.photosState!=photosState || group.boardState!=boardState){
+				group.wallState=wallState;
+				group.photosState=photosState;
+				group.boardState=boardState;
+				needUpdateFields=needClearFeed=true;
+			}
+
+			if(!group.isEvent())
+				location=null;
+			if(StringUtils.isNotEmpty(website) && !website.startsWith("https:") && !website.startsWith("http:"))
+				website="https://"+website;
+			if(!Objects.equals(group.website, website) || !Objects.equals(group.location, location)){
+				group.website=website;
+				group.location=location;
+				needUpdateFields=true;
+			}
+
+			if(needUpdateFields)
+				GroupStorage.updateProfileFields(group);
+			if(needClearFeed)
+				context.getNewsfeedController().clearGroupsFeedCache();
+
 			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 			if(group.isEvent()){
 				BackgroundTaskRunner.getInstance().submit(()->{
@@ -631,17 +687,22 @@ public class GroupsController{
 		}
 	}
 
-	public void addOrUpdateAdmin(Group group, User user, String title, Group.AdminLevel level){
+	public void addOrUpdateAdmin(Group group, User self, User user, String title, Group.AdminLevel level){
 		try{
+			Group.AdminLevel oldLevel=getMemberAdminLevel(group, user);
 			GroupStorage.addOrUpdateGroupAdmin(group.id, user.id, title, level);
+			if(oldLevel!=level)
+				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, self.id, Map.of("user", user.id, "old", oldLevel.toString(), "new", level.toString()));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void removeAdmin(Group group, User user){
+	public void removeAdmin(Group group, User self, User user){
 		try{
+			Group.AdminLevel oldLevel=getMemberAdminLevel(group, user);
 			GroupStorage.removeGroupAdmin(group.id, user.id);
+			ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, self.id, Map.of("user", user.id, "old", oldLevel.toString(), "new", Group.AdminLevel.REGULAR.toString()));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -783,6 +844,184 @@ public class GroupsController{
 		}
 
 		return status;
+	}
+
+	public LocalImage downloadImageForLink(Group group, URI url){
+		try{
+			return MediaStorageUtils.downloadRemoteImageForGroupLink(group, url);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}catch(IOException x){
+			LOG.debug("Failed to download link image from {}", url, x);
+			return null;
+		}
+	}
+
+	public GroupLinkParseResult parseLink(URI url, User self, Group group){
+		ObjectLinkResolver.ObjectTypeAndID apObject;
+		try{
+			Object apObj=context.getObjectLinkResolver().resolveNative(url, Object.class, true, true, false, (JsonObject) null, false, true);
+			switch(apObj){
+				case OwnedContentObject oco -> context.getPrivacyController().enforceObjectPrivacy(self, oco);
+				case Group g -> context.getPrivacyController().enforceUserAccessToGroupProfile(self, g);
+				case User u -> context.getPrivacyController().enforceUserProfileAccess(self, u);
+				default -> {}
+			}
+			apObject=ObjectLinkResolver.getObjectIdFromObject(apObj);
+			if(apObject==null)
+				throw new UserErrorException("group_link_error");
+			return new GroupLinkParseResult(apObject, null, null, null);
+		}catch(ObjectNotFoundExceptionWithFallback x){
+			if(x.fallback instanceof Document htmlDoc){
+				String title=htmlDoc.title();
+				LocalImage image=null;
+				Element ogTitle=htmlDoc.selectFirst("meta[property=og:title]");
+				Element ogImage=htmlDoc.selectFirst("meta[property=og:image]");
+				if(ogTitle!=null){
+					String ogTitleValue=ogTitle.attr("content");
+					if(StringUtils.isNotEmpty(ogTitleValue))
+						title=ogTitleValue;
+				}
+				String imageURL=null;
+				if(ogImage!=null){
+					String _imageURL=ogImage.absUrl("content");
+					if(StringUtils.isNotEmpty(_imageURL))
+						imageURL=_imageURL;
+				}
+				if(StringUtils.isNotEmpty(imageURL)){
+					image=downloadImageForLink(group, URI.create(imageURL));
+				}
+				return new GroupLinkParseResult(null, title, imageURL, image);
+			}else{
+				throw new UserErrorException("group_link_error");
+			}
+		}catch(Exception x){
+			if(url.getHost()!=null && Config.isLocal(url)){ // Explicitly allow any local links
+				return new GroupLinkParseResult(null, url.toString(), null, null);
+			}
+			throw new UserErrorException("group_link_error", x);
+		}
+	}
+
+	public long addLink(User self, Group group, URI url, GroupLinkParseResult parseResult, String title){
+		try{
+			enforceUserAdminLevel(group, self, Group.AdminLevel.ADMIN);
+			long imageID=parseResult.image()!=null ? parseResult.image().fileID : 0;
+			long id=GroupStorage.createLink(group.id, url.toString(), title, parseResult.apObject(), imageID);
+			if(imageID!=0){
+				MediaStorage.createMediaFileReference(imageID, id, MediaFileReferenceType.GROUP_LINK_THUMB, -group.id);
+			}
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
+			return id;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<GroupLink> getLinks(Group group){
+		try{
+			List<GroupLink> links=GroupStorage.getGroupLinks(group.id);
+			for(GroupLink l:links){
+				if(l.object!=null){
+					l.localUrl=ObjectLinkResolver.getLocalURLForObjectID(l.object);
+				}
+			}
+			return links;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public GroupLink getLink(Group group, long linkID){
+		try{
+			GroupLink link=GroupStorage.getGroupLink(group.id, linkID);
+			if(link==null)
+				throw new ObjectNotFoundException();
+			return link;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setLinkOrder(Group group, GroupLink link, int order){
+		try{
+			GroupStorage.setLinkOrder(group.id, link.id, order);
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateLinkTitle(Group group, GroupLink link, String title){
+		try{
+			GroupStorage.updateLinkTitle(group.id, link.id, title);
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteLink(Group group, GroupLink link){
+		try{
+			GroupStorage.deleteLink(group.id, link.id);
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setLinkResolved(Group group, GroupLink link, ObjectLinkResolver.ObjectTypeAndID obj){
+		try{
+			GroupStorage.resolveLink(group.id, link.id, obj);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteLocalGroup(User admin, Group group){
+		if(group instanceof ForeignGroup || (group.banStatus!=GroupBanStatus.SELF_DEACTIVATED && group.banStatus!=GroupBanStatus.SUSPENDED))
+			throw new IllegalArgumentException();
+		try{
+			context.getActivityPubWorker().sendGroupDeleteSelf(group);
+			GroupStorage.deleteGroup(group);
+			if(admin!=null)
+				ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.DELETE_GROUP, -group.id, 0, null, Map.of("name", group.name));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteForeignGroup(ForeignGroup group){
+		try{
+			GroupStorage.deleteGroup(group);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public static void doPendingGroupDeletions(ApplicationContext ctx){
+		try{
+			List<Group> groups=GroupStorage.getTerminallyBannedGroups();
+			if(groups.isEmpty()){
+				LOG.trace("No groups to delete");
+				return;
+			}
+			Instant deleteBannedBefore=Instant.now().minus(GroupBanInfo.GROUP_DELETION_DAYS, ChronoUnit.DAYS);
+			for(Group group:groups){
+				if(group.banStatus!=GroupBanStatus.SUSPENDED && group.banStatus!=GroupBanStatus.SELF_DEACTIVATED){
+					LOG.warn("Ineligible group {} in pending group deletions - bug likely (banStatus {}, banInfo {})", group.id, group.banStatus, group.banInfo);
+					continue;
+				}
+				if(group.banInfo.bannedAt().isBefore(deleteBannedBefore)){
+					LOG.info("Deleting group {}, banStatus {}, banInfo {}", group.id, group.banStatus, group.banInfo);
+					ctx.getGroupsController().deleteLocalGroup(null, group);
+				}else{
+					LOG.trace("Group {} too early to delete", group.id);
+				}
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to delete groups", x);
+		}
 	}
 
 	public enum EventsType{

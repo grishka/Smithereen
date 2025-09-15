@@ -9,10 +9,12 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -35,7 +37,9 @@ import io.pebbletemplates.pebble.template.PebbleTemplate;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
-import smithereen.model.FriendRequest;
+import smithereen.model.ServerRule;
+import smithereen.model.admin.ViolationReport;
+import smithereen.model.friends.FriendRequest;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.OwnedContentObject;
@@ -44,10 +48,12 @@ import smithereen.model.PostLikeObject;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.notifications.EmailNotificationType;
 import smithereen.model.photos.Photo;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
@@ -207,8 +213,9 @@ public class Mailer{
 		), l.getLocale());
 	}
 
-	public void sendAccountBanNotification(Account self, UserBanStatus banStatus, UserBanInfo banInfo){
+	public void sendAccountBanNotification(Account self, UserBanStatus banStatus, UserBanInfo banInfo, ViolationReport report, List<ServerRule> rules){
 		Lang l=Lang.get(self.prefs.locale);
+		HashMap<String, Object> args=new HashMap<>();
 		String header=switch(banStatus){
 			case FROZEN -> l.get("email_account_frozen_header");
 			case SUSPENDED -> l.get("email_account_suspended_header");
@@ -229,19 +236,93 @@ public class Mailer{
 			));
 			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
 		};
+		String plainText=header+"\n\n"+TextProcessor.stripHTML(htmlText, true);
+		args.put("text", htmlText);
+		args.put("header", header);
+		args.put("banInfo", banInfo);
+		if(report!=null){
+			args.put("report", report);
+			if(rules!=null && !rules.isEmpty()){
+				args.put("rules", rules);
+				plainText+="\n\n"+l.get("account_ban_violated_rules");
+				for(ServerRule rule:rules){
+					plainText+="\n- "+rule.getTranslatedTitle(l.getLocale());
+				}
+			}
+		}
 		String subject=switch(banStatus){
 			case FROZEN -> l.get("email_account_frozen_subject", Map.of("serverName", Config.serverDisplayName));
 			case SUSPENDED -> l.get("email_account_suspended_subject", Map.of("serverName", Config.serverDisplayName));
 			default -> throw new IllegalArgumentException("Unexpected value: " + banStatus);
 		};
-		String plainText=header+"\n\n"+TextProcessor.stripHTML(htmlText, true);
-		htmlText="<h1>"+header+"</h1>\n\n"+htmlText;
 		if(StringUtils.isNotEmpty(banInfo.message())){
 			String messageFromStaff=l.get("message_from_staff", Map.of("message", banInfo.message()));
-			htmlText+="<br/><br/>"+messageFromStaff;
 			plainText+="\n\n"+TextProcessor.stripHTML(messageFromStaff, true);
 		}
-		send(self.email, subject, plainText, "generic", Map.of("text", htmlText), self.prefs.locale);
+		send(self.email, subject, plainText, "account_ban", args, self.prefs.locale);
+	}
+
+	public void sendContentRemovalNotification(Account self, List<ReportableContentObject> content, List<ServerRule> rules){
+		Lang l=Lang.get(self.prefs.locale);
+		HashMap<String, Object> args=new HashMap<>();
+		StringBuilder plainText=new StringBuilder(l.get("email_content_removal_header"));
+		plainText.append("\n\n");
+		plainText.append(l.get("email_content_removal_body"));
+		plainText.append("\n");
+		ArrayList<String> contentTypes=new ArrayList<>();
+		if(content.size()>10)
+			content=content.subList(0, 10);
+		ZoneId timeZone=self.prefs.timeZone==null ? ZoneId.systemDefault() : self.prefs.timeZone;
+		for(ReportableContentObject co:content){
+			plainText.append("- ");
+			switch(co){
+				case Post post -> {
+					contentTypes.add("post");
+					plainText.append(post.getReplyLevel()>0 ? l.get("content_type_comment") : l.get("content_type_post"));
+					plainText.append(": ");
+					plainText.append(getContentShortTitle(post, l, timeZone));
+					plainText.append('\n');
+				}
+				case MailMessage msg -> {
+					contentTypes.add("message");
+					plainText.append(l.get("content_type_message"));
+					plainText.append(": ");
+					plainText.append(getContentShortTitle(msg, l, timeZone));
+					plainText.append('\n');
+				}
+				case Photo photo -> {
+					contentTypes.add("photo");
+					plainText.append(l.get("content_type_photo"));
+					plainText.append(": ");
+					plainText.append(l.formatDateFullyAbsolute(photo.createdAt, timeZone, false));
+					plainText.append('\n');
+				}
+				case Comment comment -> {
+					contentTypes.add("comment");
+					plainText.append(l.get("content_type_comment"));
+					plainText.append(": ");
+					plainText.append(getContentShortTitle(comment, l, timeZone));
+					plainText.append('\n');
+				}
+			}
+		}
+		if(rules!=null && !rules.isEmpty()){
+			plainText.append('\n');
+			plainText.append(l.get("email_content_removal_rules"));
+			plainText.append('\n');
+			for(ServerRule rule:rules){
+				plainText.append("- ");
+				plainText.append(rule.getTranslatedTitle(l.getLocale()));
+				plainText.append('\n');
+			}
+		}
+
+		args.put("contentTypes", contentTypes);
+		args.put("content", content);
+		args.put("rules", rules);
+		args.put("timeZone", timeZone);
+		args.put("users", Map.of(self.user.id, self.user));
+		send(self.email, l.get("email_content_removal_subject", Map.of("serverName", Config.serverDisplayName)), plainText.toString(), "content_removal", args, self.prefs.locale);
 	}
 
 	public void sendActionConfirmationCode(Request req, Account self, String action, String code){
@@ -346,7 +427,7 @@ public class Mailer{
 			}
 			case COMMENT_REPLY -> {
 				PostLikeObject plo=(PostLikeObject) object;
-				HashSet<Integer> needUsers=new HashSet<>();
+				HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 				params.put("headerText", l.get("notification_title_reply"));
 				params.put("comment2", object);
 				needUsers.add(plo.authorID);
@@ -367,11 +448,18 @@ public class Mailer{
 						needUsers.add(replyTo.authorID);
 						yield switch(comment.parentObjectID.type()){
 							case PHOTO -> "photo_comment";
+							case BOARD_TOPIC -> {
+								BoardTopic topic=(BoardTopic)relatedObject;
+								needGroups.add(topic.groupID);
+								params.put("useOwnerID", true);
+								yield "board_comment";
+							}
 						};
 					}
 				};
 				subject=l.get("email_comment_reply_subject", Map.of("name", actor.getFullName(), "gender", actor.gender));
 				params.put("users", ctx.getUsersController().getUsers(needUsers));
+				params.put("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 				plaintext+=l.get("email_photo_comment_plaintext", Map.of(
 						"name", actor.getCompleteName(),
 						"gender", actor.gender,
@@ -380,7 +468,7 @@ public class Mailer{
 			}
 			case MENTION -> {
 				PostLikeObject plo=(PostLikeObject) object;
-				HashSet<Integer> needUsers=new HashSet<>();
+				HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 				params.put("headerText", l.get("notification_title_mention"));
 				needUsers.add(plo.authorID);
 				boolean isComment=plo instanceof Comment || plo.getReplyLevel()>0;
@@ -409,10 +497,17 @@ public class Mailer{
 						needUsers.add(parent.getAuthorID());
 						yield switch(comment.parentObjectID.type()){
 							case PHOTO -> "photo_comment";
+							case BOARD_TOPIC -> {
+								BoardTopic topic=(BoardTopic)relatedObject;
+								needGroups.add(topic.groupID);
+								params.put("useOwnerID", true);
+								yield "board_comment";
+							}
 						};
 					}
 				};
 				params.put("users", ctx.getUsersController().getUsers(needUsers));
+				params.put("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
 			}
 			case GROUP_INVITE -> {
 				Group group=(Group) object;
@@ -496,6 +591,19 @@ public class Mailer{
 		}catch(ObjectNotFoundException x){
 			throw new IllegalArgumentException();
 		}
+	}
+
+	private static String getContentShortTitle(Object obj, Lang l, ZoneId timeZone){
+		String shortTitle=switch(obj){
+			case PostLikeObject plo -> plo.getShortTitle();
+			case MailMessage msg -> msg.getTextPreview();
+			default -> throw new IllegalArgumentException();
+		};
+		return StringUtils.isEmpty(shortTitle) ? l.formatDateFullyAbsolute(switch(obj){
+			case PostLikeObject plo -> plo.createdAt;
+			case MailMessage msg -> msg.createdAt;
+			default -> throw new IllegalArgumentException();
+		}, timeZone, false) : shortTitle;
 	}
 
 	public record UnsubscribeLinkData(Account account, EmailNotificationType type){}

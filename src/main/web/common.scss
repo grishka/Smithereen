@@ -163,6 +163,28 @@ table{
 
 .ava{
 	display: inline-block;
+	width: var(--ava-width);
+	height: var(--ava-height);
+	img{
+		width: var(--ava-width);
+		height: var(--ava-height);
+	}
+	&.sizeA{
+		--ava-width: 50px;
+		--ava-height: 50px;
+	}
+	&.sizeB{
+		--ava-width: 100px;
+		--ava-height: 100px;
+	}
+	&.sizeC{
+		--ava-width: 200px;
+		--ava-height: 200px;
+	}
+	&.sizeD{
+		--ava-width: 400px;
+		--ava-height: 400px;
+	}
 }
 
 .avaHasImage.sizeR img{
@@ -175,8 +197,8 @@ table{
 	height: 115px;
 	position: relative;
 	&.own{
-		background-image: svg-load("img/ava_question.svg", fill: #e8e3bb);
-		background-color: #fff8cc;
+		background-image: svg-load("img/ava_question.svg", fill: $avaPlaceholderOwnColor);
+		background-color: $avaPlaceholderOwnBackgroundColor;
 		border: none;
 	}
 }
@@ -356,22 +378,29 @@ input[type=checkbox]{
 
 
 .dataTable{
-	.tableHeader{
-		height: 24px;
-		background: $blockBackground;
-		color: $boldHeaders;
-		td, th{
-			padding: 0;
+	border-spacing: 0;
+	border: solid 1px $dataTableBorder;
+	th{
+		border-left: solid 1px $dataTableBorderLight;
+		border-right: solid 1px $dataTableBorder;
+		border-bottom: solid 1px $dataTableBorder;
+		background: $dataTableHeaderBackground;
+		color: $normalLink;
+		text-align: left;
+		&:first-child{
+			border-left: 0;
+		}
+		&:last-child{
+			border-right: 0;
 		}
 	}
-	td, th{
-		border-top: solid 1px $blockBorderTop;
-		padding: 4px 0;
-		min-height: 24px;
-		box-sizing: border-box;
+	th, td{
+		line-height: 1.09em;
+		padding: 10px;
 	}
-	border-spacing: 0;
-	border-bottom: solid 1px $blockBorderTop;
+	tr:nth-child(odd){
+		background: $dataTableOddRow;
+	}
 	&.padAround{
 		margin: 8px 0;
 	}
@@ -593,6 +622,9 @@ ul.actualList{
 	&.feedIconPersonal{
 		background: svg-load('img/pages_s.svg');
 	}
+	&.feedIconTopic{
+		background: svg-load('img/topics_s.svg');
+	}
 }
 
 .undecoratedLink{
@@ -696,7 +728,7 @@ small{
 }
 
 .ajaxReplaceWithLoader.ajaxLoading{
-	color: transparent;
+	color: transparent !important;
 	position: relative;
 	&::before{
 		content: ' ';
@@ -706,15 +738,18 @@ small{
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background-position: 10px center;
 	}
+}
+
+.actionList .ajaxReplaceWithLoader.ajaxLoading::before{
+	background-position: 10px center;
 }
 
 .privatePostLockIcon{
 	display: inline-block;
 	width: 8px;
 	height: 9px;
-	background: svg-load('img/lock.svg', fill: #cfc39f);
+	background: svg-load('img/lock.svg', fill: $privatePostLockIconColor);
 	margin-left: 5px;
 }
 
@@ -851,6 +886,89 @@ h2+.textByItself{
 	margin: 20px;
 	a, b{
 		display: inline-block;
+	}
+}
+
+.avaWithExtraContent{
+	display: flex;
+	.avaW{
+		flex: none;
+		width: 100px;
+		margin-right: $mediumPadding;
+	}
+	.contentW{
+		flex-grow: 1;
+	}
+}
+
+.counter{
+	font-feature-settings: "tnum";
+}
+
+@keyframes counterForward{
+	from{
+		transform: translateY(0);
+	}
+	to{
+		transform: translateY(-100%);
+	}
+}
+
+@keyframes counterBackward{
+	from{
+		transform: translateY(0);
+	}
+	to{
+		transform: translateY(100%);
+	}
+}
+
+@keyframes counterWidth{
+	from{
+		width: var(--old-width);
+	}
+	to{
+		width: var(--new-width);
+	}
+}
+
+.animatingCounter{
+	.animatedPart{
+		position: relative;
+		display: inline-block;
+		clip-path: border-box;
+		white-space: nowrap;
+		span{
+			display: inline-block;
+		}
+		.newValue{
+			position: absolute;
+			right: 0;
+		}
+		&.forward{
+			.newValue{
+				top: 100%;
+			}
+			span{
+				animation: 0.3s ease 1 running counterForward;
+			}
+		}
+		&.backward{
+			.newValue{
+				top: -100%;
+			}
+			span{
+				animation: 0.3s ease 1 running counterBackward;
+			}
+		}
+		&.animateWidth{
+			animation: 0.3s ease 1 running counterWidth;
+			will-change: width;
+			.oldValue{
+				position: absolute;
+				right: 0;
+			}
+		}
 	}
 }
 

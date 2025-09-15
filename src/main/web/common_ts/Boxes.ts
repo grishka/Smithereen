@@ -276,6 +276,8 @@ class LayerManager{
 	}
 
 	public dismissEverything(){
+		if(this.boxLoader)
+			this.boxLoader.hide();
 		for(var i=this.stack.length-1;i>=0;i--){
 			this.dismiss(this.stack[i]);
 		}
@@ -643,8 +645,8 @@ class ScrollableBox extends BaseScrollableBox{
 }
 
 class ConfirmBox extends Box{
-	public constructor(title:string, msg:string, onConfirmed:{():void}){
-		super(title, [lang("yes"), lang("no")], function(idx:number){
+	public constructor(title:string, msg:string, onConfirmed:{():void}, buttonTitles:string[]=null){
+		super(title, buttonTitles || [lang("yes"), lang("no")], function(idx:number){
 			if(idx==0){
 				onConfirmed();
 			}else{
@@ -653,6 +655,13 @@ class ConfirmBox extends Box{
 		});
 		var content:HTMLDivElement=ce("div", {innerHTML: msg});
 		this.setContent(content);
+	}
+
+	onShown(){
+		super.onShown();
+		if(this.buttons.length>0){
+			this.buttons[0].focus();
+		}
 	}
 }
 
@@ -670,30 +679,38 @@ class FormBox extends Box{
 	public constructor(title:string, c:string, btn:string, act:string){
 		super(title, [btn, lang("cancel")], function(idx:number){
 			if(idx==0){
-				if(this.form.reportValidity()){
-					var btn=this.getButton(0);
-					btn.setAttribute("disabled", "");
-					this.getButton(1).setAttribute("disabled", "");
-					this.showButtonLoading(0, true);
-					ajaxSubmitForm(this.form, (resp)=>{
-						if(resp){
-							this.dismiss();
-						}else{
-							var btn=this.getButton(0);
-							btn.removeAttribute("disabled");
-							this.getButton(1).removeAttribute("disabled");
-							this.showButtonLoading(0, false);
-						}
-					});
-				}
+				this.submitForm();
 			}else{
 				this.dismiss();
 			}
 		});
 		var content:HTMLDivElement=ce("div", {}, [
-			this.form=ce("form", {innerHTML: c, action: act})
+			this.form=ce("form", {innerHTML: c, action: act, method: "post"})
 		]);
+		this.form.onsubmit=(ev)=>{
+			ev.preventDefault();
+			this.submitForm();
+		};
 		this.setContent(content);
+	}
+
+	public submitForm(){
+		if(this.form.reportValidity()){
+			var btn=this.getButton(0);
+			btn.setAttribute("disabled", "");
+			this.getButton(1).setAttribute("disabled", "");
+			this.showButtonLoading(0, true);
+			ajaxSubmitForm(this.form, (resp)=>{
+				if(resp){
+					this.dismiss();
+				}else{
+					var btn=this.getButton(0);
+					btn.removeAttribute("disabled");
+					this.getButton(1).removeAttribute("disabled");
+					this.showButtonLoading(0, false);
+				}
+			});
+		}
 	}
 
 	protected onCreateContentView():HTMLElement{
@@ -834,7 +851,11 @@ class MobileOptionsBox extends Box{
 					if(opt.ajax=="box"){
 						LayerManager.getInstance().showBoxLoader();
 					}
-					ajaxGetAndApplyActions(link.href);
+					if(opt.type=="post"){
+						ajaxPostAndApplyActions(opt.href, {});
+					}else{
+						ajaxGetAndApplyActions(link.href);
+					}
 					ev.preventDefault();
 				}else if(opt.onclick){
 					opt.onclick();
@@ -845,4 +866,3 @@ class MobileOptionsBox extends Box{
 		this.setContent(content);
 	}
 }
-

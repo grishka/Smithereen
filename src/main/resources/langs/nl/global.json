@@ -193,5 +193,7 @@
   "menu_photos": "Mijn afbeeldingen",
   "release_files_to_upload": "Loslaten om te beginnen met uploaden",
   "object_X_of_Y": "{current} van {total}",
-  "remote_like_photo_title": "Vind afbeelding leuk"
+  "remote_like_photo_title": "Vind afbeelding leuk",
+  "footer_language": "Taal: {langName}",
+  "footer_about_server": "Over server"
 }

@@ -3,6 +3,7 @@ package smithereen.templates;
 import io.pebbletemplates.pebble.error.PebbleException;
 import io.pebbletemplates.pebble.template.PebbleTemplate;
 
+import org.eclipse.jetty.io.EofException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,6 +110,8 @@ public class RenderedTemplateResponse{
 		queryKeys.remove("offset");
 		queryKeys.remove("_ajax");
 		queryKeys.remove("pagination");
+		queryKeys.remove("last");
+		queryKeys.remove("_al");
 		if(!queryKeys.isEmpty()){
 			 pathWithQuery+='?'+queryKeys.stream().map(k->k+'='+URLEncoder.encode(req.queryParams(k), StandardCharsets.UTF_8)).collect(Collectors.joining("&"));
 		}
@@ -148,6 +151,8 @@ public class RenderedTemplateResponse{
 		try{
 			template=getAndPrepareTemplate(req);
 			template.evaluate(writer, model, locale);
+		}catch(EofException ignored){
+			// The connection was closed by the client before the complete response body was written out. That's normal.
 		}catch(Throwable x){
 			writer.write("<pre>");
 			x.printStackTrace(new PrintWriter(writer));

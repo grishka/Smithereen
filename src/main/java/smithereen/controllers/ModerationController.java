@@ -44,39 +44,53 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
-import smithereen.model.ActorStaffNote;
-import smithereen.model.AdminNotifications;
-import smithereen.model.AuditLogEntry;
-import smithereen.model.EmailDomainBlockRule;
-import smithereen.model.EmailDomainBlockRuleFull;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.IPBlockRule;
-import smithereen.model.IPBlockRuleFull;
+import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
-import smithereen.model.comments.Comment;
-import smithereen.model.photos.Photo;
-import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.Server;
+import smithereen.model.ServerAnnouncement;
+import smithereen.model.ServerRule;
 import smithereen.model.SessionInfo;
 import smithereen.model.SignupInvitation;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
-import smithereen.model.UserRole;
-import smithereen.model.ViolationReport;
-import smithereen.model.ViolationReportAction;
+import smithereen.model.admin.ActorStaffNote;
+import smithereen.model.admin.AdminNotifications;
+import smithereen.model.admin.AuditLogEntry;
+import smithereen.model.admin.EmailDomainBlockRule;
+import smithereen.model.admin.EmailDomainBlockRuleFull;
+import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.admin.GroupActionLogEntry;
+import smithereen.model.admin.IPBlockRule;
+import smithereen.model.admin.IPBlockRuleFull;
+import smithereen.model.admin.UserRole;
+import smithereen.model.admin.ViolationReport;
+import smithereen.model.admin.ViolationReportAction;
+import smithereen.model.board.BoardTopic;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupBanInfo;
+import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.photos.Photo;
+import smithereen.model.reports.ReportableContentObject;
+import smithereen.model.reports.ReportableContentObjectID;
+import smithereen.model.reports.ReportedComment;
 import smithereen.model.viewmodel.AdminUserViewModel;
 import smithereen.model.viewmodel.UserRoleViewModel;
+import smithereen.storage.DatabaseUtils;
 import smithereen.storage.FederationStorage;
+import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.PhotoStorage;
@@ -85,24 +99,31 @@ import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
 import smithereen.util.InetAddressRange;
 import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.utils.StringUtils;
 
 public class ModerationController{
 	private static final Logger LOG=LoggerFactory.getLogger(ModerationController.class);
+	private static final int REPORT_FILE_RETENTION_DAYS=7;
 
+	private final Object serverUpdateLock=new Object();
 	private final ApplicationContext context;
 	private final LruCache<String, Server> serversByDomainCache=new LruCache<>(500);
 	private List<EmailDomainBlockRule> emailDomainRules;
 	private List<IPBlockRule> ipRules;
+	private List<ServerRule> serverRules;
+	private List<ServerAnnouncement> currentAndFutureAnnouncements;
 
 	public ModerationController(ApplicationContext context){
 		this.context=context;
 	}
 
-	public void createViolationReport(User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, boolean forward){
-		int reportID=createViolationReportInternal(self, target, content, comment, null);
+	// region Reporting
+
+	public int createViolationReport(User self, @Nullable Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, boolean forward){
+		int reportID=createViolationReportInternal(self, target, content, reason, rules, comment, null);
 		if(forward && (target instanceof ForeignGroup || target instanceof ForeignUser)){
 			ArrayList<URI> objectIDs=new ArrayList<>();
 			objectIDs.add(target.activityPubID);
@@ -110,31 +131,51 @@ public class ModerationController{
 				objectIDs.add(apr.getActivityPubID());
 			context.getActivityPubWorker().sendViolationReport(reportID, comment, objectIDs, target);
 		}
+		return reportID;
 	}
 
 	public void createViolationReport(@Nullable User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, String otherServerDomain){
-		createViolationReportInternal(self, target, content, comment, otherServerDomain);
+		createViolationReportInternal(self, target, content, ViolationReport.Reason.OTHER, null, comment, otherServerDomain);
 	}
 
-	private int createViolationReportInternal(@Nullable User self, Actor target, @Nullable List<ReportableContentObject> content, String comment, String otherServerDomain){
+	private int createViolationReportInternal(@Nullable User self, @Nullable Actor target, @Nullable List<ReportableContentObject> content, ViolationReport.Reason reason, Set<Integer> rules, String comment, String otherServerDomain){
 		try{
-			int targetID=target.getOwnerID();
+			int targetID;
+			if(target!=null){
+				targetID=target.getOwnerID();
+			}else if(content!=null && !content.isEmpty()){
+				targetID=content.getFirst().getAuthorID();
+			}else{
+				throw new IllegalArgumentException("Either target actor or non-empty content required");
+			}
 
 			HashSet<Long> contentFileIDs=new HashSet<>();
 			JsonArray contentJson;
 			if(content!=null && !content.isEmpty()){
 				JsonArrayBuilder ab=new JsonArrayBuilder();
-				for(ReportableContentObject obj: content){
+				for(ReportableContentObject obj:content){
+					if(obj.getAuthorID()!=targetID)
+						continue;
 					JsonObject jo=obj.serializeForReport(targetID, contentFileIDs);
-					if(jo!=null)
+					if(jo!=null){
+						if(obj instanceof Comment c && c.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
+							BoardTopic topic=context.getBoardController().getTopicIgnoringPrivacy(c.parentObjectID.id());
+							jo.addProperty("topicTitle", topic.title);
+							if(topic.firstCommentID==c.id)
+								jo.addProperty("isFirst", true);
+						}
 						ab.add(jo);
+					}
 				}
 				contentJson=ab.build();
 			}else{
 				contentJson=null;
 			}
 
-			int id=ModerationStorage.createViolationReport(self!=null ? self.id : 0, targetID, comment, otherServerDomain, contentJson==null ? null : contentJson.toString());
+			if(reason!=ViolationReport.Reason.SERVER_RULES)
+				rules=Set.of();
+
+			int id=ModerationStorage.createViolationReport(self!=null ? self.id : 0, targetID, comment, otherServerDomain, contentJson==null ? null : contentJson.toString(), !contentFileIDs.isEmpty(), reason, rules);
 			updateReportsCounter();
 			for(long fid: contentFileIDs){
 				// ownerID set to 0 because reports aren't owned by any particular actor
@@ -165,7 +206,7 @@ public class ModerationController{
 
 	public PaginatedList<ViolationReport> getViolationReportsOfActor(Actor actor, int offset, int count){
 		try{
-			return ModerationStorage.getViolationReportsOfActor(actor.getLocalID(), offset, count);
+			return ModerationStorage.getViolationReportsOfActor(actor.getOwnerID(), offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -179,50 +220,321 @@ public class ModerationController{
 		}
 	}
 
+	public void populateFilesInReportableContent(List<ReportableContentObject> content){
+		HashSet<LocalImage> localImages=new HashSet<>();
+		List<Photo> photos=new ArrayList<>();
+		for(ReportableContentObject rco:content){
+			List<ActivityPubObject> attachments=switch(rco){
+				case Post p -> p.getAttachments();
+				case MailMessage m -> m.getAttachments();
+				case Photo p -> {
+					photos.add(p);
+					yield null;
+				}
+				case Comment c -> c.getAttachments();
+			};
+			if(attachments==null)
+				continue;
+			for(ActivityPubObject att: attachments){
+				if(att instanceof LocalImage li){
+					localImages.add(li);
+				}
+			}
+		}
+		try{
+			Set<Long> fileIDs=localImages.stream().map(li->li.fileID).collect(Collectors.toSet());
+			if(!fileIDs.isEmpty()){
+				Map<Long, MediaFileRecord> files=MediaStorage.getMediaFileRecords(fileIDs);
+				for(LocalImage li: localImages){
+					MediaFileRecord mfr=files.get(li.fileID);
+					if(mfr!=null)
+						li.fillIn(mfr);
+				}
+			}
+			if(!photos.isEmpty()){
+				PhotoStorage.postprocessPhotos(photos);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public ViolationReport getViolationReportByID(int id, boolean needFiles){
 		try{
 			ViolationReport report=ModerationStorage.getViolationReportByID(id);
 			if(report==null)
 				throw new ObjectNotFoundException();
 			if(needFiles && !report.content.isEmpty()){
-				HashSet<LocalImage> localImages=new HashSet<>();
-				List<Photo> photos=new ArrayList<>();
-				for(ReportableContentObject rco: report.content){
-					List<ActivityPubObject> attachments=switch(rco){
-						case Post p -> p.getAttachments();
-						case MailMessage m -> m.getAttachments();
-						case Photo p -> {
-							photos.add(p);
-							yield null;
-						}
-						case Comment c -> c.getAttachments();
-					};
-					if(attachments==null)
-						continue;
-					for(ActivityPubObject att: attachments){
-						if(att instanceof LocalImage li){
-							localImages.add(li);
-						}
-					}
-				}
-				Set<Long> fileIDs=localImages.stream().map(li->li.fileID).collect(Collectors.toSet());
-				if(!fileIDs.isEmpty()){
-					Map<Long, MediaFileRecord> files=MediaStorage.getMediaFileRecords(fileIDs);
-					for(LocalImage li: localImages){
-						MediaFileRecord mfr=files.get(li.fileID);
-						if(mfr!=null)
-							li.fillIn(mfr);
-					}
-				}
-				if(!photos.isEmpty()){
-					PhotoStorage.postprocessPhotos(photos);
-				}
+				populateFilesInReportableContent(report.content);
 			}
 			return report;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public static void deleteResolvedViolationReportFiles(){
+		try{
+			List<ViolationReport> reports=ModerationStorage.getResolvedViolationReportsWithFiles();
+			if(reports.isEmpty())
+				return;
+			Map<Integer, Instant> lastActions=ModerationStorage.getViolationReportLastActionTimes(reports.stream().map(r->r.id).toList());
+			Instant deleteBefore=Instant.now().plus(REPORT_FILE_RETENTION_DAYS, ChronoUnit.DAYS);
+			for(ViolationReport report:reports){
+				Instant lastAction=lastActions.get(report.id);
+				if(lastAction!=null && lastAction.isAfter(deleteBefore))
+					continue;
+				MediaStorage.deleteMediaFileReferences(report.id, MediaFileReferenceType.REPORT_OBJECT);
+				ModerationStorage.setViolationReportHasFileRefs(report.id, false);
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to delete file refs for resolved reports", x);
+		}
+	}
+
+	private void updateReportsCounter(){
+		AdminNotifications an=AdminNotifications.getInstance(null);
+		if(an!=null){
+			an.openReportsCount=getViolationReportsCount(true);
+		}
+	}
+
+	public List<ViolationReportAction> getViolationReportActions(ViolationReport report){
+		try{
+			List<ViolationReportAction> actions=ModerationStorage.getViolationReportActions(report.id);
+			return actions;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void rejectViolationReport(ViolationReport report, User self){
+		try{
+			if(report.state!=ViolationReport.State.OPEN)
+				throw new IllegalArgumentException("Report is not open");
+			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_REJECTED);
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.RESOLVE_REJECT, null, null);
+			updateReportsCounter();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void markViolationReportUnresolved(ViolationReport report, User self){
+		try{
+			if(report.state==ViolationReport.State.OPEN)
+				throw new IllegalArgumentException("Report is already open");
+			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.OPEN);
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.REOPEN, null, null);
+			updateReportsCounter();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void addViolationReportComment(ViolationReport report, User self, String commentText){
+		try{
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.COMMENT, TextProcessor.preprocessPostHTML(commentText, null), null);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void resolveViolationReport(ViolationReport report, User self, UserBanStatus status, UserBanInfo banInfo){
+		try{
+			if(report.state!=ViolationReport.State.OPEN)
+				throw new IllegalArgumentException("Report is not open");
+			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_ACTION_TAKEN);
+			HashMap<String, Object> extra=new HashMap<>();
+			extra.put("status", status);
+			if(banInfo!=null){
+				if(banInfo.expiresAt()!=null)
+					extra.put("expiresAt", banInfo.expiresAt().toEpochMilli());
+				if(StringUtils.isNotEmpty(banInfo.message()))
+					extra.put("message", banInfo.message());
+			}
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.RESOLVE_WITH_ACTION, null, Utils.gson.toJsonTree(extra).getAsJsonObject());
+			updateReportsCounter();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void resolveViolationReport(ViolationReport report, User self, GroupBanStatus status, GroupBanInfo banInfo){
+		try{
+			if(report.state!=ViolationReport.State.OPEN)
+				throw new IllegalArgumentException("Report is not open");
+			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_ACTION_TAKEN);
+			HashMap<String, Object> extra=new HashMap<>();
+			extra.put("status", status);
+			if(banInfo!=null){
+				if(StringUtils.isNotEmpty(banInfo.message()))
+					extra.put("message", banInfo.message());
+			}
+			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.RESOLVE_WITH_ACTION, null, Utils.gson.toJsonTree(extra).getAsJsonObject());
+			updateReportsCounter();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteViolationReportContent(ViolationReport report, SessionInfo session, boolean markResolved){
+		if(report.content==null)
+			return;
+		if(report.state!=ViolationReport.State.OPEN)
+			throw new IllegalArgumentException("Report is not open");
+		try{
+			boolean actuallyDeletedAnything=false;
+			for(ReportableContentObject rco: report.content){
+				switch(rco){
+					case Post post -> {
+						try{
+							context.getWallController().getPostOrThrow(post.id);
+						}catch(ObjectNotFoundException x){
+							LOG.debug("Post {} already deleted", post.id);
+							continue;
+						}
+						context.getWallController().deletePostAsServerModerator(session.account.user, post);
+					}
+					case MailMessage msg -> {
+						if(context.getMailController().getMessagesAsModerator(Set.of(XTEA.obfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE))).isEmpty()){
+							LOG.debug("Message {} already deleted", msg.id);
+							continue;
+						}
+						User sender=context.getUsersController().getUserOrThrow(msg.senderID);
+						context.getMailController().actuallyDeleteMessage(sender, msg, true);
+					}
+					case Photo photo -> {
+						if(photo.ownerID>0){
+							context.getPhotosController().deletePhoto(context.getUsersController().getUserOrThrow(photo.ownerID), photo);
+						}else{
+							context.getPhotosController().deletePhoto(context.getGroupsController().getGroupOrThrow(-photo.ownerID), photo);
+						}
+					}
+					case Comment comment -> {
+						if(comment instanceof ReportedComment rc && rc.isFirstInTopic){
+							try{
+								BoardTopic topic=context.getBoardController().getTopicIgnoringPrivacy(comment.parentObjectID.id());
+								context.getBoardController().deleteTopicWithFederation(context.getGroupsController().getGroupOrThrow(topic.groupID), topic);
+							}catch(ObjectNotFoundException x){
+								LOG.debug("Board topic {} already deleted", rc.parentObjectID.id());
+								continue;
+							}
+						}else{
+							context.getCommentsController().deleteComment(context.getWallController().getContentAuthorAndOwner(comment).owner(), comment);
+						}
+					}
+				}
+				actuallyDeletedAnything=true;
+			}
+			if(actuallyDeletedAnything){
+				MediaStorage.deleteMediaFileReferences(report.id, MediaFileReferenceType.REPORT_OBJECT);
+				ModerationStorage.createViolationReportAction(report.id, session.account.user.id, ViolationReportAction.ActionType.DELETE_CONTENT, null, null);
+				if(markResolved){
+					ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_ACTION_TAKEN);
+					updateReportsCounter();
+					if(report.targetID>0 && report.reason!=ViolationReport.Reason.SPAM){
+						try{
+							User user=context.getUsersController().getUserOrThrow(report.targetID);
+							if(!(user instanceof ForeignUser)){
+								Account account=context.getUsersController().getAccountForUser(user);
+								Mailer.getInstance().sendContentRemovalNotification(account, report.content, report.rules!=null ? getServerRulesByIDs(report.rules) : null);
+							}
+						}catch(ObjectNotFoundException ignore){}
+					}
+				}
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setViolationReportReason(User admin, ViolationReport report, ViolationReport.Reason reason){
+		try{
+			ModerationStorage.setViolationReportReason(report.id, reason);
+			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.CHANGE_REASON, null,
+					new JsonObjectBuilder().add("oldReason", report.reason.toString()).add("newReason", reason.toString()).build());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setViolationReportRules(User admin, ViolationReport report, Set<Integer> rules){
+		try{
+			ModerationStorage.setViolationReportRules(report.id, rules);
+			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.CHANGE_RULES, null,
+					new JsonObjectBuilder().add("oldRules", JsonArrayBuilder.fromCollection(report.rules)).add("newRules", JsonArrayBuilder.fromCollection(rules)).build());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void removeContentFromViolationReport(User admin, ViolationReport report, Collection<ReportableContentObjectID> contentIDs){
+		if(report.state!=ViolationReport.State.OPEN)
+			throw new UserActionNotAllowedException();
+		List<ReportableContentObject> removedObjects=report.content.stream().filter(o->contentIDs.contains(o.getReportableObjectID())).toList();
+		if(removedObjects.isEmpty())
+			return;
+		try{
+			HashSet<Long> contentFileIDs=new HashSet<>();
+			JsonArray removedContentJson=removedObjects.stream().map(o->o.serializeForReport(report.targetID, contentFileIDs)).collect(JsonArrayBuilder.COLLECTOR);
+			for(long fid:contentFileIDs){
+				MediaStorage.deleteMediaFileReference(report.id, MediaFileReferenceType.REPORT_OBJECT, fid);
+			}
+
+			report.content=report.content.stream().filter(o->!removedObjects.contains(o)).toList();
+			contentFileIDs.clear();
+			JsonArray newContent=report.content.stream().map(o->o.serializeForReport(report.targetID, contentFileIDs)).collect(JsonArrayBuilder.COLLECTOR);
+			ModerationStorage.updateViolationReportContent(report.id, newContent.toString(), !contentFileIDs.isEmpty());
+
+			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.REMOVE_CONTENT, null,
+					new JsonObjectBuilder().add("content", removedContentJson).build());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void addContentToViolationReport(User admin, ViolationReport report, List<ReportableContentObject> content){
+		if(report.state!=ViolationReport.State.OPEN)
+			throw new UserActionNotAllowedException();
+
+		Set<ReportableContentObjectID> existingObjectIDs=report.content.stream().map(ReportableContentObject::getReportableObjectID).collect(Collectors.toSet());
+		content=content.stream().filter(o->!existingObjectIDs.contains(o.getReportableObjectID())).toList();
+		if(content.isEmpty())
+			return;
+
+		HashSet<Long> oldFileIDs=new HashSet<>(), newFileIDs=new HashSet<>();
+		JsonArray serializedContent=report.content.stream().map(o->o.serializeForReport(report.targetID, oldFileIDs)).collect(JsonArrayBuilder.COLLECTOR);
+		JsonArray newContent=content.stream().map(o->o.serializeForReport(report.targetID, newFileIDs)).collect(JsonArrayBuilder.COLLECTOR);
+		serializedContent.addAll(newContent);
+		newFileIDs.removeAll(oldFileIDs);
+		try{
+			ModerationStorage.updateViolationReportContent(report.id, serializedContent.toString(), !oldFileIDs.isEmpty() || !newFileIDs.isEmpty());
+
+			for(long fid:newFileIDs){
+				MediaStorage.createMediaFileReference(fid, report.id, MediaFileReferenceType.REPORT_OBJECT, 0);
+			}
+
+			ModerationStorage.createViolationReportAction(report.id, admin.id, ViolationReportAction.ActionType.ADD_CONTENT, null,
+					new JsonObjectBuilder().add("content", newContent).build());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public ViolationReportAction getViolationReportAction(ViolationReport report, int actionID){
+		try{
+			ViolationReportAction action=ModerationStorage.getViolationReportActionByID(report.id, actionID);
+			if(action==null)
+				throw new ObjectNotFoundException();
+			return action;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Federation & federation restrictions
 
 	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean onlyRestricted, String query){
 		try{
@@ -268,10 +580,12 @@ public class ModerationController{
 			return server;
 
 		try{
-			server=FederationStorage.getServerByDomain(domain);
-			if(server==null){
-				int id=FederationStorage.addServer(domain);
-				server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
+			synchronized(serverUpdateLock){
+				server=FederationStorage.getServerByDomain(domain);
+				if(server==null){
+					int id=FederationStorage.addServer(domain);
+					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
+				}
 			}
 			serversByDomainCache.put(domain, server);
 			return server;
@@ -313,6 +627,9 @@ public class ModerationController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	// endregion
+	// region Account roles
 
 	public void setAccountRole(Account self, Account account, int roleID){
 		UserRole ownRole=Config.userRoles.get(self.roleID);
@@ -435,6 +752,9 @@ public class ModerationController{
 		}
 	}
 
+	// endregion
+	// region Audit log
+
 	public PaginatedList<AuditLogEntry> getGlobalAuditLog(int offset, int count){
 		try{
 			return ModerationStorage.getGlobalAuditLog(offset, count);
@@ -443,18 +763,21 @@ public class ModerationController{
 		}
 	}
 
-	public PaginatedList<AuditLogEntry> getUserAuditLog(User user, int offset, int count){
+	public PaginatedList<AuditLogEntry> getActorAuditLog(Actor actor, int offset, int count){
 		try{
-			return ModerationStorage.getUserAuditLog(user.id, offset, count);
+			return ModerationStorage.getActorAuditLog(actor.getOwnerID(), offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public PaginatedList<AdminUserViewModel> getAllUsers(int offset, int count, String query, Boolean localOnly, String emailDomain, String ipSubnet, int roleID){
+	// endregion
+	// region User management
+
+	public PaginatedList<AdminUserViewModel> getAllUsers(int offset, int count, String query, Boolean localOnly, String emailDomain, String ipSubnet, int roleID, UserBanStatus banStatus, boolean remoteSuspended){
 		try{
 			InetAddressRange subnet=ipSubnet!=null ? InetAddressRange.parse(ipSubnet) : null;
-			return ModerationStorage.getUsers(query, localOnly, emailDomain, subnet, roleID, offset, count);
+			return ModerationStorage.getUsers(query, localOnly, emailDomain, subnet, roleID, banStatus, remoteSuspended, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -497,7 +820,10 @@ public class ModerationController{
 		try{
 			if(self.id==target.id && status!=UserBanStatus.NONE)
 				throw new UserErrorException("You can't ban yourself");
+			UserBanStatus prevStatus=target.banStatus;
 			UserStorage.setUserBanStatus(target, targetAccount, status, status!=UserBanStatus.NONE ? Utils.gson.toJson(info) : null);
+			target.banStatus=status;
+			target.banInfo=info;
 			HashMap<String, Object> auditLogArgs=new HashMap<>();
 			auditLogArgs.put("status", status);
 			if(info!=null){
@@ -509,9 +835,15 @@ public class ModerationController{
 					auditLogArgs.put("report", info.reportID());
 			}
 			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.BAN_USER, target.id, 0, null, auditLogArgs);
-			if(!(target instanceof ForeignUser) && (status==UserBanStatus.FROZEN || status==UserBanStatus.SUSPENDED)){
+			if(!(target instanceof ForeignUser) && (status==UserBanStatus.FROZEN || status==UserBanStatus.SUSPENDED) && info!=null){
 				Account account=SessionStorage.getAccountByUserID(target.id);
-				Mailer.getInstance().sendAccountBanNotification(account, status, info);
+				ViolationReport report=info.reportID()!=0 ? getViolationReportByID(info.reportID(), true) : null;
+				if(report!=null && report.reason!=ViolationReport.Reason.SPAM){
+					Mailer.getInstance().sendAccountBanNotification(account, status, info, report, report==null || report.rules==null || report.rules.isEmpty() ? null : getServerRulesByIDs(report.rules));
+				}
+			}
+			if(!(target instanceof ForeignUser) && (status==UserBanStatus.SUSPENDED || prevStatus==UserBanStatus.SUSPENDED)){
+				context.getActivityPubWorker().sendUpdateUserActivity(target);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -526,158 +858,64 @@ public class ModerationController{
 		}
 	}
 
-	private void updateReportsCounter(){
-		AdminNotifications an=AdminNotifications.getInstance(null);
-		if(an!=null){
-			an.openReportsCount=getViolationReportsCount(true);
-		}
-	}
-
-	public List<ViolationReportAction> getViolationReportActions(ViolationReport report){
+	public List<GroupAdmin> getUserManagedGroups(User user){
 		try{
-			return ModerationStorage.getViolationReportActions(report.id);
+			return GroupStorage.getUserManagedGroupsWithLevels(user.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void rejectViolationReport(ViolationReport report, User self){
+	public void updateUserUsername(User self, User target, String username){
+		String oldUsername=target.username;
+		context.getUsersController().updateUsername(target, username);
+		if(StringUtils.isEmpty(username))
+			username="id"+target.id;
 		try{
-			if(report.state!=ViolationReport.State.OPEN)
-				throw new IllegalArgumentException("Report is not open");
-			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_REJECTED);
-			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.RESOLVE_REJECT, null, null);
-			updateReportsCounter();
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CHANGE_USER_USERNAME, target.id, 0, null, Map.of("old", oldUsername, "new", username));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void markViolationReportUnresolved(ViolationReport report, User self){
+	// endregion
+	// region Actor staff notes
+
+	public int getActorStaffNoteCount(Actor actor){
 		try{
-			if(report.state==ViolationReport.State.OPEN)
-				throw new IllegalArgumentException("Report is already open");
-			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.OPEN);
-			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.REOPEN, null, null);
-			updateReportsCounter();
+			return ModerationStorage.getActorStaffNoteCount(actor.getOwnerID());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void addViolationReportComment(ViolationReport report, User self, String commentText){
+	public PaginatedList<ActorStaffNote> getActorStaffNotes(Actor actor, int offset, int count){
 		try{
-			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.COMMENT, TextProcessor.preprocessPostHTML(commentText, null), null);
+			return ModerationStorage.getActorStaffNotes(actor.getOwnerID(), offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void resolveViolationReport(ViolationReport report, User self, UserBanStatus status, UserBanInfo banInfo){
+	public void createActorStaffNote(User self, Actor target, String text){
 		try{
-			if(report.state!=ViolationReport.State.OPEN)
-				throw new IllegalArgumentException("Report is not open");
-			ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_ACTION_TAKEN);
-			HashMap<String, Object> extra=new HashMap<>();
-			extra.put("status", status);
-			if(banInfo!=null){
-				if(banInfo.expiresAt()!=null)
-					extra.put("expiresAt", banInfo.expiresAt().toEpochMilli());
-				if(StringUtils.isNotEmpty(banInfo.message()))
-					extra.put("message", banInfo.message());
-			}
-			ModerationStorage.createViolationReportAction(report.id, self.id, ViolationReportAction.ActionType.RESOLVE_WITH_ACTION, null, Utils.gson.toJsonTree(extra).getAsJsonObject());
-			updateReportsCounter();
+			ModerationStorage.createActorStaffNote(target.getOwnerID(), self.id, TextProcessor.preprocessPostHTML(text, null));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public void deleteViolationReportContent(ViolationReport report, SessionInfo session, boolean markResolved){
-		if(report.content==null)
-			return;
-		if(report.state!=ViolationReport.State.OPEN)
-			throw new IllegalArgumentException("Report is not open");
+	public void deleteActorStaffNote(Actor actor, ActorStaffNote note){
 		try{
-			boolean actuallyDeletedAnything=false;
-			for(ReportableContentObject rco: report.content){
-				switch(rco){
-					case Post post -> {
-						try{
-							context.getWallController().getPostOrThrow(post.id);
-						}catch(ObjectNotFoundException x){
-							LOG.debug("Post {} already deleted", post.id);
-							continue;
-						}
-						context.getWallController().deletePostAsServerModerator(session.account.user, post);
-					}
-					case MailMessage msg -> {
-						if(context.getMailController().getMessagesAsModerator(Set.of(XTEA.obfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE))).isEmpty()){
-							LOG.debug("Message {} already deleted", msg.id);
-							continue;
-						}
-						User sender=context.getUsersController().getUserOrThrow(msg.senderID);
-						context.getMailController().actuallyDeleteMessage(sender, msg, true);
-					}
-					case Photo photo -> {
-						if(photo.ownerID>0){
-							context.getPhotosController().deletePhoto(context.getUsersController().getUserOrThrow(photo.ownerID), photo);
-						}else{
-							context.getPhotosController().deletePhoto(context.getGroupsController().getGroupOrThrow(-photo.ownerID), photo);
-						}
-					}
-					case Comment comment -> context.getCommentsController().deleteComment(context.getWallController().getContentAuthorAndOwner(comment).owner(), comment);
-				}
-				actuallyDeletedAnything=true;
-			}
-			if(actuallyDeletedAnything){
-				MediaStorage.deleteMediaFileReferences(report.id, MediaFileReferenceType.REPORT_OBJECT);
-				ModerationStorage.createViolationReportAction(report.id, session.account.user.id, ViolationReportAction.ActionType.DELETE_CONTENT, null, null);
-				if(markResolved){
-					ModerationStorage.setViolationReportState(report.id, ViolationReport.State.CLOSED_ACTION_TAKEN);
-					updateReportsCounter();
-				}
-			}
+			ModerationStorage.deleteActorStaffNote(actor.getOwnerID(), note.id());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public int getUserStaffNoteCount(User user){
+	public ActorStaffNote getActorStaffNoteOrThrow(Actor actor, int id){
 		try{
-			return ModerationStorage.getUserStaffNoteCount(user.id);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public PaginatedList<ActorStaffNote> getUserStaffNotes(User user, int offset, int count){
-		try{
-			return ModerationStorage.getUserStaffNotes(user.id, offset, count);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void createUserStaffNote(User self, User target, String text){
-		try{
-			ModerationStorage.createUserStaffNote(target.id, self.id, TextProcessor.preprocessPostHTML(text, null));
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public void deleteUserStaffNote(ActorStaffNote note){
-		try{
-			ModerationStorage.deleteUserStaffNote(note.id());
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public ActorStaffNote getUserStaffNoteOrThrow(int id){
-		try{
-			ActorStaffNote note=ModerationStorage.getUserStaffNote(id);
+			ActorStaffNote note=ModerationStorage.getActorStaffNote(actor.getOwnerID(), id);
 			if(note==null)
 				throw new ObjectNotFoundException();
 			return note;
@@ -685,6 +923,9 @@ public class ModerationController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	// endregion
+	// region Email blocking
 
 	public List<EmailDomainBlockRule> getEmailDomainBlockRules(){
 		try{
@@ -774,6 +1015,9 @@ public class ModerationController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	// endregion
+	// region IP blocking
 
 	public List<IPBlockRule> getIPBlockRules(){
 		try{
@@ -865,6 +1109,9 @@ public class ModerationController{
 		}
 	}
 
+	// endregion
+	// region Signup invite management
+
 	public Config.SignupMode getEffectiveSignupMode(Request req){
 		InetAddress ip=Utils.getRequestIP(req);
 		IPBlockRule rule=matchIPBlockRule(ip);
@@ -903,4 +1150,229 @@ public class ModerationController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	// endregion
+	// region Server rules
+
+	public List<ServerRule> getServerRules(){
+		if(serverRules==null){
+			try{
+				serverRules=Collections.unmodifiableList(ModerationStorage.getServerRules(false));
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+		}
+		return serverRules;
+	}
+
+	private void invalidateServerRuleCache(){
+		serverRules=null;
+	}
+
+	public void createServerRule(User admin, String title, String description, int priority, Map<String, ServerRule.Translation> translations){
+		try{
+			String translationsJson=Utils.gson.toJson(translations);
+			ModerationStorage.createServerRule(title, description, priority, translationsJson);
+			ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.CREATE_SERVER_RULE, 0, 0, null, Map.of(
+					"title", title,
+					"description", description,
+					"priority", priority,
+					"translations", translationsJson
+			));
+			invalidateServerRuleCache();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateServerRule(User admin, ServerRule rule, String title, String description, int priority, Map<String, ServerRule.Translation> translations){
+		if(rule.title().equals(title) && rule.description().equals(description) && rule.priority()==priority && rule.translations().equals(translations))
+			return;
+		try{
+			String translationsJson=Utils.gson.toJson(translations);
+			ModerationStorage.updateServerRule(rule.id(), title, description, priority, translationsJson);
+			ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.UPDATE_SERVER_RULE, 0, 0, null, Map.of(
+					"newTitle", title,
+					"newDescription", description,
+					"newPriority", priority,
+					"newTranslations", translationsJson,
+
+					"oldTitle", rule.title(),
+					"oldDescription", rule.description(),
+					"oldPriority", rule.priority(),
+					"oldTranslations", Utils.gson.toJson(rule.translations())
+			));
+			invalidateServerRuleCache();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public ServerRule getServerRuleByID(int id){
+		try{
+			List<ServerRule> rules=ModerationStorage.getServerRulesByIDs(List.of(id));
+			if(rules.isEmpty() || rules.getFirst().isDeleted())
+				throw new ObjectNotFoundException();
+			return rules.getFirst();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<ServerRule> getServerRulesByIDs(Collection<Integer> ids){
+		if(ids.isEmpty())
+			return List.of();
+		try{
+			return ModerationStorage.getServerRulesByIDs(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteServerRule(User admin, ServerRule rule){
+		try{
+			ModerationStorage.deleteServerRule(rule.id());
+			ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.DELETE_SERVER_RULE, 0, 0, null, Map.of(
+					"title", rule.title(),
+					"description", rule.description(),
+					"priority", rule.priority(),
+					"translations", Utils.gson.toJson(rule.translations())
+			));
+			invalidateServerRuleCache();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Announcements
+
+	public void createAnnouncement(String title, String description, String linkTitle, String linkUrl, Instant showFrom, Instant showTo, Map<String, ServerAnnouncement.Translation> translations){
+		try{
+			ModerationStorage.createAnnouncement(title, description, linkTitle, linkUrl, showFrom, showTo, Utils.gson.toJson(translations));
+			currentAndFutureAnnouncements=null;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateAnnouncement(ServerAnnouncement announcement, String title, String description, String linkTitle, String linkUrl, Instant showFrom, Instant showTo, Map<String, ServerAnnouncement.Translation> translations){
+		try{
+			ModerationStorage.updateAnnouncement(announcement.id(), title, description, linkTitle, linkUrl, showFrom, showTo, Utils.gson.toJson(translations));
+			currentAndFutureAnnouncements=null;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<ServerAnnouncement> getCurrentAndFutureAnnouncements(){
+		if(currentAndFutureAnnouncements!=null)
+			return currentAndFutureAnnouncements;
+
+		try{
+			currentAndFutureAnnouncements=Collections.unmodifiableList(ModerationStorage.getCurrentAndFutureAnnouncements());
+			return currentAndFutureAnnouncements;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<ServerAnnouncement> getAllAnnouncements(int offset, int count){
+		try{
+			return ModerationStorage.getAllAnnouncements(offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public ServerAnnouncement getAnnouncement(int id){
+		try{
+			ServerAnnouncement announcement=ModerationStorage.getAnnouncement(id);
+			if(announcement==null)
+				throw new ObjectNotFoundException();
+			return announcement;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteAnnouncement(ServerAnnouncement announcement){
+		try{
+			ModerationStorage.deleteAnnouncement(announcement.id());
+			currentAndFutureAnnouncements=null;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Group action log
+
+	public PaginatedList<GroupActionLogEntry> getGroupActionLog(Group group, int offset, int count){
+		try{
+			PaginatedList<GroupActionLogEntry> log=ModerationStorage.getGroupActionLog(group.id, offset, count);
+			for(GroupActionLogEntry e:log.list){
+				if(e.action()==GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL){
+					e.info().put("new", Group.AdminLevel.valueOf((String)e.info().get("new")));
+					e.info().put("old", Group.AdminLevel.valueOf((String)e.info().get("old")));
+				}
+			}
+			return log;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region Group bans
+
+	public void setGroupBanStatus(User self, Group target, GroupBanStatus status, GroupBanInfo info){
+		try{
+			GroupBanStatus prevStatus=target.banStatus;
+			GroupStorage.setGroupBanStatus(target, status, status!=GroupBanStatus.NONE ? Utils.gson.toJson(info) : null);
+			target.banStatus=status;
+			target.banInfo=info;
+			HashMap<String, Object> auditLogArgs=new HashMap<>();
+			auditLogArgs.put("status", status);
+			if(info!=null){
+				if(StringUtils.isNotEmpty(info.message()))
+					auditLogArgs.put("message", info.message());
+				if(info.reportID()>0)
+					auditLogArgs.put("report", info.reportID());
+			}
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.BAN_GROUP, -target.id, 0, null, auditLogArgs);
+			if(!(target instanceof ForeignGroup) && (status==GroupBanStatus.SUSPENDED || prevStatus==GroupBanStatus.SUSPENDED)){
+				context.getActivityPubWorker().sendUpdateGroupActivity(target);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateGroupUsername(User self, Group target, String username){
+		String oldUsername=target.username;
+		try{
+			String defaultUsername=(target.isEvent() ? "event" : "club")+target.id;
+			if(StringUtils.isEmpty(username))
+				username=defaultUsername;
+			if(!Utils.isValidUsername(username))
+				throw new UserErrorException("err_group_invalid_username");
+			if(Utils.isReservedUsername(username) && !username.equals(defaultUsername))
+				throw new UserErrorException("err_group_reserved_username");
+			String finalUsername=username;
+			boolean result=DatabaseUtils.runWithUniqueUsername(username, ()->{
+				GroupStorage.updateUsername(target, finalUsername);
+			});
+			if(!result)
+				throw new UserErrorException("err_group_username_taken");
+			target.username=username;
+			target.url=Config.localURI(username);
+			context.getActivityPubWorker().sendUpdateGroupActivity(target);
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CHANGE_GROUP_USERNAME, -target.id, 0, null, Map.of("old", oldUsername, "new", username));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
 }

@@ -11,6 +11,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	private layerBackThing:HTMLElement;
 	private layerCloseThing:HTMLElement;
 	private topHtmlW:HTMLElement;
+	private errorOverlay:HTMLElement;
 
 	private tagsWrap:HTMLElement;
 	private tagTopBar:HTMLElement;
@@ -36,6 +37,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	public bottomPartUpdateCallback:{(el:HTMLElement):void};
 	private tagging:boolean=false;
 	private tagAreaSelector:ImageAreaSelector;
+	private failed:boolean=false;
 
 	public constructor(info:PhotoViewerInlineData, listURL:string, fromPopState:boolean){
 		super(fromPopState);
@@ -225,15 +227,36 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		if(this.pictureEl){
 			this.pictureEl.remove();
 		}
+		if(this.errorOverlay){
+			this.errorOverlay.remove();
+			this.errorOverlay=null;
+		}
+		this.failed=false;
 		this.pictureEl=ce("picture", {}, [
 			this.sourceWebp=ce("source", {type: "image/webp"}),
 			this.sourceJpeg=ce("source", {type: "image/jpeg"}),
 			this.imgEl=ce("img")
 		]);
 		this.imgEl.addEventListener("load", (ev)=>{
+			if(this.imgEl.currentSrc.endsWith("/res/broken_photo.svg")){
+				this.failed=true;
+				if(!this.loading)
+					this.handleFailedLoad();
+				return;
+			}
+			this.imgEl.style.visibility="";
 			this.imgLoader.hide();
 			this.updateSize();
 		});
+		this.imgEl.addEventListener("error", (ev)=>{
+			console.log(this.imgEl.currentSrc);
+			if(this.imgEl.currentSrc.indexOf("/system/downloadExternalMedia")!=-1){
+				this.failed=true;
+				if(!this.loading)
+					this.handleFailedLoad();
+			}
+		});
+		this.imgEl.addEventListener("progress", (ev)=>console.log(ev));
 		this.imgEl.addEventListener("click", (ev)=>{
 			if(this.total==1)
 				this.dismiss();
@@ -241,6 +264,27 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				this.showNext();
 		});
 		this.imgWrap.appendChild(this.pictureEl);
+	}
+
+	private handleFailedLoad(){
+		this.imgEl.src=this.sourceWebp.srcset=this.sourceJpeg.srcset="/res/broken_photo_large.svg";
+		this.imgEl.style.visibility="hidden";
+		this.errorOverlay=ce("div", {className: "errorOverlay"});
+		var ph=this.photos[this.currentIndex];
+		if(ph.originalURL){
+			var err=document.createDocumentFragment();
+			err.appendChild(ce("span", {innerHTML: lang("photo_load_failed_remote")}));
+			var link=err.getElementById("direct") as HTMLAnchorElement;
+			if(link){
+				link.id="";
+				link.href=ph.originalURL;
+				link.target="_blank";
+			}
+			this.errorOverlay.appendChild(err);
+		}else{
+			this.errorOverlay.innerHTML=lang("photo_load_failed_local");
+		}
+		this.imgWrap.appendChild(this.errorOverlay);
 	}
 
 	private updateImageURLs(){
@@ -401,7 +445,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		if(this.loading)
 			throw new Error("already loading");
 		this.loading=true;
-		ajaxGet(this.listURL+"?list="+this.listID+"&offset="+offset, (_r)=>{
+		ajaxGet(addParamsToURL(this.listURL, {list: this.listID, offset: offset.toString()}), (_r)=>{
 			var r=_r as PhotoViewerInfoAjaxResponse;
 			this.total=r.total;
 			this.updateTitle();
@@ -419,6 +463,9 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			this.updateBottomPart();
 			this.loading=false;
 			this.maybeLoadMorePhotos();
+			if(this.failed){
+				this.handleFailedLoad();
+			}
 		}, (msg)=>{
 			new MessageBox(lang("error"), msg, lang("close")).show();
 			this.loading=false;

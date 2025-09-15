@@ -41,5 +41,11 @@
   "feed_relationship_complicated": "<a id=\"author\">{author}</a>'s relationship is complicated.",
   "feed_relationship_complicated_with": "<a id=\"author\">{author}</a>'s relationship with <a id=\"target\">{target}</a> is complicated.",
   "feed_relationship_searching": "<a id=\"author\">{author}</a> is actively searching.",
-  "feed_post_filtered": "Post matches filter \"{filterName}\". <a id=\"show\">Show anyway</a>."
+  "feed_post_filtered": "Post matches filter \"{filterName}\". <a id=\"show\">Show anyway</a>.",
+  "feed_type_board_topics": "Topics",
+  "feed_created_topic": "<a id=\"author\">{author}</a> started a topic in group <a id=\"target\">{target}</a>:",
+  "feed_created_multiple_topics": "<a id=\"author\">{author}</a> started {count, plural, one {# topic} other {# topics}} in group <a id=\"target\">{target}</a>:",
+  "feed_created_multiple_topics_multiple_groups": "<a id=\"author\">{author}</a> started {count, plural, one {# topic} other {# topics}} in {groupCount, plural, one {# group} other {# groups}}:",
+  "feed_group_new_topic": "In group \"<a id=\"author\">{author}</a>\", new topic was started:",
+  "feed_group_multiple_topics": "In group \"<a id=\"author\">{author}</a>\", new topics were started:"
 }

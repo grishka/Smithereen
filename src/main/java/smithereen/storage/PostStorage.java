@@ -31,6 +31,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.controllers.WallController;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.FederationState;
 import smithereen.model.ForeignGroup;
@@ -384,6 +385,30 @@ public class PostStorage{
 		}
 	}
 
+	public static PaginatedList<Post> getWallComments(int ownerID, int offset, int count) throws SQLException{
+		String ownerField=ownerID<0 ? "owner_group_id" : "owner_user_id";
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where(ownerField+"=? AND reply_key IS NOT NULL", Math.abs(ownerID))
+					.executeAndGetInt();
+
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<Post> posts=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.allColumns()
+					.where(ownerField+"=? AND reply_key IS NOT NULL", Math.abs(ownerID))
+					.orderBy("id ASC")
+					.limit(count, offset)
+					.executeAsStream(Post::fromResultSet)
+					.toList();
+			return new PaginatedList<>(posts, total, offset, count);
+		}
+	}
+
 	public static List<Post> getWallToWall(int userID, int otherUserID, int offset, int count, int[] total) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt;
@@ -467,6 +492,18 @@ public class PostStorage{
 		if(post!=null)
 			postprocessPosts(Set.of(post));
 		return post;
+	}
+
+	public static Map<Integer, int[]> getPostOwnerAndAuthorIDs(Collection<Integer> postIDs) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.columns("id", "owner_user_id", "owner_group_id", "author_id")
+				.whereIn("id", postIDs)
+				.executeAsStream(r->{
+					int uid=r.getInt("owner_user_id");
+					return new Pair<>(r.getInt("id"), new int[]{uid>0 ? uid : -r.getInt("owner_group_id"), r.getInt("author_id")});
+				})
+				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}
 
 	public static int getLocalIDByActivityPubID(URI apID) throws SQLException{
@@ -807,39 +844,39 @@ public class PostStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			ArrayList<String> queryParts=new ArrayList<>();
 			if(post.isLocal()){
-				queryParts.add("SELECT author_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
-				queryParts.add("SELECT author_id FROM wall_posts WHERE repost_of="+post.id);
+				queryParts.add("SELECT author_id AS uid FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
+				queryParts.add("SELECT author_id AS uid FROM wall_posts WHERE repost_of="+post.id);
 				if(owner instanceof ForeignUser fu)
-					queryParts.add("SELECT "+fu.id);
+					queryParts.add("SELECT "+fu.id+" AS uid");
 				else if(owner instanceof User u)
-					queryParts.add("SELECT follower_id FROM followings WHERE followee_id="+u.id);
+					queryParts.add("SELECT follower_id AS uid FROM followings WHERE followee_id="+u.id);
 				else if(owner instanceof ForeignGroup fg)
 					inboxes.add(Objects.requireNonNullElse(fg.sharedInbox, fg.inbox));
 				else if(owner instanceof Group g)
-					queryParts.add("SELECT user_id FROM group_memberships WHERE group_id="+g.id);
+					queryParts.add("SELECT user_id AS uid FROM group_memberships WHERE group_id="+g.id);
 
 				if(!post.mentionedUserIDs.isEmpty()){
 					for(int user:post.mentionedUserIDs){
-						queryParts.add("SELECT "+user);
+						queryParts.add("SELECT "+user+" AS uid");
 					}
 				}
 			}else{
-				queryParts.add("SELECT "+post.authorID);
+				queryParts.add("SELECT "+post.authorID+" AS uid");
 			}
 			if(origPost!=post){
 				if(origPost.isLocal()){
 					if(!origPost.mentionedUserIDs.isEmpty()){
 						for(int user:origPost.mentionedUserIDs){
-							queryParts.add("SELECT "+user);
+							queryParts.add("SELECT "+user+" AS uid");
 						}
 					}
 				}else{
-					queryParts.add("SELECT "+origPost.authorID);
+					queryParts.add("SELECT "+origPost.authorID+" AS uid");
 				}
 			}
-			PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(ap_shared_inbox, ap_inbox) FROM users WHERE id IN ("+
+			PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(ap_shared_inbox, ap_inbox) FROM users JOIN ("+
 					String.join(" UNION ", queryParts)+
-					") AND ap_inbox IS NOT NULL");
+					") AS related_users ON users.id=related_users.uid AND ap_inbox IS NOT NULL");
 			if(post.isLocal())
 				stmt.setBytes(1, Utils.serializeIntList(post.getReplyKeyForReplies()));
 			try(ResultSet res=stmt.executeQuery()){
@@ -1093,6 +1130,7 @@ public class PostStorage{
 						entry.type=switch(type){
 							case POST -> NewsfeedEntry.Type.POST;
 							case PHOTO -> NewsfeedEntry.Type.PHOTO;
+							case BOARD_TOPIC -> NewsfeedEntry.Type.BOARD_TOPIC;
 						};
 						return entry;
 					}).toList();
@@ -1265,6 +1303,130 @@ public class PostStorage{
 		postprocessPosts(posts);
 		return posts;
 	}
+
+	public static PaginatedList<Post> getAllPostsByAuthor(int userID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where("author_id=?", userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<Post> posts=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.where("author_id=?", userID)
+					.orderBy("created_at DESC")
+					.limit(count, offset)
+					.executeAsStream(Post::fromResultSet)
+					.toList();
+			postprocessPosts(posts);
+			return new PaginatedList<>(posts, total, offset, count);
+		}
+	}
+
+	public static Map<Integer, URI> getActivityPubIDsByLocalIDs(Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_posts")
+				.columns("id", "ap_id")
+				.whereIn("id", ids)
+				.executeAsStream(res->new Pair<>(res.getInt("id"), res.getString("ap_id")))
+				.collect(Collectors.toMap(Pair::first, p->{
+					String apID=p.second();
+					if(apID==null)
+						return Config.localURI("/posts/"+p.first());
+					return URI.create(apID);
+				}));
+	}
+
+	// region Pinned posts
+
+	public static void pinPost(int ownerID, int postID, boolean keepPrevious) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int order;
+			if(!keepPrevious){
+				new SQLQueryBuilder(conn)
+						.deleteFrom("wall_pinned_posts")
+						.where("owner_user_id=?", ownerID)
+						.executeNoResult();
+				order=0;
+			}else{
+				order=new SQLQueryBuilder(conn)
+						.selectFrom("wall_pinned_posts")
+						.selectExpr("MAX(display_order)")
+						.where("owner_user_id=?", ownerID)
+						.executeAndGetInt()+1;
+			}
+			new SQLQueryBuilder(conn)
+					.insertIgnoreInto("wall_pinned_posts")
+					.value("owner_user_id", ownerID)
+					.value("post_id", postID)
+					.value("display_order", order)
+					.executeNoResult();
+
+			if(!keepPrevious){
+				int count=new SQLQueryBuilder(conn)
+						.selectFrom("wall_pinned_posts")
+						.count()
+						.where("owner_user_id=?", ownerID)
+						.executeAndGetInt();
+				if(count>WallController.MAX_PINNED_POSTS){
+					Set<Integer> toDelete=new SQLQueryBuilder(conn)
+							.selectFrom("wall_pinned_posts")
+							.columns("post_id")
+							.where("owner_user_id=?", ownerID)
+							.limit(count-WallController.MAX_PINNED_POSTS, 0)
+							.orderBy("display_order ASC")
+							.executeAndGetIntStream()
+							.boxed()
+							.collect(Collectors.toSet());
+					new SQLQueryBuilder(conn)
+							.deleteFrom("wall_pinned_posts")
+							.whereIn("post_id", toDelete)
+							.andWhere("owner_user_id=?", ownerID)
+							.executeNoResult();
+				}
+			}
+		}
+	}
+
+	public static void unpinPost(int ownerID, int postID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("wall_pinned_posts")
+				.where("owner_user_id=? AND post_id=?", ownerID, postID)
+				.executeNoResult();
+	}
+
+	public static List<Post> getPinnedPosts(int ownerID) throws SQLException{
+		List<Post> posts=new SQLQueryBuilder()
+				.selectFrom("wall_pinned_posts")
+				.selectExpr("wall_posts.*")
+				.join("JOIN wall_posts ON wall_pinned_posts.post_id=wall_posts.id")
+				.where("wall_pinned_posts.owner_user_id=?", ownerID)
+				.orderBy("wall_pinned_posts.display_order DESC")
+				.executeAsStream(Post::fromResultSet)
+				.toList();
+		postprocessPosts(posts);
+		return posts;
+	}
+
+	public static boolean isPostPinned(int id) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("wall_pinned_posts")
+				.count()
+				.where("post_id=?", id)
+				.executeAndGetInt()>0;
+	}
+
+	public static void clearPinnedPosts(int userID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("wall_pinned_posts")
+				.where("owner_user_id=?", userID)
+				.executeNoResult();
+	}
+
+	// endregion
 
 	private record DeleteCommentBookmarksRunnable(int postID) implements Runnable{
 		@Override

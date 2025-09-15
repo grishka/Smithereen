@@ -1,0 +1,66 @@
+{# @pebvariable name="links" type="smithereen.model.groups.GroupLink[]" #}
+{% extends "page" %}
+{% block content %}
+{% include "group_admin_tabbar" with {'tab': 'links'} %}
+<form class="gray borderBottom searchWithTabs" action="/groups/{{ group.id }}/addLinkForm" method="post" data-ajax>
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('group_add_link_placeholder') }}" name="url" required/>
+	</div>
+	<div class="buttonW">
+		<input type="submit" value="{{ L('group_add_link') }}"/>
+	</div>
+</form>
+<div class="summaryWrap">
+	<div class="summary">{{ L('group_links_summary', {'count': links | length}) }}</div>
+</div>
+<div class="singleColumn">
+	{% if links is empty %}
+	<div class="emptyState">{{ L('group_links_empty') }}</div>
+	{% else %}
+	{% if message is not empty %}<div class="settingsMessage"><b>{{ message }}</b><div class="smallMarginBefore">{{ messageSubtitle }}</div></div>{% endif %}
+	<div class="reorderableList" id="groupLinksReorderable">
+	{% for link in links %}
+		<div class="reorderableItemWrap groupEditLinkW">
+			<div class="reorderableItem groupEditLink" data-reorder-id="{{ link.id }}">
+				{% set actor=null %}
+				{% if link.object is not null %}
+				{% if link.object.type=='USER' %}
+				{% set actor=users[link.object.id] %}
+				{% elseif link.object.type=='GROUP' %}
+				{% set actor=groups[link.object.id] %}
+				{% endif %}
+				{% endif %}
+				{% set image=link.image %}
+				{% if actor is not null %}
+				{{ actor | pictureForAvatar('a') }}
+				{% elseif image is not null %}
+				<span class="ava avaHasImage sizeA">{{ image | pictureForPhoto(size='a', addClasses=['avaImage']) }}</span>
+				{% else %}
+				<span class="ava avaHasImage sizeA"><img src="/res/lnkouter.svg" width="50" height="50" class="avaImage"/></span>
+				{% endif %}
+				<div class="linkContent">
+					<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}>
+					{% if actor is not null %}
+					{{ actor | name }}
+					{% elseif link.object is not null %}
+					{{ L(link.titleLangKey) }}
+					{% else %}
+					{{ link.title }}
+					{% endif %}
+					</a>
+					<div class="smallMarginBefore">{{ link.description }}</div>
+				</div>
+				<ul class="actionList">
+					<li><a href="/groups/{{ group.id }}/links/{{ link.id }}/edit" data-ajax-box>{{ L('edit') }}</a></li>
+					<li><a href="/groups/{{ group.id }}/links/{{ link.id }}/confirmDelete" data-confirm-message="{{ L('group_delete_link_confirm') }}" data-confirm-title="{{ L('group_delete_link_title') }}" data-confirm-button="{{ L('delete') }}" data-confirm-action="/groups/{{ group.id }}/links/{{ link.id }}/delete">{{ L('delete') }}</a></li>
+				</ul>
+			</div>
+		</div>
+	{% endfor %}
+	</div>
+	{% endif %}
+</div>
+{% script %}
+new ReorderableList(ge("groupLinksReorderable"), "/groups/{{ group.id }}/editLinksReorder");
+{% endscript %}
+{% endblock %}

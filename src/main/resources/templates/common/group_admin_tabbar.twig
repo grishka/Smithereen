@@ -6,5 +6,7 @@
 	{% endif %}
 	<a href="/groups/{{ group.id }}/editMembers" class="{{ tab=='members' ? 'selected' : '' }}">{{ L('members') }}</a>
 	<a href="/groups/{{ group.id }}/editBlocking" class="{{ tab=='blocking' ? "selected" : "" }}" >{{ L('settings_blocking') }}</a>
-	<span class="aux"><a href="{{ group.profileURL }}">{{ L(group.event ? 'back_to_event' : 'back_to_group') }}</a></span>
+	{% if adminLevel is null or adminLevel.isAtLeast('ADMIN') %}
+	<a href="/groups/{{ group.id }}/editLinks" class="{{ tab=='links' ? 'selected' : '' }}">{{ L('group_links') }}</a>
+	{% endif %}
 </div>

@@ -61,6 +61,7 @@ import java.util.zip.CRC32;
 
 import smithereen.activitypub.objects.Actor;
 import smithereen.exceptions.UserErrorException;
+import smithereen.model.Account;
 import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -336,7 +337,13 @@ public class Utils{
 			throw new IllegalArgumentException("Even-length string required");
 		byte[] res=new byte[hex.length()/2];
 		for(int i=0;i<res.length;i++){
-			res[i]=(byte)((Character.digit(hex.charAt(i*2), 16) << 4) | (Character.digit(hex.charAt(i*2+1), 16)));
+			int hi=Character.digit(hex.charAt(i*2), 16);
+			int lo=Character.digit(hex.charAt(i*2+1), 16);
+			if(hi==-1)
+				throw new IllegalArgumentException("Character at offset "+(i*2)+" is not a valid hex digit");
+			if(lo==-1)
+				throw new IllegalArgumentException("Character at offset "+(i*2+1)+" is not a valid hex digit");
+			res[i]=(byte)((hi << 4) | lo);
 		}
 		return res;
 	}
@@ -410,6 +417,13 @@ public class Utils{
 			return null;
 		SessionInfo info=sess.attribute("info");
 		return info;
+	}
+
+	public static Account currentUserAccount(Request req){
+		SessionInfo info=sessionInfo(req);
+		if(info==null)
+			return null;
+		return info.account;
 	}
 
 	@NotNull
@@ -895,6 +909,18 @@ public class Utils{
 		}
 	}
 
+	public static void copyBytes(InputStream from, OutputStream to, long maxSize) throws IOException{
+		byte[] buffer=new byte[10240];
+		int read;
+		long totalRead=0;
+		while((read=from.read(buffer))>0){
+			totalRead+=read;
+			if(totalRead>maxSize)
+				throw new IOException("Maximum length of "+maxSize+" bytes exceeded");
+			to.write(buffer, 0, read);
+		}
+	}
+
 	public static Object ajaxAwareRedirect(Request req, Response resp, String destination){
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).replaceLocation(destination);
@@ -941,6 +967,11 @@ public class Utils{
 				.toList();
 		model.with("publicLists", publicLists)
 				.with("allLists", Stream.of(lists, publicLists).flatMap(List::stream).collect(Collectors.toMap(FriendList::id, Function.identity())));
+	}
+
+	public static boolean isWithinDatabaseLimits(Instant instant){
+		int year=instant.atZone(ZoneId.of("Z")).getYear();
+		return year<2038 && year>=1970; // TODO temporary fix
 	}
 
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}
