@@ -901,3 +901,74 @@ h2+.textByItself{
 	}
 }
 
+.counter{
+	font-feature-settings: "tnum";
+}
+
+@keyframes counterForward{
+	from{
+		transform: translateY(0);
+	}
+	to{
+		transform: translateY(-100%);
+	}
+}
+
+@keyframes counterBackward{
+	from{
+		transform: translateY(0);
+	}
+	to{
+		transform: translateY(100%);
+	}
+}
+
+@keyframes counterWidth{
+	from{
+		width: var(--old-width);
+	}
+	to{
+		width: var(--new-width);
+	}
+}
+
+.animatingCounter{
+	.animatedPart{
+		position: relative;
+		display: inline-block;
+		clip-path: border-box;
+		white-space: nowrap;
+		span{
+			display: inline-block;
+		}
+		.newValue{
+			position: absolute;
+			right: 0;
+		}
+		&.forward{
+			.newValue{
+				top: 100%;
+			}
+			span{
+				animation: 0.3s ease 1 running counterForward;
+			}
+		}
+		&.backward{
+			.newValue{
+				top: -100%;
+			}
+			span{
+				animation: 0.3s ease 1 running counterBackward;
+			}
+		}
+		&.animateWidth{
+			animation: 0.3s ease 1 running counterWidth;
+			will-change: width;
+			.oldValue{
+				position: absolute;
+				right: 0;
+			}
+		}
+	}
+}
+

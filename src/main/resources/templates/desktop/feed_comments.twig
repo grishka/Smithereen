@@ -57,8 +57,8 @@
 					<span class="postActions contentActions">
 						<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
 							<a href="{{ photo.url }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}" class="action like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPhoto{{ photo.idString }}" data-obj-type="photo" data-obj-id="{{ photo.idString }}" data-popover-url="{{ photo.url }}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
-								{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPhoto{{ photo.idString }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
-								{{- interactions.likeCount -}}
+								{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPhoto{{ photo.idString }}" data-count="{{ interactions.likeCount }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+								{{- interactions.likeCount | numberformat -}}
 							</span></a>
 							<span class="popoverPlace likePopoverWrap"></span>
 						</span>

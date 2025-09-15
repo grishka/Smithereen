@@ -841,19 +841,22 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 	var objID=btn.getAttribute("data-obj-id");
 	var liked=btn.classList.contains("liked");
 	var counter=ge("likeCounter"+objType.substring(0,1).toUpperCase()+objType.substring(1)+objID);
-	var count=parseInt(counter.innerText);
+	var count=parseInt(counter.dataset.count);
 	var ownAva=document.querySelector(".likeAvatars"+objID+".likeAvatars .currentUserLikeAva") as HTMLElement;
 	if(btn.customData && btn.customData.popoverTimeout){
 		clearTimeout(btn.customData.popoverTimeout);
 		delete btn.customData.popoverTimeout;
 	}
 	if(!liked){
-		counter.innerText=(count+1).toString();
 		btn.classList.add("liked");
 		if(count==0){
 			counter.show();
 			btn.classList.remove("revealOnHover");
+			counter.innerText=formatNumber(count+1);
+		}else{
+			animateCounter(counter, (count+1).toString());
 		}
+		counter.dataset.count=(count+1).toString();
 		if(btn._popover){
 			if(!btn._popover.isShown())
 				btn._popover.show(-1, -1, btn.qs("span.icon"));
@@ -863,7 +866,6 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 		}
 		if(ownAva) ownAva.show();
 	}else{
-		counter.innerText=(count-1).toString();
 		btn.classList.remove("liked");
 		if(count==1){
 			counter.hide();
@@ -873,7 +875,10 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			if(btn.classList.contains("commentLike")){
 				btn.classList.add("revealOnHover");
 			}
+		}else{
+			animateCounter(counter, (count-1).toString());
 		}
+		counter.dataset.count=(count-1).toString();
 		if(btn._popover){
 			var title=btn._popover.getTitle();
 			btn._popover.setTitle(btn.customData.altPopoverTitle);
@@ -893,11 +898,13 @@ function likeOnClick(btn:HTMLAnchorElement):boolean{
 			btn.removeAttribute("in_progress");
 			new MessageBox(lang("error"), lang("network_error"), lang("close")).show();
 			if(liked){
-				counter.innerText=(count+1).toString();
+				counter.dataset.count=(count+1).toString();
+				animateCounter(counter, (count+1).toString());
 				btn.classList.add("liked");
 				if(count==0) counter.show();
 			}else{
-				counter.innerText=(count-1).toString();
+				counter.dataset.count=(count-1).toString();
+				animateCounter(counter, (count-1).toString());
 				btn.classList.remove("liked");
 				if(count==1) counter.hide();
 			}
@@ -1896,3 +1903,47 @@ function getInputValuesByIds(ids:string|undefined|null):Record<string, string>{
 	}
 	return inputs;
 }
+
+function animateCounter(el:HTMLElement, newValue:string){
+	var oldValue=el.innerText;
+	var newValueEl=el.qs(".newValue");
+	if(newValue==oldValue || (newValueEl && newValueEl.innerText==newValue))
+		return;
+
+	if(!el.customData)
+		el.customData={};
+	if(el.customData.counterEndListener)
+		el.customData.counterEndListener(null);
+
+	var endListener=(ev:AnimationEvent)=>{
+		el.removeEventListener("animationend", endListener);
+		el.innerText=newValue;
+		el.classList.remove("animatingCounter");
+		el.customData.counterEndListener=null;
+	};
+	el.customData.counterEndListener=endListener;
+	el.addEventListener("animationend", endListener);
+	el.classList.add("animatingCounter");
+	if(newValue.length!=oldValue.length){
+		var animateForward=newValue.length>oldValue.length;
+		el.innerHTML=`<span class="animatedPart ${animateForward ? 'forward' : 'backward'}"><span class="oldValue">${oldValue}</span><span class="newValue">${newValue}</span><span style="visibility: hidden;">1</span></span>`;
+		var oldW=el.qs(".oldValue").offsetWidth;
+		var newW=el.qs(".newValue").offsetWidth;
+		var outerEl=el.children[0] as HTMLElement;
+		outerEl.style.setProperty("--old-width", oldW+"px");
+		outerEl.style.setProperty("--new-width", newW+"px");
+		outerEl.classList.add("animateWidth");
+	}else{
+		var diffStart=0;
+		var animateForward:boolean;
+		for(var i=0;i<newValue.length;i++){
+			if(oldValue[i]!=newValue[i]){
+				diffStart=i;
+				animateForward=oldValue[i]<newValue[i];
+				break;
+			}
+		}
+		el.innerHTML=`${oldValue.substring(0, diffStart)}<span class="animatedPart ${animateForward ? 'forward' : 'backward'}"><span class="oldValue">${oldValue.substring(diffStart)}</span><span class="newValue">${newValue.substring(diffStart)}</span></span>`;
+	}
+}
+

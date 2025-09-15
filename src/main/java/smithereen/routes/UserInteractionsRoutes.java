@@ -2,6 +2,7 @@ package smithereen.routes;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.text.NumberFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -63,7 +64,7 @@ public class UserInteractionsRoutes{
 
 			String urlPath=liked ? "unlike" : "like";
 			WebDeltaResponse b=new WebDeltaResponse(resp)
-					.setContent("likeCounter"+elementID, String.valueOf(interactions.likeCount))
+					.runScript("animateCounter(ge(\"likeCounter"+elementID+"\"), \""+NumberFormat.getIntegerInstance(lang(req).getLocale()).format(interactions.likeCount)+"\");")
 					.setAttribute("likeButton"+elementID, "href", url+"/"+urlPath+urlParams);
 			if(interactions.likeCount==0)
 				b.hide("likeCounter"+elementID);
@@ -103,9 +104,11 @@ public class UserInteractionsRoutes{
 		}
 
 		WebDeltaResponse b=new WebDeltaResponse(resp)
-				.setContent("likeCounter"+elementID, String.valueOf(interactions.likeCount));
+				.runScript("animateCounter(ge(\"likeCounter"+elementID+"\"), \""+NumberFormat.getIntegerInstance(lang(req).getLocale()).format(interactions.likeCount)+"\");");
 		if(info!=null && info.account!=null){
-			b.setAttribute("likeButton"+elementID, "href", url+"/"+(interactions.isLiked ? "un" : "")+"like?csrf="+info.csrfToken);
+			String urlParams="?csrf="+info.csrfToken;
+			urlParams+="&rid="+rid;
+			b.setAttribute("likeButton"+elementID, "href", url+"/"+(interactions.isLiked ? "un" : "")+"like"+urlParams);
 		}
 		if(interactions.likeCount==0)
 			b.hide("likeCounter"+elementID);

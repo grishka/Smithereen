@@ -88,8 +88,8 @@
 			<div class="postActions">
 				<span class="likeWrap">
 					<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}" class="action like{%if interactions.isLiked%} liked{%endif%}" id="likeButtonPost{{realPost.id}}" data-obj-type="post" data-obj-id="{{realPost.id}}" data-popover-url="{{realPost.internalURL}}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} aria-label="{{ L('like') }}, {{ interactions.likeCount }}">
-						<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.id}}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
-						{{- interactions.likeCount -}}
+						<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.id}}" data-count="{{ interactions.likeCount }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
+						{{- interactions.likeCount | numberformat -}}
 					</span></a>
 				</span>
 			</div>

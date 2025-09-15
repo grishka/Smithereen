@@ -16,6 +16,7 @@ body, html{
 body{
 	margin: 0;
 	text-size-adjust: none;
+	-webkit-tap-highlight-color: color($normalLink alpha(20%));
 }
 
 .pageContent{
@@ -409,6 +410,7 @@ select{
 		padding: 0 12px;
 		min-width: 56px;
 		text-align: center;
+		overflow: hidden;
 		.wideOnly{
 			margin-right: 8px;
 		}
@@ -743,6 +745,10 @@ select{
 		.action{
 			height: 24px;
 			line-height: 24px;
+			display: inline-block;
+			position: relative;
+			top: 7px;
+			-webkit-tap-highlight-color: transparent;
 		}
 	}
 	.authorNameWrap{
