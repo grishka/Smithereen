@@ -403,5 +403,9 @@
   "admin_audit_log_changed_group_username": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} адрес страницы группе \"<a id=\"targetGroup\">{targetName}</a>\"",
   "admin_change_username_title": "Изменение адреса страницы",
   "admin_reset_username_title": "Сброс адреса страницы",
-  "admin_reset_username_confirm": "Вы действительно хотите сбросить адрес страницы на <b>{newUsername}</b>?"
+  "admin_reset_username_confirm": "Вы действительно хотите сбросить адрес страницы на <b>{newUsername}</b>?",
+  "admin_user_export_settings": "Выгрузка пользовательских данных",
+  "admin_user_export_retention": "Хранить архивы",
+  "admin_user_export_cooldown": "Разрешить раз в",
+  "admin_user_export_days": "дней"
 }
