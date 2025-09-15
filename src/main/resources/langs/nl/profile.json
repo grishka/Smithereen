@@ -100,5 +100,6 @@
   "profile_edit_relationship_partner": "Partner",
   "profile_edit_relationship_spouse": "Huwelijkspartner",
   "profile_edit_relationship_in_love_partner": "Met wie",
-  "profile_edit_relationship_confirmation_needed": "De persoon die je selecteert moet bevestigen dat je in een relatie bent door je te kiezen in hun profiel."
+  "profile_edit_relationship_confirmation_needed": "De persoon die je selecteert moet bevestigen dat je in een relatie bent door je te kiezen in hun profiel.",
+  "user_online": "Online"
 }
