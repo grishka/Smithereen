@@ -84,12 +84,17 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 	}
 
 	@Override
-	public void storeFile(File localFile, MediaFileID id, boolean keepLocalFile) throws IOException{
-		HttpRequest req=HttpRequest.newBuilder(getApiUrl().appendPath(getObjectName(id)).build())
+	public void storeFile(File localFile, MediaFileID id, boolean keepLocalFile, String downloadFileName) throws IOException{
+		HttpRequest.Builder builder=HttpRequest.newBuilder(getApiUrl().appendPath(getObjectName(id)).build())
 				.PUT(HttpRequest.BodyPublishers.ofFile(localFile.toPath()))
 				.header("Content-Type", id.type().getMimeType())
-				.timeout(Duration.ofSeconds(60))
-				.build();
+				.timeout(Duration.ofSeconds(60));
+
+		if(downloadFileName!=null){
+			builder.header("Content-Disposition", "attachment; filename="+downloadFileName);
+		}
+
+		HttpRequest req=builder.build();
 		try(FileInputStream in=new FileInputStream(localFile)){
 			req=signRequest(req, in);
 		}
@@ -194,7 +199,7 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 	}
 
 	@Override
-	public URI getFilePublicURL(MediaFileID id){
+	public URI getFilePublicURL(MediaFileID id, String downloadFileName){
 		return getObjectURL(id);
 	}
 

@@ -11,6 +11,8 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -1197,13 +1199,16 @@ public class SettingsRoutes{
 				.addNavBarItem(l.get("settings_data_export_title"))
 				.with("exports", exports);
 
-		Set<Long> needFiles=exports.stream().filter(e->e.state==UserDataExport.State.READY).map(e->e.fileID).collect(Collectors.toSet());
+		List<UserDataExport> needFiles=exports.stream().filter(e->e.state==UserDataExport.State.READY).toList();
 		if(!needFiles.isEmpty()){
 			try{
-				Map<Long, MediaFileRecord> records=MediaStorage.getMediaFileRecords(needFiles);
+				Map<Long, MediaFileRecord> records=MediaStorage.getMediaFileRecords(needFiles.stream().map(e->e.fileID).collect(Collectors.toSet()));
 				Map<Long, String> urls=new HashMap<>();
-				for(MediaFileRecord mfr:records.values()){
-					urls.put(mfr.id().id(), MediaFileStorageDriver.getInstance().getFilePublicURL(mfr.id()).toString());
+				for(UserDataExport e:needFiles){
+					MediaFileRecord mfr=records.get(e.fileID);
+					if(mfr==null)
+						continue;
+					urls.put(mfr.id().id(), MediaFileStorageDriver.getInstance().getFilePublicURL(mfr.id(), e.getUserFriendlyFileName(self)).toString());
 				}
 				model.with("fileURLs", urls);
 			}catch(SQLException x){
@@ -1237,7 +1242,7 @@ public class SettingsRoutes{
 		if(lastExport!=null && lastExport.isAfter(cooldownThreshold)){
 			throw new UserActionNotAllowedException();
 		}
-		ctx.getUserDataExportWorker().startExport(self.user);
+		ctx.getUserDataExportWorker().startExport(self);
 		return ajaxAwareRedirect(req, resp, "/settings/export");
 	}
 }

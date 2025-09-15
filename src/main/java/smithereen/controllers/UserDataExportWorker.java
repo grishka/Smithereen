@@ -13,7 +13,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.BitSet;
@@ -45,7 +44,7 @@ import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.jsonld.JLD;
+import smithereen.model.Account;
 import smithereen.model.LikedObjectID;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -84,10 +83,10 @@ public class UserDataExportWorker{
 		this.context=context;
 	}
 
-	public void startExport(User user){
+	public void startExport(Account account){
 		try{
-			long id=UserStorage.createUserDataExport(user.id);
-			executor.submit(()->doExport(user, id));
+			long id=UserStorage.createUserDataExport(account.user.id);
+			executor.submit(()->doExport(account, id));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -104,7 +103,8 @@ public class UserDataExportWorker{
 		}
 	}
 
-	private void doExport(User user, long id){
+	private void doExport(Account account, long id){
+		User user=account.user;
 		LOG.debug("Starting data export {} for user {}", id, user.id);
 		try{
 			File archive=File.createTempFile("SmithereenUserExport", ".zip");
@@ -279,10 +279,12 @@ public class UserDataExportWorker{
 				}
 			}
 			MediaFileRecord record=MediaStorage.createMediaFileRecord(MediaFileType.USER_EXPORT_ARCHIVE, archive.length(), user.id, new UserDataArchiveMetadata());
-			MediaFileStorageDriver.getInstance().storeFile(archive, record.id(), false);
+			UserDataExport export=UserStorage.getUserDataExport(id);
+			MediaFileStorageDriver.getInstance().storeFile(archive, record.id(), false, export.getUserFriendlyFileName(account));
 			UserStorage.updateUserDataExport(id, record.id().id(), UserDataExport.State.READY, record.size());
 			MediaStorage.createMediaFileReference(record.id().id(), id, MediaFileReferenceType.USER_EXPORT_ARCHIVE, user.id);
-			context.getNotificationsController().sendRealtimeNotifications(user, "exportReady"+System.currentTimeMillis(), RealtimeNotification.Type.EXPORT_READY, UserStorage.getUserDataExport(id), null, null);
+			export=UserStorage.getUserDataExport(id);
+			context.getNotificationsController().sendRealtimeNotifications(user, "exportReady"+System.currentTimeMillis(), RealtimeNotification.Type.EXPORT_READY, export, null, null);
 			LOG.debug("Data export {} for user {} finished", id, user.id);
 		}catch(Throwable x){
 			LOG.error("Failed to generate data export {} for user {}", id, user.id, x);
