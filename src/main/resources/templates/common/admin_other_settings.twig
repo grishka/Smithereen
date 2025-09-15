@@ -25,5 +25,13 @@
 			{{ form.footer(L('admin_email_send_test')) }}
 		{{ form.end() }}
 	</form>
+	<form action="/settings/admin/updateExportSettings" method="post" data-ajax>
+		<h2>{{ L('admin_user_export_settings') }}</h2>
+		{{ form.start('adminUserExportSettings', adminUserExportSettingsMessage) }}
+			{{ form.textInput('retention', L('admin_user_export_retention'), userExportRetention, {'type': 'number', 'min': 1, 'textAfter': L('admin_user_export_days')}) }}
+			{{ form.textInput('cooldown', L('admin_user_export_cooldown'), userExportCooldown, {'type': 'number', 'min': 1, 'textAfter': L('admin_user_export_days')}) }}
+			{{ form.footer(L('save')) }}
+		{{ form.end() }}
+	</form>
 </div>
 {% endblock %}

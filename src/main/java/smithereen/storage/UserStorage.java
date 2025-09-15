@@ -1723,7 +1723,7 @@ public class UserStorage{
 	public static List<UserDataExport> getUserDataExportsToExpire() throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("user_data_exports")
-				.where("state=? AND requested_at<DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL ? DAY)", UserDataExport.State.READY, UserDataExport.RETENTION_DAYS)
+				.where("state=? AND requested_at<DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL ? DAY)", UserDataExport.State.READY, Config.userExportRetentionDays)
 				.executeAsStream(UserDataExport::fromResultSet)
 				.toList();
 	}

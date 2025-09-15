@@ -106,6 +106,8 @@ public class Config{
 	public static int[][] objectIdObfuscationKeysByType=new int[ObfuscatedObjectIDType.values().length][];
 	public static byte[] emailUnsubscribeKey;
 
+	public static int userExportCooldownDays, userExportRetentionDays;
+
 	public static Map<Integer, UserRole> userRoles=new HashMap<>();
 
 	private static final Logger LOG=LoggerFactory.getLogger(Config.class);
@@ -280,6 +282,9 @@ public class Config{
 			desktopCSS=dbValues.get("DesktopCSS");
 			mobileCSS=dbValues.get("MobileCSS");
 			applyCSS(commonCSS, desktopCSS, mobileCSS);
+
+			userExportCooldownDays=Utils.parseIntOrDefault(dbValues.get("UserExportCooldown"), 7);
+			userExportRetentionDays=Utils.parseIntOrDefault(dbValues.get("UserExportRetention"), 2);
 		}
 	}
 

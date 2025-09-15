@@ -1193,7 +1193,7 @@ public class SettingsRoutes{
 		Lang l=lang(req);
 		List<UserDataExport> exports=ctx.getUsersController().getUserDataExports(self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_exports", req)
-				.with("waitDays", UserDataExport.COOLDOWN_DAYS)
+				.with("waitDays", Config.userExportCooldownDays)
 				.pageTitle(l.get("settings_data_export_title"))
 				.addNavBarItem(l.get("menu_settings"), "/settings")
 				.addNavBarItem(l.get("settings_data_export_title"))
@@ -1216,13 +1216,13 @@ public class SettingsRoutes{
 			}
 		}
 
-		Instant cooldownThreshold=Instant.now().minus(UserDataExport.COOLDOWN_DAYS, ChronoUnit.DAYS);
+		Instant cooldownThreshold=Instant.now().minus(Config.userExportCooldownDays, ChronoUnit.DAYS);
 		Instant lastExport=ctx.getUsersController().getLastSuccessfulUserDataExportTime(self.user);
 		if(lastExport==null || lastExport.isBefore(cooldownThreshold)){
 			model.with("canRequest", true);
 		}else{
 			model.with("canRequest", false)
-					.with("cooldownEndTime", lastExport.plus(UserDataExport.COOLDOWN_DAYS, ChronoUnit.DAYS));
+					.with("cooldownEndTime", lastExport.plus(Config.userExportCooldownDays, ChronoUnit.DAYS));
 		}
 		return model;
 	}
@@ -1237,7 +1237,7 @@ public class SettingsRoutes{
 		if(!ctx.getUsersController().checkPassword(self, password)){
 			return wrapForm(req, resp, "request_data_export_form", "/settings/requestExport", lang(req).get("settings_data_export_title"), "settings_exports_request", "requestExport", List.of(), null, lang(req).get("err_old_password_incorrect"));
 		}
-		Instant cooldownThreshold=Instant.now().minus(UserDataExport.COOLDOWN_DAYS, ChronoUnit.DAYS);
+		Instant cooldownThreshold=Instant.now().minus(Config.userExportCooldownDays, ChronoUnit.DAYS);
 		Instant lastExport=ctx.getUsersController().getLastSuccessfulUserDataExportTime(self.user);
 		if(lastExport!=null && lastExport.isAfter(cooldownThreshold)){
 			throw new UserActionNotAllowedException();

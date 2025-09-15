@@ -458,6 +458,7 @@ public class SmithereenApplication{
 				getRequiringPermission("/other", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminGeneralRoutes::otherSettings);
 				postRequiringPermissionWithCSRF("/updateEmailSettings", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminGeneralRoutes::saveEmailSettings);
 				postRequiringPermissionWithCSRF("/sendTestEmail", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminGeneralRoutes::sendTestEmail);
+				postRequiringPermissionWithCSRF("/updateExportSettings", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminGeneralRoutes::saveUserExportSettings);
 				getRequiringPermission("/auditLog", UserRole.Permission.VIEW_SERVER_AUDIT_LOG, AdminGeneralRoutes::auditLog);
 				path("/emailRules", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_BLOCKING_RULES, AdminEmailRulesRoutes::emailDomainRules);

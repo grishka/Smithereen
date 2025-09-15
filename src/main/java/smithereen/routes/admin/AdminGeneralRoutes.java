@@ -20,6 +20,7 @@ import java.util.stream.IntStream;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Mailer;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
@@ -115,18 +116,13 @@ public class AdminGeneralRoutes{
 				.with("smtpPort", Config.smtpPort)
 				.with("smtpUser", Config.smtpUsername)
 				.with("smtpPassword", Config.smtpPassword)
-				.with("smtpUseTLS", Config.smtpUseTLS);
-		model.with("unconfirmedFaspRequests", ctx.getFaspController().getUnconfirmedProviderCount());
-		String msg=req.session().attribute("admin.emailTestMessage");
-		if(StringUtils.isNotEmpty(msg)){
-			req.session().removeAttribute("admin.emailTestMessage");
-			model.with("adminEmailTestMessage", msg);
-		}
-		msg=req.session().attribute("admin.emailSettingsMessage");
-		if(StringUtils.isNotEmpty(msg)){
-			req.session().removeAttribute("admin.emailSettingsMessage");
-			model.with("adminEmailSettingsMessage", msg);
-		}
+				.with("smtpUseTLS", Config.smtpUseTLS)
+				.with("userExportCooldown", Config.userExportCooldownDays)
+				.with("userExportRetention", Config.userExportRetentionDays)
+				.with("unconfirmedFaspRequests", ctx.getFaspController().getUnconfirmedProviderCount())
+				.addMessage(req, "admin.emailTestMessage", "adminEmailTestMessage")
+				.addMessage(req, "admin.emailSettingsMessage", "adminEmailSettingsMessage")
+				.addMessage(req, "admin.userExportSettingsMessage", "adminUserExportSettingsMessage");
 		return model;
 	}
 
@@ -173,7 +169,7 @@ public class AdminGeneralRoutes{
 		return "";
 	}
 
-	public static Object sendTestEmail(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object sendTestEmail(Request req, Response resp, Account self, ApplicationContext ctx){
 		String to=req.queryParams("email");
 		String result;
 		if(isValidEmail(to)){
@@ -186,6 +182,27 @@ public class AdminGeneralRoutes{
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).show("formMessage_adminEmailTest").setContent("formMessage_adminEmailTest", lang(req).get(result));
 		req.session().attribute("admin.emailTestMessage", lang(req).get(result));
+		resp.redirect("/settings/admin/other");
+		return "";
+	}
+
+	public static Object saveUserExportSettings(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "retention", "cooldown");
+		int retention=safeParseInt(req.queryParams("retention"));
+		int cooldown=safeParseInt(req.queryParams("cooldown"));
+		Config.userExportRetentionDays=Math.max(1, retention);
+		Config.userExportCooldownDays=Math.max(1, cooldown);
+		try{
+			Config.updateInDatabase(Map.of(
+					"UserExportRetention", Config.userExportRetentionDays+"",
+					"UserExportCooldown", Config.userExportCooldownDays+""
+			));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).show("formMessage_adminUserExportSettings").setContent("formMessage_adminUserExportSettings", lang(req).get("settings_saved"));
+		req.session().attribute("admin.userExportSettingsMessage", lang(req).get("settings_saved"));
 		resp.redirect("/settings/admin/other");
 		return "";
 	}

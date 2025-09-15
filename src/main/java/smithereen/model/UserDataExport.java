@@ -11,9 +11,6 @@ import smithereen.Config;
 import smithereen.storage.DatabaseUtils;
 
 public class UserDataExport{
-	public static final int COOLDOWN_DAYS=7;
-	public static final int RETENTION_DAYS=2;
-
 	public long id;
 	public int userID;
 	public State state;

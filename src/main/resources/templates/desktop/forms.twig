@@ -46,6 +46,7 @@
 			{%- if options.min is not null %} min="{{options.min}}"{%endif%}
 			{%- if options.max is not null %} max="{{ options.max }}"{%endif%}
 			{%- if options.placeholder is not null %} placeholder="{{ options.placeholder }}"{% endif %}/>
+			{%- if options.textAfter is not empty %} {{ options.textAfter }}{% endif %}
 			{% if options.prefix is not empty %}
 			</div>
 			{% endif %}

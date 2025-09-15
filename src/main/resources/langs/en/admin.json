@@ -403,5 +403,9 @@
   "admin_audit_log_changed_group_username": "<a id=\"adminUser\">{name}</a> changed profile URL for group \"<a id=\"targetGroup\">{targetName}</a>\"",
   "admin_change_username_title": "Change profile URL",
   "admin_reset_username_title": "Reset profile URL",
-  "admin_reset_username_confirm": "Are you sure you want to reset the profile address to <b>{newUsername}</b>?"
+  "admin_reset_username_confirm": "Are you sure you want to reset the profile address to <b>{newUsername}</b>?",
+  "admin_user_export_settings": "User data exports",
+  "admin_user_export_retention": "Keep archives for",
+  "admin_user_export_cooldown": "Allow export every",
+  "admin_user_export_days": "days"
 }
