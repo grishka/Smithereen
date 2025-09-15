@@ -377,7 +377,7 @@
   "admin_ban_group_title": "Ограничения для группы",
   "admin_group_no_restrictions": "Нет ограничений",
   "admin_group_suspend": "Заблокировать",
-  "admin_group_suspend_explain" : "Полная блокировка группы, скрытие её от всех пользователей и автоматическое удаление через {numDays, plural, one {# день} few {# дня} other {# дней}}",
+  "admin_group_suspend_explain": "Полная блокировка группы, скрытие её от всех пользователей и автоматическое удаление через {numDays, plural, one {# день} few {# дня} other {# дней}}",
   "admin_group_foreign_suspend_explain": "Полная блокировка этой группы и любых взаимодействий с ней и её контентом на вашем сервере",
   "admin_group_hide": "Скрыть",
   "admin_group_hide_explain": "Группа будет доступна только авторизованным пользователям",
