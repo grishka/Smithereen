@@ -844,39 +844,39 @@ public class PostStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			ArrayList<String> queryParts=new ArrayList<>();
 			if(post.isLocal()){
-				queryParts.add("SELECT author_id FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
-				queryParts.add("SELECT author_id FROM wall_posts WHERE repost_of="+post.id);
+				queryParts.add("SELECT author_id AS uid FROM wall_posts WHERE reply_key LIKE BINARY bin_prefix(?)");
+				queryParts.add("SELECT author_id AS uid FROM wall_posts WHERE repost_of="+post.id);
 				if(owner instanceof ForeignUser fu)
-					queryParts.add("SELECT "+fu.id);
+					queryParts.add("SELECT "+fu.id+" AS uid");
 				else if(owner instanceof User u)
-					queryParts.add("SELECT follower_id FROM followings WHERE followee_id="+u.id);
+					queryParts.add("SELECT follower_id AS uid FROM followings WHERE followee_id="+u.id);
 				else if(owner instanceof ForeignGroup fg)
 					inboxes.add(Objects.requireNonNullElse(fg.sharedInbox, fg.inbox));
 				else if(owner instanceof Group g)
-					queryParts.add("SELECT user_id FROM group_memberships WHERE group_id="+g.id);
+					queryParts.add("SELECT user_id AS uid FROM group_memberships WHERE group_id="+g.id);
 
 				if(!post.mentionedUserIDs.isEmpty()){
 					for(int user:post.mentionedUserIDs){
-						queryParts.add("SELECT "+user);
+						queryParts.add("SELECT "+user+" AS uid");
 					}
 				}
 			}else{
-				queryParts.add("SELECT "+post.authorID);
+				queryParts.add("SELECT "+post.authorID+" AS uid");
 			}
 			if(origPost!=post){
 				if(origPost.isLocal()){
 					if(!origPost.mentionedUserIDs.isEmpty()){
 						for(int user:origPost.mentionedUserIDs){
-							queryParts.add("SELECT "+user);
+							queryParts.add("SELECT "+user+" AS uid");
 						}
 					}
 				}else{
-					queryParts.add("SELECT "+origPost.authorID);
+					queryParts.add("SELECT "+origPost.authorID+" AS uid");
 				}
 			}
-			PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(ap_shared_inbox, ap_inbox) FROM users WHERE id IN ("+
+			PreparedStatement stmt=conn.prepareStatement("SELECT DISTINCT IFNULL(ap_shared_inbox, ap_inbox) FROM users JOIN ("+
 					String.join(" UNION ", queryParts)+
-					") AND ap_inbox IS NOT NULL");
+					") AS related_users ON users.id=related_users.uid AND ap_inbox IS NOT NULL");
 			if(post.isLocal())
 				stmt.setBytes(1, Utils.serializeIntList(post.getReplyKeyForReplies()));
 			try(ResultSet res=stmt.executeQuery()){

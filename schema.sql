@@ -732,7 +732,11 @@ CREATE TABLE `notifications` (
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `owner_id` (`owner_id`),
-  KEY `time` (`time`)
+  KEY `time` (`time`),
+  KEY `object_type` (`object_type`,`object_id`),
+  KEY `type` (`type`),
+  KEY `related_object_type` (`related_object_type`,`related_object_id`),
+  KEY `actor_id` (`actor_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -1213,4 +1217,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-09-14 14:37:09
+-- Dump completed on 2025-09-15  5:36:28

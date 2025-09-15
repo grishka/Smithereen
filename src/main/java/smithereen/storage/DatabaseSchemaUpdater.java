@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=85;
+	public static final int SCHEMA_VERSION=86;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -1093,6 +1093,9 @@ public class DatabaseSchemaUpdater{
 						  `requested_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 						  PRIMARY KEY (`id`)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 86 -> {
+				conn.createStatement().execute("ALTER TABLE notifications ADD KEY `object_type` (`object_type`,`object_id`), ADD KEY `type` (`type`), ADD KEY `related_object_type` (`related_object_type`,`related_object_id`), ADD KEY `actor_id` (`actor_id`)");
 			}
 		}
 	}
