@@ -11,10 +11,8 @@ set -e
 
 echo "Starting build, current dir is $PWD"
 
-if [ -z $PKG_CONFIG ]; then
-  PKG_CONFIG="pkg-config --static"
-fi
 if [ -z $PLATFORM ]; then
+  PKG_CONFIG="pkg-config --static"
   case "$(uname -m)" in
     aarch64)
       PLATFORM="linux-arm64v8"
@@ -25,9 +23,10 @@ if [ -z $PLATFORM ]; then
 	esac
 
 	echo "Installing pkg-config and cmake"
-	sudo apt-get install pkg-config cmake || exit 1
-fi
-if [ -z $FLAGS ]; then
+	sudo echo "set man-db/auto-update false" | debconf-communicate
+    sudo dpkg-reconfigure man-db
+	sudo apt-get --yes install pkg-config cmake || exit 1
+
   case "$(uname -m)" in
     aarch64)
       FLAGS="-march=armv8-a"
@@ -36,8 +35,6 @@ if [ -z $FLAGS ]; then
       FLAGS="-march=nehalem"
       ;;
     esac
-fi
-if [ -z $MESON ]; then
   MESON="--cross-file=$PWD/$PLATFORM/meson.ini"
 fi
 
