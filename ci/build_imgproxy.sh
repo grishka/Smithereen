@@ -30,6 +30,7 @@ workDir=$PWD
 cp -r -v $(readlink -f "$workDir/../ci/libvips_bin") ./libvips || exit 1
 touch libvips/include/vips/vips7compat.h # imgproxy includes this but doesn't use it (?)
 ln -s $PWD/libvips/lib/libvips-cpp.so.* libvips/lib/libvips-cpp.so
+ln -s $PWD/libvips/lib/libvips.so.* libvips/lib/libvips.so
 
 echo "Downloading latest imgproxy release"
 curl -L -o src.tar.gz $(curl https://api.github.com/repos/imgproxy/imgproxy/releases/latest | jq -r '.tarball_url') || exit 1
