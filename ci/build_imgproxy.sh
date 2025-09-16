@@ -43,7 +43,7 @@ Name: vips
 Version: 2.0
 Description: adsf
 Libs: -L${PWD}/libvips/lib -lvips-cpp -Wl,-rpath,.
-Cflags: -I${PWD}/libvips/include -I${PWD}/libvips/include/glib-2.0 -I${PWD}/libvips/lib/glib-2.0/include -Dvips_pngload_buffer=_ZN4vips6VImage14pngload_bufferEP9_VipsBlobPNS_7VOptionE -Dvips_pngsave_buffer=_ZNK4vips6VImage14pngsave_bufferEPNS_7VOptionE
+Cflags: -I${PWD}/libvips/include -I${PWD}/libvips/include/glib-2.0 -I${PWD}/libvips/lib/glib-2.0/include
 EOF
 cat > pkgconfig/glib-2.0.pc <<- EOF
 Name: glib
