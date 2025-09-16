@@ -63,6 +63,12 @@ jobs:
                   java-version: '21'
                   distribution: 'temurin'
 
+            - name: Cache Maven libraries
+              uses: actions/cache@v4
+              with:
+                  path: /home/runner/.m2 # TODO is it ok to hardcode this?
+                  key: maven-${{ hashFiles('pom.xml') }}
+
             - name: Build Smithereen
               run: mvn package -Dmaven.test.skip=true
 
