@@ -23,7 +23,7 @@ if [ -z $PLATFORM ]; then
 	esac
 
 	echo "Installing pkg-config and cmake"
-	sudo echo "set man-db/auto-update false" | debconf-communicate
+	echo "set man-db/auto-update false" | sudo debconf-communicate
     sudo dpkg-reconfigure man-db
 	sudo apt-get --yes install pkg-config cmake || exit 1
 
