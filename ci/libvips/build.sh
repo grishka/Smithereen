@@ -12,7 +12,7 @@ set -e
 echo "Starting build, current dir is $PWD"
 
 if [ -z $PLATFORM ]; then
-  PKG_CONFIG="pkg-config --static"
+  export PKG_CONFIG="pkg-config --static"
   case "$(uname -m)" in
     aarch64)
       PLATFORM="linux-arm64v8"
