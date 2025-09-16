@@ -9,6 +9,8 @@
 
 set -e
 
+echo "Starting build, current dir is $PWD"
+
 if [ -z $PKG_CONFIG ]; then
   PKG_CONFIG="pkg-config --static"
 fi
@@ -20,7 +22,10 @@ if [ -z $PLATFORM ]; then
     x86_64)
       PLATFORM="linux-x64"
       ;;
-    esac
+	esac
+
+	echo "Installing pkg-config and cmake"
+	sudo apt-get install pkg-config cmake || exit 1
 fi
 if [ -z $FLAGS ]; then
   case "$(uname -m)" in
@@ -40,9 +45,6 @@ if ! [ -x "$(command -v meson)" ]; then
 	echo "Installing meson"
 	pip3 install meson || exit 1
 fi
-
-echo "Installing pkg-config and cmake"
-sudo apt-get install pkg-config cmake || exit 1
 
 
 # Dependency version numbers
@@ -78,6 +80,8 @@ case ${PLATFORM} in
     VIPS_CPP_DEP=libvips-cpp.$(without_prerelease $VERSION_VIPS).dylib
     ;;
 esac
+
+echo "DEPS=$DEPS, TARGET=$TARGET, PACKAGE=$PACKAGE, ROOT=$ROOT, VIPS_CPP_DEP=$VIPS_CPP_DEP"
 
 mkdir ${DEPS}
 mkdir ${TARGET}
