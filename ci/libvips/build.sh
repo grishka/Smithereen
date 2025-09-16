@@ -36,9 +36,9 @@ if [ -z $MESON ]; then
   MESON="--cross-file=$PWD/$PLATFORM/meson.ini"
 fi
 
-if ! [ -x "$(command -v jq)" ]; then
+if ! [ -x "$(command -v meson)" ]; then
 	echo "Installing meson"
-	pip3 install meson
+	pip3 install meson || exit 1
 fi
 
 
