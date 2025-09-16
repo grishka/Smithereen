@@ -17,7 +17,15 @@ jobs:
             - name: Check out repo
               uses: actions/checkout@v4
 
+            - name: Cache libvips binaries
+              id: cache-libvips
+              uses: actions/cache@v4
+              with:
+                  path: ci/libvips/libvips_bin
+                  key: libvips-${{ matrix.platform.arch }}-${{ hashFiles('ci/libvips/versions.properties') }}
+
             - name: Build libvips
+              if: steps.cache-libvips.outputs.cache-hit != 'true'
               working-directory: ci/libvips
               run: ./build.sh
 

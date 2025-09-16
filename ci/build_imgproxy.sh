@@ -27,17 +27,7 @@ mkdir imgproxy_build
 cd imgproxy_build
 workDir=$PWD
 
-echo "Downloading latest imgproxy release"
-curl -L -o src.tar.gz $(curl https://api.github.com/repos/imgproxy/imgproxy/releases/latest | jq -r '.tarball_url') || exit 1
-tar -xzf src.tar.gz
-mv imgproxy-imgproxy-* src
-
-vipsTag=$(curl https://api.github.com/repos/lovell/sharp-libvips/releases/latest | jq -r '.tag_name')
-vipsVersion=${vipsTag:1}
-echo "Downloading prebuilt libvips, version $vipsVersion"
-curl -L -o libvips.tar.gz "https://github.com/lovell/sharp-libvips/releases/download/$vipsTag/libvips-$vipsVersion-linux-$vipsArch.tar.gz" || exit 1
-mkdir libvips
-tar -xzf libvips.tar.gz -C libvips
+cp -r -v ../libvips_bin ./libvips
 touch libvips/include/vips/vips7compat.h # imgproxy includes this but doesn't use it (?)
 ln -s $PWD/libvips/lib/libvips-cpp.so.* libvips/lib/libvips-cpp.so
 

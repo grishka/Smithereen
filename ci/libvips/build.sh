@@ -385,7 +385,12 @@ if [ "$LINUX" = true ]; then
 fi
 copydeps ${VIPS_CPP_DEP} ${TARGET}/lib-filtered
 cd ${TARGET}
-# Create the tarball
+
 ls -al lib
 rm -rf lib
 mv lib-filtered lib
+
+mkdir ../../libvips_bin
+mkdir ../../libvips_bin/lib
+cp -v lib/libvips-cpp.so.* ../../libvips_bin/lib/
+cp -r -v include ../../libvips_bin/
