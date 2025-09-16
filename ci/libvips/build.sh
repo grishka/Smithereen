@@ -42,7 +42,7 @@ if ! [ -x "$(command -v meson)" ]; then
 fi
 
 echo "Installing pkg-config and cmake"
-apt-get install pkg-config cmake || exit 1
+sudo apt-get install pkg-config cmake || exit 1
 
 
 # Dependency version numbers
