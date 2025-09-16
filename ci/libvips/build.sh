@@ -392,6 +392,5 @@ rm -rf lib
 mv lib-filtered lib
 
 mkdir "$OUTPUT_DIR"
-mkdir "$OUTPUT_DIR/lib"
-cp -v lib/libvips-cpp.so.* "$OUTPUT_DIR/lib/"
+cp -r -v lib "$OUTPUT_DIR/"
 cp -r -v include "$OUTPUT_DIR/"
