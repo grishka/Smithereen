@@ -4,7 +4,7 @@ on:
     workflow_dispatch:
 
 jobs:
-    build_imgproxy:
+    build_libvips_and_imgproxy:
         strategy:
             matrix:
                 platform:
@@ -16,6 +16,10 @@ jobs:
         steps:
             - name: Check out repo
               uses: actions/checkout@v4
+
+            - name: Build libvips
+              working-directory: ci/libvips
+              run: ./build.sh
 
             - name: Setup Go
               uses: actions/setup-go@v5
@@ -34,7 +38,7 @@ jobs:
     build_release_bundles:
         runs-on: ubuntu-latest
         needs:
-            - build_imgproxy
+            - build_libvips_and_imgproxy
         steps:
             - name: Check out repo
               uses: actions/checkout@v4
