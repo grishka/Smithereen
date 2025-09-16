@@ -46,6 +46,7 @@ if ! [ -x "$(command -v meson)" ]; then
 	pip3 install meson || exit 1
 fi
 
+OUTPUT_DIR=$(readlink -f "$PWD/../libvips_bin")
 
 # Dependency version numbers
 if [ -f ./versions.properties ]; then
@@ -390,7 +391,7 @@ ls -al lib
 rm -rf lib
 mv lib-filtered lib
 
-mkdir ../../libvips_bin
-mkdir ../../libvips_bin/lib
-cp -v lib/libvips-cpp.so.* ../../libvips_bin/lib/
-cp -r -v include ../../libvips_bin/
+mkdir "$OUTPUT_DIR"
+mkdir "$OUTPUT_DIR/lib"
+cp -v lib/libvips-cpp.so.* "$OUTPUT_DIR/lib/"
+cp -r -v include "$OUTPUT_DIR/"
