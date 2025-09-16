@@ -9,6 +9,7 @@ function doOneArch {
 	chmod +x bundles/$3/install.sh
 	pushd bundles/$3
 	ln -s libvips-cpp.so.* libvips-cpp.so
+	ln -s libvips.so.* libvips.so
 	tar -cvzf ../../smithereen-bundle-$3.tar.gz .
 	popd
 }

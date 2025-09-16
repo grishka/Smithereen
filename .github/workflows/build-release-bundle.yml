@@ -21,7 +21,7 @@ jobs:
               id: cache-libvips
               uses: actions/cache@v4
               with:
-                  path: ci/libvips/libvips_bin
+                  path: ci/libvips_bin
                   key: libvips-${{ matrix.platform.arch }}-${{ hashFiles('ci/libvips/versions.properties') }}
 
             - name: Build libvips

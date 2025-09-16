@@ -62,5 +62,6 @@ cd $workDir
 echo "All done:"
 mkdir out
 mv -v libvips/lib/libvips-cpp.so.* out/
+mv -v libvips/lib/libvips.so.* out/
 mv -v imgproxy out/
 ls -l out
