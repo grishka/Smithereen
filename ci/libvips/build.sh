@@ -26,6 +26,9 @@ if [ -z $PLATFORM ]; then
 	echo "set man-db/auto-update false" | sudo debconf-communicate
     sudo dpkg-reconfigure man-db
 	sudo apt-get --yes install pkg-config cmake || exit 1
+    if [ "$PLATFORM" = "linux-x64" ]; then
+    	sudo apt-get install nasm || exit 1
+    fi
 
   case "$(uname -m)" in
     aarch64)
