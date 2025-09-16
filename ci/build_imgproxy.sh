@@ -42,7 +42,7 @@ cat > pkgconfig/vips.pc <<- EOF
 Name: vips
 Version: 2.0
 Description: adsf
-Libs: -L${PWD}/libvips/lib -lvips-cpp -Wl,-rpath,.
+Libs: -L${PWD}/libvips/lib -lvips -Wl,-rpath,.
 Cflags: -I${PWD}/libvips/include -I${PWD}/libvips/include/glib-2.0 -I${PWD}/libvips/lib/glib-2.0/include
 EOF
 cat > pkgconfig/glib-2.0.pc <<- EOF

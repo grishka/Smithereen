@@ -316,8 +316,8 @@ PATCH
 # Disable HBR support in heifsave
 $CURL https://github.com/libvips/build-win64-mxe/raw/v${VERSION_VIPS}/build/patches/vips-8-heifsave-disable-hbr-support.patch | patch -p1
 # Link libvips.so statically into libvips-cpp.so
-sed -i'.bak' "s/library('vips'/static_&/" libvips/meson.build
-sed -i'.bak' "/version: library_version/{N;d;}" libvips/meson.build
+#sed -i'.bak' "s/library('vips'/static_&/" libvips/meson.build
+#sed -i'.bak' "/version: library_version/{N;d;}" libvips/meson.build
 if [ "$LINUX" = true ]; then
   # Ensure libvips-cpp.so is linked with -z nodelete
   sed -i'.bak' "/gnu_symbol_visibility: 'hidden',/a link_args: nodelete_link_args," cplusplus/meson.build
