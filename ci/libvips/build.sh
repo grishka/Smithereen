@@ -41,10 +41,8 @@ if ! [ -x "$(command -v meson)" ]; then
 	pip3 install meson || exit 1
 fi
 
-if ! [ -x "$(command -v pkg-config)" ] || ! [ -x "$(command -v cmake)" ]; then
-	echo "Installing pkg-config and cmake"
-	apt-get install pkg-config cmake || exit 1
-fi
+echo "Installing pkg-config and cmake"
+apt-get install pkg-config cmake || exit 1
 
 
 # Dependency version numbers
