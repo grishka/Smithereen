@@ -5,25 +5,6 @@ if [ "$(uname)" != "Linux" ]; then
 	exit 1
 fi
 
-case "$(uname -m)" in
-	aarch64)
-		vipsArch="arm64v8"
-		;;
-	x86_64)
-		vipsArch="x64"
-		;;
-	*)
-		echo "CPU architecture not supported" >&2
-		exit 1
-		;;
-esac
-
-if ! [ -x "$(command -v jq)" ]; then
-	echo "Installing jq"
-	apt-get install -y jq
-fi
-
-mkdir imgproxy_build
 cd imgproxy_build
 workDir=$PWD
 
@@ -31,11 +12,6 @@ cp -r -v $(readlink -f "$workDir/../ci/libvips_bin") ./libvips || exit 1
 touch libvips/include/vips/vips7compat.h # imgproxy includes this but doesn't use it (?)
 ln -s $PWD/libvips/lib/libvips-cpp.so.* libvips/lib/libvips-cpp.so
 ln -s $PWD/libvips/lib/libvips.so.* libvips/lib/libvips.so
-
-echo "Downloading latest imgproxy release"
-curl -L -o src.tar.gz $(curl https://api.github.com/repos/imgproxy/imgproxy/releases/latest | jq -r '.tarball_url') || exit 1
-tar -xzf src.tar.gz
-mv imgproxy-imgproxy-* src
 
 echo "Creating fake pkg-config files for libvips"
 mkdir pkgconfig

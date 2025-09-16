@@ -29,10 +29,14 @@ jobs:
               working-directory: ci/libvips
               run: ./build.sh
 
+            - name: Download imgproxy sources
+              run: ./ci/download_imgproxy.sh
+
             - name: Setup Go
               uses: actions/setup-go@v5
               with:
                   go-version: 'stable'
+                  cache-dependency-path: 'imgproxy_build/src/go.sum'
 
             - name: Build imgproxy
               run: ./ci/build_imgproxy.sh
