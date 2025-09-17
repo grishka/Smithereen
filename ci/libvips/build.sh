@@ -43,7 +43,8 @@ if [ -z $PLATFORM ]; then
       FLAGS="-march=armv8-a"
       ;;
     x86_64)
-      FLAGS="-march=nehalem"
+      curl --silent -o force_link_glibc_2.20.h "https://github.com/wheybags/glibc_version_header/raw/60d54829f34f21dc440126ad5630e6a9789a48b2/version_headers/x64/force_link_glibc_2.20.h"
+      FLAGS="-march=nehalem -include $PWD/force_link_glibc_2.20.h"
       ;;
     esac
   MESON="--cross-file=$PWD/$PLATFORM/meson.ini"
@@ -347,7 +348,7 @@ CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" meson setup _build --default-l
   ${WITHOUT_HIGHWAY:+-Dhighway=disabled} -Dorc=disabled -Dmagick=disabled -Dmatio=disabled -Dnifti=disabled -Dopenexr=disabled \
   -Dopenjpeg=disabled -Dopenslide=disabled -Dpdfium=disabled -Dpoppler=disabled -Dquantizr=disabled -Drsvg=disabled -Dtiff=disabled \
   -Dppm=false -Danalyze=false -Dradiance=false \
-  ${LINUX:+-Dcpp_link_args="$LDFLAGS -Wl,-Bsymbolic-functions -Wl,--version-script=$DEPS/vips/vips.map -Wl,-Bstatic -libc -libc++ -Wl,-Bdynamic $EXCLUDE_LIBS"}
+  ${LINUX:+-Dcpp_link_args="$LDFLAGS -Wl,-Bsymbolic-functions -Wl,--version-script=$DEPS/vips/vips.map -static-libstdc++ $EXCLUDE_LIBS"}
 meson install -C _build --tag runtime,devel
 
 # Cleanup
