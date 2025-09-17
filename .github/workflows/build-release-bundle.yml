@@ -66,11 +66,11 @@ jobs:
             - name: Cache Maven libraries
               uses: actions/cache@v4
               with:
-                  path: /home/runner/.m2 # TODO is it ok to hardcode this?
+                  path: ~/.m2
                   key: maven-${{ hashFiles('pom.xml') }}
 
             - name: Build Smithereen
-              run: mvn package -Dmaven.test.skip=true
+              run: mvn package -Dmaven.test.skip=true -DnodeInstallLocation=~/.m2
 
             - name: Download imgproxy and libvips
               uses: actions/download-artifact@v4

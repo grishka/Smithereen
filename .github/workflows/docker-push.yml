@@ -33,12 +33,20 @@ jobs:
                   username: ${{ vars.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+            - name: Cache Maven libraries
+              uses: actions/cache@v4
+              with:
+                  path: ~/dockerCache
+                  key: docker-maven-${{ hashFiles('pom.xml') }}-${{ matrix.platform.arch }}
+
             - name: Build and push
               uses: docker/build-push-action@v6
               with:
                   push: true
                   tags: "${{ vars.DOCKERHUB_REPO }}:${{ env.DOCKER_TAG }}-${{ matrix.platform.arch }}"
                   context: .
+                  cache-from: type=local,src=~/dockerCache
+                  cache-to: type=local,dest=~/dockerCache
 
     merge:
         runs-on: ubuntu-latest
