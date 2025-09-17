@@ -43,7 +43,7 @@ if [ -z $PLATFORM ]; then
       FLAGS="-march=armv8-a"
       ;;
     x86_64)
-      curl --silent -o force_link_glibc_2.20.h "https://github.com/wheybags/glibc_version_header/raw/60d54829f34f21dc440126ad5630e6a9789a48b2/version_headers/x64/force_link_glibc_2.20.h"
+      curl -o force_link_glibc_2.20.h "https://github.com/wheybags/glibc_version_header/raw/60d54829f34f21dc440126ad5630e6a9789a48b2/version_headers/x64/force_link_glibc_2.20.h"
       FLAGS="-march=nehalem -include $PWD/force_link_glibc_2.20.h"
       ;;
     esac
@@ -139,6 +139,9 @@ if [ "$LINUX" = true ]; then
 elif [ "$DARWIN" = true ]; then
   export MAKEFLAGS="-j$(sysctl -n hw.logicalcpu)"
 fi
+
+echo "CFLAGS=$CFLAGS"
+echo "LDFLAGS=$LDFLAGS"
 
 # We don't want to use any native libraries, so unset PKG_CONFIG_PATH
 unset PKG_CONFIG_PATH
