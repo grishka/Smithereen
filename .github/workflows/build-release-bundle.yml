@@ -70,7 +70,7 @@ jobs:
                   key: maven-${{ hashFiles('pom.xml') }}
 
             - name: Build Smithereen
-              run: mvn package -Dmaven.test.skip=true -DnodeInstallLocation=~/.m2
+              run: mvn package -Dmaven.test.skip=true -DnodeInstallLocation=$HOME/.m2
 
             - name: Download imgproxy and libvips
               uses: actions/download-artifact@v4
