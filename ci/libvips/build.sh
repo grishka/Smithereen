@@ -33,18 +33,20 @@ if [ -z $PLATFORM ]; then
 		$SUDO dpkg-reconfigure man-db
     fi
     $SUDO apt-get update
-	$SUDO apt-get --yes install pkg-config cmake python3 autoconf automake gcc g++ binutils git patch ninja-build || exit 1
+	$SUDO apt-get --yes install pkg-config cmake python3 autoconf automake clang binutils git patch ninja-build || exit 1
     if [ "$PLATFORM" = "linux-x64" ]; then
     	$SUDO apt-get install nasm || exit 1
     fi
+
+    export CC="clang"
+    export CXX="clang++"
 
   case "$(uname -m)" in
     aarch64)
       FLAGS="-march=armv8-a"
       ;;
     x86_64)
-      curl -o force_link_glibc_2.20.h "https://github.com/wheybags/glibc_version_header/raw/60d54829f34f21dc440126ad5630e6a9789a48b2/version_headers/x64/force_link_glibc_2.20.h"
-      FLAGS="-march=nehalem -include $PWD/force_link_glibc_2.20.h"
+      FLAGS="-march=nehalem"
       ;;
     esac
   MESON="--cross-file=$PWD/$PLATFORM/meson.ini"
