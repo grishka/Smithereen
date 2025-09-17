@@ -22,12 +22,20 @@ if [ -z $PLATFORM ]; then
       ;;
 	esac
 
-	echo "Installing pkg-config and cmake"
-	echo "set man-db/auto-update false" | sudo debconf-communicate
-    sudo dpkg-reconfigure man-db
-	sudo apt-get --yes install pkg-config cmake || exit 1
+	echo "Installing packages"
+	if [ $UID = 0 ]; then
+		SUDO=""
+	else
+		SUDO="sudo"
+	fi
+	if [ "$(dpkg -l | awk '/man-db/ {print }'|wc -l)" -ge 1 ]; then
+		echo "set man-db/auto-update false" | $SUDO debconf-communicate
+		$SUDO dpkg-reconfigure man-db
+    fi
+    $SUDO apt-get update
+	$SUDO apt-get --yes install pkg-config cmake python3 autoconf automake gcc g++ binutils git patch ninja-build || exit 1
     if [ "$PLATFORM" = "linux-x64" ]; then
-    	sudo apt-get install nasm || exit 1
+    	$SUDO apt-get install nasm || exit 1
     fi
 
   case "$(uname -m)" in
@@ -42,6 +50,10 @@ if [ -z $PLATFORM ]; then
 fi
 
 if ! [ -x "$(command -v meson)" ]; then
+	if ! [ -x "$(command -v pip3)" ]; then
+		echo "Installing pip3"
+		curl https://bootstrap.pypa.io/get-pip.py | python3
+	fi
 	echo "Installing meson"
 	pip3 install meson || exit 1
 fi

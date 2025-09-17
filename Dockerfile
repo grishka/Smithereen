@@ -4,7 +4,7 @@ WORKDIR /usr/src/app
 COPY . .
 ARG MAVEN_OPTS
 RUN --mount=type=cache,target=/root/.m2 mvn package -Dmaven.test.skip=true -DnodeInstallLocation=/root/.m2
-RUN java LibVipsDownloader.java
+RUN ./ci/libvips/build_docker.sh
 
 FROM eclipse-temurin:21-jdk
 
@@ -13,7 +13,7 @@ RUN mkdir -p /opt/smithereen
 WORKDIR /opt/smithereen
 COPY --from=builder /usr/src/app/target/smithereen.jar /opt/smithereen/smithereen.jar
 COPY --from=builder /usr/src/app/target/lib /opt/smithereen/lib
-COPY --from=builder /usr/src/app/*.so /opt/smithereen/
+COPY --from=builder /usr/src/app/ci/libvips_bin/libvips* /opt/smithereen/
 RUN echo -e '#!/bin/bash\njava -jar /opt/smithereen/smithereen.jar /usr/local/etc/config.properties init_admin' > smithereen-init-admin && chmod +x smithereen-init-admin
 
 EXPOSE 4567
