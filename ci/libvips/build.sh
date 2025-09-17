@@ -403,6 +403,6 @@ ls -al lib
 rm -rf lib
 mv lib-filtered lib
 
-mkdir "$OUTPUT_DIR"
+if [! -d "$OUTPUT_DIR" ]; then mkdir "$OUTPUT_DIR"; fi
 cp -r -v lib "$OUTPUT_DIR/"
 cp -r -v include "$OUTPUT_DIR/"
