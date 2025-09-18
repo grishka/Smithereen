@@ -33,7 +33,10 @@ if [ -z $PLATFORM ]; then
 		$SUDO dpkg-reconfigure man-db
     fi
     $SUDO apt-get update
-	$SUDO apt-get --yes install pkg-config cmake python3 autoconf automake gcc g++ binutils git patch ninja-build || exit 1
+	$SUDO apt-get -y install pkg-config cmake python3 autoconf automake binutils git patch ninja-build || exit 1
+	if ! [ -x "$(command -v gcc)" ]; then
+		$SUDO apt-get -y install gcc g++ || exit 1
+	fi
     if [ "$PLATFORM" = "linux-x64" ]; then
     	$SUDO apt-get install nasm || exit 1
     fi
@@ -43,8 +46,7 @@ if [ -z $PLATFORM ]; then
       FLAGS="-march=armv8-a"
       ;;
     x86_64)
-      curl -o force_link_glibc_2.20.h "https://github.com/wheybags/glibc_version_header/raw/60d54829f34f21dc440126ad5630e6a9789a48b2/version_headers/x64/force_link_glibc_2.20.h"
-      FLAGS="-march=nehalem -pthread -include $PWD/force_link_glibc_2.20.h"
+      FLAGS="-march=nehalem"
       ;;
     esac
   MESON="--cross-file=$PWD/$PLATFORM/meson.ini"
@@ -242,7 +244,7 @@ $CURL https://github.com/mozilla/mozjpeg/archive/v${VERSION_MOZJPEG}.tar.gz | ta
 cd ${DEPS}/jpeg
 cmake -G"Unix Makefiles" \
   -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_INSTALL_LIBDIR:PATH=lib -DCMAKE_BUILD_TYPE=MinSizeRel \
-  -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_JPEG8=1 -DWITH_TURBOJPEG=FALSE -DPNG_SUPPORTED=FALSE
+  -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_JPEG8=1 -DWITH_TURBOJPEG=FALSE -DPNG_SUPPORTED=FALSE -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 make install/strip
 
 mkdir ${DEPS}/png
