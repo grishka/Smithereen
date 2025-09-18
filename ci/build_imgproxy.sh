@@ -32,7 +32,7 @@ EOF
 
 echo "Building imgproxy"
 cd src
-PKG_CONFIG_PATH=$workDir/pkgconfig go build -ldflags "-s -w" -o ../imgproxy || exit 1
+PKG_CONFIG_PATH=$workDir/pkgconfig go build -ldflags "-s -w -static" -o ../imgproxy || exit 1
 cd $workDir
 
 echo "All done:"
