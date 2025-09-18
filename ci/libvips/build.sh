@@ -9,8 +9,6 @@
 
 set -e
 
-echo "Starting build, current dir is $PWD"
-
 if [ -z $PLATFORM ]; then
   export PKG_CONFIG="pkg-config --static"
   case "$(uname -m)" in
@@ -21,25 +19,6 @@ if [ -z $PLATFORM ]; then
       PLATFORM="linux-x64"
       ;;
 	esac
-
-	echo "Installing packages"
-	if [ $UID = 0 ]; then
-		SUDO=""
-	else
-		SUDO="sudo"
-	fi
-	if [ "$(dpkg -l | awk '/man-db/ {print }'|wc -l)" -ge 1 ]; then
-		echo "set man-db/auto-update false" | $SUDO debconf-communicate
-		$SUDO dpkg-reconfigure man-db
-    fi
-    $SUDO apt-get update
-	$SUDO apt-get -y install pkg-config cmake python3 autoconf automake binutils git patch ninja-build || exit 1
-	if ! [ -x "$(command -v gcc)" ]; then
-		$SUDO apt-get -y install gcc g++ || exit 1
-	fi
-    if [ "$PLATFORM" = "linux-x64" ]; then
-    	$SUDO apt-get install nasm || exit 1
-    fi
 
   case "$(uname -m)" in
     aarch64)
@@ -353,7 +332,7 @@ CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" meson setup _build --default-l
   ${WITHOUT_HIGHWAY:+-Dhighway=disabled} -Dorc=disabled -Dmagick=disabled -Dmatio=disabled -Dnifti=disabled -Dopenexr=disabled \
   -Dopenjpeg=disabled -Dopenslide=disabled -Dpdfium=disabled -Dpoppler=disabled -Dquantizr=disabled -Drsvg=disabled -Dtiff=disabled \
   -Dppm=false -Danalyze=false -Dradiance=false \
-  ${LINUX:+-Dcpp_link_args="$LDFLAGS -Wl,-Bsymbolic-functions -Wl,--version-script=$DEPS/vips/vips.map -static-libstdc++ $EXCLUDE_LIBS"}
+  ${LINUX:+-Dcpp_link_args="$LDFLAGS -Wl,-Bsymbolic-functions -Wl,--version-script=$DEPS/vips/vips.map $EXCLUDE_LIBS"}
 meson install -C _build --tag runtime,devel
 
 # Cleanup
