@@ -19,7 +19,7 @@ cat > pkgconfig/vips.pc <<- EOF
 Name: vips
 Version: 2.0
 Description: adsf
-Libs: -L${PWD}/libvips/lib -lvips -Wl,-rpath,.
+Libs: -L${PWD}/libvips/lib -lvips -Wl,-rpath,. -static
 Cflags: -I${PWD}/libvips/include -I${PWD}/libvips/include/glib-2.0 -I${PWD}/libvips/lib/glib-2.0/include
 EOF
 cat > pkgconfig/glib-2.0.pc <<- EOF
@@ -32,7 +32,7 @@ EOF
 
 echo "Building imgproxy"
 cd src
-PKG_CONFIG_PATH=$workDir/pkgconfig go build -ldflags "-s -w -static" -o ../imgproxy || exit 1
+PKG_CONFIG_PATH=$workDir/pkgconfig go build -ldflags "-s -w" -o ../imgproxy || exit 1
 cd $workDir
 
 echo "All done:"
