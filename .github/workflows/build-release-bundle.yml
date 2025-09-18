@@ -27,7 +27,7 @@ jobs:
             - name: Build libvips
               if: steps.cache-libvips.outputs.cache-hit != 'true'
               run: |
-                  docker build --pull -t vips-build .
+                  docker build --pull -t vips-build ./ci/libvips
                   docker run --rm -v $PWD:/packaging -w /packaging/ci/libvips vips-build sh -c "./build.sh"
 
             - name: Download imgproxy sources
