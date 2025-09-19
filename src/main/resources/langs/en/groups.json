@@ -194,5 +194,9 @@
   "event_deactivated": "This event was deleted by its organizers.",
   "event_hidden": "Hidden event",
   "event_hidden_info": "You need to log in to view this event.",
-  "event_banned": "This event was banned by the server staff."
+  "event_banned": "This event was banned by the server staff.",
+  "group_no_members": "There are no members in this group",
+  "event_no_members": "There are no members in this event",
+  "group_no_admins": "This group doesn't have any managers",
+  "event_no_admins": "This event doesn't have any organizers"
 }

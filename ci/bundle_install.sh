@@ -5,6 +5,8 @@ function failWithError {
 	exit 1
 }
 
+cd $(dirname $0)
+
 echo ""
 echo -e " \033[38;5;64m▄██████████████▄"
 echo -e " \033[38;5;64m███████\033[48;5;231m  \033[0;38;5;64m███████\033[0m     ▄▄▄ ▖           ▄▄    ▗▄▄                                 "
@@ -93,6 +95,16 @@ done
 while [ -z "$domain" ]; do read -p "Domain name your Smithereen server will use: " domain; done
 read -p "Installation location [/opt/smithereen]: " installLocation
 if [ -z "$installLocation" ]; then installLocation="/opt/smithereen"; fi
+
+if [[ -d "$installLocation" ]]; then
+	if [[ -f "$installLocation/smithereen.jar" ]]; then
+		echo "There appears to be an existing installation of Smithereen in $installLocation."
+		read -p "Press Enter to run the update script instead."
+		./update.sh
+		exit 0
+	fi
+fi
+
 read -p "Database name and new MySQL user name [smithereen]: " dbName
 if [ -z "$dbName" ]; then dbName="smithereen"; fi
 read -p "Would you like to use an S3 cloud storage service for user-uploaded files (y/n)? [n]: " useS3
@@ -134,7 +146,7 @@ mkdir $webRoot/s/uploads
 mkdir $webRoot/s/media_cache
 chown -R www-data:www-data $webRoot
 chown -R www-data:www-data $installLocation/nginx_cache/images
-cp -v -R smithereen.jar lib libvips-cpp.* imgproxy $installLocation
+cp -v -R smithereen.jar lib libvips* imgproxy $installLocation
 
 echo "Creating database..."
 echo "CREATE DATABASE $dbName;" | $mysqlCommand > /dev/null || failWithError "Unable to create a MySQL database"

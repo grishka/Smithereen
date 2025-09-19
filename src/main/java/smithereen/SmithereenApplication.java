@@ -321,7 +321,7 @@ public class SmithereenApplication{
 				getLoggedIn("/personal", SettingsRoutes::profileEditPersonal);
 				getLoggedIn("/contacts", SettingsRoutes::profileEditContacts);
 			});
-			getLoggedIn("/", SettingsRoutes::settings);
+			getLoggedIn("", SettingsRoutes::settings);
 			postWithCSRF("/createInvite", SettingsRoutes::createInvite);
 			postWithCSRF("/updatePassword", SettingsRoutes::updatePassword);
 			postWithCSRF("/updateProfileGeneral", SettingsRoutes::updateProfileGeneral);

@@ -22,7 +22,7 @@ cur.showAllPinnedPosts=function(){
     {% include 'wall_post' %}
 </div>
 {% else %}
-<div class="emptyState">{{ emptyText }}</div>
+{% if pinnedPosts is empty %}<div class="emptyState">{{ emptyText }}</div>{% endif %}
 {% endfor %}
 {% include "pagination" %}
 </div>

@@ -213,9 +213,9 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		// <p>Quote repost test<br><br>RE: <a href="https://misskey.io/notes/86woec5nlm">https://misskey.io/notes/86woec5nlm</a></p>
 		Element root=Jsoup.parseBodyFragment(text).body();
 		// Try to find <span class="quote-inline"> first
-		Element spanWithClass=root.selectFirst("span.quote-inline");
-		if(spanWithClass!=null){
-			spanWithClass.remove();
+		Element quoteFallbackEl=root.selectFirst(".quote-inline");
+		if(quoteFallbackEl!=null){
+			quoteFallbackEl.remove();
 			text=root.html();
 		}else{
 			// Find and remove the <a>

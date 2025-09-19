@@ -14,10 +14,10 @@ import smithereen.util.BlurHash;
 
 class LibVips{
 	static{
-		Native.register("vips-cpp");
+		Native.register("vips");
 		boolean isWindows=System.getProperty("os.name").startsWith("Windows");
-		Native.register(LibGObject.class, isWindows ? "libgobject-2.0-0" : "vips-cpp");
-		Native.register(LibGLib.class, isWindows ? "libglib-2.0-0" : "vips-cpp");
+		Native.register(LibGObject.class, isWindows ? "libgobject-2.0-0" : "vips");
+		Native.register(LibGLib.class, isWindows ? "libglib-2.0-0" : "vips");
 
 		vips_init("");
 		if(Config.DEBUG)

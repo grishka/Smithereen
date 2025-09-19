@@ -4,7 +4,7 @@ on:
     workflow_dispatch:
 
 jobs:
-    build_imgproxy:
+    build_libvips_and_imgproxy:
         strategy:
             matrix:
                 platform:
@@ -17,13 +17,26 @@ jobs:
             - name: Check out repo
               uses: actions/checkout@v4
 
-            - name: Setup Go
-              uses: actions/setup-go@v5
+            - name: Cache libvips binaries
+              id: cache-libvips
+              uses: actions/cache@v4
               with:
-                  go-version: 'stable'
+                  path: ci/libvips_bin
+                  key: libvips-${{ matrix.platform.arch }}-${{ hashFiles('ci/libvips/versions.properties') }}
+
+            - name: Build libvips
+              if: steps.cache-libvips.outputs.cache-hit != 'true'
+              run: |
+                  docker build --pull -t vips-build ./ci/libvips
+                  docker run --rm -v $PWD:/packaging -w /packaging/ci/libvips vips-build sh -c "./build.sh"
+
+            - name: Download imgproxy sources
+              run: ./ci/imgproxy/download_imgproxy.sh
 
             - name: Build imgproxy
-              run: ./ci/build_imgproxy.sh
+              run: |
+                  docker build -t imgproxy-build ./ci/imgproxy
+                  docker run --rm -v $PWD:/packaging -w /packaging imgproxy-build sh -c "./ci/imgproxy/build_imgproxy.sh"
 
             - name: Upload build artifacts
               uses: actions/upload-artifact@v4
@@ -34,7 +47,7 @@ jobs:
     build_release_bundles:
         runs-on: ubuntu-latest
         needs:
-            - build_imgproxy
+            - build_libvips_and_imgproxy
         steps:
             - name: Check out repo
               uses: actions/checkout@v4
@@ -47,8 +60,14 @@ jobs:
                   java-version: '21'
                   distribution: 'temurin'
 
+            - name: Cache Maven libraries
+              uses: actions/cache@v4
+              with:
+                  path: ~/.m2
+                  key: maven-${{ hashFiles('pom.xml') }}
+
             - name: Build Smithereen
-              run: mvn package -Dmaven.test.skip=true
+              run: mvn package -Dmaven.test.skip=true -DnodeInstallLocation=$HOME/.m2
 
             - name: Download imgproxy and libvips
               uses: actions/download-artifact@v4
