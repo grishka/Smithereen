@@ -32,7 +32,7 @@ If you have any questions or feedback, there's a [Telegram chat](https://t.me/Sm
       ├╴ activation-1.1.jar
       └╴ ...other dependencies
    ```
-4. Set up the image processing native library ([libvips](https://github.com/libvips/libvips)): run `java LibVipsDownloader.java` to automatically download a prebuilt one from [here](https://github.com/lovell/sharp-libvips). If you already have libvips installed on your system, you may skip this step, but be aware that not all libvips builds include all the features Smithereen needs.
+4. Somehow cause [libvips](https://github.com/libvips/libvips) to exist on your system: use the one from a release bundle, download a prebuilt one from [here](https://github.com/lovell/sharp-libvips), or build it from sources, maybe using [the CI build script](ci/libvips/build.sh). If you already have libvips installed on your system, you may skip this step, but be aware that not all libvips builds include all the features Smithereen needs.
 5. Install and configure [imgproxy](https://docs.imgproxy.net/GETTING_STARTED)
 6. Fill in the config file, see a commented example [here](examples/config.properties)
 	- You can use either the local file system (default) or an S3-compatible object storage service for user-uploaded media files.
