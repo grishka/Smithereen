@@ -522,7 +522,9 @@ public class GroupsRoutes{
 		Map<Integer, User> users=ctx.getUsersController().getUsers(members.list);
 		model.with("users", users);
 		model.with("summary", lang(req).get(tentative ? "summary_event_X_tentative_members" : (group.isEvent() ? "summary_event_X_members" : "summary_group_X_members"), Map.of("count", tentative ? group.tentativeMemberCount : group.memberCount)));
-		model.with("contentTemplate", "user_grid").with("title", group.name);
+		model.with("contentTemplate", "user_grid")
+				.with("title", group.name)
+				.with("emptyMessage", lang(req).get(group.isEvent() ? "event_no_members" : "group_no_members"));
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		if(!isMobile(req)){
@@ -545,7 +547,8 @@ public class GroupsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("actor_list", req);
 		List<GroupAdmin> admins=ctx.getGroupsController().getAdmins(group);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(admins.stream().map(a->a.userID).toList());
-		model.with("actors", admins.stream().map(a->new ActorWithDescription(users.get(a.userID), a.title)).collect(Collectors.toList()));
+		model.with("actors", admins.stream().map(a->new ActorWithDescription(users.get(a.userID), a.title)).collect(Collectors.toList()))
+				.with("emptyMessage", lang(req).get(group.isEvent() ? "event_no_admins" : "group_no_admins"));
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		if(isAjax(req)){

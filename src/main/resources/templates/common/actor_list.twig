@@ -1,5 +1,6 @@
 {% extends "page" %}
 {% block content %}
+{% if actors is not empty %}
 <div class="userList">
 {% for actor in actors %}
 	<div>
@@ -13,4 +14,7 @@
 	</div>
 {% endfor %}
 </div>
+{% else %}
+<div class="emptyState">{{ emptyMessage }}</div>
+{% endif %}
 {% endblock %}
