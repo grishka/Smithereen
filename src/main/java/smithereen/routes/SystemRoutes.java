@@ -488,9 +488,9 @@ public class SystemRoutes{
 				case OTHER_ERROR -> l.get("remote_object_loading_error");
 			});
 			if(x.getCause()!=null){
-				jb.add("details", TextProcessor.escapeHTML(x.getCause().getMessage()));
+				jb.add("details", x.getCause().getMessage());
 			}else if(StringUtils.isNotEmpty(x.getMessage())){
-				jb.add("details", TextProcessor.escapeHTML(x.getMessage()));
+				jb.add("details", x.getMessage());
 			}
 			return jb.build();
 		}
