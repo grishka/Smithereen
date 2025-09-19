@@ -31,16 +31,12 @@ jobs:
                   docker run --rm -v $PWD:/packaging -w /packaging/ci/libvips vips-build sh -c "./build.sh"
 
             - name: Download imgproxy sources
-              run: ./ci/download_imgproxy.sh
-
-            - name: Setup Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version: 'stable'
-                  cache-dependency-path: 'imgproxy_build/src/go.sum'
+              run: ./ci/imgproxy/download_imgproxy.sh
 
             - name: Build imgproxy
-              run: ./ci/build_imgproxy.sh
+              run: |
+                  docker build -t imgproxy-build ./ci/imgproxy
+                  docker run --rm -v $PWD:/packaging -w /packaging imgproxy-build sh -c "./ci/imgproxy/build_imgproxy.sh"
 
             - name: Upload build artifacts
               uses: actions/upload-artifact@v4
