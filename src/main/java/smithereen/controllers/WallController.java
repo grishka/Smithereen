@@ -92,7 +92,7 @@ public class WallController{
 						User mentionedUser=context.getObjectLinkResolver().resolve(uri, User.class, true, true, false);
 						mentionedUsers.put(mentionedUser.id, mentionedUser);
 					}catch(Exception x){
-						LOG.warn("Error resolving mention for URI {}", uri, x);
+						LOG.debug("Error resolving mention for URI {}", uri, x);
 					}
 				}
 			}
