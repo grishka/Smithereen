@@ -1,4 +1,3 @@
-{% import "forms" as form %}
 <form action="/account/register" method="post" id="registerForm">
 	{% if preFilledInvite is not null %}
 	<input type="hidden" name="_invite" value="{{ preFilledInvite }}"/>

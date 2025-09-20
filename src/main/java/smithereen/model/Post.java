@@ -2,6 +2,7 @@ package smithereen.model;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
@@ -45,6 +46,7 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	public Privacy privacy=Privacy.PUBLIC;
 	public EnumSet<Flag> flags=EnumSet.noneOf(Flag.class);
 	public Action action;
+	public URI mastodonQuoteAuth;
 
 	@Override
 	public URI getActivityPubID(){
@@ -86,6 +88,14 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		int _action=res.getInt("action");
 		if(!res.wasNull())
 			action=Action.values()[_action];
+
+		String extraStr=res.getString("extra");
+		if(extraStr!=null){
+			JsonObject extra=JsonParser.parseString(extraStr).getAsJsonObject();
+			if(repostOf!=0 && !flags.contains(Flag.MASTODON_STYLE_REPOST) && extra.has("quoteAuth")){
+				mastodonQuoteAuth=URI.create(extra.get("quoteAuth").getAsString());
+			}
+		}
 	}
 
 	@Override
@@ -249,6 +259,16 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		return Notification.ObjectType.POST;
 	}
 
+	public String serializeExtraFields(){
+		if(mastodonQuoteAuth!=null){
+			return new JsonObjectBuilder()
+					.add("quoteAuth", mastodonQuoteAuth.toString())
+					.build()
+					.toString();
+		}
+		return null;
+	}
+
 	public enum Privacy{
 		PUBLIC(null),
 		FOLLOWERS_AND_MENTIONED("post_visible_to_followers_mentioned"),
@@ -272,6 +292,18 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		 * This is a comment (reply key not empty) on a wall-to-wall (owner id != author id) post.
 		 */
 		TOP_IS_WALL_TO_WALL,
+		/**
+		 * This post has a FEP-044f quote policy that is either public or followers-only, automatic or manual.
+		 * If this flag is set, when this post is reposted, a QuoteRequest activity will be sent to the author.
+		 * Smithereen doesn't actually ever restrict reposting -- rather, it opportunistically obtains quote authorization
+		 * so Smithereen's reposts display on Mastodon as quote posts.
+		 */
+		HAS_QUOTE_POLICY,
+		/**
+		 * Set in addition to HAS_QUOTE_POLICY if quoting is restricted to followers.
+		 * Causes a QuoteRequest to only be sent if the reposter follows the author, as an optimization.
+		 */
+		HAS_FOLLOWERS_QUOTE_POLICY,
 	}
 
 	public enum Action{

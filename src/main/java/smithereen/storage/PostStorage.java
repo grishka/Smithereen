@@ -124,6 +124,14 @@ public class PostStorage{
 				.executeNoResult();
 	}
 
+	public static void updateWallPostExtraFields(int id, String extra) throws SQLException{
+		new SQLQueryBuilder()
+				.update("wall_posts")
+				.value("extra", extra)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
 	private static int putForeignPoll(DatabaseConnection conn, int ownerID, URI activityPubID, Poll poll) throws SQLException{
 		PreparedStatement stmt=new SQLQueryBuilder(conn)
 				.insertInto("polls")
@@ -188,6 +196,7 @@ public class PostStorage{
 							.value("repost_of", post.repostOf!=0 ? post.repostOf : null)
 							.value("flags", Utils.serializeEnumSet(post.flags))
 							.value("action", post.action)
+							.value("extra", post.serializeExtraFields())
 							.createStatement(Statement.RETURN_GENERATED_KEYS);
 				}else{
 					if(post.poll!=null && Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
@@ -251,6 +260,8 @@ public class PostStorage{
 							.value("content_warning", post.contentWarning)
 							.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
 							.value("poll_id", post.poll!=null ? post.poll.id : null)
+							.value("extra", post.serializeExtraFields())
+							.value("flags", Utils.serializeEnumSet(post.flags))
 							.createStatement();
 				}
 				if(existing==null){

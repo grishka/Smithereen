@@ -92,7 +92,7 @@ public class WallController{
 						User mentionedUser=context.getObjectLinkResolver().resolve(uri, User.class, true, true, false);
 						mentionedUsers.put(mentionedUser.id, mentionedUser);
 					}catch(Exception x){
-						LOG.warn("Error resolving mention for URI {}", uri, x);
+						LOG.debug("Error resolving mention for URI {}", uri, x);
 					}
 				}
 			}
@@ -157,6 +157,7 @@ public class WallController{
 			if(inReplyTo!=null || wallOwner.getLocalID()!=author.id)
 				repost=null;
 
+			User repostAuthor=null;
 			if(repost!=null){
 				// If we're reposting a repost, use the original post if it's an Announce or there's no comment
 				if(repost.isMastodonStyleRepost() || (repost.repostOf!=0 && TextProcessor.stripHTML(repost.text, false).trim().isEmpty() && (repost.attachments==null || repost.attachments.isEmpty()) && repost.poll==null)){
@@ -174,7 +175,7 @@ public class WallController{
 				// Reposted post must be public
 				context.getPrivacyController().enforcePostPrivacy(null, repost);
 				// Author must not be blocked by reposted post author or OP
-				User repostAuthor=context.getUsersController().getUserOrThrow(repost.authorID);
+				repostAuthor=context.getUsersController().getUserOrThrow(repost.authorID);
 				ensureUserNotBlocked(author, repostAuthor);
 				if(repost.authorID!=repost.ownerID)
 					ensureUserNotBlocked(author, context.getUsersController().getUserOrThrow(repost.ownerID));
@@ -304,6 +305,16 @@ public class WallController{
 				context.getActivityPubWorker().sendCreatePostActivity(post);
 			}
 			context.getNotificationsController().createNotificationsForObject(post);
+
+			if(repost!=null && repostAuthor instanceof ForeignUser foreignRepostAuthor && repost.flags.contains(Post.Flag.HAS_QUOTE_POLICY)){
+				boolean needSendQuoteRequest=true;
+				if(repost.flags.contains(Post.Flag.HAS_FOLLOWERS_QUOTE_POLICY)){
+					FriendshipStatus fs=context.getFriendsController().getSimpleFriendshipStatus(author, repostAuthor);
+					needSendQuoteRequest=fs==FriendshipStatus.FOLLOWING || fs==FriendshipStatus.FRIENDS;
+				}
+				if(needSendQuoteRequest)
+					context.getActivityPubWorker().sendQuoteRequest(author, post, repost, foreignRepostAuthor);
+			}
 
 			return post;
 		}catch(SQLException x){
@@ -991,6 +1002,16 @@ public class WallController{
 		try{
 			PaginatedList<Post> posts=PostStorage.getAllPostsByAuthor(user.id, offset, count);
 			return PostViewModel.wrap(posts);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void setPostQuoteAuthorization(Post post, URI quoteAuth){
+		try{
+			post.mastodonQuoteAuth=quoteAuth;
+			PostStorage.updateWallPostExtraFields(post.id, post.serializeExtraFields());
+			context.getActivityPubWorker().sendUpdatePostActivity(post);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

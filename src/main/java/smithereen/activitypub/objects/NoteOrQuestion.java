@@ -64,6 +64,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public String action;
 	public boolean canBeReposted;
 	public URI quoteRepostAuth;
+	public Set<URI> quotePolicy;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -168,6 +169,14 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 				}catch(ObjectNotFoundException ignore){}
 			}
 		}
+
+		if(quotePolicy!=null){
+			post.flags.add(Post.Flag.HAS_QUOTE_POLICY);
+			if(!quotePolicy.contains(ActivityPub.AS_PUBLIC) && !quotePolicy.contains(URI.create("as:Public")) && author.followers!=null && quotePolicy.contains(author.followers))
+				post.flags.add(Post.Flag.HAS_FOLLOWERS_QUOTE_POLICY);
+		}
+
+		post.mastodonQuoteAuth=quoteRepostAuth;
 
 		return post;
 	}
@@ -309,8 +318,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 				if(repost.isLocal()){
 					noq.quoteRepostAuth=UriBuilder.local().path("posts", String.valueOf(repost.id), "quoteAuth", String.valueOf(post.id)).build();
+				}else{
+					noq.quoteRepostAuth=post.mastodonQuoteAuth;
 				}
-				// TODO request and store these to make Mastodon happy
 			}catch(ObjectNotFoundException ignore){}
 		}
 
@@ -624,6 +634,28 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			quoteRepostID=tryParseURL(optString(obj, JLD.MASTODON_QUOTES_FEP+"quote"));
 		}
 		action=optString(obj, "action");
+
+		if(optObject(obj, "interactionPolicy") instanceof JsonObject gtsPolicy && optObject(gtsPolicy, "canQuote") instanceof JsonObject gtsQuotePolicy){
+			List<LinkOrObject> automaticApproval=tryParseArrayOfLinksOrObjects(gtsQuotePolicy.get("automaticApproval"), parserContext);
+			List<LinkOrObject> manualApproval=tryParseArrayOfLinksOrObjects(gtsQuotePolicy.get("manualApproval"), parserContext);
+			if(automaticApproval!=null || manualApproval!=null){
+				quotePolicy=new HashSet<>();
+				if(automaticApproval!=null){
+					for(LinkOrObject loo:automaticApproval){
+						if(loo.link!=null)
+							quotePolicy.add(loo.link);
+					}
+				}
+				if(manualApproval!=null){
+					for(LinkOrObject loo:manualApproval){
+						if(loo.link!=null)
+							quotePolicy.add(loo.link);
+					}
+				}
+				if(quotePolicy.isEmpty())
+					quotePolicy=null;
+			}
+		}
 
 		return this;
 	}

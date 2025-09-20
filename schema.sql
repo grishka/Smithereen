@@ -1184,6 +1184,7 @@ CREATE TABLE `wall_posts` (
   `flags` bit(64) NOT NULL DEFAULT b'0',
   `action` tinyint unsigned DEFAULT NULL,
   `top_parent_is_wall_to_wall` tinyint(1) GENERATED ALWAYS AS (((`flags` & 2) = 2)) VIRTUAL,
+  `extra` json DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -1217,4 +1218,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-09-15  5:36:28
+-- Dump completed on 2025-09-20  9:01:08
