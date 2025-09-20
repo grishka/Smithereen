@@ -1,1 +1,13 @@
-{}
+{
+  "group_board": "Fórum de discussão",
+  "board_X_topics": "{count, plural, =0 {Sem tópicos} one {# tópico} other {# tópicos}}",
+  "board_create_topic": "Criar tópico",
+  "board_no_topics": "Ainda não há tópicos neste grupo.",
+  "board_topic": "Tópico",
+  "board_topic_title": "Título",
+  "board_topic_text": "Texto",
+  "board_topic_info": "{posts, plural, one {# post} other {# posts}}. Último por <a id=\"author\">{authorName}</a>, <span>{date}</span>",
+  "board_new_topic_title": "Novo tópico",
+  "board_viewing_topic": "Tópico",
+  "board_topic_summary": "Há {count, plural, one {# post} other {# posts}} neste tópico"
+}
