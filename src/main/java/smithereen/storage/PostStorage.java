@@ -261,6 +261,7 @@ public class PostStorage{
 							.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
 							.value("poll_id", post.poll!=null ? post.poll.id : null)
 							.value("extra", post.serializeExtraFields())
+							.value("flags", Utils.serializeEnumSet(post.flags))
 							.createStatement();
 				}
 				if(existing==null){
