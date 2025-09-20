@@ -46,6 +46,7 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Account;
 import smithereen.model.LikedObjectID;
+import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -199,6 +200,16 @@ public class UserDataExportWorker{
 						throw new InternalServerErrorException(x);
 					}
 				}, filesToInclude, zos, user.getWallCommentsURL(), "wallComments", false);
+
+				// Private messages
+				writeCollections(offset->{
+					PaginatedList<MailMessage> msgs=context.getMailController().getInbox(user, offset, 100);
+					return new PaginatedList<>(msgs, msgs.list.stream().map(m->NoteOrQuestion.fromNativeMessage(m, context)).toList());
+				}, LinkOrObject::new, filesToInclude, zos, null, "messagesInbox", false);
+				writeCollections(offset->{
+					PaginatedList<MailMessage> msgs=context.getMailController().getOutbox(user, offset, 100);
+					return new PaginatedList<>(msgs, msgs.list.stream().map(m->NoteOrQuestion.fromNativeMessage(m, context)).toList());
+				}, LinkOrObject::new, filesToInclude, zos, null, "messagesOutbox", false);
 
 				// Photo albums
 				writeLocalObjectRemoteLinkCollections(offset->{
