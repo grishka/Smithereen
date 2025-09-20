@@ -35,6 +35,7 @@ import smithereen.activitypub.DoublyNestedActivityTypeHandler;
 import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.handlers.AcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.AcceptFollowPersonHandler;
+import smithereen.activitypub.handlers.AcceptQuoteRequestHandler;
 import smithereen.activitypub.handlers.AddGroupHandler;
 import smithereen.activitypub.handlers.AddNoteHandler;
 import smithereen.activitypub.handlers.AddPhotoHandler;
@@ -49,6 +50,7 @@ import smithereen.activitypub.handlers.DeleteNoteHandler;
 import smithereen.activitypub.handlers.DeletePersonHandler;
 import smithereen.activitypub.handlers.DeletePhotoAlbumHandler;
 import smithereen.activitypub.handlers.DeletePhotoHandler;
+import smithereen.activitypub.handlers.DeleteQuoteAuthorizationHandler;
 import smithereen.activitypub.handlers.FlagHandler;
 import smithereen.activitypub.handlers.FollowGroupHandler;
 import smithereen.activitypub.handlers.FollowPersonHandler;
@@ -76,6 +78,7 @@ import smithereen.activitypub.handlers.RejectFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectInviteGroupHandler;
 import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectPhotoHandler;
+import smithereen.activitypub.handlers.RejectQuoteRequestHandler;
 import smithereen.activitypub.handlers.RemoveActorStatusHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
 import smithereen.activitypub.handlers.RemoveNoteHandler;
@@ -208,6 +211,9 @@ public class ActivityPubRoutes{
 		registerActivityHandler(Actor.class, Reject.class, Add.class, NoteOrQuestion.class, new RejectAddNoteHandler());
 		registerActivityHandler(ForeignUser.class, Read.class, NoteOrQuestion.class, new ReadNoteHandler());
 		registerActivityHandler(ForeignUser.class, QuoteRequest.class, NoteOrQuestion.class, new QuoteRequestNoteHandler());
+		registerActivityHandler(ForeignUser.class, Accept.class, QuoteRequest.class, new AcceptQuoteRequestHandler());
+		registerActivityHandler(ForeignUser.class, Reject.class, QuoteRequest.class, new RejectQuoteRequestHandler());
+		registerActivityHandler(ForeignUser.class, Delete.class, QuoteAuthorization.class, new DeleteQuoteAuthorizationHandler());
 
 		registerActivityHandler(ForeignUser.class, Follow.class, User.class, new FollowPersonHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Follow.class, User.class, new UndoFollowPersonHandler());
@@ -884,7 +890,7 @@ public class ActivityPubRoutes{
 		Actor actor;
 		boolean canUpdate=true;
 		// special case: when users delete themselves but are not in local database, ignore that
-		if(activity instanceof Delete && (activity.actor.link.equals(activity.object.link) || (activity.object.object!=null && activity.actor.link.equals(activity.object.object.activityPubID)))){
+		if(activity instanceof Delete && activity.object!=null && (activity.actor.link.equals(activity.object.link) || (activity.object.object!=null && activity.actor.link.equals(activity.object.object.activityPubID)))){
 			try{
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, false, false, false);
 			}catch(ObjectNotFoundException x){

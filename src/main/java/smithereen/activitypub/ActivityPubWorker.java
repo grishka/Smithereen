@@ -902,6 +902,14 @@ public class ActivityPubWorker{
 		submitActivity(accept, self, actorInbox(repostAuthor));
 	}
 
+	public void sendQuoteRequest(User self, Post repost, Post repostedPost, ForeignUser repostedAuthor){
+		QuoteRequest qreq=new QuoteRequest()
+				.withActorAndObjectLinks(self, repostedPost);
+		qreq.activityPubID=new UriBuilder(repost.getActivityPubID()).fragment("quoteAuth").build();
+		qreq.instrument=new LinkOrObject(NoteOrQuestion.fromNativePost(repost, context));
+		submitActivity(qreq, self, actorInbox(repostedAuthor));
+	}
+
 	// region Photo albums
 
 	private void sendActivityForPhotoAlbum(Actor actor, PhotoAlbum album, Activity activity){

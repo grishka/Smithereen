@@ -171,6 +171,7 @@ public class JLDProcessor{
 		lc.add("interactionPolicy", idAndTypeObject("gts:interactionPolicy", "@id"));
 		lc.add("canQuote", idAndTypeObject("gts:canQuote", "@id"));
 		lc.add("automaticApproval", idAndTypeObject("gts:automaticApproval", "@id"));
+		lc.add("manualApproval", idAndTypeObject("gts:manualApproval", "@id"));
 		lc.add("interactingObject", idAndTypeObject("gts:interactingObject", "@id"));
 		lc.add("interactionTarget", idAndTypeObject("gts:interactionTarget", "@id"));
 
