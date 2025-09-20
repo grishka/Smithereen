@@ -149,7 +149,8 @@ public class RenderedTemplateResponse{
 
 	public void renderToWriter(Writer writer) throws IOException{
 		try{
-			template=getAndPrepareTemplate(req);
+			if(template==null)
+				template=getAndPrepareTemplate(req);
 			template.evaluate(writer, model, locale);
 		}catch(EofException ignored){
 			// The connection was closed by the client before the complete response body was written out. That's normal.
@@ -186,7 +187,8 @@ public class RenderedTemplateResponse{
 	public String renderBlock(String name){
 		StringWriter writer=new StringWriter();
 		try{
-			template=getAndPrepareTemplate(req);
+			if(template==null)
+				template=getAndPrepareTemplate(req);
 			template.evaluateBlock(name, writer, model, locale);
 		}catch(IOException ignore){}
 		return writer.toString();
