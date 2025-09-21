@@ -84,7 +84,7 @@ cur.notifierTypesMenu=new MultipleChoicePopupMenu(ge("notifierTypesMenuW"), {
 		    {id: "{{ type }}", title: "{{ L(type.langKey) | forceEscape }}"},
 		{% endfor %}
 	],
-	selectedOptions: {{ json(notifierTypes | default([])) }},
+	selectedOptions: {{ json(notifierTypes | default([])) | raw }},
 	allCheckboxID: "allNotifierTypes"
 });
 
