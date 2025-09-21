@@ -1,1 +1,21 @@
-{}
+{
+  "bookmarks_title": "Favoritos",
+  "add_bookmark": "Adicionar favorito",
+  "remove_bookmark": "Remover dos favorito",
+  "bookmarks_people": "Pessoas",
+  "bookmarks_communities": "Comunidades",
+  "bookmarks_posts": "Posts",
+  "bookmarks_people_empty": "Pessoas adicionados aos favoritos aparecerão aqui.",
+  "bookmarks_communities_empty": "Grupos e eventos adicionados aos favoritos aparecerão aqui.",
+  "bookmarks_posts_empty": "Os posts que você gostou aparecerão aqui.",
+  "bookmarks_X_liked_posts": "Você gostou de {count, plural, one {# post} other {# posts}}",
+  "bookmarks_photos": "Fotos",
+  "bookmarks_photos_empty": "As fotos que você gostou aparecerão aqui.",
+  "bookmarks_X_liked_photos": "Você gostou de {count, plural, one {# foto} other {# fotos}}",
+  "user_bookmark_added": "{name} foi adicionado aos seus <a id=\"bookmarks\">favoritos</a>.",
+  "user_bookmark_removed": "{name} foi removido dos seus <a id=\"bookmarks\">favoritos</a>.",
+  "group_bookmark_added": "O grupo foi adicionado aos seus <a id=\"bookmarks\">favoritos</a>.",
+  "group_bookmark_removed": "O grupo foi removido dos seus <a id=\"bookmarks\">favoritos</a>.",
+  "event_bookmark_added": "O evento foi adicionado aos seus <a id=\"bookmarks\">favoritos</a>.",
+  "event_bookmark_removed": "O evento foi removido dos seus <a id=\"bookmarks\">favoritos</a>."
+}
