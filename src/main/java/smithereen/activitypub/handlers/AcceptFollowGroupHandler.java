@@ -23,7 +23,9 @@ public class AcceptFollowGroupHandler extends NestedActivityTypeHandler<ForeignG
 			throw new ObjectNotFoundException("Follower not found");
 		follower.ensureLocal();
 		GroupStorage.setMemberAccepted(actor, follower.id, true);
-		context.appContext.getNotificationsController().sendRealtimeNotifications(follower, "groupJoinAccept"+actor.id, RealtimeNotification.Type.GROUP_REQUEST_ACCEPTED, null, null, actor);
+		if(object.accessType!=Group.AccessType.OPEN){
+			context.appContext.getNotificationsController().sendRealtimeNotifications(follower, "groupJoinAccept"+actor.id, RealtimeNotification.Type.GROUP_REQUEST_ACCEPTED, null, null, actor);
+		}
 		if(object.accessType!=Group.AccessType.PRIVATE){
 			context.appContext.getActivityPubWorker().sendAddToGroupsCollectionActivity(follower, actor, context.appContext.getGroupsController().getUserMembershipState(object, follower)==Group.MembershipState.TENTATIVE_MEMBER);
 			context.appContext.getNewsfeedController().putFriendsFeedEntry(follower, object.id, object.isEvent() ? NewsfeedEntry.Type.JOIN_EVENT : NewsfeedEntry.Type.JOIN_GROUP);
