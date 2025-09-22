@@ -86,17 +86,19 @@
 				{% elseif ce.type=="JOIN_GROUP" %}
 				<div class="feedRowUser">
 					{% set group=groups[ce.objectID] %}
-					<a href="{{ profileURL(-ce.objectID) }}">
+					{% set name=group | name %}
+					<a href="{{ profileURL(-ce.objectID) }}"{% if name | length>35 %} title="{{ name }}"{% endif %}>
 						{{ group | pictureForAvatar('a') }}
-						<div class="feedRowUserName">{{ group | name }}</div>
+						<div class="feedRowUserName">{{ name | abbreviate(35) }}</div>
 					</a>
 				</div>
 				{% elseif ce.type=="JOIN_EVENT" %}
 				<div class="feedRowUser">
 					{% set event=groups[ce.objectID] %}
-					<a href="{{ profileURL(-ce.objectID) }}">
+					{% set name=event | name %}
+					<a href="{{ profileURL(-ce.objectID) }}"{% if name | length>35 %} title="{{ name }}"{% endif %}>
 						{{ event | pictureForAvatar('a') }}
-						<div class="feedRowUserName">{{ event | name }}</div>
+						<div class="feedRowUserName">{{ name | abbreviate(35) }}</div>
 					</a>
 				</div>
 				{% endif %}
