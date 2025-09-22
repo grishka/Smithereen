@@ -600,7 +600,7 @@ public class TextProcessor{
 			case TWITTER -> normalizeUsernameOrLink(value, "twitter.com", "x.com");
 			case INSTAGRAM -> normalizeUsernameOrLink(value, "instagram.com", "www.instagram.com", "instagr.am");
 			case FACEBOOK -> normalizeUsernameOrLink(value, "facebook.com", "www.facebook.com", "m.facebook.com");
-			case VKONTAKTE -> normalizeUsernameOrLink(value, "vk.com", "m.vk.com");
+			case VKONTAKTE -> normalizeUsernameOrLink(value, "vk.com", "m.vk.com", "vkontakte.ru", "vk.ru");
 			case SNAPCHAT -> {
 				if(Utils.isURL(value)){
 					URI uri=URI.create(value);

@@ -1,6 +1,9 @@
 name: Build release bundles
 
 on:
+    push:
+        tags:
+            - "*"
     workflow_dispatch:
 
 jobs:

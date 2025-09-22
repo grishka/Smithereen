@@ -34,7 +34,7 @@
 </div>
 {% if replyTo is null and to is empty %}
 {% script %}
-var friendList={{ json(friendList) }};
+var friendList={{ json(friendList) | raw }};
 new TokenInput(ge("mailComposeTo"), "{{ L('friends_search_placeholder') }}", function(q){return TokenInput.filterTokens(q, friendList);}, ge("mailComposeToFld"));
 {% endscript %}
 {% endif %}

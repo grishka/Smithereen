@@ -1263,7 +1263,7 @@ public class PostRoutes{
 	public static Object pinPost(Request req, Response resp, Account self, ApplicationContext ctx){
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
 
-		if(post.authorID!=self.id || post.authorID!=post.ownerID || post.getReplyLevel()>0)
+		if(post.authorID!=self.user.id || post.authorID!=post.ownerID || post.getReplyLevel()>0)
 			throw new UserActionNotAllowedException();
 
 		ctx.getWallController().pinPost(post, false);
@@ -1284,7 +1284,7 @@ public class PostRoutes{
 	public static Object unpinPost(Request req, Response resp, Account self, ApplicationContext ctx){
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
 
-		if(post.authorID!=self.id)
+		if(post.authorID!=self.user.id)
 			throw new UserActionNotAllowedException();
 
 		ctx.getWallController().unpinPost(post);
