@@ -85,7 +85,7 @@
 					</span>
 					{% endif %}
 					<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
-						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}&rid={{ randomID }}" class="action like commentLike{{ interactions.isLiked ? ' liked' : '' }}{{ interactions.likeCount>0 or interactions.repostCount>0 ? '' : ' revealOnHover' }} popoverButton" id="likeButtonPost{{realPost.id}}_{{ randomID }}" data-obj-type="post" data-obj-id="{{realPost.id}}_{{ randomID }}" data-popover-url="{{realPost.internalURL}}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} title="{{ L('like') }}">
+						<a href="{{realPost.internalURL}}/{%if interactions.isLiked%}un{%endif%}like?csrf={{csrf}}&rid={{ randomID }}" class="action like commentLike{{ interactions.isLiked ? ' liked' : '' }}{{ interactions.likeCount>0 or interactions.repostCount>0 ? '' : ' revealOnHover' }} popoverButton" id="likeButtonPost{{realPost.id}}_{{ randomID }}" data-obj-type="post" data-obj-id="{{realPost.id}}_{{ randomID }}" data-popover-url="{{realPost.internalURL}}/likePopover?rid={{ randomID }}" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} title="{{ L('like') }}">
 							<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{realPost.id}}_{{ randomID }}" data-count="{{ interactions.likeCount }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 							{{- interactions.likeCount | numberformat -}}
 						</span></a>
