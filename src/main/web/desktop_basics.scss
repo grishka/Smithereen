@@ -88,7 +88,7 @@ input[type=submit], input[type=button], button, .button, .button:link, .button:v
 	margin: 0 3px 0 1px;
 	position: relative;
 	top: 2px;
-	background: svg-load('img/repost_icons.svg') no-repeat;
+	background: svg-load('img/repost_icons.svg', fill: $normalLink) no-repeat;
 }
 
 .postCWWrap{

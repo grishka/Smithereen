@@ -425,7 +425,7 @@ small{
 
 /* Safari hack because it hates my SVG abuse */
 _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .postOwnerArrowIcon{
-	background-image: svg-load('img/repost_icons_safari.svg');
+	background: svg-load('img/repost_icons_safari.svg', fill: $normalLink) no-repeat;
 	background-size: 9px 33px;
 }
 
