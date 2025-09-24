@@ -6,7 +6,7 @@ open module smithereen.server{
 	requires com.google.gson;
 	requires com.sun.jna;
 	requires io.pebbletemplates;
-	requires mail;
+	requires java.mail;
 	requires org.commonmark;
 	requires org.commonmark.ext.gfm.strikethrough;
 	requires org.commonmark.ext.ins;
