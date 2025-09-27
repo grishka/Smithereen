@@ -1,6 +1,7 @@
 package smithereen;
 
 import smithereen.activitypub.ActivityPubWorker;
+import smithereen.controllers.AppsController;
 import smithereen.controllers.BoardController;
 import smithereen.controllers.BookmarksController;
 import smithereen.controllers.CommentsController;
@@ -42,6 +43,7 @@ public class ApplicationContext{
 	private final FASPController faspController;
 	private final BoardController boardController;
 	private final UserDataExportWorker userDataExportWorker;
+	private final AppsController appsController;
 
 	public ApplicationContext(){
 		wallController=new WallController(this);
@@ -64,6 +66,7 @@ public class ApplicationContext{
 		faspController=new FASPController(this);
 		boardController=new BoardController(this);
 		userDataExportWorker=new UserDataExportWorker(this);
+		appsController=new AppsController(this);
 	}
 
 	public WallController getWallController(){
@@ -144,5 +147,9 @@ public class ApplicationContext{
 
 	public UserDataExportWorker getUserDataExportWorker(){
 		return userDataExportWorker;
+	}
+
+	public AppsController getAppsController(){
+		return appsController;
 	}
 }

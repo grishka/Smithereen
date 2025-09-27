@@ -26,6 +26,8 @@ public class PictureForAvatarFilter implements Filter{
 			image=actor.getAvatar();
 			if(actor instanceof Group)
 				additionalClasses=" group";
+		}else if(input instanceof SizedImage img){
+			image=img;
 		}else{
 			image=null;
 		}

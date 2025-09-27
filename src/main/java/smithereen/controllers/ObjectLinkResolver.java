@@ -26,6 +26,7 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.activitypub.ActivityPub;
+import smithereen.activitypub.objects.ActivityPubApplication;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
@@ -45,6 +46,7 @@ import smithereen.model.ActorStatus;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.groups.GroupAdmin;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -80,6 +82,7 @@ public class ObjectLinkResolver{
 	private static final Pattern PHOTOS=Pattern.compile("^/photos/([a-zA-Z0-9_-]+)$");
 	private static final Pattern COMMENTS=Pattern.compile("^/comments/([a-zA-Z0-9_-]+)$");
 	private static final Pattern TOPICS=Pattern.compile("^/topics/([a-zA-Z0-9_-]+)$");
+	private static final Pattern APPS=Pattern.compile("^/apps/(\\d+)$");
 	private static final Pattern LOCAL_USERNAME=Pattern.compile("^/([a-zA-Z][a-zA-Z0-9._-]+)$");
 
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
@@ -294,6 +297,7 @@ public class ObjectLinkResolver{
 					return ensureTypeAndCast(switch(res.type){
 						case USER -> context.getUsersController().getUserOrThrow(res.localID);
 						case GROUP -> context.getGroupsController().getGroupOrThrow(res.localID);
+						case APPLICATION -> context.getAppsController().getAppByID(res.localID);
 					}, expectedType);
 				}
 			}else{
@@ -350,6 +354,10 @@ public class ObjectLinkResolver{
 					if(tid.type==ObjectType.BOARD_TOPIC && expectedType.isAssignableFrom(BoardTopic.class)){
 						BoardTopic topic=context.getBoardController().getTopicIgnoringPrivacy(tid.id);
 						return ensureTypeAndCast(topic, expectedType);
+					}
+					if(tid.type==ObjectType.API_APPLICATION && expectedType.isAssignableFrom(ClientApp.class)){
+						ClientApp app=context.getAppsController().getAppByID(tid.id);
+						return ensureTypeAndCast(app, expectedType);
 					}
 				}else{
 					if(expectedType.isAssignableFrom(ForeignUser.class)){
@@ -468,6 +476,7 @@ public class ObjectLinkResolver{
 						context.getBoardController().putForeignTopic(t, firstComment);
 					}
 				}
+				case ClientApp app -> context.getAppsController().putOrUpdateForeignApp(app);
 				case null, default -> {}
 			}
 		}catch(SQLException|InterruptedException x){
@@ -526,6 +535,8 @@ public class ObjectLinkResolver{
 			return type.cast(p.asNativePhoto(context));
 		}else if(o instanceof ActivityPubBoardTopic t && type.isAssignableFrom(BoardTopic.class)){
 			return type.cast(t.asNativeTopic(context));
+		}else if(o instanceof ActivityPubApplication a && type.isAssignableFrom(ClientApp.class)){
+			return type.cast(a.asNativeApp(context));
 		}else if(type.isAssignableFrom(o.getClass())){
 			return type.cast(o);
 		}
@@ -674,6 +685,11 @@ public class ObjectLinkResolver{
 			return new ObjectTypeAndID(ObjectType.BOARD_TOPIC, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.BOARD_TOPIC));
 		}
 
+		matcher=APPS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.API_APPLICATION, safeParseLong(matcher.group(1)));
+		}
+
 		return null;
 	}
 
@@ -689,6 +705,7 @@ public class ObjectLinkResolver{
 			case USER_STATUS -> null;
 			case GROUP_STATUS -> null;
 			case BOARD_TOPIC -> Config.localURI("/topics/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.BOARD_TOPIC));
+			case API_APPLICATION -> Config.localURI("/apps/"+id.id);
 		};
 	}
 
@@ -714,7 +731,8 @@ public class ObjectLinkResolver{
 
 	public enum UsernameOwnerType{
 		USER,
-		GROUP
+		GROUP,
+		APPLICATION
 	}
 
 	public record UsernameResolutionResult(UsernameOwnerType type, int localID){}
@@ -731,7 +749,8 @@ public class ObjectLinkResolver{
 		COMMENT('C', 'M', 'N', 'T'),
 		USER_STATUS('U', 'S', 'T', 'A'),
 		GROUP_STATUS('G', 'S', 'T', 'A'),
-		BOARD_TOPIC('B', 'T', 'O', 'P');
+		BOARD_TOPIC('B', 'T', 'O', 'P'),
+		API_APPLICATION('A', 'P', 'P', 'L');
 
 		public final int id;
 

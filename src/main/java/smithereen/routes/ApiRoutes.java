@@ -1,0 +1,305 @@
+package smithereen.routes;
+
+import com.google.gson.JsonObject;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import smithereen.ApplicationContext;
+import smithereen.Config;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.Account;
+import smithereen.model.apps.AppAccessToken;
+import smithereen.model.apps.AppAuthCode;
+import smithereen.model.apps.ClientApp;
+import smithereen.model.apps.ClientAppPermission;
+import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.CryptoUtils;
+import smithereen.util.JsonObjectBuilder;
+import smithereen.util.UriBuilder;
+import spark.Request;
+import spark.Response;
+import spark.utils.StringUtils;
+
+import static smithereen.Utils.*;
+
+public class ApiRoutes{
+	private static Object oauthAuthorizeError(Request req, String error){
+		return new RenderedTemplateResponse("oauth_error", req)
+				.with("error", error)
+				.pageTitle(Config.serverDisplayName+" | "+lang(req).get("oauth_title"));
+	}
+
+	public static Object oauthAuthorize(Request req, Response resp){
+		req.attribute("popup", Boolean.TRUE);
+		String responseType=req.queryParams("response_type");
+		String clientID=req.queryParams("client_id");
+		String redirectUri=req.queryParams("redirect_uri");
+		String scope=req.queryParams("scope");
+		String state=req.queryParams("state");
+
+		ApplicationContext ctx=context(req);
+
+		ArrayList<String> emptyParams=new ArrayList<>();
+		if(StringUtils.isEmpty(responseType))
+			emptyParams.add("response_type");
+		if(StringUtils.isEmpty(clientID))
+			emptyParams.add("client_id");
+		if(StringUtils.isEmpty(redirectUri))
+			emptyParams.add("redirect_uri");
+		if(!emptyParams.isEmpty())
+			return oauthAuthorizeError(req, "the following required parameters are missing: "+String.join(", ", emptyParams));
+
+		if(!"token".equals(responseType) && !"code".equals(responseType))
+			return oauthAuthorizeError(req, "response_type has an invalid value. Allowed values are 'token' or 'code'");
+
+		URI appApID;
+		try{
+			appApID=new URI(clientID);
+		}catch(URISyntaxException x){
+			return oauthAuthorizeError(req, "client_id is not a valid URL");
+		}
+		if(!"https".equals(appApID.getScheme()) || StringUtils.isEmpty(appApID.getHost()))
+			return oauthAuthorizeError(req, "client_id is not a valid URL");
+
+		URI redirect;
+		try{
+			redirect=new URI(redirectUri);
+		}catch(URISyntaxException x){
+			return oauthAuthorizeError(req, "redirect_uri is not a valid URL");
+		}
+		if(StringUtils.isEmpty(redirect.getScheme()) || StringUtils.isEmpty(redirect.getAuthority()))
+			return oauthAuthorizeError(req, "redirect_uri must have at least scheme and authority parts");
+
+		ClientApp app;
+		try{
+			app=ctx.getObjectLinkResolver().resolveNative(appApID, ClientApp.class, true, true, false, (JsonObject) null, true);
+		}catch(ObjectNotFoundException x){
+			return oauthAuthorizeError(req, "failed to resolve client_id to an ActivityPub Application object: "+x.getMessage());
+		}
+
+		Account self=currentUserAccount(req);
+		RenderedTemplateResponse model;
+		if(self==null){
+			model=new RenderedTemplateResponse("login", req)
+					.with("additionalParams", "?to="+URLEncoder.encode(req.pathInfo()+"?"+req.queryString(), StandardCharsets.UTF_8));
+		}else{
+			model=new RenderedTemplateResponse("oauth_prompt", req)
+					.with("queryString", req.queryString());
+		}
+
+		EnumSet<ClientAppPermission> permissions=parseScope(scope);
+		UriBuilder rejectUrlBuilder=new UriBuilder(redirect);
+		String codeChallenge=null;
+		if(responseType.equals("code")){
+			rejectUrlBuilder.queryParam("error", "access_denied")
+					.queryParam("error_description", "User denied access request");
+			if(StringUtils.isNotEmpty(state))
+				rejectUrlBuilder.queryParam("state", state);
+			String codeChallengeMethod=req.queryParams("code_challenge_method");
+			if(StringUtils.isNotEmpty(codeChallengeMethod)){
+				if("S256".equalsIgnoreCase(codeChallengeMethod)){
+					codeChallenge=req.queryParams("code_challenge");
+					if(StringUtils.isEmpty(codeChallenge))
+						return oauthAuthorizeError(req, "with code_challenge_method present, code_challenge is required");
+				}else{
+					return oauthAuthorizeError(req, "unsupported code_challenge_method, the only 'S256' is supported");
+				}
+			}
+		}else{
+			String fragment="error=access_denied&error_description="+URLEncoder.encode("User denied access request", StandardCharsets.UTF_8);
+			if(StringUtils.isNotEmpty(state))
+				fragment+="&state="+URLEncoder.encode(state, StandardCharsets.UTF_8);
+			rejectUrlBuilder.fragment(fragment);
+		}
+
+		String reqID=randomAlphanumericString(32);
+		List<OAuthRequest> reqs=req.session().attribute("oauthRequests");
+		if(reqs==null){
+			reqs=new ArrayList<>();
+			req.session().attribute("oauthRequests", reqs);
+		}else{
+			Instant threshold=Instant.now().minus(10, ChronoUnit.MINUTES);
+			reqs.removeIf(r->r.createdAt.isBefore(threshold));
+		}
+		reqs.add(new OAuthRequest(reqID, app.id, responseType, permissions, redirect, state, Instant.now(), codeChallenge));
+
+		return model.with("app", app)
+				.pageTitle(Config.serverDisplayName+" | "+lang(req).get("oauth_title"))
+				.with("permissions", permissions.stream().map(Enum::toString).collect(Collectors.toSet()))
+				.with("rejectURL", rejectUrlBuilder.build().toString())
+				.with("requestID", reqID);
+	}
+
+	private static Object oauthTokenError(Response resp, String error, String description){
+		resp.status(400);
+		JsonObjectBuilder jb=new JsonObjectBuilder().add("error", error);
+		if(description!=null)
+			jb.add("error_description", description);
+		return jb.build();
+	}
+
+	public static Object oauthToken(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		resp.type("application/json");
+		String grantType=req.queryParams("grant_type");
+		if(StringUtils.isEmpty(grantType)){
+			return oauthTokenError(resp, "invalid_request", "grant_type parameter is missing");
+		}else if("authorization_code".equals(grantType)){
+			String code=req.queryParams("code");
+			String redirectURI=req.queryParams("redirect_uri");
+			String clientID=req.queryParams("client_id");
+			if(StringUtils.isEmpty(code) || StringUtils.isEmpty(redirectURI) || StringUtils.isEmpty(clientID)){
+				ArrayList<String> missingFields=new ArrayList<>();
+				if(StringUtils.isEmpty(code))
+					missingFields.add("code");
+				if(StringUtils.isEmpty(redirectURI))
+					missingFields.add("redirect_uri");
+				if(StringUtils.isEmpty(clientID))
+					missingFields.add("client_id");
+				return oauthTokenError(resp, "invalid_request", "Required parameters are missing: "+String.join(", ", missingFields));
+			}
+			byte[] codeID;
+			try{
+				codeID=Base64.getUrlDecoder().decode(code);
+			}catch(IllegalArgumentException x){
+				return oauthTokenError(resp, "invalid_grant", null);
+			}
+			if(codeID.length!=64)
+				return oauthTokenError(resp, "invalid_grant", null);
+			AppAuthCode ac=ctx.getAppsController().getAndDeleteAuthCode(codeID);
+			if(ac==null)
+				return oauthTokenError(resp, "invalid_grant", null);
+
+			ClientApp app;
+			try{
+				app=ctx.getObjectLinkResolver().resolveLocally(new URI(clientID), ClientApp.class);
+			}catch(ObjectNotFoundException|URISyntaxException x){
+				return oauthTokenError(resp, "invalid_grant", null);
+			}
+
+			if(app.id!=ac.appID() || !ac.redirectURI().equals(redirectURI) || ac.expiresAt().isBefore(Instant.now()))
+				return oauthTokenError(resp, "invalid_grant", null);
+
+			if(ac.s256CodeChallenge()!=null){
+				String codeVerifier=req.queryParams("code_verifier");
+				if(StringUtils.isEmpty(codeVerifier))
+					return oauthTokenError(resp, "invalid_grant", "PKCE mismatch");
+				String hash=Base64.getUrlEncoder().encodeToString(CryptoUtils.sha256(codeVerifier.getBytes(StandardCharsets.US_ASCII)));
+				if(!hash.equals(ac.s256CodeChallenge()))
+					return oauthTokenError(resp, "invalid_grant", "PKCE mismatch");
+			}
+
+			Account account=ctx.getUsersController().getAccountOrThrow(ac.accountID());
+			AppAccessToken token=ctx.getAppsController().createAccessToken(account, app, ac.permissions(), req);
+			JsonObjectBuilder jb=new JsonObjectBuilder()
+					.add("access_token", token.getEncodedID())
+					.add("token_type", "bearer")
+					.add("user_id", account.user.id);
+			if(token.expiresAt()!=null)
+				jb.add("expires_in", token.expiresAt().getEpochSecond()-Instant.now().getEpochSecond());
+			return jb.build();
+		}else{
+			return oauthTokenError(resp, "unsupported_grant_type", null);
+		}
+	}
+
+	public static Object oauthDoAuthorize(Request req, Response resp, Account self, ApplicationContext ctx){
+		List<OAuthRequest> reqs=req.session().attribute("oauthRequests");
+		if(reqs==null)
+			throw new UserActionNotAllowedException();
+		String reqID=req.queryParams("request");
+		if(StringUtils.isEmpty(reqID))
+			throw new UserActionNotAllowedException();
+		OAuthRequest oauthRequest=null;
+		for(OAuthRequest r:reqs){
+			if(r.id.equals(reqID)){
+				Instant threshold=Instant.now().minus(10, ChronoUnit.MINUTES);
+				if(r.createdAt.isAfter(threshold))
+					oauthRequest=r;
+				reqs.remove(r);
+				break;
+			}
+		}
+		if(oauthRequest==null)
+			throw new UserActionNotAllowedException();
+
+		ClientApp app=ctx.getAppsController().getAppByID(oauthRequest.appID);
+
+		if(oauthRequest.responseType.equals("token")){
+			AppAccessToken token=ctx.getAppsController().createAccessToken(self, app, oauthRequest.scope, req);
+			String fragment="access_token="+token.getEncodedID()+"&token_type=bearer&user_id="+self.user.id;
+			if(token.expiresAt()!=null)
+				fragment+="&expires_in="+(token.expiresAt().getEpochSecond()-Instant.now().getEpochSecond());
+			if(StringUtils.isNotEmpty(oauthRequest.state))
+				fragment+="&state="+URLEncoder.encode(oauthRequest.state, StandardCharsets.UTF_8);
+			resp.redirect(new UriBuilder(oauthRequest.redirectURI).fragment(fragment).build().toString());
+		}else if(oauthRequest.responseType.equals("code")){
+			byte[] code=ctx.getAppsController().createAuthCode(self, app, oauthRequest.scope, oauthRequest.s256CodeChallenge, oauthRequest.redirectURI.toString());
+			UriBuilder builder=new UriBuilder(oauthRequest.redirectURI)
+					.queryParam("code", Base64.getUrlEncoder().withoutPadding().encodeToString(code));
+			if(StringUtils.isNotEmpty(oauthRequest.state))
+				builder.queryParam("state", oauthRequest.state);
+			resp.redirect(builder.build().toString());
+		}
+
+		return "";
+	}
+
+	private static EnumSet<ClientAppPermission> parseScope(String scope){
+		EnumSet<ClientAppPermission> permissions=EnumSet.noneOf(ClientAppPermission.class);
+		if(StringUtils.isNotEmpty(scope)){
+			for(String s:scope.split(" +")){
+				switch(s){
+					case "friends:read" -> permissions.add(ClientAppPermission.FRIENDS_READ);
+					case "friends", "friends:write" -> {
+						permissions.add(ClientAppPermission.FRIENDS_READ);
+						permissions.add(ClientAppPermission.FRIENDS_WRITE);
+					}
+					case "photos:read" -> permissions.add(ClientAppPermission.PHOTOS_READ);
+					case "photos", "photos:write" -> {
+						permissions.add(ClientAppPermission.PHOTOS_READ);
+						permissions.add(ClientAppPermission.PHOTOS_WRITE);
+					}
+					case "account", "account:write" -> permissions.add(ClientAppPermission.ACCOUNT_WRITE);
+					case "wall:read" -> permissions.add(ClientAppPermission.WALL_READ);
+					case "wall", "wall:write" -> {
+						permissions.add(ClientAppPermission.WALL_READ);
+						permissions.add(ClientAppPermission.WALL_WRITE);
+					}
+					case "groups:read" -> permissions.add(ClientAppPermission.GROUPS_READ);
+					case "groups", "groups:write" -> {
+						permissions.add(ClientAppPermission.GROUPS_READ);
+						permissions.add(ClientAppPermission.GROUPS_WRITE);
+					}
+					case "messages:read" -> permissions.add(ClientAppPermission.MESSAGES_READ);
+					case "messages", "messages:write" -> {
+						permissions.add(ClientAppPermission.MESSAGES_READ);
+						permissions.add(ClientAppPermission.MESSAGES_WRITE);
+					}
+					case "likes:read" -> permissions.add(ClientAppPermission.LIKES_READ);
+					case "likes", "likes:write" -> {
+						permissions.add(ClientAppPermission.LIKES_READ);
+						permissions.add(ClientAppPermission.LIKES_WRITE);
+					}
+					case "newsfeed" -> permissions.add(ClientAppPermission.NEWSFEED);
+					case "notifications" -> permissions.add(ClientAppPermission.NOTIFICATIONS);
+					case "offline" -> permissions.add(ClientAppPermission.OFFLINE);
+				}
+			}
+		}
+		return permissions;
+	}
+
+	private record OAuthRequest(String id, long appID, String responseType, EnumSet<ClientAppPermission> scope, URI redirectURI, String state, Instant createdAt, String s256CodeChallenge){}
+}

@@ -68,6 +68,7 @@ import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.routes.ActivityPubRoutes;
+import smithereen.routes.ApiRoutes;
 import smithereen.routes.BoardRoutes;
 import smithereen.routes.FaspApiRoutes;
 import smithereen.routes.MastodonApiRoutes;
@@ -993,6 +994,11 @@ public class SmithereenApplication{
 				postFaspAPI("/debug/v0/callback/responses", FASPCapability.DEBUG, FaspApiRoutes::debugCallback);
 			});
 		});
+		path("/oauth", ()->{
+			get("/authorize", ApiRoutes::oauthAuthorize);
+			post("/token", ApiRoutes::oauthToken);
+			postLoggedIn("/doAuthorize", ApiRoutes::oauthDoAuthorize);
+		});
 
 		get("/healthz", (req, resp)->"");
 
@@ -1000,8 +1006,6 @@ public class SmithereenApplication{
 			get("", ProfileRoutes::profile);
 			// These also handle groups
 			getActivityPub("", ActivityPubRoutes::userActor);
-
-			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
 		});
 
 
@@ -1221,6 +1225,7 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(MediaStorageUtils::deleteAbandonedFiles, 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getAppsController().deleteExpiredCodesAndTokens(), 1, TimeUnit.HOURS);
 		context.getUsersController().loadPresenceFromDatabase();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{

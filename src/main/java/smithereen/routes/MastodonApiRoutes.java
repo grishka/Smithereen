@@ -4,7 +4,7 @@ import java.sql.SQLException;
 
 import smithereen.BuildInfo;
 import smithereen.Config;
-import smithereen.model.api.ApiInstance;
+import smithereen.model.api.MastodonApiInstance;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import spark.Request;
@@ -12,7 +12,7 @@ import spark.Response;
 
 public class MastodonApiRoutes{
 	public static Object instance(Request req, Response resp) throws SQLException{
-		ApiInstance inst=new ApiInstance();
+		MastodonApiInstance inst=new MastodonApiInstance();
 		inst.uri=Config.domain;
 		inst.title=Config.getServerDisplayName();
 		inst.shortDescription=Config.serverShortDescription;

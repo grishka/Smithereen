@@ -760,29 +760,6 @@ public class ActivityPubRoutes{
 		}
 	}
 
-	public static Object remoteFollow(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
-		String username=req.params(":username");
-		if(!(ctx.getUsersController().getUserByUsernameOrThrow(username) instanceof ForeignUser user)){
-			return Utils.wrapError(req, resp, "err_user_not_found");
-		}
-		FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-		if(status==FriendshipStatus.REQUEST_SENT){
-			return Utils.wrapError(req, resp, "err_friend_req_already_sent");
-		}else if(status==FriendshipStatus.FOLLOWING){
-			return Utils.wrapError(req, resp, "err_already_following");
-		}else if(status==FriendshipStatus.FRIENDS){
-			return Utils.wrapError(req, resp, "err_already_friends");
-		}
-		String msg=req.queryParams("message");
-		if(user.supportsFriendRequests()){
-			ctx.getFriendsController().sendFriendRequest(self.user, user, msg);
-		}else{
-			ctx.getFriendsController().followUser(self.user, user);
-		}
-		resp.redirect(user.getProfileURL());
-		return "Success";
-	}
-
 	public static Object nodeInfo(Request req, Response resp) throws SQLException{
 		String ver=req.pathInfo().substring(req.pathInfo().length()-3);
 		resp.type("application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/"+ver+"#\"");

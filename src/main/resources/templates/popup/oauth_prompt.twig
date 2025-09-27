@@ -1,0 +1,96 @@
+{# @pebvariable name="app" type="smithereen.model.apps.ClientApp" #}
+{% extends "page" %}
+{% block content %}
+<div id="oauthPromptHeader">
+<h2>{{ L('oauth_heading', {'serverName': serverName}) }}</h2>
+<p>
+	{% if app.logo is not null %}<span style="float: right; margin-left: 10px; display: inline-block;">{{ app.logo | pictureForAvatar('b', 75) }}</span>{% endif %}
+	{{ L('oauth_text', {'appName': app.name}, {'app': {'href': app.url, 'target': '_blank'} }) }}
+</p>
+</div>
+<div id="oauthPromptPermissions">
+	<div class="permissionIcon iconProfile"></div>
+	<div>
+		<h4>{{ L('oauth_scope_profile') }}</h4>
+		<div>{{ L('oauth_scope_profile_info') }}</div>
+	</div>
+	{% if permissions contains 'FRIENDS_READ' %}
+	<div class="permissionIcon iconFriends"></div>
+	<div>
+		<h4>{{ L('oauth_scope_friends') }}</h4>
+		<div>{{ L(permissions contains 'FRIENDS_WRITE' ? 'oauth_scope_friends_write_info' : 'oauth_scope_friends_info') }}</div>
+	</div>
+	{% endif %}
+	{% if permissions contains 'PHOTOS_READ' %}
+	<div class="permissionIcon iconPhotos"></div>
+	<div>
+		<h4>{{ L('oauth_scope_photos') }}</h4>
+		<div>{{ L(permissions contains 'PHOTOS_WRITE' ? 'oauth_scope_photos_write_info' : 'oauth_scope_photos_info') }}</div>
+	</div>
+	{% endif %}
+	{% if permissions contains 'ACCOUNT_WRITE' %}
+	<div class="permissionIcon iconAccount"></div>
+	<div>
+		<h4>{{ L('oauth_scope_account') }}</h4>
+		<div>{{ L('oauth_scope_account_info') }}</div>
+	</div>
+	{% endif %}
+	{% if permissions contains 'WALL_READ' %}
+	<div class="permissionIcon iconWall"></div>
+	<div>
+		<h4>{{ L('oauth_scope_wall') }}</h4>
+		<div>{{ L(permissions contains 'WALL_WRITE' ? 'oauth_scope_wall_write_info' : 'oauth_scope_wall_info') }}</div>
+	</div>
+	{% endif %}
+	{% if permissions contains 'GROUPS_READ' %}
+	<div class="permissionIcon iconGroups"></div>
+	<div>
+		<h4>{{ L('oauth_scope_groups') }}</h4>
+		<div>{{ L(permissions contains 'GROUPS_WRITE' ? 'oauth_scope_groups_write_info' : 'oauth_scope_groups_info') }}</div>
+	</div>
+	{% endif %}
+	{% if permissions contains 'MESSAGES_READ' %}
+	<div class="permissionIcon iconMessages"></div>
+	<div>
+		<h4>{{ L('oauth_scope_messages') }}</h4>
+		<div>{{ L(permissions contains 'MESSAGES_WRITE' ? 'oauth_scope_messages_write_info' : 'oauth_scope_messages_info') }}</div>
+	</div>
+	{% endif %}
+	{% if permissions contains 'LIKES_READ' %}
+	<div class="permissionIcon iconLikes"></div>
+	<div>
+		<h4>{{ L('oauth_scope_likes') }}</h4>
+		<div>{{ L(permissions contains 'LIKES_WRITE' ? 'oauth_scope_likes_write_info' : 'oauth_scope_likes_info') }}</div>
+	</div>
+	{% endif %}
+	{% if permissions contains 'NEWSFEED' %}
+	<div class="permissionIcon iconNewsfeed"></div>
+	<div>
+		<h4>{{ L('oauth_scope_newsfeed') }}</h4>
+		<div>{{ L('oauth_scope_newsfeed_info') }}</div>
+	</div>
+	{% endif %}
+	{% if permissions contains 'NOTIFICATIONS' %}
+	<div class="permissionIcon iconNotifications"></div>
+	<div>
+		<h4>{{ L('oauth_scope_notifications') }}</h4>
+		<div>{{ L('oauth_scope_notifications_info') }}</div>
+	</div>
+	{% endif %}
+	{% if permissions contains 'OFFLINE' %}
+	<div class="permissionIcon iconOffline"></div>
+	<div>
+		<h4>{{ L('oauth_scope_offline') }}</h4>
+		<div>{{ L('oauth_scope_offline_info') }}</div>
+	</div>
+	{% endif %}
+</div>
+<form action="/oauth/doAuthorize" method="post">
+	<div class="boxButtonBar" style="position: fixed; bottom: 0; left: 0; right: 0;">
+		<input type="hidden" name="request" value="{{ requestID }}"/>
+		<input type="submit" value="{{ L('oauth_grant_access') }}"/>
+		<a href="{{ rejectURL }}" class="button secondary">{{ L('cancel') }}</a>
+	</div>
+</form>
+{% endblock %}
+

@@ -88,6 +88,7 @@ public class ProfileRoutes{
 		return switch(ur.type()){
 			case USER -> userProfile(req, resp, ctx.getUsersController().getUserOrThrow(ur.localID()));
 			case GROUP -> GroupsRoutes.groupProfile(req, resp, ctx.getGroupsController().getGroupOrThrow(ur.localID()));
+			case APPLICATION -> ""; // TODO
 		};
 	}
 

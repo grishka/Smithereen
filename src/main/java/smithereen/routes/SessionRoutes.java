@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Base64;
@@ -26,12 +28,14 @@ import smithereen.model.SignupInvitation;
 import smithereen.model.User;
 import smithereen.model.UserBanStatus;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.apps.ClientApp;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
 import smithereen.util.EmailCodeActionType;
 import smithereen.util.FloodControl;
+import smithereen.util.UriBuilder;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -61,8 +65,10 @@ public class SessionRoutes{
 			return "";
 
 		String to=req.queryParams("to");
-		if(to!=null && to.startsWith("/activitypub")){
-			req.attribute("templateDir", "popup");
+		boolean isOauth=false;
+		if(to!=null && to.startsWith("/oauth/authorize?")){
+			req.attribute("popup", true);
+			isOauth=true;
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse("login", req);
 		if(req.requestMethod().equalsIgnoreCase("post")){
@@ -76,10 +82,24 @@ public class SessionRoutes{
 				return "";
 			}
 			model.with("message", lang(req).get("login_incorrect"));
-		}else if(StringUtils.isNotEmpty(req.queryParams("to"))){
+		}else if(StringUtils.isNotEmpty(req.queryParams("to")) && !isOauth){
 			model.with("message", lang(req).get("login_needed"));
 		}
-		model.with("additionalParams", "?"+req.queryString()).with("title", lang(req).get("login_title")+" | "+Config.serverDisplayName).with("username", req.queryParams("username"));
+		model.with("additionalParams", "?"+req.queryString())
+				.with("username", req.queryParams("username"));
+		if(isOauth){
+			URI clientID;
+			try{
+				clientID=new URI(UriBuilder.parseQueryString(URI.create(to).getQuery()).get("client_id"));
+			}catch(URISyntaxException x){
+				throw new BadRequestException();
+			}
+			ApplicationContext ctx=context(req);
+			model.pageTitle(Config.serverDisplayName+" | "+lang(req).get("oauth_title"))
+					.with("app", ctx.getObjectLinkResolver().resolveLocally(clientID, ClientApp.class));
+		}else{
+			model.pageTitle(lang(req).get("login_title")+" | "+Config.serverDisplayName);
+		}
 		return model;
 	}
 
@@ -101,7 +121,12 @@ public class SessionRoutes{
 			resp.removeCookie("psid");
 			info.account=null;
 			info.csrfToken=null;
-			resp.redirect(Config.localURI("/").toString());
+			String oauthQuery=req.queryParams("oauth");
+			if(StringUtils.isNotEmpty(oauthQuery)){
+				resp.redirect("/oauth/authorize?"+oauthQuery);
+			}else{
+				resp.redirect(Config.localURI("/").toString());
+			}
 			return "";
 		}
 		return null;

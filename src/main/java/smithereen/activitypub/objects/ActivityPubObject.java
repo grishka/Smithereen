@@ -584,8 +584,9 @@ public abstract class ActivityPubObject{
 		ActivityPubObject res=switch(type){
 			// Actors
 			case "Person" -> new ForeignUser();
-			case "Service", "Application" -> obj.has("id") && obj.has("publicKey") ? new ForeignUser(type.equals("Application")) : new Service();
+			case "Service" -> obj.has("id") && obj.has("publicKey") ? new ForeignUser(false) : new Service();
 			case "Group", "Organization" -> new ForeignGroup();
+			case "Application" -> new ActivityPubApplication();
 
 			// Objects
 			case "Note", "Article", "Page" -> new Note();
