@@ -194,7 +194,9 @@ public abstract class Actor extends ActivityPubObject{
 		serializerContext.addAlias("sm", JLD.SMITHEREEN);
 		serializerContext.addAlias("toot", JLD.MASTODON);
 		serializerContext.addAlias("discoverable", "toot:discoverable");
+		serializerContext.addAlias("indexable", "toot:indexable");
 		obj.addProperty("discoverable", true);
+		obj.addProperty("indexable", true);
 
 		serializerContext.addSchema(JLD.W3_SECURITY);
 

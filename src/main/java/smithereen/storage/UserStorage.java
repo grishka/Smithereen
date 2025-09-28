@@ -173,6 +173,60 @@ public class UserStorage{
 		}
 	}
 
+	public static Map<String, Integer> getIdsByUsernames(Collection<String> usernames) throws SQLException{
+		if(usernames.isEmpty())
+			return Map.of();
+		HashSet<String> remainingUsernames=new HashSet<>();
+		Map<String, Integer> ids=new HashMap<>();
+		for(String u:usernames){
+			Integer id=cacheByUsername.get(u.toLowerCase());
+			if(id!=null){
+				ids.put(u, id);
+				continue;
+			}
+			remainingUsernames.add(u);
+		}
+		if(!remainingUsernames.isEmpty()){
+			StringBuilder where=new StringBuilder("(username, domain) IN (");
+			ArrayList<String> whereArgs=new ArrayList<>();
+			boolean first=true;
+			for(String u:remainingUsernames){
+				String realUsername;
+				String domain="";
+				if(u.contains("@")){
+					String[] parts=u.split("@");
+					realUsername=parts[0];
+					domain=parts[1];
+				}else{
+					realUsername=u;
+				}
+				if(first){
+					first=false;
+				}else{
+					where.append(',');
+				}
+				where.append("(?,?)");
+				whereArgs.add(realUsername);
+				whereArgs.add(domain);
+			}
+			where.append(')');
+			new SQLQueryBuilder()
+					.selectFrom("users")
+					.columns("id", "username", "domain")
+					.where(where.toString(), whereArgs.toArray())
+					.executeAsStream(r->{
+						String username=r.getString("username");
+						String domain=r.getString("domain");
+						return new Pair<>(username+(domain.isEmpty() ? "" : ("@"+domain)), r.getInt("id"));
+					})
+					.forEach(p->{
+						cacheByUsername.put(p.first().toLowerCase(), p.second());
+						ids.put(p.first(), p.second());
+					});
+		}
+		return ids;
+	}
+
 	public static User getByUsername(@NotNull String username) throws SQLException{
 		username=username.toLowerCase();
 		Integer id=cacheByUsername.get(username);
@@ -204,6 +258,10 @@ public class UserStorage{
 	}
 
 	public static int getIdByUsername(@NotNull String username) throws SQLException{
+		username=username.toLowerCase();
+		Integer id=cacheByUsername.get(username);
+		if(id!=null)
+			return id;
 		String realUsername;
 		String domain="";
 		if(username.contains("@")){
@@ -1181,6 +1239,28 @@ public class UserStorage{
 				.executeAndGetIntList());
 	}
 
+	public static Set<Integer> getBlockedUsers(int selfID, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_user_user")
+				.columns("user_id")
+				.whereIn("user_id", ids)
+				.andWhere("owner_id=?", selfID)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
+	public static Set<Integer> getBlockingUsers(int selfID, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_user_user")
+				.columns("owner_id")
+				.whereIn("owner_id", ids)
+				.andWhere("user_id=?", selfID)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
 	public static boolean isDomainBlocked(int selfID, String domain) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("blocks_user_domain")
@@ -1491,6 +1571,17 @@ public class UserStorage{
 				.value("muted", muted)
 				.where("follower_id=? AND followee_id=?", self, id)
 				.executeNoResult();
+	}
+
+	public static Set<Integer> getMutedUserIDs(int self, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("followings")
+				.columns("followee_id")
+				.whereIn("followee_id", ids)
+				.andWhere("follower_id=? AND muted=1", self)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
 	}
 
 	public static Map<Integer, UserPresence> getUserPresences(Collection<Integer> ids) throws SQLException{

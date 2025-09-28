@@ -32,6 +32,7 @@ import jakarta.servlet.http.HttpSessionListener;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.api.model.ApiSerializable;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.MailController;
 import smithereen.controllers.ModerationController;
@@ -993,6 +994,8 @@ public class SmithereenApplication{
 				post("/registration", FaspApiRoutes::registration);
 				postFaspAPI("/debug/v0/callback/responses", FASPCapability.DEBUG, FaspApiRoutes::debugCallback);
 			});
+			get("/method/:method", ApiRoutes::apiCall);
+			post("/method/:method", ApiRoutes::apiCall);
 		});
 		path("/oauth", ()->{
 			get("/authorize", ApiRoutes::oauthAuthorize);
@@ -1189,6 +1192,12 @@ public class SmithereenApplication{
 		responseTypeSerializer(WebDeltaResponse.class, (out, obj, req, resp) -> {
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
 			gson.toJson(obj.commands(), writer);
+			writer.flush();
+		});
+
+		responseTypeSerializer(ApiSerializable.class, (out, obj, req, resp)->{
+			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
+			ApiRoutes.gson.toJson(obj, writer);
 			writer.flush();
 		});
 

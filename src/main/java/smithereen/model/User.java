@@ -37,6 +37,8 @@ import spark.utils.StringUtils;
 
 public class User extends Actor{
 	public static final long FLAG_SUPPORTS_FRIEND_REQS=1;
+	public static final long FLAG_IDEXABLE=1 << 1;
+	public static final long FLAG_DISCOVERABLE=1 << 2;
 
 	public int id;
 	public String firstName;
@@ -299,6 +301,9 @@ public class User extends Actor{
 				attachment.add(pv);
 			}
 		}
+
+		if(!(this instanceof ForeignUser))
+			flags|=FLAG_DISCOVERABLE | FLAG_IDEXABLE;
 	}
 
 	@Override
@@ -748,6 +753,14 @@ public class User extends Actor{
 
 	public boolean isSuspended(){
 		return banStatus==UserBanStatus.SUSPENDED || (banInfo!=null && banInfo.suspendedOnRemoteServer());
+	}
+
+	public boolean isIndexable(){
+		return (flags & FLAG_IDEXABLE)!=0;
+	}
+
+	public boolean isDiscoverable(){
+		return (flags & FLAG_DISCOVERABLE)!=0;
 	}
 
 	public enum Gender{

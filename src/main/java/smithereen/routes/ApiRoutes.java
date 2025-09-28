@@ -1,6 +1,12 @@
 package smithereen.routes;
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -12,19 +18,35 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.api.ApiCallContext;
+import smithereen.api.ApiDispatcher;
+import smithereen.api.ApiErrorException;
+import smithereen.api.model.ApiError;
+import smithereen.api.model.ApiErrorResponse;
+import smithereen.api.model.ApiErrorType;
+import smithereen.api.model.ApiResponse;
+import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.SizedImage;
 import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.AppAuthCode;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.CryptoUtils;
+import smithereen.util.FloodControl;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import spark.Request;
@@ -34,6 +56,14 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class ApiRoutes{
+	private static final Logger LOG=LoggerFactory.getLogger(ApiRoutes.class);
+	private static final Pattern VERSION_PATTERN=Pattern.compile("^(\\d+)\\.(\\d+)$");
+
+	public static final Gson gson=new GsonBuilder()
+			.disableHtmlEscaping()
+			.setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+			.create();
+
 	private static Object oauthAuthorizeError(Request req, String error){
 		return new RenderedTemplateResponse("oauth_error", req)
 				.with("error", error)
@@ -302,4 +332,87 @@ public class ApiRoutes{
 	}
 
 	private record OAuthRequest(String id, long appID, String responseType, EnumSet<ClientAppPermission> scope, URI redirectURI, String state, Instant createdAt, String s256CodeChallenge){}
+
+	public static Object apiCall(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		resp.type("application/json");
+		String method=req.params(":method");
+		String token=req.queryParams("access_token");
+		if(StringUtils.isEmpty(token)){
+			String authHeader=req.headers("authorization");
+			if(StringUtils.isNotEmpty(authHeader)){
+				String[] parts=authHeader.split(" ");
+				if(parts.length==2 && parts[0].equalsIgnoreCase("bearer"))
+					token=parts[1];
+			}
+		}
+		TreeMap<String, String> params=new TreeMap<>();
+		params.put("method", method);
+		Map<String, String[]> rawQueryParams=req.queryMap().toMap();
+		rawQueryParams.forEach((key, value)->params.put(key, value[0]));
+		params.remove("access_token");
+		Account self=null;
+		AppAccessToken accessToken=null;
+		int versionMajor, versionMinor;
+		try{
+			String version=params.get("v");
+			if(StringUtils.isEmpty(version))
+				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "version parameter \"v\" is missing", params));
+			Matcher matcher=VERSION_PATTERN.matcher(version);
+			if(!matcher.find())
+				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "version parameter \"v\" must have format major.minor, e.g. 1.0", params));
+			versionMajor=safeParseInt(matcher.group(1));
+			versionMinor=safeParseInt(matcher.group(2));
+			if(StringUtils.isNotEmpty(token)){
+				try{
+					byte[] tokenID=Base64.getUrlDecoder().decode(token);
+					if(tokenID.length!=64)
+						throw new IllegalArgumentException();
+					accessToken=ctx.getAppsController().getAccessTokenOrNull(tokenID);
+					if(accessToken==null)
+						throw new IllegalArgumentException();
+					if(accessToken.expiresAt()!=null && accessToken.expiresAt().isBefore(Instant.now()))
+						throw new ApiErrorException(new ApiError(ApiErrorType.USER_AUTH_FAILED, "access token has expired", params));
+					self=ctx.getUsersController().getAccountOrThrow(accessToken.accountID());
+					// TODO update last used
+				}catch(IllegalArgumentException x){
+					throw new ApiErrorException(new ApiError(ApiErrorType.USER_AUTH_FAILED, "invalid access token", params));
+				}
+			}
+			ApiCallContext actx=new ApiCallContext(accessToken, self, params, req, versionMajor, versionMinor);
+			try{
+				if(self!=null)
+					FloodControl.API_REQUESTS.incrementOrThrow(self);
+				else
+					FloodControl.API_REQUESTS_ANON.incrementOrThrow(getRequestIP(req));
+			}catch(FloodControlViolationException x){
+				throw actx.error(ApiErrorType.TOO_MANY_REQUESTS);
+			}
+			actx.imageFormat=switch(req.queryParams("image_format")){
+				case "jpeg" -> SizedImage.Format.JPEG;
+				case "webp" -> SizedImage.Format.WEBP;
+				case null -> SizedImage.Format.WEBP;
+				default -> throw actx.paramError("unsupported image_format value, supported values are 'webp' and 'jpeg'");
+			};
+			String langParam=req.queryParams("lang");
+			if(StringUtils.isNotEmpty(langParam)){
+				actx.lang=Lang.get(Locale.forLanguageTag(langParam));
+			}else if(self!=null){
+				actx.lang=Lang.get(self.prefs.locale);
+			}else{
+				Locale locale=req.raw().getLocale();
+				if(locale==null)
+					locale=Locale.US;
+				actx.lang=Lang.get(locale);
+			}
+			return new ApiResponse(ApiDispatcher.doApiCall(method, ctx, actx));
+		}catch(ApiErrorException x){
+			resp.status(x.error.errorType.httpStatusCode);
+			return new ApiErrorResponse(x.error);
+		}catch(Throwable x){
+			LOG.error("API request {}({}) failed", method, params, x);
+			resp.status(500);
+			return new ApiErrorResponse(new ApiError(ApiErrorType.INTERNAL_SERVER_ERROR, Config.DEBUG ? x.toString() : null, params));
+		}
+	}
 }

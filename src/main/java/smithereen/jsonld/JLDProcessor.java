@@ -77,6 +77,8 @@ public class JLDProcessor{
 		lc.addProperty("votersCount", "toot:votersCount");
 		lc.addProperty("suspended", "toot:suspended");
 		lc.add("featured", idAndTypeObject("toot:featured", "@id"));
+		lc.addProperty("indexable", "toot:indexable");
+		lc.addProperty("discoverable", "toot:discoverable");
 
 		// Misskey quote-reposts
 		lc.add("_misskey_quote", idAndTypeObject(JLD.MISSKEY+"_misskey_quote", "@id"));

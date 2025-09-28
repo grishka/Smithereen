@@ -24,6 +24,8 @@ public class FloodControl<K>{
 	public static final FloodControl<InetAddress> OPEN_SIGNUP_OR_INVITE_REQUEST=FloodControl.ofIPKey(25, 5, TimeUnit.MINUTES);
 	public static final FloodControl<Account> ACTION_CONFIRMATION=FloodControl.ofObjectKey(5, 10, TimeUnit.MINUTES, acc->"account"+acc.id);
 	public static final FloodControl<Account> PASSWORD_CHECK=FloodControl.ofObjectKey(5, 1, TimeUnit.MINUTES, acc->"account"+acc.id);
+	public static final FloodControl<InetAddress> API_REQUESTS_ANON=FloodControl.ofIPKey(3, 1, TimeUnit.SECONDS);
+	public static final FloodControl<Account> API_REQUESTS=FloodControl.ofObjectKey(3, 1, TimeUnit.SECONDS, acc->"account"+acc.id);
 
 	private long timeout;
 	private int count;

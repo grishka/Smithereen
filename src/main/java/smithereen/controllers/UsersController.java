@@ -115,6 +115,14 @@ public class UsersController{
 		}
 	}
 
+	public Map<String, Integer> getUserIDsByUsernames(Collection<String> usernames){
+		try{
+			return UserStorage.getIdsByUsernames(usernames);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public User getUserByUsernameOrThrow(String username){
 		try{
 			User user=UserStorage.getByUsername(username);
@@ -322,6 +330,26 @@ public class UsersController{
 				Utils.ensureUserNotBlocked(self, u);
 			else if(target instanceof Group g)
 				Utils.ensureUserNotBlocked(self, g);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Set<Integer> getBlockedUsers(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Set.of();
+		try{
+			return UserStorage.getBlockedUsers(self.id, ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Set<Integer> getBlockingUsers(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Set.of();
+		try{
+			return UserStorage.getBlockingUsers(self.id, ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -132,6 +132,26 @@ public class FriendsController{
 		}
 	}
 
+	public Map<Integer, Integer> getMutualFriendsCounts(User user, Collection<Integer> ids){
+		// TODO cache these
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			HashMap<Integer, Integer> counts=new HashMap<>();
+			for(int id:ids){
+				int count;
+				if(id==user.id)
+					count=0;
+				else
+					count=UserStorage.getMutualFriendsCount(user.id, id);
+				counts.put(id, count);
+			}
+			return counts;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	/**
 	 * Same as getFriendshipStatus but doesn't check friend requests
 	 * @param self
@@ -141,6 +161,21 @@ public class FriendsController{
 	public FriendshipStatus getSimpleFriendshipStatus(User self, User other){
 		try{
 			return UserStorage.getSimpleFriendshipStatus(self.id, other.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, FriendshipStatus> getSimpleFriendshipStatuses(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		// TODO optimize this
+		try{
+			HashMap<Integer, FriendshipStatus> statuses=new HashMap<>();
+			for(int id:ids){
+				statuses.put(id, UserStorage.getSimpleFriendshipStatus(self.id, id));
+			}
+			return statuses;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -348,6 +383,16 @@ public class FriendsController{
 		try{
 			UserStorage.setUserMuted(self.id, user.id, muted);
 			ctx.getNewsfeedController().clearFriendsFeedCache(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Set<Integer> getMutedUserIDs(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Set.of();
+		try{
+			return UserStorage.getMutedUserIDs(self.id, ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

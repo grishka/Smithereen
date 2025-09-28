@@ -202,6 +202,11 @@ public class ForeignUser extends User implements ForeignActor{
 			}
 		}
 
+		if(optBoolean(obj, "indexable"))
+			flags|=FLAG_IDEXABLE;
+		if(optBoolean(obj, "discoverable"))
+			flags|=FLAG_DISCOVERABLE;
+
 		activities=optString(obj, "activities");
 		interests=optString(obj, "interests");
 		favoriteMusic=optString(obj, "favoriteMusic");
