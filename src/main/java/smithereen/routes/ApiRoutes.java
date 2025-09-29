@@ -336,6 +336,9 @@ public class ApiRoutes{
 	public static Object apiCall(Request req, Response resp){
 		ApplicationContext ctx=context(req);
 		resp.type("application/json");
+		if(StringUtils.isNotEmpty(req.headers("origin"))){
+			addCorsHeaders(resp);
+		}
 		String method=req.params(":method");
 		String token=req.queryParams("access_token");
 		if(StringUtils.isEmpty(token)){
@@ -414,5 +417,16 @@ public class ApiRoutes{
 			resp.status(500);
 			return new ApiErrorResponse(new ApiError(ApiErrorType.INTERNAL_SERVER_ERROR, Config.DEBUG ? x.toString() : null, params));
 		}
+	}
+
+	public static Object apiCallPreflight(Request req, Response resp){
+		addCorsHeaders(resp);
+		return "";
+	}
+
+	private static void addCorsHeaders(Response resp){
+		resp.header("Access-Control-Allow-Origin", "*");
+		resp.header("Access-Control-Allow-Methods", "POST, GET");
+		resp.header("Access-Control-Max-Age", "7200");
 	}
 }
