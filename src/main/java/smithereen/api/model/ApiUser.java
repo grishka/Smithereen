@@ -93,9 +93,13 @@ public class ApiUser{
 	public String photoMaxOrig, photoMax;
 	public String photoId;
 
+	public String timezone;
+
 	public String firstNameNom, firstNameGen, firstNameDat, firstNameAcc, firstNameIns, firstNameAbl;
 	public String lastNameNom, lastNameGen, lastNameDat, lastNameAcc, lastNameIns, lastNameAbl;
 	public String nicknameNom, nicknameGen, nicknameDat, nicknameAcc, nicknameIns, nicknameAbl;
+
+	public Counters counters;
 
 	public ApiUser(ApiCallContext actx, User user, EnumSet<Field> fields, Map<Integer, User> extraUsers, Map<Integer, UserPresence> onlines, Set<Integer> blockingIDs,
 				   Set<Integer> blockedIDs, Map<Integer, Set<UserPrivacySettingKey>> allowedPrivacySettings, Map<Integer, Integer> mutualCounts,
@@ -352,17 +356,17 @@ public class ApiUser{
 			lastNameAbl=actx.lang.inflectNamePart(user.lastName, Inflector.NamePart.LAST, user.gender, Inflector.Case.PREPOSITIONAL);
 
 		if(fields.contains(Field.NICKNAME_NOM))
-			firstNameNom=user.firstName;
+			nicknameNom=user.middleName;
 		if(fields.contains(Field.NICKNAME_GEN))
-			firstNameGen=actx.lang.inflectNamePart(user.firstName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.GENITIVE);
+			nicknameGen=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.GENITIVE);
 		if(fields.contains(Field.NICKNAME_DAT))
-			firstNameDat=actx.lang.inflectNamePart(user.firstName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.DATIVE);
+			nicknameDat=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.DATIVE);
 		if(fields.contains(Field.NICKNAME_ACC))
-			firstNameAcc=actx.lang.inflectNamePart(user.firstName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.ACCUSATIVE);
+			nicknameAcc=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.ACCUSATIVE);
 		if(fields.contains(Field.NICKNAME_INS))
-			firstNameIns=actx.lang.inflectNamePart(user.firstName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.INSTRUMENTAL);
+			nicknameIns=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.INSTRUMENTAL);
 		if(fields.contains(Field.NICKNAME_ABL))
-			firstNameAbl=actx.lang.inflectNamePart(user.firstName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.PREPOSITIONAL);
+			nicknameAbl=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.PREPOSITIONAL);
 	}
 
 	private static String enumToLowercaseString(Enum<?> e){
@@ -373,6 +377,7 @@ public class ApiUser{
 	public record CustomProfileField(String name, String value){}
 	public record PersonalViews(String political, String religion, String inspiredBy, String peopleMain, String lifeMain, String smoking, String alcohol){}
 	public record LastSeen(long time, String platform){}
+	public record Counters(int albums, int photos, long friends, long groups, int onlineFriends, int mutualFriends, int userPhotos, long followers, long subscriptions){}
 
 	public enum Field{
 		// Basics

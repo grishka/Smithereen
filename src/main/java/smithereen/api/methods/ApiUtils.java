@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiUser;
+import smithereen.controllers.FriendsController;
 import smithereen.model.User;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
@@ -146,8 +147,30 @@ class ApiUtils{
 		}
 
 		List<ApiUser> result=users.values().stream().map(u->new ApiUser(actx, u, fields, extraUsers, onlines, blockingIDs, blockedIDs, allowedPrivacySettings, mutualCounts, friendStatuses, bookmarkedIDs, friendLists, mutedIDs, profilePhotos)).toList();
-		// TODO counters
-		// TODO timezone
+		if(fields.contains(ApiUser.Field.COUNTERS) && result.size()==1){
+			ApiUser au=result.getFirst();
+			User user=users.get(au.id);
+			User self=actx.self==null ? null : actx.self.user;
+			au.counters=new ApiUser.Counters(
+					ctx.getPhotosController().getAllAlbums(user, self, false, false).size(),
+					ctx.getPhotosController().getAllPhotosCount(user, self),
+					user.getFriendsCount(),
+					ctx.getGroupsController().getUserGroups(user, self, 0, 1).total,
+					ctx.getFriendsController().getFriends(user, 0, 1, FriendsController.SortOrder.ID_ASCENDING, true, 0).total,
+					self==null || self.id==user.id ? 0 : ctx.getFriendsController().getMutualFriendsCount(self, user),
+					ctx.getPrivacyController().checkUserPrivacy(self, user, UserPrivacySettingKey.PHOTO_TAG_LIST) ? ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, 0, 1).total : 0,
+					user.getFollowersCount(),
+					user.getFollowingCount()
+			);
+		}
+		if(fields.contains(ApiUser.Field.TIMEZONE) && actx.self!=null){
+			for(ApiUser u:result){
+				if(u.id==actx.self.user.id){
+					u.timezone=actx.self.prefs.timeZone.toString();
+					break;
+				}
+			}
+		}
 		return result;
 	}
 }

@@ -1156,6 +1156,20 @@ public class PhotosController{
 		}
 	}
 
+	public int getAllPhotosCount(Actor owner, @Nullable User self){
+		List<Long> albumIDs=getAllAlbums(owner, self, true, false).stream()
+				.filter(a->a.systemType!=PhotoAlbum.SystemAlbumType.SAVED)
+				.map(a->a.id)
+				.toList();
+		if(albumIDs.isEmpty())
+			return 0;
+		try{
+			return PhotoStorage.getCountOfPhotosInAlbums(albumIDs);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void setPhotoRotation(User self, Photo photo, SizedImage.Rotation rotation){
 		enforcePhotoManagementPermission(self, photo);
 		if(photo.apID!=null)

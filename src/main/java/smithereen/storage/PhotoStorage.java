@@ -624,6 +624,14 @@ public class PhotoStorage{
 				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}
 
+	public static int getCountOfPhotosInAlbums(Collection<Long> albumIDs) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.count()
+				.whereIn("album_id", albumIDs)
+				.executeAndGetInt();
+	}
+
 	public static PaginatedList<Photo> getAllPhotosInAlbums(Collection<Long> albumIDs, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
