@@ -3,7 +3,7 @@ package smithereen.api.model;
 // VKontakte-compatible error codes, see https://dev.vk.com/ru/reference/errors
 public enum ApiErrorType{
 	UNKNOWN_ERROR(1, "Other error"),
-	APP_DISABLED(2, "Application is disabled"),
+	//APP_DISABLED(2, "Application is disabled"),
 	UNKNOWN_METHOD(3, "Unknown method passed"),
 	//INVALID_SIGNATURE(4),
 	USER_AUTH_FAILED(5, "User authorization failed", 401),
@@ -16,8 +16,8 @@ public enum ApiErrorType{
 	ACCESS_DENIED(15, "Access denied", 403),
 	VALIDATION_NEEDED(17, "Validation required"),
 	ACCOUNT_SUSPENDED(18, "Account banned", 403),
-	STANDALONE_APPS_ONLY(20, "Permission to perform this action is denied for non-standalone applications"),
-	CONFIRMATION_NEEDED(24, "Confirmation required"),
+	//STANDALONE_APPS_ONLY(20, "Permission to perform this action is denied for non-standalone applications"),
+	//CONFIRMATION_NEEDED(24, "Confirmation required"),
 	PARAM_INVALID(100, "One of the parameters specified was missing or invalid");
 
 	public final int code;

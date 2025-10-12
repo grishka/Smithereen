@@ -366,6 +366,11 @@ public class ApiRoutes{
 				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "version parameter \"v\" must have format major.minor, e.g. 1.0", params));
 			versionMajor=safeParseInt(matcher.group(1));
 			versionMinor=safeParseInt(matcher.group(2));
+			if(versionMajor>1 || versionMinor>0){
+				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "version "+versionMajor+"."+versionMinor+" too new for this server. Maximum supported API version is 1.0", params));
+			}else if(versionMajor==0){
+				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "invalid API version "+versionMajor+"."+versionMinor, params));
+			}
 			if(StringUtils.isNotEmpty(token)){
 				try{
 					byte[] tokenID=Base64.getUrlDecoder().decode(token);
