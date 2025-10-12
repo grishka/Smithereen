@@ -1,10 +1,6 @@
 package smithereen.api.model;
 
-import com.google.gson.JsonNull;
-import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
-
-import org.commonmark.ext.ins.Ins;
 
 import java.util.BitSet;
 import java.util.EnumSet;
@@ -24,6 +20,7 @@ import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.photos.Photo;
+import spark.utils.StringUtils;
 
 public class ApiUser{
 	public static final EnumSet<Field> FIELDS_THAT_REQUIRE_ACCOUNT=EnumSet.of(
@@ -154,11 +151,39 @@ public class ApiUser{
 			if(user.relationship.canHavePartner() && user.relationshipPartnerID!=0){
 				User partner=extraUsers.get(user.relationshipPartnerID);
 				if(user.relationship.needsPartnerApproval()){
-					if(partner!=null && partner.relationshipPartnerID==id){
-						relationPartner=new RelationshipPartner(user.relationshipPartnerID, partner.getFullName());
+					if(partner!=null && partner.relationshipPartnerID!=id){
+						partner=null;
 					}
-				}else{
-					relationPartner=new RelationshipPartner(user.relationshipPartnerID, partner==null ? "DELETED" : partner.getFullName());
+				}
+				if(partner!=null){
+					String partnerFirstName=partner.firstName;
+					String partnerLastName=partner.lastName;
+					String relationCase=actx.optParamString("relation_case");
+					if(StringUtils.isNotEmpty(relationCase)){
+						Inflector.Case nameCase=Inflector.Case.NOMINATIVE;
+						if("def".equals(relationCase)){
+							if("ru".equals(actx.lang.getLocale().getLanguage())){
+								nameCase=switch(user.relationship){
+									case IN_RELATIONSHIP, ENGAGED, COMPLICATED -> Inflector.Case.INSTRUMENTAL;
+									case MARRIED -> partner.gender==User.Gender.FEMALE ? Inflector.Case.PREPOSITIONAL : Inflector.Case.INSTRUMENTAL;
+									case IN_LOVE -> Inflector.Case.GENITIVE;
+									default -> Inflector.Case.NOMINATIVE;
+								};
+							}
+						}else{
+							nameCase=switch(relationCase){
+								case "gen" -> Inflector.Case.GENITIVE;
+								case "dat" -> Inflector.Case.DATIVE;
+								case "acc" -> Inflector.Case.ACCUSATIVE;
+								case "ins" -> Inflector.Case.INSTRUMENTAL;
+								case "abl" -> Inflector.Case.PREPOSITIONAL;
+								default -> Inflector.Case.NOMINATIVE;
+							};
+						}
+						partnerFirstName=actx.lang.inflectNamePart(partnerFirstName, Inflector.NamePart.FIRST, partner.gender, nameCase);
+						partnerLastName=actx.lang.inflectNamePart(partnerLastName, Inflector.NamePart.LAST, partner.gender, nameCase);
+					}
+					relationPartner=new RelationshipPartner(user.relationshipPartnerID, partnerFirstName, partnerLastName);
 				}
 			}
 		}
@@ -373,7 +398,7 @@ public class ApiUser{
 		return e==null ? null : e.toString().toLowerCase();
 	}
 
-	public record RelationshipPartner(int id, String name){}
+	public record RelationshipPartner(int id, String firstName, String lastName){}
 	public record CustomProfileField(String name, String value){}
 	public record PersonalViews(String political, String religion, String inspiredBy, String peopleMain, String lifeMain, String smoking, String alcohol){}
 	public record LastSeen(long time, String platform){}
