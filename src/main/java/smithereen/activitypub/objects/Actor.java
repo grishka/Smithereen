@@ -257,7 +257,7 @@ public abstract class Actor extends ActivityPubObject{
 			}
 		}catch(NoSuchAlgorithmException ignore){}
 
-		inbox=tryParseURL(obj.get("inbox").getAsString());
+		inbox=tryParseURL(optString(obj, "inbox"));
 		ensureHostMatchesID(inbox, "inbox");
 		outbox=tryParseURL(optString(obj, "outbox"));
 		ensureHostMatchesID(outbox, "outbox");
