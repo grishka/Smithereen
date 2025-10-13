@@ -80,6 +80,7 @@ import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.ServerRule;
 import smithereen.model.admin.ViolationReport;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.groups.GroupLink;
 import smithereen.model.media.PhotoViewerInlineData;
@@ -232,6 +233,24 @@ public class SystemRoutes{
 				Image im=group.getBestAvatarImage();
 				if(im!=null && im.url!=null){
 					cropRegion=group.getAvatarCropRegion();
+					uri=im.url;
+					if(StringUtils.isNotEmpty(im.mediaType))
+						mime=im.mediaType;
+					else
+						mime="image/jpeg";
+				}
+			}
+			case "app_logo" -> {
+				itemType=MediaCache.ItemType.AVATAR;
+				mime="image/jpeg";
+				long appID=safeParseLong(req.queryParams("app_id"));
+				ClientApp app=ctx.getAppsController().getAppByID(appID);
+				if(Config.isLocal(app.apID)){
+					LOG.warn("downloading app_logo: app {} is local", appID);
+					return "";
+				}
+				Image im=app.logo;
+				if(im!=null && im.url!=null){
 					uri=im.url;
 					if(StringUtils.isNotEmpty(im.mediaType))
 						mime=im.mediaType;

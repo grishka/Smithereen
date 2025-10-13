@@ -14,6 +14,12 @@ import java.sql.SQLException;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Image;
+import smithereen.activitypub.objects.LocalImage;
+import smithereen.exceptions.InternalServerErrorException;
+import smithereen.model.CachedRemoteImage;
+import smithereen.model.NonCachedRemoteImage;
+import smithereen.model.SizedImage;
+import smithereen.storage.MediaCache;
 import spark.utils.StringUtils;
 
 public class ClientApp{
@@ -85,5 +91,30 @@ public class ClientApp{
 			return "/"+username;
 		}
 		return "/app"+id;
+	}
+
+	public SizedImage getLogo(){
+		if(logo==null)
+			return null;
+		if(logo instanceof LocalImage){
+			return (LocalImage) logo;
+		}
+		if(logo.url==null)
+			return null;
+		MediaCache cache=MediaCache.getInstance();
+		try{
+			MediaCache.PhotoItem item=(MediaCache.PhotoItem) cache.get(logo.url);
+			if(item!=null){
+				return new CachedRemoteImage(item, logo.url);
+			}else{
+				SizedImage.Dimensions size=SizedImage.Dimensions.UNKNOWN;
+				if(logo.width>0 && logo.height>0){
+					size=new SizedImage.Dimensions(logo.width, logo.height);
+				}
+				return new NonCachedRemoteImage(new NonCachedRemoteImage.AppLogoArgs(id), size, logo.url);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }

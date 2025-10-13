@@ -71,6 +71,21 @@ public final class NonCachedRemoteImage extends RemoteImage{
 		}
 	}
 
+	public static class AppLogoArgs extends Args{
+
+		private final long appID;
+
+		public AppLogoArgs(long appID){
+			this.appID=appID;
+		}
+
+		@Override
+		protected void addToUriBuilder(UriBuilder builder){
+			builder.queryParam("type", "app_logo");
+			builder.queryParam("app_id", appID+"");
+		}
+	}
+
 	public static class PostPhotoArgs extends Args{
 
 		private final int postID, index;

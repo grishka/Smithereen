@@ -15,22 +15,23 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.apps.ClientApp;
 import smithereen.templates.Templates;
 
 public class PictureForAvatarFilter implements Filter{
 	@Override
 	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
-		SizedImage image;
 		String additionalClasses="";
-		if(input instanceof Actor actor){
-			image=actor.getAvatar();
-			if(actor instanceof Group)
-				additionalClasses=" group";
-		}else if(input instanceof SizedImage img){
-			image=img;
-		}else{
-			image=null;
-		}
+		SizedImage image=switch(input){
+			case Actor actor -> {
+				if(actor instanceof Group)
+					additionalClasses=" group";
+				yield actor.getAvatar();
+			}
+			case SizedImage img -> img;
+			case ClientApp app -> app.getLogo();
+			case null, default -> null;
+		};
 
 		String typeStr=(String) args.get("type");
 		SizedImage.Type type=SizedImage.Type.fromSuffix(

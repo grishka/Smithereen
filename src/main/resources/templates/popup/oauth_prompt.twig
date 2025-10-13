@@ -4,7 +4,7 @@
 <div id="oauthPromptHeader">
 <h2>{{ L('oauth_heading', {'serverName': serverName}) }}</h2>
 <p>
-	{% if app.logo is not null %}<span style="float: right; margin-left: 10px; display: inline-block;">{{ app.logo | pictureForAvatar('b', 75) }}</span>{% endif %}
+	{% if app.logo is not null %}<span style="float: right; margin-left: 10px; display: inline-block;">{{ app | pictureForAvatar('b', 75) }}</span>{% endif %}
 	{{ L('oauth_text', {'appName': app.name}, {'app': {'href': app.url, 'target': '_blank'} }) }}
 </p>
 </div>
