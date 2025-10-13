@@ -172,11 +172,11 @@ public class ObjectLinkResolver{
 
 	@NotNull
 	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
-		return resolveNative(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck, false);
+		return resolveNative(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck, false, true);
 	}
 
 	@NotNull
-	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck, boolean acceptHTML){
+	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck, boolean acceptHTML, boolean enforceContentType){
 		LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}, force refetch {}", _link, expectedType.getName(), allowStorage, forceRefetch);
 		URI link;
 		if("bear".equals(_link.getScheme())){
@@ -196,7 +196,7 @@ public class ObjectLinkResolver{
 		if(!Config.isLocal(link)){
 			if(allowFetching){
 				try{
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context, acceptHTML);
+					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context, acceptHTML, enforceContentType);
 					if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
 						User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
 						if(author.banStatus==UserBanStatus.SUSPENDED)

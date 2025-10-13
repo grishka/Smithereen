@@ -168,11 +168,11 @@ public class ActivityPub{
 				.toFormatter();
 	}
 
-	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean acceptHTML) throws IOException{
-		return fetchRemoteObjectInternal(_uri, signer, actorToken, ctx, true, acceptHTML);
+	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean acceptHTML, boolean enforceContentType) throws IOException{
+		return fetchRemoteObjectInternal(_uri, signer, actorToken, ctx, true, acceptHTML, enforceContentType);
 	}
 
-	private static ActivityPubObject fetchRemoteObjectInternal(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean tryHTML, boolean acceptHTML) throws IOException{
+	private static ActivityPubObject fetchRemoteObjectInternal(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean tryHTML, boolean acceptHTML, boolean enforceContentType) throws IOException{
 		LOG.trace("Fetching remote object from {}", _uri);
 		URI uri;
 		String token;
@@ -247,7 +247,7 @@ public class ActivityPub{
 						LOG.trace("Will follow redirect: {}", url);
 						if(StringUtils.isNotEmpty(url)){
 							try{
-								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false, false);
+								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false, false, enforceContentType);
 							}catch(URISyntaxException x){
 								throw new ObjectNotFoundExceptionWithFallback("Failed to parse URL from <link rel=\"alternate\"> on HTML page at "+uri, x, htmlDocument);
 							}
@@ -257,7 +257,7 @@ public class ActivityPub{
 				throw new ObjectNotFoundExceptionWithFallback("Received HTML that doesn't contain a <link>", htmlDocument);
 			}
 			// Allow "application/activity+json" or "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""
-			if(!contentType.matches("application/activity+json") && !contentType.matches(EXPECTED_CONTENT_TYPE)){
+			if(enforceContentType && !contentType.matches("application/activity+json") && !contentType.matches(EXPECTED_CONTENT_TYPE)){
 				throw new ObjectNotFoundException("Invalid Content-Type for "+uri+": "+contentType);
 			}
 

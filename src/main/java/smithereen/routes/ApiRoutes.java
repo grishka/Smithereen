@@ -113,7 +113,7 @@ public class ApiRoutes{
 
 		ClientApp app;
 		try{
-			app=ctx.getObjectLinkResolver().resolveNative(appApID, ClientApp.class, true, true, false, (JsonObject) null, true);
+			app=ctx.getObjectLinkResolver().resolveNative(appApID, ClientApp.class, true, true, false, (JsonObject) null, true, true, false);
 		}catch(ObjectNotFoundException x){
 			return oauthAuthorizeError(req, "failed to resolve client_id to an ActivityPub Application object: "+x.getMessage());
 		}
