@@ -372,9 +372,10 @@ public class ApiRoutes{
 			}else if(versionMajor==0){
 				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "invalid API version "+versionMajor+"."+versionMinor, params));
 			}
+			byte[] tokenID=null;
 			if(StringUtils.isNotEmpty(token)){
 				try{
-					byte[] tokenID=Base64.getUrlDecoder().decode(token);
+					tokenID=Base64.getUrlDecoder().decode(token);
 					if(tokenID.length!=64)
 						throw new IllegalArgumentException();
 					accessToken=ctx.getAppsController().getAccessTokenOrNull(tokenID);
@@ -391,7 +392,7 @@ public class ApiRoutes{
 			ApiCallContext actx=new ApiCallContext(accessToken, self, params, req, versionMajor, versionMinor);
 			try{
 				if(self!=null)
-					FloodControl.API_REQUESTS.incrementOrThrow(self);
+					FloodControl.API_REQUESTS.incrementOrThrow(tokenID);
 				else
 					FloodControl.API_REQUESTS_ANON.incrementOrThrow(getRequestIP(req));
 			}catch(FloodControlViolationException x){

@@ -4,6 +4,7 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -25,7 +26,7 @@ public class FloodControl<K>{
 	public static final FloodControl<Account> ACTION_CONFIRMATION=FloodControl.ofObjectKey(5, 10, TimeUnit.MINUTES, acc->"account"+acc.id);
 	public static final FloodControl<Account> PASSWORD_CHECK=FloodControl.ofObjectKey(5, 1, TimeUnit.MINUTES, acc->"account"+acc.id);
 	public static final FloodControl<InetAddress> API_REQUESTS_ANON=FloodControl.ofIPKey(3, 1, TimeUnit.SECONDS);
-	public static final FloodControl<Account> API_REQUESTS=FloodControl.ofObjectKey(3, 1, TimeUnit.SECONDS, acc->"account"+acc.id);
+	public static final FloodControl<byte[]> API_REQUESTS=FloodControl.ofByteArrayKey(3, 1, TimeUnit.SECONDS);
 
 	private long timeout;
 	private int count;
@@ -59,6 +60,11 @@ public class FloodControl<K>{
 				throw new IllegalArgumentException();
 			}
 		});
+	}
+
+	public static FloodControl<byte[]> ofByteArrayKey(int count, long time, TimeUnit unit){
+		Base64.Encoder enc=Base64.getEncoder();
+		return new FloodControl<>(count, time, unit, enc::encodeToString);
 	}
 
 	private ActionTracker tracker(K key){
