@@ -13,6 +13,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 import smithereen.ApplicationContext;
+import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -23,6 +24,7 @@ import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.storage.AppsStorage;
+import smithereen.util.ByteArrayMapKey;
 import smithereen.util.JsonObjectBuilder;
 import spark.Request;
 import spark.utils.StringUtils;
@@ -32,6 +34,7 @@ public class AppsController{
 
 	private final ApplicationContext context;
 	private final SecureRandom srand=new SecureRandom();
+	private final LruCache<ByteArrayMapKey, AppAccessToken> accessTokenCache=new LruCache<>(5000);
 
 	public AppsController(ApplicationContext context){
 		this.context=context;
@@ -102,15 +105,24 @@ public class AppsController{
 			srand.nextBytes(id);
 			InetAddress ip=Utils.getRequestIP(req);
 			AppsStorage.createAccessToken(id, account.id, app.id, ip, expiresAt, permissions);
-			return new AppAccessToken(id, account.id, app.id, expiresAt, permissions);
+			AppAccessToken token=new AppAccessToken(id, account.id, app.id, expiresAt, permissions);
+			accessTokenCache.put(new ByteArrayMapKey(id), token);
+			return token;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
 	public AppAccessToken getAccessTokenOrNull(byte[] id){
+		ByteArrayMapKey key=new ByteArrayMapKey(id);
+		AppAccessToken token=accessTokenCache.get(key);
+		if(token!=null)
+			return token;
 		try{
-			return AppsStorage.getAccessToken(id); // TODO cache
+			token=AppsStorage.getAccessToken(id);
+			if(token!=null)
+				accessTokenCache.put(key, token);
+			return token;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
