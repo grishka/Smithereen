@@ -93,7 +93,7 @@
   "profile_relationship_complicated": "Всё сложно",
   "profile_relationship_actively_searching": "В активном поиске",
   "profile_relationship_in_relationship_with_X": "Встречается с <a id=\"partner\">{partnerName, inflect, instrumental}</a>",
-  "profile_relationship_engaged_with_X": "{ownGender, select, female {Помолвлена} other {Помолвлен}} с <a id=\"partner\">{partnerName}</a>",
+  "profile_relationship_engaged_with_X": "{ownGender, select, female {Помолвлена} other {Помолвлен}} с <a id=\"partner\">{partnerName, inflect, instrumental}</a>",
   "profile_relationship_married_to_X": "{partnerGender, select, female {{ownGender, select, female {Жената на} other {Женат на}}} male {Замужем за} other {В браке с}} <a id=\"partner\">{partnerGender, select, female {{partnerName, inflect, prepositional}} other {{partnerName, inflect, instrumental}}}</a>",
   "profile_relationship_in_love_with_X": "{ownGender, select, female {Влюблена} other {Влюблён}} в <a id=\"partner\">{partnerName, inflect, genitive}</a>",
   "profile_relationship_complicated_with_X": "Всё сложно с <a id=\"partner\">{partnerName, inflect, instrumental}</a>",
