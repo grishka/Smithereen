@@ -18,10 +18,13 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 import smithereen.ApplicationContext;
@@ -701,6 +704,18 @@ public class SessionStorage{
 				.deleteFrom("sessions")
 				.where("account_id=? AND id<>?", accountID, sid)
 				.executeNoResult();
+	}
+
+	public static void putUserAgents(Map<String, Long> hashedUserAgents) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			final ArrayList<Object> args=new ArrayList<>();
+			hashedUserAgents.forEach((k, v)->{
+				args.add(v);
+				args.add(k);
+			});
+			SQLQueryBuilder.prepareStatement(conn, "INSERT IGNORE INTO `user_agents` (`hash`, `user_agent`) VALUES "+String.join(", ", Collections.nCopies(hashedUserAgents.size(), "(?, ?)")), args.toArray())
+					.execute();
+		}
 	}
 
 	public enum SignupResult{

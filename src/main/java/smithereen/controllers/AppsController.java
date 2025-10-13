@@ -10,7 +10,15 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
@@ -24,6 +32,7 @@ import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.storage.AppsStorage;
+import smithereen.storage.SessionStorage;
 import smithereen.util.ByteArrayMapKey;
 import smithereen.util.JsonObjectBuilder;
 import spark.Request;
@@ -35,9 +44,14 @@ public class AppsController{
 	private final ApplicationContext context;
 	private final SecureRandom srand=new SecureRandom();
 	private final LruCache<ByteArrayMapKey, AppAccessToken> accessTokenCache=new LruCache<>(5000);
+	private HashMap<ByteArrayMapKey, AccessTokenLastUseUpdate> accessTokenPendingAccessUpdates=new HashMap<>();
+	private final Object accessTokenAccessUpdateLock=new Object();
+	private final ScheduledExecutorService asyncUpdater;
 
 	public AppsController(ApplicationContext context){
 		this.context=context;
+		asyncUpdater=Executors.newSingleThreadScheduledExecutor();
+		asyncUpdater.submit(()->Thread.currentThread().setName("ApiTokenAccessUpdater"));
 	}
 
 	public void deleteExpiredCodesAndTokens(){
@@ -127,6 +141,37 @@ public class AppsController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public void updateAccessTokenLastAccess(AppAccessToken token, InetAddress ip, String userAgent){
+		ByteArrayMapKey key=new ByteArrayMapKey(token.id());
+		synchronized(accessTokenAccessUpdateLock){
+			if(accessTokenPendingAccessUpdates.isEmpty()){
+				asyncUpdater.schedule(this::doPendingTokenAccessUpdates, 10, TimeUnit.SECONDS);
+			}
+			accessTokenPendingAccessUpdates.put(key, new AccessTokenLastUseUpdate(ip, userAgent));
+		}
+	}
+
+	private void doPendingTokenAccessUpdates(){
+		HashMap<ByteArrayMapKey, AccessTokenLastUseUpdate> updates=accessTokenPendingAccessUpdates;
+		synchronized(accessTokenAccessUpdateLock){
+			accessTokenPendingAccessUpdates=new HashMap<>();
+		}
+		try{
+			Map<String, Long> userAgents=updates.values().stream()
+					.map(AccessTokenLastUseUpdate::userAgent)
+					.distinct()
+					.collect(Collectors.toMap(Function.identity(), Utils::hashUserAgent));
+			SessionStorage.putUserAgents(userAgents);
+			for(Map.Entry<ByteArrayMapKey, AccessTokenLastUseUpdate> e:updates.entrySet()){
+				AppsStorage.setAccessTokenLastUse(e.getKey().key(), e.getValue().ip, userAgents.get(e.getValue().userAgent));
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to perform last token access updates", x);
+		}
+	}
+
+	private record AccessTokenLastUseUpdate(InetAddress ip, String userAgent){}
 
 	// endregion
 	// region OAuth auth codes

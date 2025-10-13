@@ -179,6 +179,16 @@ public class AppsStorage{
 				.toList();
 	}
 
+	public static void setAccessTokenLastUse(byte[] id, InetAddress ip, long uaHash) throws SQLException{
+		new SQLQueryBuilder()
+				.update("api_tokens")
+				.valueExpr("last_active", "CURRENT_TIMESTAMP()")
+				.value("ip", Utils.serializeInetAddress(ip))
+				.value("user_agent", uaHash)
+				.where("id=?", (Object)id)
+				.executeNoResult();
+	}
+
 	// endregion
 	// region OAuth auth codes
 

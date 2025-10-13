@@ -20,6 +20,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -382,7 +383,7 @@ public class ApiRoutes{
 					if(accessToken.expiresAt()!=null && accessToken.expiresAt().isBefore(Instant.now()))
 						throw new ApiErrorException(new ApiError(ApiErrorType.USER_AUTH_FAILED, "access token has expired", params));
 					self=ctx.getUsersController().getAccountOrThrow(accessToken.accountID());
-					// TODO update last used
+					ctx.getAppsController().updateAccessTokenLastAccess(accessToken, getRequestIP(req), Objects.requireNonNullElse(req.userAgent(), ""));
 				}catch(IllegalArgumentException x){
 					throw new ApiErrorException(new ApiError(ApiErrorType.USER_AUTH_FAILED, "invalid access token", params));
 				}
