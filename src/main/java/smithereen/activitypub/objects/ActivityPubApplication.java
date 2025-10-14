@@ -1,13 +1,39 @@
 package smithereen.activitypub.objects;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+
 import java.net.URI;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import smithereen.ApplicationContext;
+import smithereen.activitypub.ParserContext;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppType;
 import spark.utils.StringUtils;
 
 public class ActivityPubApplication extends Actor{
+	public List<String> redirectUri;
+
+	@Override
+	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
+		super.parseActivityPubObject(obj, parserContext);
+
+		if(obj.has("redirectUri")){
+			redirectUri=switch(obj.get("redirectUri")){
+				case JsonPrimitive jp when jp.isString() -> List.of(jp.getAsString());
+				case JsonArray ja -> ja.asList().stream().filter(JsonElement::isJsonPrimitive).map(JsonElement::getAsString).toList();
+				default -> null;
+			};
+		}
+
+		return this;
+	}
+
 	@Override
 	public int getLocalID(){
 		return 0;
@@ -62,6 +88,7 @@ public class ActivityPubApplication extends Actor{
 		app.developerID=0; // TODO
 		app.apInbox=inbox;
 		app.apSharedInbox=sharedInbox;
+		app.allowedRedirectURIs=redirectUri==null ? Set.of() : new HashSet<>(redirectUri);
 		return app;
 	}
 }

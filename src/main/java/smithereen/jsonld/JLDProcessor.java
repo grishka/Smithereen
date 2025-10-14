@@ -164,6 +164,7 @@ public class JLDProcessor{
 		addSmAlias(lc, "TopicCreationRequest");
 		addSmAlias(lc, "TopicRenameRequest");
 		addSmIdAlias(lc, "links");
+		addSmAlias(lc, "redirectUri");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");

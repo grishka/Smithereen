@@ -119,11 +119,15 @@ public class ApiRoutes{
 			return oauthAuthorizeError(req, "failed to resolve client_id to an ActivityPub Application object: "+x.getMessage());
 		}
 		if(!Config.isLocal(appApID)){
-			if(app.lastUpdated.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))){
+			if(app.lastUpdated.isBefore(Instant.now().minus(1, ChronoUnit.DAYS)) || req.queryParams("forceReload")!=null){
 				try{
 					app=ctx.getObjectLinkResolver().resolveNative(appApID, ClientApp.class, true, true, true, (JsonObject) null, true, true, false);
 				}catch(ObjectNotFoundException ignore){}
 			}
+		}
+
+		if(!app.allowedRedirectURIs.isEmpty() && !app.allowedRedirectURIs.contains(redirectUri)){
+			return oauthAuthorizeError(req, "redirect_uri is not on the list of allowed redirect URIs in the application object");
 		}
 
 		Account self=currentUserAccount(req);

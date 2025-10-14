@@ -1,5 +1,7 @@
 package smithereen.model.apps;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.net.URI;
@@ -11,6 +13,9 @@ import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -22,6 +27,8 @@ import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.SizedImage;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.MediaCache;
+import smithereen.util.JsonArrayBuilder;
+import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
 
 public class ClientApp{
@@ -38,6 +45,7 @@ public class ClientApp{
 	public int developerID;
 	public URI apInbox, apSharedInbox;
 	public Instant lastUpdated;
+	public Set<String> allowedRedirectURIs=Set.of();
 
 	public static ClientApp fromResultSet(ResultSet res) throws SQLException{
 		ClientApp a=new ClientApp();
@@ -82,11 +90,20 @@ public class ClientApp{
 
 		a.lastUpdated=DatabaseUtils.getInstant(res, "last_updated");
 
+		String extra=res.getString("extra");
+		if(extra!=null){
+			JsonObject e=JsonParser.parseString(extra).getAsJsonObject();
+			a.allowedRedirectURIs=e.get("redirectURIs").getAsJsonArray().asList().stream().map(JsonElement::getAsString).collect(Collectors.toSet());
+		}
+
 		return a;
 	}
 
 	public String serializeExtraFields(){
-		return null;
+		return new JsonObjectBuilder()
+				.add("redirectURIs", allowedRedirectURIs.stream().collect(JsonArrayBuilder.COLLECTOR))
+				.build()
+				.toString();
 	}
 
 	public String getURL(){
