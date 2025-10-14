@@ -124,7 +124,7 @@ public class SettingsRoutes{
 		new Random().nextBytes(code);
 		UserStorage.putInvite(self.id, code, 1, null, null);
 		req.session().attribute("settings.inviteMessage", Utils.lang(req).get("invitation_created"));
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -148,7 +148,7 @@ public class SettingsRoutes{
 			return new WebDeltaResponse(resp).show("formMessage_changePassword").setContent("formMessage_changePassword", message);
 		}
 		req.session().attribute("settings.passwordMessage", message);
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -223,7 +223,7 @@ public class SettingsRoutes{
 			}
 
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("image_upload_error"));
-			resp.redirect("/settings/");
+			resp.redirect("/settings");
 			return "";
 		}
 
@@ -231,7 +231,7 @@ public class SettingsRoutes{
 			return new WebDeltaResponse(resp).refresh();
 
 		req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -247,7 +247,7 @@ public class SettingsRoutes{
 		}else{
 			info.preferredLocale=Locale.forLanguageTag(lang);
 		}
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -265,7 +265,7 @@ public class SettingsRoutes{
 		}
 		if(req.queryParams("_ajax")!=null)
 			return "";
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -328,7 +328,7 @@ public class SettingsRoutes{
 
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -1024,7 +1024,7 @@ public class SettingsRoutes{
 		Lang l=lang(req);
 		String title=l.get("settings_transfer_followers_title");
 		model.pageTitle(title)
-				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings"), "/settings")
 				.addNavBarItem(title);
 		if(isAjax(req)){
 			if(isMobile(req)){
@@ -1044,7 +1044,7 @@ public class SettingsRoutes{
 		Lang l=lang(req);
 		String title=l.get("settings_transfer_links_title");
 		model.pageTitle(title)
-				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings"), "/settings")
 				.addNavBarItem(l.get("settings_transfer_followers_title"), "/settings/moveAccountOptions")
 				.addNavBarItem(title);
 		if(isAjax(req)){
@@ -1107,7 +1107,7 @@ public class SettingsRoutes{
 		String title=l.get("settings_transfer_out_title");
 		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("settings_move_account_transfer", req)
 				.pageTitle(title)
-				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings"), "/settings")
 				.addNavBarItem(l.get("settings_transfer_followers_title"), "/settings/moveAccountOptions")
 				.addNavBarItem(title);
 		if(isAjax(req)){
