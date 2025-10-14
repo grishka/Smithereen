@@ -10,6 +10,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -19,6 +20,7 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.SizedImage;
+import smithereen.storage.DatabaseUtils;
 import smithereen.storage.MediaCache;
 import spark.utils.StringUtils;
 
@@ -35,6 +37,7 @@ public class ClientApp{
 	public Image logo;
 	public int developerID;
 	public URI apInbox, apSharedInbox;
+	public Instant lastUpdated;
 
 	public static ClientApp fromResultSet(ResultSet res) throws SQLException{
 		ClientApp a=new ClientApp();
@@ -76,6 +79,8 @@ public class ClientApp{
 		String sharedInbox=res.getString("ap_shared_inbox");
 		if(sharedInbox!=null)
 			a.apSharedInbox=URI.create(sharedInbox);
+
+		a.lastUpdated=DatabaseUtils.getInstant(res, "last_updated");
 
 		return a;
 	}

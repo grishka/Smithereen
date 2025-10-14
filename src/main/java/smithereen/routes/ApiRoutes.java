@@ -118,6 +118,13 @@ public class ApiRoutes{
 		}catch(ObjectNotFoundException x){
 			return oauthAuthorizeError(req, "failed to resolve client_id to an ActivityPub Application object: "+x.getMessage());
 		}
+		if(!Config.isLocal(appApID)){
+			if(app.lastUpdated.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))){
+				try{
+					app=ctx.getObjectLinkResolver().resolveNative(appApID, ClientApp.class, true, true, true, (JsonObject) null, true, true, false);
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
 
 		Account self=currentUserAccount(req);
 		RenderedTemplateResponse model;
