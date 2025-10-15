@@ -138,9 +138,18 @@ public class SearchController{
 		}
 	}
 
-	public List<User> searchUsers(String query, User self, int count){
+	public PaginatedList<Integer> searchUserIDs(String query, User self, int count){
 		try{
-			return UserStorage.getByIdAsList(SearchStorage.searchUsers(query, self.id, count));
+			return SearchStorage.searchUsers(query, self.id, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<User> searchUsers(String query, User self, int count){
+		try{
+			PaginatedList<Integer> ids=SearchStorage.searchUsers(query, self.id, count);
+			return new PaginatedList<>(ids, UserStorage.getByIdAsList(ids.list));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

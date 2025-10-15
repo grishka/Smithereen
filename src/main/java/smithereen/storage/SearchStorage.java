@@ -83,22 +83,30 @@ public class SearchStorage{
 		}
 	}
 
-	public static List<Integer> searchUsers(String query, int selfID, int count) throws SQLException{
+	public static PaginatedList<Integer> searchUsers(String query, int selfID, int count) throws SQLException{
 		query=prepareQuery(query);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT COUNT(*) FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IS NOT NULL", query).executeQuery());
+			if(total==0)
+				return PaginatedList.emptyList(count);
 			ArrayList<Integer> results=new ArrayList<>();
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index " +
 					"LEFT JOIN followings ON followings.followee_id=qsearch_index.user_id " +
 					"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND followings.follower_id=? ORDER BY followings.hints_rank DESC LIMIT ?", query, selfID, count);
 			DatabaseUtils.intResultSetToStream(stmt.executeQuery(), null).forEach(results::add);
 			if(results.size()<count){
-				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IS NOT NULL LIMIT ?", query, count);
+				String notIn="";
+				if(!results.isEmpty()){
+					notIn=" AND user_id NOT IN ("+results.stream().map(Object::toString).collect(Collectors.joining(","))+")";
+				}
+				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IS NOT NULL"+notIn+" LIMIT ?", query, count);
 				DatabaseUtils.intResultSetToStream(stmt.executeQuery(), null).forEach(id->{
 					if(!results.contains(id) && results.size()<count)
 						results.add(id);
 				});
 			}
-			return results;
+			return new PaginatedList<>(results, total, 0, count);
 		}
 	}
 

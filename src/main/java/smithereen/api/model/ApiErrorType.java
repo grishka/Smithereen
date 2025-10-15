@@ -18,7 +18,9 @@ public enum ApiErrorType{
 	ACCOUNT_SUSPENDED(18, "Account banned", 403),
 	//STANDALONE_APPS_ONLY(20, "Permission to perform this action is denied for non-standalone applications"),
 	//CONFIRMATION_NEEDED(24, "Confirmation required"),
-	PARAM_INVALID(100, "One of the parameters specified was missing or invalid");
+	PARAM_INVALID(100, "One of the parameters specified was missing or invalid"),
+	NOT_FOUND(104, "Not found", 404),
+	;
 
 	public final int code;
 	public final String message;

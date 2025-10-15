@@ -911,7 +911,7 @@ public class SystemRoutes{
 				.filter(Predicate.not(String::isBlank))
 				.map(s->Pattern.compile("\\b"+Pattern.quote(s), Pattern.CASE_INSENSITIVE))
 				.toList();
-		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10);
+		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10).list;
 		HashMap<Integer, String> highlightedNames=new HashMap<>(), highlightedUsernames=new HashMap<>();
 		List<CharacterRange> nameRanges=new ArrayList<>(), usernameRanges=new ArrayList<>();
 		for(User u:results){
@@ -968,7 +968,7 @@ public class SystemRoutes{
 				.map(s->Pattern.compile("\\b"+Pattern.quote(s), Pattern.CASE_INSENSITIVE))
 				.toList();
 
-		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10);
+		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10).list;
 		List<CharacterRange> nameRanges=new ArrayList<>();
 		JsonArrayBuilder arr=new JsonArrayBuilder();
 		for(User u:results){

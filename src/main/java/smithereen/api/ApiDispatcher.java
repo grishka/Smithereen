@@ -18,6 +18,9 @@ public class ApiDispatcher{
 	static{
 		Map<String, MethodRecord> m=new HashMap<>();
 		m.put("get", new MethodRecord(UsersMethods::get, false));
+		m.put("getFollowers", new MethodRecord(UsersMethods::getFollowers, false));
+		m.put("getSubscriptions", new MethodRecord(UsersMethods::getSubscriptions, false));
+		m.put("search", new MethodRecord(UsersMethods::search, true));
 		methods.put("users", m);
 
 		m=new HashMap<>();

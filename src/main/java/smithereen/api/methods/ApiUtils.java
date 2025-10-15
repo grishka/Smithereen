@@ -1,6 +1,7 @@
 package smithereen.api.methods;
 
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,8 +13,10 @@ import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.api.ApiCallContext;
+import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiUser;
 import smithereen.controllers.FriendsController;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.User;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
@@ -21,7 +24,7 @@ import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.photos.Photo;
 
 class ApiUtils{
-	public static List<ApiUser> getUsers(Set<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
+	public static List<ApiUser> getUsers(Collection<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
 		EnumSet<ApiUser.Field> fields=actx.optCommaSeparatedStringSet("fields")
 				.stream()
 				.map(ApiUser.Field::valueOfApi)
@@ -146,7 +149,11 @@ class ApiUtils{
 			profilePhotos=null;
 		}
 
-		List<ApiUser> result=users.values().stream().map(u->new ApiUser(actx, u, fields, extraUsers, onlines, blockingIDs, blockedIDs, allowedPrivacySettings, mutualCounts, friendStatuses, bookmarkedIDs, friendLists, mutedIDs, profilePhotos)).toList();
+		List<ApiUser> result=ids.stream()
+				.map(users::get)
+				.filter(Objects::nonNull)
+				.map(u->new ApiUser(actx, u, fields, extraUsers, onlines, blockingIDs, blockedIDs, allowedPrivacySettings, mutualCounts, friendStatuses, bookmarkedIDs, friendLists, mutedIDs, profilePhotos))
+				.toList();
 		if(fields.contains(ApiUser.Field.COUNTERS) && result.size()==1){
 			ApiUser au=result.getFirst();
 			User user=users.get(au.id);
@@ -172,5 +179,19 @@ class ApiUtils{
 			}
 		}
 		return result;
+	}
+
+	public static User getUserOrSelf(ApplicationContext ctx, ApiCallContext actx, String paramName){
+		if(actx.hasParam(paramName)){
+			try{
+				return ctx.getUsersController().getUserOrThrow(actx.requireParamIntPositive(paramName));
+			}catch(ObjectNotFoundException x){
+				throw actx.error(ApiErrorType.NOT_FOUND, "user with this ID does not exist");
+			}
+		}else if(actx.self!=null){
+			return actx.self.user;
+		}else{
+			throw actx.paramError(paramName+" is required when this method is called without a token");
+		}
 	}
 }

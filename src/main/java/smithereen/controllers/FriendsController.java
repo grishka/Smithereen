@@ -21,20 +21,20 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
 import smithereen.Utils;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.ForeignUser;
-import smithereen.model.friends.FollowRelationship;
-import smithereen.model.friends.FriendRequest;
-import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FollowRelationship;
 import smithereen.model.friends.FriendList;
+import smithereen.model.friends.FriendRequest;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.friends.PublicFriendList;
 import smithereen.model.notifications.Notification;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.UserErrorException;
 import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.UserStorage;
 import smithereen.storage.utils.IntPair;
@@ -73,7 +73,7 @@ public class FriendsController{
 		}
 	}
 
-	public PaginatedList<User> getFollowers(User user, int offset, int count){
+	public PaginatedList<Integer> getFollowerIDs(User user, int offset, int count){
 		try{
 			return UserStorage.getNonMutualFollowers(user.id, true, true, offset, count, false);
 		}catch(SQLException x){
@@ -81,9 +81,27 @@ public class FriendsController{
 		}
 	}
 
-	public PaginatedList<User> getFollows(User user, int offset, int count){
+	public PaginatedList<User> getFollowers(User user, int offset, int count){
+		try{
+			PaginatedList<Integer> ids=getFollowerIDs(user, offset, count);
+			return new PaginatedList<>(ids, UserStorage.getByIdAsList(ids.list));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Integer> getFollowIDs(User user, int offset, int count){
 		try{
 			return UserStorage.getNonMutualFollowers(user.id, false, true, offset, count, true);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<User> getFollows(User user, int offset, int count){
+		try{
+			PaginatedList<Integer> ids=getFollowIDs(user, offset, count);
+			return new PaginatedList<>(ids, UserStorage.getByIdAsList(ids.list));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

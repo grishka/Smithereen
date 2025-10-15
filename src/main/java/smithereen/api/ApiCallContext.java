@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import smithereen.Utils;
 import smithereen.api.model.ApiError;
 import smithereen.api.model.ApiErrorType;
 import smithereen.lang.Lang;
@@ -90,6 +91,25 @@ public class ApiCallContext{
 
 	public Set<String> requireCommaSeparatedStringSet(String key){
 		return commaSeparatedStringSet(key, true);
+	}
+
+	public int requireParamIntPositive(String key){
+		String value=params.get(key);
+		if(StringUtils.isEmpty(value))
+			throw paramError(key+" is undefined");
+		int v=Utils.safeParseInt(value);
+		if(v<=0)
+			throw paramError(key+" must be a positive integer");
+		return v;
+	}
+
+	public int getOffset(){
+		return Utils.safeParseInt(params.get("offset"));
+	}
+
+	public int getCount(int def, int max){
+		int count=Utils.safeParseInt(params.get("count"));
+		return count<=0 ? def : Math.min(max, count);
 	}
 
 	public boolean hasParam(String key){
