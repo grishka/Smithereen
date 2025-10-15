@@ -59,6 +59,7 @@ import static smithereen.Utils.*;
 public class ApiRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(ApiRoutes.class);
 	private static final Pattern VERSION_PATTERN=Pattern.compile("^(\\d+)\\.(\\d+)$");
+	public static final String MAX_VERSION="1.0";
 
 	public static final Gson gson=new GsonBuilder()
 			.disableHtmlEscaping()

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
@@ -25,12 +26,21 @@ import smithereen.model.photos.Photo;
 
 class ApiUtils{
 	public static List<ApiUser> getUsers(Collection<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
+		List<Integer> idList=switch(ids){
+			case List<Integer> l -> l;
+			default -> ids.stream().toList();
+		};
+		return getUsers(ctx.getUsersController().getUsersAsList(idList).stream().filter(Objects::nonNull).toList(), ctx, actx);
+	}
+
+	public static List<ApiUser> getUsers(List<User> userList, ApplicationContext ctx, ApiCallContext actx){
 		EnumSet<ApiUser.Field> fields=actx.optCommaSeparatedStringSet("fields")
 				.stream()
 				.map(ApiUser.Field::valueOfApi)
 				.filter(Objects::nonNull)
 				.collect(Collectors.toCollection(()->EnumSet.noneOf(ApiUser.Field.class)));
-		Map<Integer, User> users=ctx.getUsersController().getUsers(ids);
+		Map<Integer, User> users=userList.stream().collect(Collectors.toMap(u->u.id, Function.identity(), (a, b)->b));
+		Set<Integer> ids=users.keySet();
 		Map<Integer, User> extraUsers;
 
 		if(fields.contains(ApiUser.Field.RELATION)){
@@ -149,9 +159,7 @@ class ApiUtils{
 			profilePhotos=null;
 		}
 
-		List<ApiUser> result=ids.stream()
-				.map(users::get)
-				.filter(Objects::nonNull)
+		List<ApiUser> result=userList.stream()
 				.map(u->new ApiUser(actx, u, fields, extraUsers, onlines, blockingIDs, blockedIDs, allowedPrivacySettings, mutualCounts, friendStatuses, bookmarkedIDs, friendLists, mutedIDs, profilePhotos))
 				.toList();
 		if(fields.contains(ApiUser.Field.COUNTERS) && result.size()==1){

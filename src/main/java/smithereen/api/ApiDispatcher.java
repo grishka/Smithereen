@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.api.methods.ServerMethods;
 import smithereen.api.methods.UsersMethods;
 import smithereen.api.methods.UtilsMethods;
 import smithereen.api.model.ApiErrorType;
@@ -26,6 +27,11 @@ public class ApiDispatcher{
 		m=new HashMap<>();
 		m.put("getServerTime", new MethodRecord(UtilsMethods::getServerTime, false));
 		methods.put("utils", m);
+
+		m=new HashMap<>();
+		m.put("getInfo", new MethodRecord(ServerMethods::getInfo, false));
+		m.put("getRestrictedServers", new MethodRecord(ServerMethods::getRestrictedServers, false));
+		methods.put("server", m);
 	}
 
 	public static Object doApiCall(String method, ApplicationContext ctx, ApiCallContext actx){

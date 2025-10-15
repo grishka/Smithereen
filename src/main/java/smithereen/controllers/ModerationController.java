@@ -628,6 +628,22 @@ public class ModerationController{
 		}
 	}
 
+	public int getPeerDomainCount(){
+		try{
+			return UserStorage.getPeerDomainCount();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<String> getPeerDomains(){
+		try{
+			return UserStorage.getPeerDomains();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	// endregion
 	// region Account roles
 
@@ -747,6 +763,14 @@ public class ModerationController{
 					"name", role.name(),
 					"permissions", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeEnumSetToBytes(role.permissions()))
 			));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<User> getPublicServerAdmins(){
+		try{
+			return UserStorage.getAdmins();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -1024,6 +1024,14 @@ public class GroupsController{
 		}
 	}
 
+	public int getLocalGroupCount(){
+		try{
+			return GroupStorage.getLocalGroupCount();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public enum EventsType{
 		FUTURE,
 		PAST,

@@ -369,6 +369,14 @@ public class UsersController{
 		}
 	}
 
+	public List<User> getUsersAsList(List<Integer> ids){
+		try{
+			return UserStorage.getByIdAsList(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void deleteForeignUser(ForeignUser user){
 		try{
 			UserStorage.deleteForeignUser(user);
@@ -1055,6 +1063,23 @@ public class UsersController{
 	public Instant getLastSuccessfulUserDataExportTime(User user){
 		try{
 			return UserStorage.getLastSuccessfulUserDataExportTime(user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getLocalUserCount(){
+		try{
+			return UserStorage.getLocalUserCount();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getActiveLocalUserCount(int time, TimeUnit unit){
+		try{
+			long ms=unit.toMillis(time);
+			return UserStorage.getActiveLocalUserCount(ms);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

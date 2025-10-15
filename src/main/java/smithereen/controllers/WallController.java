@@ -1017,6 +1017,14 @@ public class WallController{
 		}
 	}
 
+	public int getLocalPostCount(boolean comments){
+		try{
+			return PostStorage.getLocalPostCount(comments);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	// region Pinned posts
 
 	public List<Post> getPinnedPosts(User self, User owner){

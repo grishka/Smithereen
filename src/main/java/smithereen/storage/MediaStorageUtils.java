@@ -65,6 +65,7 @@ import static smithereen.Utils.lang;
 public class MediaStorageUtils{
 	private static final Logger LOG=LoggerFactory.getLogger(MediaStorageUtils.class);
 	public static final int QUALITY_LOSSLESS=-1;
+	public static final long MAX_IMAGE_SIZE=10*1024*1024;
 
 	public static long writeResizedWebpImage(VipsImage img, int widthOrSize, int height, int quality, File file, int[] outSize) throws IOException{
 		double factor;
@@ -199,13 +200,13 @@ public class MediaStorageUtils{
 	public static LocalImage saveUploadedImage(Request req, Response resp, Account self, boolean isGraffiti){
 		Lang l=lang(req);
 		try{
-			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
+			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, MAX_IMAGE_SIZE, -1L, 0));
 			Part part=req.raw().getPart("file");
 			if(part==null)
 				throw new BadRequestException();
-			if(part.getSize()>10*1024*1024){
+			if(part.getSize()>MAX_IMAGE_SIZE){
 				// Payload Too Large
-				Spark.halt(413, l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(10*1024*1024))));
+				Spark.halt(413, l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(MAX_IMAGE_SIZE))));
 			}
 
 			String mime=part.getContentType();

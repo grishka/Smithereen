@@ -443,16 +443,16 @@ public class SystemRoutes{
 		return "";
 	}
 
-	public static Object aboutServer(Request req, Response resp) throws SQLException{
+	public static Object aboutServer(Request req, Response resp){
 		ApplicationContext ctx=context(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("about_server", req);
 		model.with("title", lang(req).get("about_server"));
 		model.with("serverPolicy", Config.serverPolicy)
-				.with("serverAdmins", UserStorage.getAdmins())
+				.with("serverAdmins", ctx.getModerationController().getPublicServerAdmins())
 				.with("serverAdminEmail", Config.serverAdminEmail)
-				.with("totalUsers", UserStorage.getLocalUserCount())
-				.with("totalPosts", PostStorage.getLocalPostCount(false))
-				.with("totalGroups", GroupStorage.getLocalGroupCount())
+				.with("totalUsers", ctx.getUsersController().getLocalUserCount())
+				.with("totalPosts", ctx.getWallController().getLocalPostCount(false))
+				.with("totalGroups", ctx.getGroupsController().getLocalGroupCount())
 				.with("serverVersion", BuildInfo.VERSION)
 				.with("restrictedServers", ctx.getModerationController().getAllServers(0, 10000, null, true, null).list)
 				.with("serverRules", ctx.getModerationController().getServerRules());

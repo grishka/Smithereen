@@ -22,7 +22,7 @@ public class VipsImage{
 			"VipsForeignLoadHeifFile",
 			"VipsForeignLoadNsgifFile"
 	);
-	private static final int MAX_SIZE=10_000;
+	public static final int MAX_SIZE=10_000;
 
 	Pointer nativePtr;
 	private boolean released;
