@@ -25,6 +25,7 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
@@ -139,7 +140,7 @@ class ApiUtils{
 			}
 
 			if(fields.contains(ApiUser.Field.LISTS)){
-				friendLists=ctx.getFriendsController().getFriendListsForUsers(actx.self.user, actx.self.user, ids);
+				friendLists=ctx.getFriendsController().getFriendListsForUsers(actx.hasPermission(ClientAppPermission.FRIENDS_READ) ? actx.self.user : null, actx.self.user, ids);
 			}else{
 				friendLists=null;
 			}
