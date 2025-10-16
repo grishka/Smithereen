@@ -15,14 +15,21 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiErrorType;
+import smithereen.api.model.ApiGroup;
 import smithereen.api.model.ApiUser;
 import smithereen.controllers.FriendsController;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.model.Group;
+import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.friends.FriendshipStatus;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
+import smithereen.util.XTEA;
 
 class ApiUtils{
 	public static List<ApiUser> getUsers(Collection<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
@@ -201,5 +208,158 @@ class ApiUtils{
 		}else{
 			throw actx.paramError(paramName+" is required when this method is called without a token");
 		}
+	}
+
+	public static List<ApiGroup> getGroups(Collection<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
+		List<Integer> idList=switch(ids){
+			case List<Integer> l -> l;
+			default -> ids.stream().toList();
+		};
+		return getGroups(ctx.getGroupsController().getGroupsByIdAsList(idList).stream().filter(Objects::nonNull).toList(), ctx, actx);
+	}
+
+	public static List<ApiGroup> getGroups(List<Group> groupList, ApplicationContext ctx, ApiCallContext actx){
+		EnumSet<ApiGroup.Field> fields=actx.optCommaSeparatedStringSet("fields")
+				.stream()
+				.map(ApiGroup.Field::valueOfApi)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toCollection(()->EnumSet.noneOf(ApiGroup.Field.class)));
+		Set<Integer> ids=groupList.stream().map(g->g.id).collect(Collectors.toSet());
+
+		Map<Integer, Group.AdminLevel> adminLevels;
+		Map<Integer, Group.MembershipState> memberStates;
+		Set<Integer> canPost;
+		Set<Integer> canCreateTopic;
+		Set<Integer> favoritedGroups;
+		Map<Integer, Photo> profilePhotos;
+
+		if(fields.contains(ApiGroup.Field.PHOTO_ID) || fields.contains(ApiGroup.Field.CROP_PHOTO))
+			profilePhotos=ctx.getPhotosController().getGroupProfilePhotos(groupList);
+		else
+			profilePhotos=null;
+
+		if(actx.self!=null){
+			if(fields.contains(ApiGroup.Field.ADMIN_LEVEL) || fields.contains(ApiGroup.Field.IS_ADMIN) || fields.contains(ApiGroup.Field.CAN_POST) || fields.contains(ApiGroup.Field.CAN_CREATE_TOPIC)){
+				adminLevels=ctx.getGroupsController().getMemberAdminLevels(groupList, actx.self.user);
+			}else{
+				adminLevels=null;
+			}
+
+			boolean thereArePrivateGroups=false;
+			for(Group g:groupList){
+				if(g.accessType==Group.AccessType.PRIVATE){
+					thereArePrivateGroups=true;
+					break;
+				}
+			}
+
+			if(fields.contains(ApiGroup.Field.MEMBER_STATUS) || fields.contains(ApiGroup.Field.IS_MEMBER) || fields.contains(ApiGroup.Field.CAN_POST) || fields.contains(ApiGroup.Field.CAN_CREATE_TOPIC) || thereArePrivateGroups){
+				memberStates=ctx.getGroupsController().getUserMembershipStates(groupList, actx.self.user);
+			}else{
+				memberStates=null;
+			}
+
+			if(fields.contains(ApiGroup.Field.IS_FAVORITE)){
+				favoritedGroups=ctx.getBookmarksController().filterGroupIDsByBookmarked(actx.self.user, ids);
+			}else{
+				favoritedGroups=null;
+			}
+
+			if(fields.contains(ApiGroup.Field.CAN_POST)){
+				canPost=new HashSet<>();
+				for(Group g:groupList){
+					Group.MembershipState state=memberStates.get(g.id);
+					if(g.accessType==Group.AccessType.OPEN || state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){
+						if(g.wallState==GroupFeatureState.ENABLED_OPEN || (g.wallState==GroupFeatureState.ENABLED_RESTRICTED && adminLevels.get(g.id).isAtLeast(Group.AdminLevel.MODERATOR)))
+							canPost.add(g.id);
+					}
+				}
+			}else{
+				canPost=null;
+			}
+
+			if(fields.contains(ApiGroup.Field.CAN_CREATE_TOPIC)){
+				canCreateTopic=new HashSet<>();
+				for(Group g:groupList){
+					Group.MembershipState state=memberStates.get(g.id);
+					if(g.accessType==Group.AccessType.OPEN || state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER){
+						if(g.boardState==GroupFeatureState.ENABLED_OPEN || (g.boardState==GroupFeatureState.ENABLED_RESTRICTED && adminLevels.get(g.id).isAtLeast(Group.AdminLevel.MODERATOR)))
+							canCreateTopic.add(g.id);
+					}
+				}
+			}else{
+				canCreateTopic=null;
+			}
+		}else{
+			fields.removeAll(ApiGroup.FIELDS_THAT_REQUIRE_ACCOUNT);
+			adminLevels=null;
+			memberStates=null;
+			canPost=canCreateTopic=favoritedGroups=null;
+		}
+
+		List<ApiGroup> result=groupList.stream()
+				.map(g->new ApiGroup(actx, g, fields, adminLevels, memberStates, canPost, canCreateTopic, favoritedGroups, profilePhotos))
+				.toList();
+
+		if(result.size()==1){
+			ApiGroup ag=result.getFirst();
+			Group g=groupList.getFirst();
+			if(fields.contains(ApiGroup.Field.COUNTERS)){
+				ag.counters=new ApiGroup.Counters(
+						ctx.getPhotosController().getAllPhotosCount(g, actx.self==null ? null : actx.self.user),
+						ctx.getPhotosController().getAllAlbums(g, actx.self==null ? null : actx.self.user, false, false).size(),
+						ctx.getBoardController().getTopicsIgnoringPrivacy(g, 0, 1, BoardTopicsSortOrder.UPDATED_DESC).total
+				);
+			}
+			if(fields.contains(ApiGroup.Field.MANAGEMENT)){
+				ag.management=ctx.getGroupsController().getAdmins(g)
+						.stream()
+						.map(ga->new ApiGroup.Manager(ga.userID, ga.title))
+						.toList();
+			}
+			if(fields.contains(ApiGroup.Field.LINKS)){
+				ag.links=ctx.getGroupsController().getLinks(g)
+						.stream()
+						.map(l->{
+							SizedImage img=l.getImage();
+							String objID=null;
+							String objType=switch(l.object.type()){
+								case USER -> {
+									objID=l.object.id()+"";
+									yield "user";
+								}
+								case GROUP -> {
+									objID=l.object.id()+"";
+									yield "group";
+								}
+								case POST -> {
+									objID=l.object.id()+"";
+									yield "post";
+								}
+								case PHOTO ->{
+									objID=XTEA.encodeObjectID(l.object.id(), ObfuscatedObjectIDType.PHOTO);
+									yield "photo";
+								}
+								case PHOTO_ALBUM ->{
+									objID=XTEA.encodeObjectID(l.object.id(), ObfuscatedObjectIDType.PHOTO_ALBUM);
+									yield "photo_album";
+								}
+								case BOARD_TOPIC ->{
+									objID=XTEA.encodeObjectID(l.object.id(), ObfuscatedObjectIDType.BOARD_TOPIC);
+									yield "topic";
+								}
+								default -> null;
+							};
+							return new ApiGroup.Link(l.id, l.url.toString(), l.title, l.getDescription(),
+									img==null ? null : img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, actx.imageFormat).toString(),
+									img==null ? null : img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, actx.imageFormat).toString(),
+									img==null ? null : img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_LARGE, actx.imageFormat).toString(),
+									objType, objID);
+						})
+						.toList();
+			}
+		}
+
+		return result;
 	}
 }

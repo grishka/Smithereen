@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.api.methods.GroupsMethods;
 import smithereen.api.methods.ServerMethods;
 import smithereen.api.methods.UsersMethods;
 import smithereen.api.methods.UtilsMethods;
@@ -23,6 +24,10 @@ public class ApiDispatcher{
 		m.put("getSubscriptions", new MethodRecord(UsersMethods::getSubscriptions, false));
 		m.put("search", new MethodRecord(UsersMethods::search, true));
 		methods.put("users", m);
+
+		m=new HashMap<>();
+		m.put("getById", new MethodRecord(GroupsMethods::getById, false));
+		methods.put("groups", m);
 
 		m=new HashMap<>();
 		m.put("getServerTime", new MethodRecord(UtilsMethods::getServerTime, false));

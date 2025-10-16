@@ -1545,6 +1545,25 @@ public class PhotosController{
 		return getPhotosIgnoringPrivacy(needPhotos).values().stream().collect(Collectors.toMap(ph->ph.ownerID, Function.identity()));
 	}
 
+	public Map<Integer, Photo> getGroupProfilePhotos(Collection<Group> groups){
+		Set<Long> needPhotos=groups.stream()
+				.map(g->g.getAvatarImage() instanceof LocalImage li && li.photoID!=0 ? li.photoID : null)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toSet());
+		Set<URI> needForeignPhotos=groups.stream()
+				.map(g->g.getAvatarImage() instanceof Image img && !(img instanceof LocalImage) && img.photoApID!=null ? img.photoApID : null)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toSet());
+		if(!needForeignPhotos.isEmpty()){
+			needPhotos=new HashSet<>(needPhotos);
+			needPhotos.addAll(getPhotoIdsByActivityPubIds(needForeignPhotos).values());
+		}
+		if(needPhotos.isEmpty())
+			return Map.of();
+
+		return getPhotosIgnoringPrivacy(needPhotos).values().stream().collect(Collectors.toMap(ph->-ph.ownerID, Function.identity()));
+	}
+
 	public PaginatedList<Photo> getAllPhotosByAuthor(User author, int offset, int count){
 		try{
 			return PhotoStorage.getAllPhotosByAuthor(author.id, offset, count);

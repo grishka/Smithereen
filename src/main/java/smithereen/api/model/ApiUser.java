@@ -117,7 +117,7 @@ public class ApiUser{
 			domain=fu.domain;
 		if(fields.contains(Field.SCREEN_NAME))
 			screenName=user.username;
-		if(fields.contains(Field.STATUS) && user.status!=null)
+		if(fields.contains(Field.STATUS) && user.status!=null && !user.status.isExpired())
 			status=user.status.text();
 		if(fields.contains(Field.URL))
 			url=user.url.toString();

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import smithereen.ApplicationContext;
@@ -176,6 +177,16 @@ public class GroupsController{
 		}
 	}
 
+	public Map<String, Integer> getGroupIDsByUsernames(Collection<String> usernames){
+		if(usernames.isEmpty())
+			return Map.of();
+		try{
+			return GroupStorage.getIdsByUsernames(usernames);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public List<Group> getGroupsByIdAsList(Collection<Integer> ids){
 		if(ids.isEmpty())
 			return List.of();
@@ -245,10 +256,30 @@ public class GroupsController{
 		}
 	}
 
+	public Map<Integer, Group.AdminLevel> getMemberAdminLevels(Collection<Group> groups, User user){
+		if(groups.isEmpty())
+			return Map.of();
+		try{
+			return GroupStorage.getGroupMemberAdminLevels(groups.stream().map(g->g.id).collect(Collectors.toSet()), user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	@NotNull
 	public Group.MembershipState getUserMembershipState(@NotNull Group group, @NotNull User user){
 		try{
 			return GroupStorage.getUserMembershipState(group.id, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, Group.MembershipState> getUserMembershipStates(Collection<Group> groups, User user){
+		if(groups.isEmpty())
+			return Map.of();
+		try{
+			return GroupStorage.getUserMembershipStates(groups.stream().map(g->g.id).collect(Collectors.toSet()), user.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

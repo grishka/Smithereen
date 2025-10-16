@@ -383,6 +383,60 @@ public class GroupStorage{
 				.executeAndGetInt();
 	}
 
+	public static Map<String, Integer> getIdsByUsernames(Collection<String> usernames) throws SQLException{
+		if(usernames.isEmpty())
+			return Map.of();
+		HashSet<String> remainingUsernames=new HashSet<>();
+		Map<String, Integer> ids=new HashMap<>();
+		for(String u:usernames){
+			Group g=cacheByUsername.get(u.toLowerCase());
+			if(g!=null){
+				ids.put(u, g.id);
+				continue;
+			}
+			remainingUsernames.add(u);
+		}
+		if(!remainingUsernames.isEmpty()){
+			StringBuilder where=new StringBuilder("(username, domain) IN (");
+			ArrayList<String> whereArgs=new ArrayList<>();
+			boolean first=true;
+			for(String u:remainingUsernames){
+				String realUsername;
+				String domain="";
+				if(u.contains("@")){
+					String[] parts=u.split("@");
+					realUsername=parts[0];
+					domain=parts[1];
+				}else{
+					realUsername=u;
+				}
+				if(first){
+					first=false;
+				}else{
+					where.append(',');
+				}
+				where.append("(?,?)");
+				whereArgs.add(realUsername);
+				whereArgs.add(domain);
+			}
+			where.append(')');
+			new SQLQueryBuilder()
+					.selectFrom("groups")
+					.columns("id", "username", "domain")
+					.where(where.toString(), whereArgs.toArray())
+					.executeAsStream(r->{
+						String username=r.getString("username");
+						String domain=r.getString("domain");
+						return new Pair<>(username+(domain.isEmpty() ? "" : ("@"+domain)), r.getInt("id"));
+					})
+					.forEach(p->{
+						// TODO improve caching
+						ids.put(p.first(), p.second());
+					});
+		}
+		return ids;
+	}
+
 	public static ForeignGroup getForeignGroupByActivityPubID(URI id) throws SQLException{
 		ForeignGroup g=cacheByActivityPubID.get(id);
 		if(g!=null)
@@ -504,6 +558,44 @@ public class GroupStorage{
 					return Group.MembershipState.REQUESTED;
 				return res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER;
 			}
+		}
+	}
+
+	public static Map<Integer, Group.MembershipState> getUserMembershipStates(Collection<Integer> groupIDs, int userID) throws SQLException{
+		if(groupIDs.size()==1){
+			int id=groupIDs.iterator().next();
+			return Map.of(id, getUserMembershipState(id, userID));
+		}
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			HashMap<Integer, Group.MembershipState> states=new HashMap<>();
+			for(int id:groupIDs)
+				states.put(id, Group.MembershipState.NONE);
+			Set<Integer> remainingIDs=new HashSet<>(groupIDs);
+
+			try(ResultSet res=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("group_id", "accepted", "tentative")
+					.whereIn("group_id", groupIDs)
+					.andWhere("user_id=?", userID)
+					.execute()){
+				while(res.next()){
+					int id=res.getInt("group_id");
+					states.put(id, res.getBoolean("accepted") ? (res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER) : Group.MembershipState.REQUESTED);
+					remainingIDs.remove(id);
+				}
+			}
+
+			if(!remainingIDs.isEmpty()){
+				new SQLQueryBuilder(conn)
+						.selectFrom("group_invites")
+						.columns("group_id")
+						.whereIn("group_id", remainingIDs)
+						.andWhere("invitee_id=?", userID)
+						.executeAndGetIntStream()
+						.forEach(id->states.put(id, Group.MembershipState.INVITED));
+			}
+
+			return states;
 		}
 	}
 
@@ -704,6 +796,24 @@ public class GroupStorage{
 				.where("group_id=? AND user_id=?", groupID, userID)
 				.executeAndGetInt();
 		return level==-1 ? Group.AdminLevel.REGULAR : Group.AdminLevel.values()[level];
+	}
+
+	public static Map<Integer, Group.AdminLevel> getGroupMemberAdminLevels(Collection<Integer> groupIDs, int userID) throws SQLException{
+		if(groupIDs.size()==1){
+			int id=groupIDs.iterator().next();
+			return Map.of(id, getGroupMemberAdminLevel(id, userID));
+		}
+		HashMap<Integer, Group.AdminLevel> levels=new HashMap<>();
+		for(int id:groupIDs)
+			levels.put(id, Group.AdminLevel.REGULAR);
+		new SQLQueryBuilder()
+				.selectFrom("group_admins")
+				.columns("group_id", "level")
+				.whereIn("group_id", groupIDs)
+				.andWhere("user_id=?", userID)
+				.executeAsStream(r->new Pair<>(r.getInt(1), r.getInt(2)))
+				.forEach(ids->levels.put(ids.first(), Group.AdminLevel.values()[ids.second()]));
+		return levels;
 	}
 
 	public static void setMemberAccepted(Group group, int userID, boolean accepted) throws SQLException{
