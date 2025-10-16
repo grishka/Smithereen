@@ -120,4 +120,9 @@ public class ApiCallContext{
 	public boolean hasPermission(ClientAppPermission permission){
 		return token!=null && token.permissions().contains(permission);
 	}
+
+	public void requirePermission(ClientAppPermission permission){
+		if(!hasPermission(permission))
+			throw error(ApiErrorType.NO_PERMISSION, "this requires the "+permission.getScopeValue()+" permission");
+	}
 }

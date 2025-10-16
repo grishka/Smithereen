@@ -734,18 +734,23 @@ public class GroupStorage{
 		}
 	}
 
-	public static PaginatedList<Group> getUserManagedGroups(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<Group> getUserManagedGroups(int userID, Group.AdminLevel minLevel, boolean events, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("group_admins")
 					.count()
-					.where("user_id=?", userID)
+					.join("JOIN `groups` ON group_id=`groups`.id")
+					.where("user_id=? AND level>? AND `groups`.type=?", userID, minLevel, events ? Group.Type.EVENT : Group.Type.GROUP)
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(count);
-			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("group_admins").columns("group_id").where("user_id=?", userID).execute()){
-				return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
-			}
+			List<Integer> ids=new SQLQueryBuilder(conn)
+					.selectFrom("group_admins")
+					.columns("group_id")
+					.join("JOIN `groups` ON group_id=`groups`.id")
+					.where("user_id=? AND level>? AND `groups`.type=?", userID, minLevel, events ? Group.Type.EVENT : Group.Type.GROUP)
+					.executeAndGetIntList();
+			return new PaginatedList<>(getByIdAsList(ids), total, offset, count);
 		}
 	}
 

@@ -124,7 +124,7 @@ public class GroupsRoutes{
 	public static Object myManagedGroups(Request req, Response resp, Account self, ApplicationContext ctx){
 		jsLangKey(req, "cancel", "create");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "managed").with("title", lang(req).get("groups"));
-		model.paginate(ctx.getGroupsController().getUserManagedGroups(self.user, offset(req), 100)).with("owner", self.user);
+		model.paginate(ctx.getGroupsController().getUserManagedGroups(self.user, Group.AdminLevel.MODERATOR, false, offset(req), 100)).with("owner", self.user);
 		return model;
 	}
 

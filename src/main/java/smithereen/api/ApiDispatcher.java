@@ -23,6 +23,7 @@ public class ApiDispatcher{
 		registerMethod("users.getSubscriptions", UsersMethods::getSubscriptions, false);
 		registerMethod("users.search", UsersMethods::search, true);
 
+		registerMethod("groups.get", GroupsMethods::get, false);
 		registerMethod("groups.getById", GroupsMethods::getById, false);
 
 		registerMethod("utils.getServerTime", UtilsMethods::getServerTime, false);

@@ -133,9 +133,9 @@ public class GroupsController{
 		}
 	}
 
-	public PaginatedList<Group> getUserManagedGroups(@NotNull User user, int offset, int count){
+	public PaginatedList<Group> getUserManagedGroups(@NotNull User user, Group.AdminLevel minLevel, boolean events, int offset, int count){
 		try{
-			return GroupStorage.getUserManagedGroups(user.id, offset, count);
+			return GroupStorage.getUserManagedGroups(user.id, minLevel, events, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
