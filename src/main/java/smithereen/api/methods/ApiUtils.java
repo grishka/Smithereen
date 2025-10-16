@@ -133,6 +133,8 @@ class ApiUtils{
 				friendStatuses=null;
 			}
 
+			if(!actx.hasPermission(ClientAppPermission.LIKES_READ))
+				fields.remove(ApiUser.Field.IS_FAVORITE);
 			if(fields.contains(ApiUser.Field.IS_FAVORITE)){
 				bookmarkedIDs=ctx.getBookmarksController().filterUserIDsByBookmarked(actx.self.user, ids);
 			}else{
@@ -260,6 +262,8 @@ class ApiUtils{
 				memberStates=null;
 			}
 
+			if(!actx.hasPermission(ClientAppPermission.LIKES_READ))
+				fields.remove(ApiGroup.Field.IS_FAVORITE);
 			if(fields.contains(ApiGroup.Field.IS_FAVORITE)){
 				favoritedGroups=ctx.getBookmarksController().filterGroupIDsByBookmarked(actx.self.user, ids);
 			}else{
