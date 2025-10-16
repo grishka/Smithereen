@@ -11,6 +11,7 @@ import smithereen.api.ApiCallContext;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
+import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.photos.Photo;
 
@@ -76,7 +77,7 @@ public class ApiGroup{
 		type=group.isEvent() ? "event" : "group";
 
 		if(group.accessType==Group.AccessType.PRIVATE){
-			Group.MembershipState state=memberStates==null ? null : memberStates.get(id);
+			Group.MembershipState state=memberStates==null || !actx.hasPermission(ClientAppPermission.GROUPS_READ) ? null : memberStates.get(id);
 			if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.INVITED){
 				name=actx.lang.get(group.isEvent() ? "private_event" : "private_group");
 				return;

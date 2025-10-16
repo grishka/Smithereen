@@ -13,6 +13,7 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.SizedImage;
 import smithereen.model.apps.AppAccessToken;
+import smithereen.model.apps.ClientAppPermission;
 import spark.Request;
 import spark.utils.StringUtils;
 
@@ -114,5 +115,9 @@ public class ApiCallContext{
 
 	public boolean hasParam(String key){
 		return params.containsKey(key);
+	}
+
+	public boolean hasPermission(ClientAppPermission permission){
+		return token!=null && token.permissions().contains(permission);
 	}
 }
