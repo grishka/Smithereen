@@ -18,25 +18,36 @@ public class ApiDispatcher{
 	private static final Map<String, Map<String, MethodRecord>> methods=new HashMap<>();
 
 	static{
-		Map<String, MethodRecord> m=new HashMap<>();
-		m.put("get", new MethodRecord(UsersMethods::get, false));
-		m.put("getFollowers", new MethodRecord(UsersMethods::getFollowers, false));
-		m.put("getSubscriptions", new MethodRecord(UsersMethods::getSubscriptions, false));
-		m.put("search", new MethodRecord(UsersMethods::search, true));
-		methods.put("users", m);
+		registerMethod("users.get", UsersMethods::get, false);
+		registerMethod("users.getFollowers", UsersMethods::getFollowers, false);
+		registerMethod("users.getSubscriptions", UsersMethods::getSubscriptions, false);
+		registerMethod("users.search", UsersMethods::search, true);
 
-		m=new HashMap<>();
-		m.put("getById", new MethodRecord(GroupsMethods::getById, false));
-		methods.put("groups", m);
+		registerMethod("groups.getById", GroupsMethods::getById, false);
 
-		m=new HashMap<>();
-		m.put("getServerTime", new MethodRecord(UtilsMethods::getServerTime, false));
-		methods.put("utils", m);
+		registerMethod("utils.getServerTime", UtilsMethods::getServerTime, false);
 
-		m=new HashMap<>();
-		m.put("getInfo", new MethodRecord(ServerMethods::getInfo, false));
-		m.put("getRestrictedServers", new MethodRecord(ServerMethods::getRestrictedServers, false));
-		methods.put("server", m);
+		registerMethod("server.getInfo", ServerMethods::getInfo, false);
+		registerMethod("server.getRestrictedServers", ServerMethods::getRestrictedServers, false);
+	}
+
+	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){
+		registerMethod(name, new MethodRecord(impl, requireUser));
+	}
+
+	private static void registerMethod(String name, ApiMethod impl, ClientAppPermission... permissions){
+		registerMethod(name, new MethodRecord(impl, permissions));
+	}
+
+	private static void registerMethod(String name, MethodRecord mr){
+		int dotIndex=name.indexOf('.');
+		if(dotIndex==-1){
+			unprefixedMethods.put(name, mr);
+		}else{
+			String prefix=name.substring(0, dotIndex);
+			name=name.substring(dotIndex+1);
+			methods.computeIfAbsent(prefix, k->new HashMap<>()).put(name, mr);
+		}
 	}
 
 	public static Object doApiCall(String method, ApplicationContext ctx, ApiCallContext actx){
