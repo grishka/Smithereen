@@ -1351,6 +1351,49 @@ public class PostStorage{
 				}));
 	}
 
+	public static void recountComments(int ownerID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			LOG.trace("Started recounting wall comments for {}", ownerID);
+
+			int batchSize=1000;
+			int offset=0;
+			while(true){
+				try(ResultSet res=new SQLQueryBuilder(conn)
+						.selectFrom("wall_posts")
+						.columns("id", "reply_key", "reply_count")
+						.where(ownerID>0 ? "owner_user_id=?" : "owner_group_id=?", Math.abs(ownerID))
+						.orderBy("id ASC")
+						.limit(batchSize, offset)
+						.execute()){
+					if(!res.next())
+						break;
+
+					do{
+						int id=res.getInt("id");
+						ArrayList<Integer> replyKey=new ArrayList<>(Utils.deserializeIntList(res.getBytes("reply_key")));
+						replyKey.add(id);
+						int count=new SQLQueryBuilder(conn)
+								.selectFrom("wall_posts")
+								.count()
+								.where("reply_key LIKE BINARY bin_prefix(?)", (Object)Utils.serializeIntList(replyKey))
+								.executeAndGetInt();
+						if(count!=res.getInt("reply_count")){
+							new SQLQueryBuilder(conn)
+									.update("wall_posts")
+									.where("id=?", id)
+									.value("reply_count", count)
+									.executeNoResult();
+						}
+					}while(res.next());
+
+					offset+=batchSize;
+				}
+			}
+
+			LOG.trace("Done recounting wall comments for {}", ownerID);
+		}
+	}
+
 	// region Pinned posts
 
 	public static void pinPost(int ownerID, int postID, boolean keepPrevious) throws SQLException{

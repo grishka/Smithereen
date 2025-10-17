@@ -672,6 +672,8 @@ public class SmithereenApplication{
 			getRequiringPermission("/adminChangeUsernameForm", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::changeUserUsernameForm);
 			postRequiringPermissionWithCSRF("/adminChangeUsername", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::changeUserUsername);
 			getRequiringPermission("/adminConfirmResetUsername", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::confirmResetUserUsername);
+			getRequiringPermissionWithCSRF("/recountFriends", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::recountFriends);
+			getRequiringPermissionWithCSRF("/recountWall", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::recountWall);
 
 			get("/hoverCard", ProfileRoutes::mentionHoverCard);
 

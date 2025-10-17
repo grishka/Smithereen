@@ -94,6 +94,7 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.PhotoStorage;
+import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
@@ -897,6 +898,22 @@ public class ModerationController{
 			username="id"+target.id;
 		try{
 			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CHANGE_USER_USERNAME, target.id, 0, null, Map.of("old", oldUsername, "new", username));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void recountUserFriends(User user){
+		try{
+			UserStorage.recountFriends(user);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void recountActorWallComments(Actor actor){
+		try{
+			PostStorage.recountComments(actor.getOwnerID());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

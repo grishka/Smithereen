@@ -407,5 +407,9 @@
   "admin_user_export_settings": "Выгрузка пользовательских данных",
   "admin_user_export_retention": "Хранить архивы",
   "admin_user_export_cooldown": "Разрешить раз в",
-  "admin_user_export_days": "дней"
+  "admin_user_export_days": "дней",
+  "admin_database_maintenance": "Обслуживание базы данных",
+  "admin_recount_relationship_metrics": "Пересчитать друзей/подписки/подписчиков",
+  "admin_recount_wall_comments": "Пересчитать комментарии на стене",
+  "admin_metrics_recounted": "Показатели успешно пересчитаны"
 }

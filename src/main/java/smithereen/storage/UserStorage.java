@@ -1889,4 +1889,15 @@ public class UserStorage{
 				.where("id=?", id)
 				.executeAndGetSingleObject(UserDataExport::fromResultSet);
 	}
+
+	public static void recountFriends(User user) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.where("id=?", user.id)
+				.valueExpr("num_followers", "(SELECT COUNT(*) FROM followings WHERE followee_id=?)", user.id)
+				.valueExpr("num_following", "(SELECT COUNT(*) FROM followings WHERE follower_id=?)", user.id)
+				.valueExpr("num_friends", "(SELECT COUNT(*) FROM followings WHERE followee_id=? AND mutual=1)", user.id)
+				.executeNoResult();
+		removeFromCache(user);
+	}
 }

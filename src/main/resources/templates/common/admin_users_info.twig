@@ -102,6 +102,11 @@
 	</div>
 	{% endif %}
 	{% if account is not null %}
+	<h2 class="marginBefore marginAfter">{{ L('admin_database_maintenance') }}</h2>
+	<div class="marginBefore marginAfter">
+		<a href="/users/{{ user.id }}/recountFriends?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('admin_recount_relationship_metrics') }}</a>
+		<a href="/users/{{ user.id }}/recountWall?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('admin_recount_wall_comments') }}</a>
+	</div>
 	<h2 class="marginBefore marginAfter">{{ L('settings_sessions') }}</h2>
 	<div class="wideDataTableWrap">
 		<table class="dataTable wideTable">

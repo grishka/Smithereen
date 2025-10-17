@@ -539,4 +539,24 @@ public class AdminUsersRoutes{
 		String newUsername="id"+target.id;
 		return wrapConfirmation(req, resp, l.get("admin_reset_username_title"), l.get("admin_reset_username_confirm", Map.of("newUsername", newUsername)), "/users/"+target.id+"/adminChangeUsername?username="+newUsername);
 	}
+
+	public static Object recountFriends(Request req, Response resp, Account self, ApplicationContext ctx){
+		User target=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		Lang l=lang(req);
+		ctx.getModerationController().recountUserFriends(target);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).showSnackbar(l.get("admin_metrics_recounted"));
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object recountWall(Request req, Response resp, Account self, ApplicationContext ctx){
+		User target=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		Lang l=lang(req);
+		ctx.getModerationController().recountActorWallComments(target);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).showSnackbar(l.get("admin_metrics_recounted"));
+		resp.redirect(back(req));
+		return "";
+	}
 }
