@@ -786,6 +786,9 @@ small{
 	padding: 2px 4px;
 	line-height: 175%;
 	white-space: nowrap;
+	text-overflow: ellipsis;
+	max-width: 100%;
+	overflow: hidden;
 	&.l0{
 		background-color: #F5E9E2;
 		color: #8B4C23;

@@ -1233,6 +1233,11 @@ select, .comboBoxW input{
 	}
 	.lists{
 		padding-top: 8px;
+		.friendListLabel{
+			line-height: 100%;
+			margin: 1px 0;
+			display: inline-block;
+		}
 	}
 	.onlineText+.lists{
 		padding-top: 5px;
