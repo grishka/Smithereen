@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.api.methods.FriendsMethods;
 import smithereen.api.methods.GroupsMethods;
 import smithereen.api.methods.ServerMethods;
 import smithereen.api.methods.UsersMethods;
@@ -25,6 +26,19 @@ public class ApiDispatcher{
 
 		registerMethod("groups.get", GroupsMethods::get, false);
 		registerMethod("groups.getById", GroupsMethods::getById, false);
+
+		registerMethod("friends.get", FriendsMethods::get, false);
+		registerMethod("friends.getOnline", FriendsMethods::getOnline, false);
+		registerMethod("friends.getMutual", FriendsMethods::getMutual, ClientAppPermission.FRIENDS_READ);
+		registerMethod("friends.areFriends", FriendsMethods::areFriends, ClientAppPermission.FRIENDS_READ);
+		registerMethod("friends.getLists", FriendsMethods::getLists, false);
+		registerMethod("friends.add", FriendsMethods::add, ClientAppPermission.FRIENDS_WRITE);
+		registerMethod("friends.delete", FriendsMethods::delete, ClientAppPermission.FRIENDS_WRITE);
+		registerMethod("friends.addList", FriendsMethods::addList, ClientAppPermission.FRIENDS_WRITE);
+		registerMethod("friends.deleteList", FriendsMethods::deleteList, ClientAppPermission.FRIENDS_WRITE);
+		registerMethod("friends.edit", FriendsMethods::edit, ClientAppPermission.FRIENDS_WRITE);
+		registerMethod("friends.editList", FriendsMethods::editList, ClientAppPermission.FRIENDS_WRITE);
+		registerMethod("friends.getRequests", FriendsMethods::getRequests, ClientAppPermission.FRIENDS_READ);
 
 		registerMethod("utils.getServerTime", UtilsMethods::getServerTime, false);
 

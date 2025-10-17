@@ -54,9 +54,9 @@ public class FriendsController{
 		MaintenanceScheduler.runPeriodically(this::doPendingHintsUpdates, 10, TimeUnit.MINUTES);
 	}
 
-	public PaginatedList<FriendRequest> getIncomingFriendRequests(User self, int offset, int count){
+	public PaginatedList<FriendRequest> getIncomingFriendRequests(User self, int offset, int count, int mutualCount){
 		try{
-			return UserStorage.getIncomingFriendRequestsForUser(self.id, offset, count);
+			return UserStorage.getIncomingFriendRequestsForUser(self.id, offset, count, mutualCount);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -187,13 +187,18 @@ public class FriendsController{
 	public Map<Integer, FriendshipStatus> getSimpleFriendshipStatuses(User self, Collection<Integer> ids){
 		if(ids.isEmpty())
 			return Map.of();
-		// TODO optimize this
 		try{
-			HashMap<Integer, FriendshipStatus> statuses=new HashMap<>();
-			for(int id:ids){
-				statuses.put(id, UserStorage.getSimpleFriendshipStatus(self.id, id));
-			}
-			return statuses;
+			return UserStorage.getFriendshipStatuses(self.id, ids, false);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, FriendshipStatus> getFriendshipStatuses(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return UserStorage.getFriendshipStatuses(self.id, ids, true);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -224,6 +229,7 @@ public class FriendsController{
 				throw new UserErrorException("err_cant_friend_self");
 			}
 			Utils.ensureUserNotBlocked(self, user);
+			Utils.ensureUserNotBlocked(user, self);
 			FriendshipStatus status=getFriendshipStatus(self, user);
 			switch(status){
 				case NONE, FOLLOWED_BY -> {
@@ -259,6 +265,7 @@ public class FriendsController{
 				throw new UserErrorException("err_cant_friend_self");
 			}
 			Utils.ensureUserNotBlocked(self, user);
+			Utils.ensureUserNotBlocked(user, self);
 			FriendshipStatus status=getFriendshipStatus(self, user);
 			switch(status){
 				case NONE, FOLLOWED_BY, REQUEST_RECVD -> {
@@ -575,7 +582,7 @@ public class FriendsController{
 
 		boolean anythingChanged=false;
 		try{
-			if(existing!=null && !Objects.equals(existing.name(), name)){
+			if(existing!=null && !Objects.equals(existing.name(), name) && !existing.isPublic()){
 				anythingChanged=true;
 				UserStorage.renameFriendList(owner.id, id, name);
 			}

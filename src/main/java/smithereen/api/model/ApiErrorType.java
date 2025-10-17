@@ -20,6 +20,13 @@ public enum ApiErrorType{
 	//CONFIRMATION_NEEDED(24, "Confirmation required"),
 	PARAM_INVALID(100, "One of the parameters specified was missing or invalid"),
 	NOT_FOUND(104, "Not found", 404),
+
+	TOO_MANY_FRIEND_LISTS(173, "Too many friend lists"),
+	CANT_FRIEND_SELF(174, "Can't add oneself as a friend"),
+	CANT_ADD_FRIEND_BLOCKED(175, "Can't add this user as a friend because they blocked you", 403),
+	CANT_ADD_FRIEND_YOU_BLOCKED(176, "Can't add this user as a friend because you blocked them", 403),
+
+	TOO_MANY_FRIENDS(242, "Too many friends"),
 	;
 
 	public final int code;

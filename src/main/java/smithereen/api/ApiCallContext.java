@@ -51,6 +51,11 @@ public class ApiCallContext{
 		return params.get(key);
 	}
 
+	public String optParamString(String key, String def){
+		String v=params.get(key);
+		return StringUtils.isEmpty(v) ? def : v;
+	}
+
 	public String requireParamString(String key){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value))
@@ -102,6 +107,33 @@ public class ApiCallContext{
 		if(v<=0)
 			throw paramError(key+" must be a positive integer");
 		return v;
+	}
+
+	public int optParamIntPositive(String key){
+		return Math.max(0, Utils.safeParseInt(params.get(key)));
+	}
+
+	public List<Integer> optCommaSeparatedIntListParam(String key){
+		if(hasParam(key))
+			return commaSeparatedIntListParam(key);
+		return List.of();
+	}
+
+	public List<Integer> commaSeparatedIntListParam(String key){
+		List<Integer> res=Arrays.stream(requireParamString(key).split(","))
+				.map(String::trim)
+				.map(Utils::safeParseInt)
+				.filter(i->i!=0)
+				.distinct()
+				.toList();
+		if(res.isEmpty())
+			throw paramError(key+" does not contain a valid integer list");
+		return res;
+	}
+
+	public boolean booleanParam(String key){
+		String v=params.get(key);
+		return "true".equalsIgnoreCase(v) || "1".equals(v);
 	}
 
 	public int getOffset(){

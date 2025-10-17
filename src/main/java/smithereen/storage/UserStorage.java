@@ -352,6 +352,63 @@ public class UserStorage{
 		}
 	}
 
+	public static Map<Integer, FriendshipStatus> getFriendshipStatuses(int selfUserID, Collection<Integer> targetUserIDs, boolean checkRequests) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			Set<Integer> remainingIDs=new HashSet<>(targetUserIDs);
+			HashMap<Integer, FriendshipStatus> statuses=new HashMap<>();
+			try(ResultSet res=new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.columns("followee_id", "mutual", "accepted")
+					.whereIn("followee_id", targetUserIDs)
+					.andWhere("follower_id=?", selfUserID)
+					.execute()){
+				while(res.next()){
+					int id=res.getInt("followee_id");
+					boolean mutual=res.getBoolean("mutual");
+					boolean accepted=res.getBoolean("accepted");
+					remainingIDs.remove(id);
+					statuses.put(id, mutual ? FriendshipStatus.FRIENDS : (accepted ? FriendshipStatus.FOLLOWING : FriendshipStatus.FOLLOW_REQUESTED));
+				}
+			}
+
+			if(!remainingIDs.isEmpty()){
+				new SQLQueryBuilder(conn)
+						.selectFrom("followings")
+						.columns("follower_id")
+						.whereIn("follower_id", remainingIDs)
+						.andWhere("followee_id=?", selfUserID)
+						.executeAndGetIntStream()
+						.forEach(id->{
+							statuses.put(id, FriendshipStatus.FOLLOWED_BY);
+							remainingIDs.remove(id);
+						});
+			}
+
+			for(int id:remainingIDs){
+				statuses.put(id, FriendshipStatus.NONE);
+			}
+
+			if(checkRequests){
+				Set<Integer> followerIDs=statuses.entrySet()
+						.stream()
+						.filter(e->e.getValue()==FriendshipStatus.FOLLOWED_BY)
+						.map(Map.Entry::getKey)
+						.collect(Collectors.toSet());
+				if(!followerIDs.isEmpty()){
+					new SQLQueryBuilder(conn)
+							.selectFrom("friend_requests")
+							.columns("from_user_id")
+							.whereIn("from_user_id", followerIDs)
+							.andWhere("to_user_id=?", selfUserID)
+							.executeAndGetIntStream()
+							.forEach(id->statuses.put(id, FriendshipStatus.REQUEST_RECVD));
+				}
+			}
+
+			return statuses;
+		}
+	}
+
 	public static Set<Integer> intersectWithFriendIDs(int selfUserID, Collection<Integer> userIDs) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("followings")
@@ -561,7 +618,7 @@ public class UserStorage{
 		}
 	}
 
-	public static PaginatedList<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count, int mutualCount) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("friend_requests")
@@ -580,13 +637,15 @@ public class UserStorage{
 					.limit(count, offset)
 					.executeAsStream(FriendRequest::fromResultSet)
 					.peek(req->{
-						try{
-							req.mutualFriendsCount=getMutualFriendsCount(userID, req.from.id);
-							if(req.mutualFriendsCount>0){
-								mutualFriendIDs.put(req.from.id, getMutualFriendIDsForUser(userID, req.from.id, 0, 4, true));
+						if(mutualCount>0){
+							try{
+								req.mutualFriendsCount=getMutualFriendsCount(userID, req.from.id);
+								if(req.mutualFriendsCount>0){
+									mutualFriendIDs.put(req.from.id, getMutualFriendIDsForUser(userID, req.from.id, 0, mutualCount, true));
+								}
+							}catch(SQLException x){
+								LOG.warn("Exception while getting mutual friends for {} and {}", userID, req.from.id, x);
 							}
-						}catch(SQLException x){
-							LOG.warn("Exception while getting mutual friends for {} and {}", userID, req.from.id, x);
 						}
 					}).toList();
 			if(mutualFriendIDs.isEmpty())

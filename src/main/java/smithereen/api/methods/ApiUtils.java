@@ -213,6 +213,14 @@ class ApiUtils{
 		}
 	}
 
+	public static User getUser(ApplicationContext ctx, ApiCallContext actx, String paramName){
+		try{
+			return ctx.getUsersController().getUserOrThrow(actx.requireParamIntPositive(paramName));
+		}catch(ObjectNotFoundException x){
+			throw actx.error(ApiErrorType.NOT_FOUND, "user with this ID does not exist");
+		}
+	}
+
 	public static List<ApiGroup> getGroups(Collection<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
 		List<Integer> idList=switch(ids){
 			case List<Integer> l -> l;
