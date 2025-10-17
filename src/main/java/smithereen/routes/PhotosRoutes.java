@@ -1231,7 +1231,7 @@ public class PhotosRoutes{
 		for(int i=0;i<4;i++){
 			try{
 				float v=Float.parseFloat(rectStr[i]);
-				if(v<0 || v>1)
+				if(v<0 || v>1 || !Float.isFinite(v))
 					throw new BadRequestException();
 				rectArr[i]=v;
 			}catch(NumberFormatException x){

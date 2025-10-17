@@ -1358,6 +1358,32 @@ public class PhotosController{
 				}
 				name=user.getFullName();
 			}
+			AbsoluteImageRect absRect=rect.makeAbsolute(photo.getWidth(), photo.getHeight());
+			int minTagSize=40;
+			if(absRect.getWidth()<minTagSize){
+				int centerX=absRect.getCenterX();
+				absRect=absRect.withX(centerX-minTagSize/2, centerX+minTagSize/2);
+			}
+			if(absRect.getHeight()<minTagSize){
+				int centerY=absRect.getCenterY();
+				absRect=absRect.withY(centerY-minTagSize/2, centerY+minTagSize/2);
+			}
+			if(!absRect.fitsInsideFullSize()){
+				if(absRect.x1()<0)
+					absRect=absRect.offset(-absRect.x1(), 0);
+				if(absRect.y1()<0)
+					absRect=absRect.offset(0, -absRect.y1());
+				if(absRect.x2()>=absRect.fullWidth())
+					absRect=absRect.offset(absRect.fullWidth()-absRect.x2(), 0);
+				if(absRect.y2()>=absRect.fullHeight())
+					absRect=absRect.offset(0, absRect.fullHeight()-absRect.y2());
+				if(!absRect.fitsInsideFullSize()){
+					// Still doesn't fit? Let's truncate it then
+					absRect=new AbsoluteImageRect(Math.max(0, absRect.x1()), Math.max(0, absRect.y1()),
+							Math.min(absRect.fullWidth()-1, absRect.x2()), Math.min(absRect.fullHeight()-1, absRect.y2()), absRect.fullWidth(), absRect.fullHeight());
+				}
+			}
+			rect=absRect.makeRelative();
 			long id=PhotoStorage.createPhotoTag(photo.id, self.id, user!=null ? user.id : 0, name, user!=null && user.id==self.id, rect, null);
 			if(user!=null && !(user instanceof ForeignUser) && user.id!=self.id){
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(user.id);

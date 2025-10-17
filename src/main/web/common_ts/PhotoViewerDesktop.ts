@@ -586,6 +586,8 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			};
 			this.tagAreaSelector.onEndDrag=()=>{
 				var area=this.tagAreaSelector.getSelectedArea();
+				if(!area.w || !area.h)
+					return;
 				this.tagFriendListPopup.style.left=(this.tagsWrap.offsetLeft+area.x+area.w)+"px";
 				this.tagFriendListPopup.style.top=(this.tagsWrap.offsetTop+area.y)+"px";
 				this.tagFriendListPopup.showAnimated();
