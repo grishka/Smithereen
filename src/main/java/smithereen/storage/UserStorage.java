@@ -1551,6 +1551,24 @@ public class UserStorage{
 	public static void deleteForeignUser(ForeignUser user) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_following", "num_following-1")
+					.where("id IN (SELECT follower_id FROM followings WHERE followee_id=?)", user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_followers", "num_followers-1")
+					.where("id IN (SELECT followee_id FROM followings WHERE follower_id=?)", user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_friends", "num_friends-1")
+					.where("id IN (SELECT followee_id FROM followings WHERE follower_id=? AND mutual=1)", user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
 					.deleteFrom("users")
 					.where("id=?", user.id)
 					.executeNoResult();
@@ -1573,6 +1591,24 @@ public class UserStorage{
 			new SQLQueryBuilder(conn)
 					.deleteFrom("media_file_refs")
 					.where("owner_user_id=?", account.user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_following", "num_following-1")
+					.where("id IN (SELECT follower_id FROM followings WHERE followee_id=?)", account.user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_followers", "num_followers-1")
+					.where("id IN (SELECT followee_id FROM followings WHERE follower_id=?)", account.user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_friends", "num_friends-1")
+					.where("id IN (SELECT followee_id FROM followings WHERE follower_id=? AND mutual=1)", account.user.id)
 					.executeNoResult();
 
 			new SQLQueryBuilder(conn)
