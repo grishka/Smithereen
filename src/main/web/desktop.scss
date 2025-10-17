@@ -119,6 +119,7 @@ small{
 			position: absolute;
 			left: 0;
 			top: 0;
+			max-width: 100%;
 		}
 	}
 	a.nav:hover, a.nav:visited:hover{
@@ -159,7 +160,6 @@ small{
 }
 
 #headerNav{
-	flex-grow: 1;
 	flex-shrink: 0;
 	display: flex;
 	justify-content: flex-end;
@@ -167,6 +167,7 @@ small{
 
 #headerLeftNavWrap{
 	position: relative;
+	flex-grow: 1;
 }
 
 .hasJS #qsearchWrap{
