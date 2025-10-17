@@ -447,6 +447,11 @@ public class UserStorage{
 							.valueExpr("num_followers", "num_followers+1")
 							.where("id=?", targetUserID)
 							.executeNoResult();
+					new SQLQueryBuilder(conn)
+							.update("users")
+							.valueExpr("num_following", "num_following+1")
+							.where("id=?", selfUserID)
+							.executeNoResult();
 					cache.remove(targetUserID);
 				}
 				UserNotifications res=NotificationsStorage.getNotificationsFromCache(targetUserID);
