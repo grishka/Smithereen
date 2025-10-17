@@ -722,8 +722,9 @@ public class GroupsController{
 		try{
 			Group.AdminLevel oldLevel=getMemberAdminLevel(group, user);
 			GroupStorage.addOrUpdateGroupAdmin(group.id, user.id, title, level);
-			if(oldLevel!=level)
+			if(level!=null && oldLevel!=level)
 				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, self.id, Map.of("user", user.id, "old", oldLevel.toString(), "new", level.toString()));
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -734,6 +735,7 @@ public class GroupsController{
 			Group.AdminLevel oldLevel=getMemberAdminLevel(group, user);
 			GroupStorage.removeGroupAdmin(group.id, user.id);
 			ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, self.id, Map.of("user", user.id, "old", oldLevel.toString(), "new", Group.AdminLevel.REGULAR.toString()));
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -742,6 +744,7 @@ public class GroupsController{
 	public void setAdminOrder(Group group, User user, int order){
 		try{
 			GroupStorage.setGroupAdminOrder(group.id, user.id, order);
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
