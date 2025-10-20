@@ -2,6 +2,7 @@ package smithereen.api;
 
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -11,7 +12,12 @@ import smithereen.api.methods.GroupsMethods;
 import smithereen.api.methods.ServerMethods;
 import smithereen.api.methods.UsersMethods;
 import smithereen.api.methods.UtilsMethods;
+import smithereen.api.methods.WallMethods;
 import smithereen.api.model.ApiErrorType;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserContentUnavailableException;
+import smithereen.lang.Lang;
 import smithereen.model.apps.ClientAppPermission;
 
 public class ApiDispatcher{
@@ -44,6 +50,9 @@ public class ApiDispatcher{
 
 		registerMethod("server.getInfo", ServerMethods::getInfo, false);
 		registerMethod("server.getRestrictedServers", ServerMethods::getRestrictedServers, false);
+
+		registerMethod("wall.get", WallMethods::get, false);
+		registerMethod("wall.getById", WallMethods::getById, false);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){
@@ -85,7 +94,19 @@ public class ApiDispatcher{
 			if(!methodRecord.requirePermissions.isEmpty() && !actx.token.permissions().containsAll(methodRecord.requirePermissions) && !actx.token.permissions().contains(ClientAppPermission.PASSWORD_GRANT_USED)){
 				throw actx.error(ApiErrorType.NO_PERMISSION, "scope "+methodRecord.requirePermissions.stream().map(ClientAppPermission::getScopeValue).collect(Collectors.joining(", "))+" is required");
 			}
-			return methodRecord.impl.call(ctx, actx);
+			try{
+				return methodRecord.impl.call(ctx, actx);
+			}catch(UserActionNotAllowedException x){
+				String msg=x.getMessage();
+				if(msg==null){
+					if(x instanceof UserContentUnavailableException)
+						msg="err_access_user_content";
+				}
+				throw actx.error(ApiErrorType.ACCESS_DENIED, msg==null ? null : Lang.get(Locale.US).get(msg));
+			}catch(ObjectNotFoundException x){
+				String msg=x.getMessage();
+				throw actx.error(ApiErrorType.NOT_FOUND, msg==null ? null : Lang.get(Locale.US).get(msg));
+			}
 		}
 		throw actx.error(ApiErrorType.UNKNOWN_METHOD);
 	}

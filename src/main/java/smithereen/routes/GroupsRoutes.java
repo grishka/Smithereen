@@ -31,6 +31,7 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.controllers.WallController;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
@@ -281,7 +282,7 @@ public class GroupsRoutes{
 			// Wall posts
 			if(group.wallState!=GroupFeatureState.DISABLED){
 				int offset=offset(req);
-				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, false, offset, 20));
+				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, WallController.WallMode.ALL, offset, 20));
 				wallPostsCount=wall.total;
 				ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 				CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;

@@ -2,7 +2,7 @@ package smithereen.model.attachments;
 
 import smithereen.util.TranslatableEnum;
 
-public abstract class Attachment{
+public abstract sealed class Attachment permits AudioAttachment, PhotoAttachment, VideoAttachment{
 	public String description;
 	public abstract Type getType();
 

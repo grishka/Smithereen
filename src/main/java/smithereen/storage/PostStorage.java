@@ -293,10 +293,14 @@ public class PostStorage{
 		}
 	}
 
-	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int count, int[] total, boolean ownOnly, Set<Post.Privacy> allowedPrivacy) throws SQLException{
+	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int count, int[] total, WallController.WallMode mode, Set<Post.Privacy> allowedPrivacy) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt;
-			String condition=ownOnly ? " AND owner_user_id=author_id" : "";
+			String condition=switch(mode){
+				case OWNER -> " AND owner_user_id=author_id";
+				case ALL -> "";
+				case OTHERS -> " AND owner_user_id<>author_id";
+			};
 			String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
 			if(allowedPrivacy.size()<Post.Privacy.values().length){
 				condition+=" AND privacy IN ("+allowedPrivacy.stream().map(p->String.valueOf(p.ordinal())).collect(Collectors.joining(", "))+")";
@@ -817,13 +821,20 @@ public class PostStorage{
 				}
 			}
 
-			new SQLQueryBuilder(conn)
+			String userRepostedColumn=userID==0 ? "" : (", MAX(owner_user_id="+userID+")");
+			try(ResultSet res=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
-					.selectExpr("repost_of, COUNT(*)")
+					.selectExpr("repost_of, COUNT(*)"+userRepostedColumn)
 					.whereIn("repost_of", postIDs)
 					.groupBy("repost_of")
-					.executeAsStream(res->new Pair<>(res.getInt(1), res.getInt(2)))
-					.forEach(count->result.get(count.first()).repostCount=count.second());
+					.execute()){
+				while(res.next()){
+					UserInteractions interactions=result.get(res.getInt(1));
+					interactions.repostCount=res.getInt(2);
+					if(userID>0)
+						interactions.isReposted=res.getBoolean(3);
+				}
+			}
 		}
 
 		return result;
@@ -1452,17 +1463,15 @@ public class PostStorage{
 				.executeNoResult();
 	}
 
-	public static List<Post> getPinnedPosts(int ownerID) throws SQLException{
-		List<Post> posts=new SQLQueryBuilder()
+	public static List<Integer> getPinnedPostIDs(int ownerID) throws SQLException{
+		return new SQLQueryBuilder()
 				.selectFrom("wall_pinned_posts")
-				.selectExpr("wall_posts.*")
-				.join("JOIN wall_posts ON wall_pinned_posts.post_id=wall_posts.id")
-				.where("wall_pinned_posts.owner_user_id=?", ownerID)
-				.orderBy("wall_pinned_posts.display_order DESC")
-				.executeAsStream(Post::fromResultSet)
+				.columns("post_id")
+				.where("owner_user_id=?", ownerID)
+				.orderBy("display_order DESC")
+				.executeAndGetIntStream()
+				.boxed()
 				.toList();
-		postprocessPosts(posts);
-		return posts;
 	}
 
 	public static boolean isPostPinned(int id) throws SQLException{

@@ -1015,6 +1015,17 @@ public class GroupStorage{
 				.executeAndGetInt()==1;
 	}
 
+	public static Set<Integer> getBlockingGroups(int selfID, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_group_user")
+				.columns("owner_id")
+				.whereIn("owner_id", ids)
+				.andWhere("user_id=?", selfID)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
 	public static void blockUser(int selfID, int targetID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			new SQLQueryBuilder(conn)

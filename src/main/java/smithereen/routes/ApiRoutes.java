@@ -401,7 +401,7 @@ public class ApiRoutes{
 					throw new ApiErrorException(new ApiError(ApiErrorType.USER_AUTH_FAILED, "invalid access token", params));
 				}
 			}
-			ApiCallContext actx=new ApiCallContext(accessToken, self, params, req, versionMajor, versionMinor);
+			ApiCallContext actx=new ApiCallContext(accessToken, self, params, req, versionMajor, versionMinor, self==null ? null : ctx.getUsersController().getUserPermissions(self));
 			try{
 				if(self!=null)
 					FloodControl.API_REQUESTS.incrementOrThrow(tokenID);

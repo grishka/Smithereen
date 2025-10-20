@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -804,6 +805,17 @@ public class GroupsController{
 			GroupStorage.unblockUser(group.id, user.id);
 			if(user instanceof ForeignUser fu)
 				context.getActivityPubWorker().sendUndoBlockActivity(group, fu);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Set<Integer> getBlockingGroups(User self, Set<Integer> groupIDs){
+		// TODO cache
+		if(groupIDs.isEmpty())
+			return Set.of();
+		try{
+			return GroupStorage.getBlockingGroups(self.id, groupIDs);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

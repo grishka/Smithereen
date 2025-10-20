@@ -29,6 +29,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.controllers.WallController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -732,7 +733,7 @@ public class PostRoutes{
 			ctx.getPrivacyController().enforceUserAccessToGroupContent(self!=null ? self.user : null, group);
 
 		int offset=offset(req);
-		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, owner, ownOnly, offset, 20));
+		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, owner, ownOnly ? WallController.WallMode.OWNER : WallController.WallMode.ALL, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);

@@ -136,6 +136,7 @@ import smithereen.activitypub.objects.activities.TopicRenameRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.controllers.WallController;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.RemoteObjectFetchException;
 import smithereen.lang.Lang;
@@ -468,7 +469,7 @@ public class ActivityPubRoutes{
 		int minID=Math.max(0, _minID);
 		int maxID=Math.max(0, _maxID);
 		int[] _total={0};
-		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, 25, _total, true, EnumSet.of(Post.Privacy.PUBLIC));
+		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, 25, _total, WallController.WallMode.OWNER, EnumSet.of(Post.Privacy.PUBLIC));
 		int total=_total[0];
 		CollectionPage page=new CollectionPage(true);
 		page.totalItems=total;

@@ -17,19 +17,25 @@ import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiGroup;
 import smithereen.api.model.ApiUser;
+import smithereen.api.model.ApiWallPost;
 import smithereen.controllers.FriendsController;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.Post;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.UserInteractions;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.model.attachments.Attachment;
+import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.util.XTEA;
 
 class ApiUtils{
@@ -374,5 +380,32 @@ class ApiUtils{
 		}
 
 		return result;
+	}
+
+	public static List<ApiWallPost> getPosts(List<PostViewModel> posts, ApplicationContext ctx, ApiCallContext actx){
+		User self=actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
+		int repostDepth=actx.optParamIntPositive("repost_history_depth", 2);
+		ctx.getWallController().populateReposts(self, posts, repostDepth);
+
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(posts, self);
+		Map<Integer, List<Integer>> pinnedIDs=new HashMap<>();
+		Set<Long> needPhotos=new HashSet<>();
+		for(PostViewModel p:posts){
+			if(p.post.ownerID<0 || pinnedIDs.containsKey(p.post.ownerID))
+				continue;
+			PostViewModel post=p;
+			do{
+				pinnedIDs.put(post.post.ownerID, ctx.getWallController().getPinnedPostIDs(post.post.ownerID));
+				List<Attachment> attachments=post.post.getProcessedAttachments();
+				for(Attachment att:attachments){
+					if(att instanceof PhotoAttachment pa && pa.photoID!=0){
+						needPhotos.add(pa.photoID);
+					}
+				}
+				post=post.repost==null ? null : post.repost.post();
+			}while(post!=null);
+		}
+		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+		return posts.stream().map(p->new ApiWallPost(p, actx, interactions, pinnedIDs, photos)).toList();
 	}
 }

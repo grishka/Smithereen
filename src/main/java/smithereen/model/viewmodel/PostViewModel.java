@@ -31,6 +31,13 @@ public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 		return post.getReplyKeyForReplies();
 	}
 
+	public void collectRepostIDs(Collection<Integer> ids){
+		if(repost!=null){
+			ids.add(repost.post.post.id);
+			repost.post.collectRepostIDs(ids);
+		}
+	}
+
 	public static PaginatedList<PostViewModel> wrap(PaginatedList<Post> list){
 		return new PaginatedList<>(list.list.stream().map(PostViewModel::new).collect(Collectors.toCollection(ArrayList::new)), list.total, list.offset, list.perPage);
 	}

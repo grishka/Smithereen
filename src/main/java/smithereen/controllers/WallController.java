@@ -29,6 +29,7 @@ import static smithereen.Utils.ensureUserNotBlocked;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.LruCache;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
@@ -75,6 +76,8 @@ import spark.utils.StringUtils;
 public class WallController{
 	private static final Logger LOG=LoggerFactory.getLogger(WallController.class);
 	public static final int MAX_PINNED_POSTS=5;
+
+	private final LruCache<Integer, List<Integer>> pinnedPostIDsCache=new LruCache<>(1000);
 
 	private final ApplicationContext context;
 
@@ -525,12 +528,12 @@ public class WallController{
 	/**
 	 * Get posts from a wall.
 	 * @param owner Wall owner, either a user or a group
-	 * @param ownOnly Whether to return only user's own posts or include other's posts
+	 * @param mode Whether to return only user's own posts or include other's posts
 	 * @param offset Pagination offset
 	 * @param count Maximum number of posts to return
 	 * @return A reverse-chronologically sorted paginated list of wall posts
 	 */
-	public PaginatedList<Post> getWallPosts(@Nullable User self, @NotNull Actor owner, boolean ownOnly, int offset, int count){
+	public PaginatedList<Post> getWallPosts(@Nullable User self, @NotNull Actor owner, WallMode mode, int offset, int count){
 		try{
 			int[] postCount={0};
 			Set<Post.Privacy> allowedPrivacy;
@@ -548,7 +551,7 @@ public class WallController{
 			}else{
 				allowedPrivacy=EnumSet.of(Post.Privacy.PUBLIC);
 			}
-			List<Post> wall=PostStorage.getWallPosts(owner.getLocalID(), owner instanceof Group, 0, 0, offset, count, postCount, ownOnly, allowedPrivacy);
+			List<Post> wall=PostStorage.getWallPosts(owner.getLocalID(), owner instanceof Group, 0, 0, offset, count, postCount, mode, allowedPrivacy);
 			return new PaginatedList<>(wall, postCount[0], offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -616,7 +619,13 @@ public class WallController{
 	 */
 	public Map<Integer, UserInteractions> getUserInteractions(@NotNull List<PostViewModel> posts, @Nullable User self){
 		try{
-			Set<Integer> postIDs=posts.stream().map(p->p.post.getIDForInteractions()).collect(Collectors.toSet());
+			HashSet<Integer> postIDs=new HashSet<>();
+			for(PostViewModel p:posts){
+				postIDs.add(p.post.getIDForInteractions());
+				if(p.repost!=null && !p.post.isMastodonStyleRepost()){
+					p.collectRepostIDs(postIDs);
+				}
+			}
 			Set<Integer> ownerUserIDs=new HashSet<>(), ownerGroupIDs=new HashSet<>();
 			for(PostViewModel p:posts){
 				p.getAllReplyIDs(postIDs);
@@ -635,6 +644,14 @@ public class WallController{
 					.entrySet()
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
+
+			Set<Integer> blockingUsers, blockingGroups;
+			if(self!=null){
+				blockingUsers=context.getUsersController().getBlockingUsers(self, ownerUserIDs);
+				blockingGroups=context.getGroupsController().getBlockingGroups(self, ownerGroupIDs);
+			}else{
+				blockingGroups=blockingUsers=Set.of();
+			}
 
 			if(!ownerGroupIDs.isEmpty()){
 				canComment=new HashMap<>(canComment);
@@ -666,6 +683,10 @@ public class WallController{
 				}else{
 					ownerID=post.post.ownerID;
 				}
+
+				if(self==null)
+					continue;
+
 				// Can't comment on posts or in threads that don't exist
 				if(post.post.isMastodonStyleRepost() && post.repost!=null && (post.repost.post()==null || (post.repost.post().post.getReplyLevel()>0 && post.repost.topLevel()==null)))
 					ui.canComment=false;
@@ -682,6 +703,11 @@ public class WallController{
 						ui.canRepost=false; // Comment on a wall-to-wall post
 					}
 				}
+
+				if(post.post.ownerID>0)
+					ui.canLike=!blockingUsers.contains(post.post.ownerID);
+				else
+					ui.canLike=!blockingGroups.contains(-post.post.ownerID);
 			}
 			return interactions;
 		}catch(SQLException x){
@@ -1027,24 +1053,39 @@ public class WallController{
 
 	// region Pinned posts
 
-	public List<Post> getPinnedPosts(User self, User owner){
+	public List<Integer> getPinnedPostIDs(User owner){
+		return getPinnedPostIDs(owner.id);
+	}
+
+	public List<Integer> getPinnedPostIDs(int ownerID){
+		List<Integer> ids=pinnedPostIDsCache.get(ownerID);
+		if(ids!=null)
+			return ids;
 		try{
-			List<Post> posts=PostStorage.getPinnedPosts(owner.id);
-			boolean hasPrivate=false;
-			for(Post p:posts){
-				if(p.privacy!=Post.Privacy.PUBLIC){
-					hasPrivate=true;
-					break;
-				}
-			}
-			if(hasPrivate){
-				posts=new ArrayList<>(posts);
-				context.getPrivacyController().filterPosts(self, posts);
-			}
-			return posts;
+			ids=PostStorage.getPinnedPostIDs(ownerID);
+			pinnedPostIDsCache.put(ownerID, ids);
+			return ids;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public List<Post> getPinnedPosts(User self, User owner){
+		List<Integer> ids=getPinnedPostIDs(owner);
+		Map<Integer, Post> postsByID=getPosts(ids);
+		List<Post> posts=ids.stream().map(postsByID::get).filter(Objects::nonNull).toList();
+		boolean hasPrivate=false;
+		for(Post p:posts){
+			if(p.privacy!=Post.Privacy.PUBLIC){
+				hasPrivate=true;
+				break;
+			}
+		}
+		if(hasPrivate){
+			posts=new ArrayList<>(posts);
+			context.getPrivacyController().filterPosts(self, posts);
+		}
+		return posts;
 	}
 
 	public boolean isPostPinned(Post post){
@@ -1059,12 +1100,13 @@ public class WallController{
 		try{
 			User author=context.getUsersController().getUserOrThrow(post.authorID);
 			if(!keepPrevious && !(author instanceof ForeignUser)){
-				List<Post> currentPosts=PostStorage.getPinnedPosts(post.authorID);
+				List<Post> currentPosts=getPinnedPosts(author, author);
 				for(Post oldPost:currentPosts){
 					context.getActivityPubWorker().sendUnpinPostActivity(author, oldPost);
 				}
 			}
 			PostStorage.pinPost(post.authorID, post.id, keepPrevious);
+			pinnedPostIDsCache.remove(author.id);
 			if(!(author instanceof ForeignUser)){
 				context.getActivityPubWorker().sendPinPostActivity(author, post);
 			}
@@ -1077,6 +1119,7 @@ public class WallController{
 		try{
 			PostStorage.unpinPost(post.authorID, post.id);
 			User author=context.getUsersController().getUserOrThrow(post.authorID);
+			pinnedPostIDsCache.remove(author.id);
 			if(!(author instanceof ForeignUser)){
 				context.getActivityPubWorker().sendUnpinPostActivity(author, post);
 			}
@@ -1094,4 +1137,10 @@ public class WallController{
 	}
 
 	// endregion
+
+	public enum WallMode{
+		ALL,
+		OWNER,
+		OTHERS
+	}
 }

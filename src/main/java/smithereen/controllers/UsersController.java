@@ -346,6 +346,7 @@ public class UsersController{
 	}
 
 	public Set<Integer> getBlockingUsers(User self, Collection<Integer> ids){
+		// TODO cache
 		if(ids.isEmpty())
 			return Set.of();
 		try{
@@ -1080,6 +1081,14 @@ public class UsersController{
 		try{
 			long ms=unit.toMillis(time);
 			return UserStorage.getActiveLocalUserCount(ms);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public UserPermissions getUserPermissions(Account account){
+		try{
+			return SessionStorage.getUserPermissions(account);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

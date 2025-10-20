@@ -181,7 +181,7 @@ public class UserDataExportWorker{
 
 				// Wall
 				writeLocalObjectRemoteLinkCollections(offset->{
-					PaginatedList<Post> posts=context.getWallController().getWallPosts(user, user, false, offset, 100);
+					PaginatedList<Post> posts=context.getWallController().getWallPosts(user, user, WallController.WallMode.ALL, offset, 100);
 					return new PaginatedList<>(posts, posts.list.stream().map(p->NoteOrQuestion.fromNativePost(p, context)).toList());
 				}, filesToInclude, zos, user.getWallURL(), "wall", false);
 

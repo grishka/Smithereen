@@ -2,7 +2,7 @@ package smithereen.model.attachments;
 
 import smithereen.model.SizedImage;
 
-public class PhotoAttachment extends Attachment implements SizedAttachment{
+public non-sealed class PhotoAttachment extends Attachment implements SizedAttachment{
 	public SizedImage image;
 	public String blurHash;
 	public long photoID;

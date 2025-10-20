@@ -76,6 +76,12 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 					continue;
 				VideoAttachment att=new VideoAttachment();
 				att.url=o.url;
+				att.description=o.name;
+				if(o instanceof Document doc){
+					att.width=doc.width;
+					att.height=doc.height;
+					att.blurHash=doc.blurHash;
+				}
 				result.add(att);
 			}else if(o instanceof Audio || mediaType.startsWith("audio/")){
 				if(o.url==null)

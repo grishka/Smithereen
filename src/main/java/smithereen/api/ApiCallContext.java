@@ -12,6 +12,7 @@ import smithereen.api.model.ApiErrorType;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.SizedImage;
+import smithereen.model.UserPermissions;
 import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.ClientAppPermission;
 import spark.Request;
@@ -25,14 +26,16 @@ public class ApiCallContext{
 	public SizedImage.Format imageFormat;
 	public Lang lang;
 	public int versionMajor, versionMinor;
+	public UserPermissions permissions;
 
-	public ApiCallContext(AppAccessToken token, Account self, Map<String, String> params, Request httpRequest, int versionMajor, int versionMinor){
+	public ApiCallContext(AppAccessToken token, Account self, Map<String, String> params, Request httpRequest, int versionMajor, int versionMinor, UserPermissions permissions){
 		this.token=token;
 		this.self=self;
 		this.params=params;
 		this.httpRequest=httpRequest;
 		this.versionMajor=versionMajor;
 		this.versionMinor=versionMinor;
+		this.permissions=permissions;
 	}
 
 	public ApiErrorException error(ApiErrorType type){
@@ -109,7 +112,23 @@ public class ApiCallContext{
 		return v;
 	}
 
+	public int requireParamIntNonZero(String key){
+		String value=params.get(key);
+		if(StringUtils.isEmpty(value))
+			throw paramError(key+" is undefined");
+		int v=Utils.safeParseInt(value);
+		if(v==0)
+			throw paramError(key+" must be an integer");
+		return v;
+	}
+
 	public int optParamIntPositive(String key){
+		return Math.max(0, Utils.safeParseInt(params.get(key)));
+	}
+
+	public int optParamIntPositive(String key, int def){
+		if(!hasParam(key))
+			return def;
 		return Math.max(0, Utils.safeParseInt(params.get(key)));
 	}
 
