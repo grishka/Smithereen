@@ -115,8 +115,7 @@ public class ApiWallPost{
 				replyToUser=post.parentAuthorID;
 			}
 			List<ApiWallPost> replies=post.repliesObjects.stream().map(reply->new ApiWallPost(reply, actx, interactions, pinnedIDs, photos)).toList();
-			// TODO direct reply count
-			thread=new CommentThread(p.replyCount, 0, replies);
+			thread=new CommentThread(p.replyCount, p.immediateReplyCount, replies);
 		}
 	}
 

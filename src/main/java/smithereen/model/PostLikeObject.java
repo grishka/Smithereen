@@ -28,7 +28,7 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 	public String contentWarning;
 	public Instant updatedAt;
 	public Set<Integer> mentionedUserIDs=Set.of();
-	public int replyCount;
+	public int replyCount, immediateReplyCount;
 	public FederationState federationState=FederationState.NONE;
 	public URI activityPubURL;
 	public URI activityPubReplies;
@@ -40,6 +40,7 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 		if(res.wasNull())
 			ownerID=-res.getInt("owner_group_id");
 		replyCount=res.getInt("reply_count");
+		immediateReplyCount=res.getInt("immediate_reply_count");
 
 		authorID=res.getInt("author_id");
 		if(res.wasNull()){
