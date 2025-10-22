@@ -72,6 +72,11 @@ public class CommentStorage{
 						.valueExpr("reply_count", "reply_count+1")
 						.whereIn("id", replyKey)
 						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("comments")
+						.value("immediate_reply_count", "immediate_reply_count+1")
+						.where("id=?", replyKey.getLast())
+						.executeNoResult();
 			}
 			CommentsNewsfeedObjectType mappedType=parentID.type().newsfeedType();
 			if(mappedType!=null){
@@ -315,6 +320,11 @@ public class CommentStorage{
 						.whereIn("id", comment.replyKey)
 						.andWhere("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
 						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("comments")
+						.valueExpr("immediate_reply_count", "GREATEST(1, immediate_reply_count)-1")
+						.where("id=? AND parent_object_type=? AND parent_object_id=?", comment.replyKey.getLast(), comment.parentObjectID.type(), comment.parentObjectID.id())
+						.executeNoResult();
 			}
 
 			if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
@@ -503,6 +513,11 @@ public class CommentStorage{
 							.update("comments")
 							.valueExpr("reply_count", "reply_count+1")
 							.whereIn("id", comment.replyKey)
+							.executeNoResult();
+					new SQLQueryBuilder(conn)
+							.update("comments")
+							.valueExpr("immediate_reply_count", "immediate_reply_count+1")
+							.where("id=?", comment.replyKey.getLast())
 							.executeNoResult();
 				}
 				if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){

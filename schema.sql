@@ -318,6 +318,7 @@ CREATE TABLE `comments` (
   `reply_key` varbinary(2048) DEFAULT NULL,
   `mentions` varbinary(1024) DEFAULT NULL,
   `reply_count` int unsigned NOT NULL DEFAULT '0',
+  `immediate_reply_count` int unsigned NOT NULL DEFAULT '0',
   `ap_replies` varchar(300) DEFAULT NULL,
   `federation_state` tinyint unsigned NOT NULL DEFAULT '0',
   `source` text,
@@ -1256,6 +1257,7 @@ CREATE TABLE `wall_posts` (
   `reply_key` varbinary(1024) DEFAULT NULL,
   `mentions` varbinary(1024) DEFAULT NULL,
   `reply_count` int unsigned NOT NULL DEFAULT '0',
+  `immediate_reply_count` int unsigned NOT NULL DEFAULT '0',
   `ap_replies` varchar(300) DEFAULT NULL,
   `poll_id` int unsigned DEFAULT NULL,
   `federation_state` tinyint unsigned NOT NULL DEFAULT '0',
@@ -1299,4 +1301,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-09-27  4:05:28
+-- Dump completed on 2025-10-21 21:25:38

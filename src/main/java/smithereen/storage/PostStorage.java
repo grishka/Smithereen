@@ -93,6 +93,11 @@ public class PostStorage{
 						.valueExpr("reply_count", "reply_count+1")
 						.whereIn("id", replyKey)
 						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("wall_posts")
+						.valueExpr("immediate_reply_count", "immediate_reply_count+1")
+						.where("id=?", replyKey.getLast())
+						.executeNoResult();
 
 				SQLQueryBuilder.prepareStatement(conn, "INSERT INTO newsfeed_comments (user_id, object_type, object_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE object_id=object_id", userID, 0, replyKey.getFirst()).execute();
 				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(replyKey.getFirst()));
@@ -280,6 +285,11 @@ public class PostStorage{
 								.update("wall_posts")
 								.valueExpr("reply_count", "reply_count+1")
 								.whereIn("id", post.replyKey)
+								.executeNoResult();
+						new SQLQueryBuilder(conn)
+								.update("wall_posts")
+								.valueExpr("immediate_reply_count", "immediate_reply_count+1")
+								.where("id=?", post.replyKey.getLast())
 								.executeNoResult();
 						BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.getFirst()));
 					}
@@ -591,6 +601,11 @@ public class PostStorage{
 
 			if(post.getReplyLevel()>0){
 				conn.createStatement().execute("UPDATE wall_posts SET reply_count=GREATEST(1, reply_count)-1 WHERE id IN ("+post.replyKey.stream().map(String::valueOf).collect(Collectors.joining(","))+")");
+				new SQLQueryBuilder(conn)
+						.update("wall_posts")
+						.valueExpr("immediate_reply_count", "GREATEST(1, immediate_reply_count)-1")
+						.where("id=?", post.replyKey.getLast())
+						.executeNoResult();
 				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.get(0)));
 			}else{
 				BackgroundTaskRunner.getInstance().submit(new DeleteCommentBookmarksRunnable(id));
