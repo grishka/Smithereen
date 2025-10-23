@@ -54,6 +54,7 @@ public class ApiDispatcher{
 		registerMethod("wall.get", WallMethods::get, false);
 		registerMethod("wall.getById", WallMethods::getById, false);
 		registerMethod("wall.getComments", WallMethods::getComments, false);
+		registerMethod("wall.getReposts", WallMethods::getReposts, false);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

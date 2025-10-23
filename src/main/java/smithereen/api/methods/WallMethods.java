@@ -108,8 +108,8 @@ public class WallMethods{
 			case null, default -> actx.self==null ? CommentViewType.FLAT : actx.self.prefs.commentViewType;
 		};
 		int offset=actx.getOffset();
-		int count=actx.getCount(10, 100);
-		int secondaryCount=Math.min(100, actx.optParamIntPositive("secondary_count", 10));
+		int count=actx.getCount(20, 100);
+		int secondaryCount=Math.min(100, actx.optParamIntPositive("secondary_count", 20));
 		int commentID=actx.optParamIntPositive("comment_id");
 		boolean reversed="desc".equals(actx.optParamString("sort"));
 		boolean needLikes=actx.booleanParam("need_likes");
@@ -140,5 +140,22 @@ public class WallMethods{
 			return new CommentsResponse(comments.total, apiComments, viewType.name().toLowerCase(), ApiUtils.getUsers(needUsers, ctx, actx), ApiUtils.getGroups(needGroups, ctx, actx));
 		}
 		return new CommentsResponse(comments.total, apiComments, viewType.name().toLowerCase(), null, null);
+	}
+
+	public static Object getReposts(ApplicationContext ctx, ApiCallContext actx){
+		int postID=actx.requireParamIntPositive("post_id");
+		User self=actx.self!=null && actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
+		Post post=ctx.getWallController().getPostOrThrow(postID);
+		ctx.getPrivacyController().enforcePostPrivacy(self, post);
+
+		PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getWallController().getPostReposts(post, actx.getOffset(), actx.getCount(20, 100)));
+		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true));
+		if(actx.booleanParam("extended")){
+			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+			PostViewModel.collectActorIDs(posts.list, needUsers, needGroups);
+			res.profiles=ApiUtils.getUsers(needUsers, ctx, actx);
+			res.groups=ApiUtils.getGroups(needGroups, ctx, actx);
+		}
+		return res;
 	}
 }
