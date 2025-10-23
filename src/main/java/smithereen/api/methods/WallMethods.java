@@ -158,4 +158,40 @@ public class WallMethods{
 		}
 		return res;
 	}
+	
+	public static Object pin(ApplicationContext ctx, ApiCallContext actx){
+		Post post=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("post_id"));
+		if(post.ownerID!=actx.self.user.id)
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "can only pin posts on own wall");
+		if(post.ownerID!=post.authorID)
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "can only pin own posts");
+		if(post.getReplyLevel()>0)
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "can't pin comments");
+
+		ctx.getWallController().pinPost(post, false);
+
+		return true;
+	}
+
+	public static Object unpin(ApplicationContext ctx, ApiCallContext actx){
+		Post post=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("post_id"));
+		if(post.ownerID!=actx.self.user.id)
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "can only pin posts on own wall");
+		if(post.ownerID!=post.authorID)
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "can only pin own posts");
+		if(post.getReplyLevel()>0)
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "can't pin comments");
+
+		ctx.getWallController().unpinPost(post);
+
+		return true;
+	}
+
+	public static Object delete(ApplicationContext ctx, ApiCallContext actx){
+		Post post=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("post_id"));
+		if(!actx.permissions.canDeletePost(post))
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "no access to delete this post");
+		ctx.getWallController().deletePost(actx.self.user, post);
+		return true;
+	}
 }
