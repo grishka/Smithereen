@@ -22,7 +22,6 @@ import smithereen.controllers.FriendsController;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
-import smithereen.model.Post;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
@@ -382,12 +381,19 @@ class ApiUtils{
 		return result;
 	}
 
-	public static List<ApiWallPost> getPosts(List<PostViewModel> posts, ApplicationContext ctx, ApiCallContext actx){
+	public static List<ApiWallPost> getPosts(List<PostViewModel> posts, ApplicationContext ctx, ApiCallContext actx, boolean needLikes, boolean needReposts){
 		User self=actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
-		int repostDepth=actx.optParamIntPositive("repost_history_depth", 2);
-		ctx.getWallController().populateReposts(self, posts, repostDepth);
+		if(needReposts){
+			int repostDepth=actx.optParamIntPositive("repost_history_depth", 2);
+			ctx.getWallController().populateReposts(self, posts, repostDepth);
+		}
 
-		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(posts, self);
+		Map<Integer, UserInteractions> interactions;
+		if(needLikes)
+			interactions=ctx.getWallController().getUserInteractions(posts, self);
+		else
+			interactions=Map.of();
+
 		Map<Integer, List<Integer>> pinnedIDs=new HashMap<>();
 		Set<Long> needPhotos=new HashSet<>();
 		for(PostViewModel p:posts){

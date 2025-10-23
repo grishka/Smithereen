@@ -9,12 +9,14 @@ import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.api.ApiCallContext;
+import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiGroup;
 import smithereen.api.model.ApiPaginatedListWithActors;
 import smithereen.api.model.ApiUser;
 import smithereen.api.model.ApiWallPost;
 import smithereen.controllers.WallController;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -54,7 +56,7 @@ public class WallMethods{
 		int offset=actx.getOffset();
 		int count=actx.getCount(20, 100);
 		PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getWallController().getWallPosts(self, owner, mode, offset, count));
-		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx));
+		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true));
 		if(actx.booleanParam("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(posts.list, needUsers, needGroups);
@@ -84,7 +86,7 @@ public class WallMethods{
 		}
 		ctx.getPrivacyController().filterPostViewModels(self, posts);
 
-		List<ApiWallPost> res=ApiUtils.getPosts(posts, ctx, actx);
+		List<ApiWallPost> res=ApiUtils.getPosts(posts, ctx, actx, true, true);
 		if(actx.booleanParam("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(posts, needUsers, needGroups);
@@ -95,5 +97,48 @@ public class WallMethods{
 		}else{
 			return res;
 		}
+	}
+
+	public static Object getComments(ApplicationContext ctx, ApiCallContext actx){
+		int postID=actx.requireParamIntPositive("post_id");
+		CommentViewType viewType=switch(actx.optParamString("view_type")){
+			case "threaded" -> CommentViewType.THREADED;
+			case "two_level" -> CommentViewType.TWO_LEVEL;
+			case "flat" -> CommentViewType.FLAT;
+			case null, default -> actx.self==null ? CommentViewType.FLAT : actx.self.prefs.commentViewType;
+		};
+		int offset=actx.getOffset();
+		int count=actx.getCount(10, 100);
+		int secondaryCount=Math.min(100, actx.optParamIntPositive("secondary_count", 10));
+		int commentID=actx.optParamIntPositive("comment_id");
+		boolean reversed="desc".equals(actx.optParamString("sort"));
+		boolean needLikes=actx.booleanParam("need_likes");
+
+		User self=actx.self!=null && actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
+
+		Post post=ctx.getWallController().getPostOrThrow(postID);
+		ctx.getPrivacyController().enforcePostPrivacy(self, post);
+		Post threadParent;
+		if(commentID>0){
+			threadParent=ctx.getWallController().getPostOrThrow(commentID, true);
+			if(threadParent.getReplyLevel()==0 || threadParent.replyKey.getFirst()!=postID)
+				throw actx.error(ApiErrorType.NOT_FOUND);
+			if(viewType==CommentViewType.TWO_LEVEL)
+				viewType=CommentViewType.FLAT;
+		}else{
+			threadParent=post;
+		}
+
+		PaginatedList<PostViewModel> comments=ctx.getWallController().getReplies(self, threadParent.getReplyKeyForReplies(), offset, count, secondaryCount, viewType, reversed);
+
+		record CommentsResponse(int count, List<ApiWallPost> items, String viewType, List<ApiUser> profiles, List<ApiGroup> groups){}
+
+		List<ApiWallPost> apiComments=ApiUtils.getPosts(comments.list, ctx, actx, needLikes, false);
+		if(actx.booleanParam("extended")){
+			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+			PostViewModel.collectActorIDs(comments.list, needUsers, needGroups);
+			return new CommentsResponse(comments.total, apiComments, viewType.name().toLowerCase(), ApiUtils.getUsers(needUsers, ctx, actx), ApiUtils.getGroups(needGroups, ctx, actx));
+		}
+		return new CommentsResponse(comments.total, apiComments, viewType.name().toLowerCase(), null, null);
 	}
 }
