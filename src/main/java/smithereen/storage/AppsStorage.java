@@ -72,6 +72,7 @@ public class AppsStorage{
 				app.id=existingAppID;
 				builder.executeNoResult();
 			}
+			app.lastUpdated=Instant.now();
 		}catch(SQLIntegrityConstraintViolationException x){
 			// Username conflict
 			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
