@@ -181,6 +181,10 @@ public class NewsfeedRoutes{
 			onlines=Map.of();
 		}
 		model.with("onlines", onlines);
+
+		HashSet<Long> needApps=new HashSet<>();
+		PostViewModel.collectAppIDs(feedPosts, needApps);
+		model.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 	}
 
 	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){

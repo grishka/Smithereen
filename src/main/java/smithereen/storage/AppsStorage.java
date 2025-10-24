@@ -10,8 +10,12 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
@@ -96,6 +100,14 @@ public class AppsStorage{
 				.selectFrom("api_applications")
 				.where("id=?", id)
 				.executeAndGetSingleObject(ClientApp::fromResultSet);
+	}
+
+	public static Map<Long, ClientApp> getAppsByIDs(Collection<Long> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("api_applications")
+				.whereIn("id", ids)
+				.executeAsStream(ClientApp::fromResultSet)
+				.collect(Collectors.toMap(a->a.id, Function.identity()));
 	}
 
 	public static long getAppIdByActivityPubID(URI apID) throws SQLException{

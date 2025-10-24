@@ -67,5 +67,14 @@ public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 		}
 	}
 
+	public static void collectAppIDs(Collection<PostViewModel> posts, Set<Long> appIDs){
+		for(PostViewModel pvm:posts){
+			if(pvm.post.appID!=0)
+				appIDs.add(pvm.post.appID);
+			if(pvm.repost!=null)
+				collectAppIDs(Set.of(pvm.repost.post), appIDs);
+		}
+	}
+
 	public record Repost(PostViewModel post, PostViewModel topLevel){}
 }

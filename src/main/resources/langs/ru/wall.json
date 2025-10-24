@@ -82,5 +82,6 @@
   "wall_pin_post": "Закрепить",
   "wall_unpin_post": "Открепить",
   "wall_pinned_post": "запись закреплена",
-  "wall_show_X_more_pinned": "Показать ещё {count, plural, one {# закреплённую запись} few {# закреплённых записи} other {# закреплённых записей}}"
+  "wall_show_X_more_pinned": "Показать ещё {count, plural, one {# закреплённую запись} few {# закреплённых записи} other {# закреплённых записей}}",
+  "post_time_via_app": "<a id=\"post\">{time}</a> через <a id=\"app\">{appName}</a>"
 }

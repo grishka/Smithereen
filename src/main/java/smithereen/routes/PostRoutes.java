@@ -382,6 +382,9 @@ public class PostRoutes{
 			HashSet<Integer> needUsers=new HashSet<>();
 			PostViewModel.collectActorIDs(List.of(postVM), needUsers, null);
 			model.with("users", ctx.getUsersController().getUsers(needUsers));
+			HashSet<Long> needApps=new HashSet<>();
+			PostViewModel.collectAppIDs(List.of(postVM), needApps);
+			model.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 
 			String rid=req.queryParams("rid");
 			String ridSuffix="";
@@ -523,8 +526,10 @@ public class PostRoutes{
 		model.with("postInteractions", interactions);
 
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		HashSet<Long> needApps=new HashSet<>();
 		PostViewModel.collectActorIDs(List.of(post), needUsers, needGroups);
 		PostViewModel.collectActorIDs(replies.list, needUsers, needGroups);
+		PostViewModel.collectAppIDs(List.of(post), needApps);
 
 		model.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, u, UserPrivacySettingKey.WALL_OTHERS_POSTS));
 
@@ -594,6 +599,7 @@ public class PostRoutes{
 
 		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps))
 				.headerBack(owner);
 		return model;
 	}
@@ -720,8 +726,11 @@ public class PostRoutes{
 	public static void preparePostList(ApplicationContext ctx, List<PostViewModel> wall, RenderedTemplateResponse model, Account self){
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		PostViewModel.collectActorIDs(wall, needUsers, needGroups);
+		HashSet<Long> needApps=new HashSet<>();
+		PostViewModel.collectAppIDs(wall, needApps);
 		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps))
 				.with("maxReplyDepth", getMaxReplyDepth(self));
 	}
 

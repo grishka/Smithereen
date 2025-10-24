@@ -9,8 +9,10 @@ import java.security.SecureRandom;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -44,6 +46,7 @@ public class AppsController{
 	private final ApplicationContext context;
 	private final SecureRandom srand=new SecureRandom();
 	private final LruCache<ByteArrayMapKey, AppAccessToken> accessTokenCache=new LruCache<>(5000);
+	private final LruCache<Long, ClientApp> appsCache=new LruCache<>(5000);
 	private HashMap<ByteArrayMapKey, AccessTokenLastUseUpdate> accessTokenPendingAccessUpdates=new HashMap<>();
 	private final Object accessTokenAccessUpdateLock=new Object();
 	private final ScheduledExecutorService asyncUpdater;
@@ -73,16 +76,21 @@ public class AppsController{
 			throw new IllegalArgumentException("App must have an AP ID");
 		try{
 			AppsStorage.putOrUpdateForeignApp(app);
+			appsCache.put(app.id, app);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
 	public ClientApp getAppByID(long id){
+		ClientApp app=appsCache.get(id);
+		if(app!=null)
+			return app;
 		try{
-			ClientApp app=AppsStorage.getAppByID(id);
+			app=AppsStorage.getAppByID(id);
 			if(app==null)
 				throw new ObjectNotFoundException();
+			appsCache.put(app.id, app);
 			return app;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -92,6 +100,32 @@ public class AppsController{
 	public long getAppIdByActivityPubID(URI apID){
 		try{
 			return AppsStorage.getAppIdByActivityPubID(apID);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Long, ClientApp> getAppsByIDs(Collection<Long> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			HashMap<Long, ClientApp> res=new HashMap<>();
+			HashSet<Long> remainingIDs=new HashSet<>();
+			for(long id:ids){
+				ClientApp app=appsCache.get(id);
+				if(app!=null)
+					res.put(app.id, app);
+				else
+					remainingIDs.add(id);
+			}
+
+			if(!remainingIDs.isEmpty()){
+				Map<Long, ClientApp> moreApps=AppsStorage.getAppsByIDs(remainingIDs);
+				moreApps.forEach(appsCache::put);
+				res.putAll(moreApps);
+			}
+
+			return res;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

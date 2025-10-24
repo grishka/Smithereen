@@ -37,6 +37,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Post;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -103,6 +104,7 @@ public class ProfileRoutes{
 		boolean isSelf=self!=null && self.user.id==user.id;
 		int offset=offset(req);
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		HashSet<Long> needApps=new HashSet<>();
 
 		boolean canSeeOthers=ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, user, UserPrivacySettingKey.WALL_OTHERS_POSTS);
 		boolean canPost=canSeeOthers && self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.WALL_POSTING);
@@ -157,9 +159,13 @@ public class ProfileRoutes{
 		model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 
 		PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
-		if(pinnedPosts!=null)
+		PostViewModel.collectAppIDs(wall.list, needApps);
+		if(pinnedPosts!=null){
 			PostViewModel.collectActorIDs(pinnedPosts, needUsers, needGroups);
-		model.with("users", ctx.getUsersController().getUsers(needUsers, true));
+			PostViewModel.collectAppIDs(pinnedPosts, needApps);
+		}
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 
 		PaginatedList<User> friends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM);
 		model.with("friendCount", friends.total).with("friends", friends.list);

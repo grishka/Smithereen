@@ -247,6 +247,7 @@ public class GroupsRoutes{
 			adminLevel=null;
 		}
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		HashSet<Long> needApps=new HashSet<>();
 
 		if(group.banInfo!=null && group.banInfo.message()!=null && adminLevel!=null && adminLevel.isAtLeast(Group.AdminLevel.MODERATOR)){
 			try{
@@ -300,6 +301,7 @@ public class GroupsRoutes{
 						.with("canSeeOthersPosts", true);
 				model.with("postInteractions", interactions);
 				PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
+				PostViewModel.collectAppIDs(wall.list, needApps);
 				model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 			}
 
@@ -340,7 +342,8 @@ public class GroupsRoutes{
 
 		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
 		model.with("users", users)
-				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 
 		model.with("admins", admins.stream().map(a->Map.of("user", users.get(a.userID), "title", a.title==null ? "" : a.title)).toList());
 
