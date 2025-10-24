@@ -58,6 +58,7 @@ public class ApiDispatcher{
 		registerMethod("wall.pin", WallMethods::pin, ClientAppPermission.WALL_WRITE);
 		registerMethod("wall.unpin", WallMethods::unpin, ClientAppPermission.WALL_WRITE);
 		registerMethod("wall.delete", WallMethods::delete, ClientAppPermission.WALL_WRITE);
+		registerMethod("wall.post", WallMethods::post, ClientAppPermission.WALL_WRITE);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

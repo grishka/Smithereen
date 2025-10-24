@@ -1260,7 +1260,7 @@ public class PhotosController{
 		setPhotoToAvatar(owner, photo);
 
 		if(group==null){
-			Post post=context.getWallController().createWallPost(self.user, self.id, self.user, null, "", self.prefs.textFormat, null, List.of("photo:"+photo.getIdString()), null, null, Map.of(), Post.Action.AVATAR_UPDATE);
+			Post post=context.getWallController().createWallPost(self.user, self.user, null, "", self.prefs.textFormat, null, List.of("photo:"+photo.getIdString()), null, null, Map.of(), Post.Action.AVATAR_UPDATE, null, null);
 			photo.metadata.correspondingPostID=post.id;
 			try{
 				PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);

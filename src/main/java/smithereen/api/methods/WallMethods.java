@@ -1,6 +1,12 @@
 package smithereen.api.methods;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -19,11 +25,14 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
+import smithereen.model.Poll;
 import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.viewmodel.PostViewModel;
+import smithereen.text.FormattedTextFormat;
+import spark.utils.StringUtils;
 
 public class WallMethods{
 	public static Object get(ApplicationContext ctx, ApiCallContext actx){
@@ -193,5 +202,78 @@ public class WallMethods{
 			throw actx.error(ApiErrorType.ACCESS_DENIED, "no access to delete this post");
 		ctx.getWallController().deletePost(actx.self.user, post);
 		return true;
+	}
+
+	public static Object post(ApplicationContext ctx, ApiCallContext actx){
+		int ownerID=actx.requireParamIntNonZero("owner_id");
+		String message=actx.optParamString("message");
+		JsonArray attachments=actx.optParamJsonArray("attachments");
+		String cw=actx.optParamString("content_warning");
+		FormattedTextFormat textFormat=switch(actx.optParamString("text_format")){
+			case "markdown" -> FormattedTextFormat.MARKDOWN;
+			case "html" -> FormattedTextFormat.HTML;
+			case "plain" -> FormattedTextFormat.PLAIN;
+			case null -> actx.self.prefs.textFormat;
+			default -> throw actx.paramError("text_format must be one of markdown, html, plain");
+		};
+		String guid=actx.optParamString("guid");
+		if(StringUtils.isNotEmpty(guid)){
+			guid=actx.token.getEncodedID()+"|"+guid;
+		}
+
+		Poll poll=null;
+		List<String> attachmentIDs;
+		Map<String, String> attachmentAltTexts;
+		if(attachments!=null){
+			attachmentIDs=new ArrayList<>();
+			attachmentAltTexts=new HashMap<>();
+			int i=0;
+			for(JsonElement el:attachments){
+				if(!(el instanceof JsonObject obj))
+					throw actx.paramError("attachments["+i+"] is not an object");
+				if(!(obj.get("type") instanceof JsonPrimitive jType && jType.isString()))
+					throw actx.paramError("attachments["+i+"].type is not a string");
+				String type=jType.getAsString();
+				switch(type){
+					case "image" -> {
+						if(!(obj.get("file_id") instanceof JsonPrimitive jId))
+							throw actx.paramError("attachments["+i+"].file_id is undefined");
+						if(!(obj.get("file_hash") instanceof JsonPrimitive jHash))
+							throw actx.paramError("attachments["+i+"].file_hash is undefined");
+
+						String id=jId.getAsString()+":"+jHash.getAsString();
+						attachmentIDs.add(id);
+
+						if(obj.get("text") instanceof JsonPrimitive jText && jText.isString())
+							attachmentAltTexts.put(id, jText.getAsString());
+					}
+					case "photo" -> {
+						if(!(obj.get("photo_id") instanceof JsonPrimitive jId))
+							throw actx.paramError("attachments["+i+"].photo_id is undefined");
+						String photoID=jId.getAsString();
+						attachmentIDs.add("photo:"+photoID);
+					}
+					case "poll" -> {
+						if(!(obj.get("poll_id") instanceof JsonPrimitive jId))
+							throw actx.paramError("attachments["+i+"].poll_id is undefined");
+						int id=jId.getAsInt();
+						// TODO
+					}
+					default -> throw actx.paramError("attachments["+i+"].type must be one of image, photo, poll");
+				}
+				i++;
+			}
+		}else{
+			attachmentIDs=List.of();
+			attachmentAltTexts=Map.of();
+		}
+
+		Actor owner;
+		if(ownerID>0)
+			owner=ctx.getUsersController().getUserOrThrow(ownerID);
+		else
+			owner=ctx.getGroupsController().getGroupOrThrow(-ownerID);
+
+		return ctx.getWallController().createWallPost(actx.self.user, owner, null, message, textFormat, cw, attachmentIDs, poll, null, attachmentAltTexts, null, ctx.getAppsController().getAppByID(actx.token.appID()), guid).id;
 	}
 }

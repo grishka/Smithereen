@@ -1,5 +1,10 @@
 package smithereen.api;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +123,7 @@ public class ApiCallContext{
 			throw paramError(key+" is undefined");
 		int v=Utils.safeParseInt(value);
 		if(v==0)
-			throw paramError(key+" must be an integer");
+			throw paramError(key+" is not an integer");
 		return v;
 	}
 
@@ -153,6 +158,20 @@ public class ApiCallContext{
 	public boolean booleanParam(String key){
 		String v=params.get(key);
 		return "true".equalsIgnoreCase(v) || "1".equals(v);
+	}
+
+	public JsonArray optParamJsonArray(String key){
+		String v=optParamString(key);
+		if(StringUtils.isEmpty(v))
+			return null;
+		try{
+			JsonElement el=JsonParser.parseString(v);
+			if(!(el instanceof JsonArray ar))
+				throw paramError(key+" is not a JSON array");
+			return ar;
+		}catch(JsonParseException x){
+			throw paramError(key+" contains invalid JSON");
+		}
 	}
 
 	public int getOffset(){

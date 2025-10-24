@@ -308,6 +308,10 @@ public class TextProcessor{
 			whitelist=HTML_SANITIZER;
 		}
 
+		if(format==FormattedTextFormat.PLAIN){
+			text=text.replace("<", "&lt;").replace(">", "&gt;");
+		}
+
 		Document doc=Jsoup.parseBodyFragment(text);
 		doc.outputSettings().prettyPrint(false);
 		Element newBody;

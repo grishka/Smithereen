@@ -144,7 +144,7 @@ public class PostRoutes{
 				inReplyTo=ctx.getWallController().getPostOrThrow(inReplyTo.repostOf);
 		}
 
-		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts, null);
+		Post post=ctx.getWallController().createWallPost(self.user, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts, null, null, null);
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();

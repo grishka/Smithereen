@@ -47,6 +47,7 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	public EnumSet<Flag> flags=EnumSet.noneOf(Flag.class);
 	public Action action;
 	public URI mastodonQuoteAuth;
+	public long appID;
 
 	@Override
 	public URI getActivityPubID(){
@@ -94,6 +95,9 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 			JsonObject extra=JsonParser.parseString(extraStr).getAsJsonObject();
 			if(repostOf!=0 && !flags.contains(Flag.MASTODON_STYLE_REPOST) && extra.has("quoteAuth")){
 				mastodonQuoteAuth=URI.create(extra.get("quoteAuth").getAsString());
+			}
+			if(extra.has("app")){
+				appID=extra.get("app").getAsLong();
 			}
 		}
 	}

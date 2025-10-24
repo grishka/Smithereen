@@ -64,7 +64,7 @@ public class PostStorage{
 	private static final NamedMutexCollection pollVoteLocks=new NamedMutexCollection();
 
 	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey,
-									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action, EnumSet<Post.Flag> flags) throws SQLException{
+									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action, EnumSet<Post.Flag> flags, String extra) throws SQLException{
 		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
 
@@ -85,6 +85,7 @@ public class PostStorage{
 					.value("repost_of", repostOf!=0 ? repostOf : null)
 					.value("action", action)
 					.value("flags", Utils.serializeEnumSet(flags))
+					.value("extra", extra)
 					.executeAndGetID();
 
 			if(replyKey!=null && !replyKey.isEmpty()){

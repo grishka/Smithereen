@@ -43,6 +43,7 @@ import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.OwnedContentObject;
@@ -71,6 +72,7 @@ import smithereen.storage.UserStorage;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
 
 public class WallController{
@@ -78,6 +80,7 @@ public class WallController{
 	public static final int MAX_PINNED_POSTS=5;
 
 	private final LruCache<Integer, List<Integer>> pinnedPostIDsCache=new LruCache<>(1000);
+	private final HashMap<String, PostGuidInfo> guids=new HashMap<>();
 
 	private final ApplicationContext context;
 
@@ -116,11 +119,21 @@ public class WallController{
 	 * @param attachmentIDs  IDs (hashes) of previously uploaded photo attachments.
 	 * @param poll           Poll to attach.
 	 * @param action
+	 * @param app
+	 * @param guid
 	 * @return The newly created post.
 	 */
-	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, Post inReplyTo,
+	public Post createWallPost(@NotNull User author, @NotNull Actor wallOwner, Post inReplyTo,
 							   @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
-							   @Nullable Poll poll, @Nullable Post repost, @NotNull Map<String, String> attachAltTexts, Post.@Nullable Action action){
+							   @Nullable Poll poll, @Nullable Post repost, @NotNull Map<String, String> attachAltTexts, Post.@Nullable Action action, @Nullable ClientApp app, @Nullable String guid){
+		if(StringUtils.isNotEmpty(guid)){
+			PostGuidInfo guidInfo=guids.get(guid);
+			if(guidInfo!=null && guidInfo.time.isAfter(Instant.now().minus(1, ChronoUnit.HOURS))){
+				try{
+					return getPostOrThrow(guidInfo.postID);
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
@@ -276,7 +289,14 @@ public class WallController{
 			}else{
 				replyKey=null;
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action, flags);
+			String extra=null;
+			if(app!=null){
+				extra=new JsonObjectBuilder()
+						.add("app", app.id)
+						.build()
+						.toString();
+			}
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action, flags, extra);
 			if(ownerUserID==userID && replyKey==null){
 				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
 			}else if(wallOwner instanceof Group g && replyKey==null){
@@ -319,9 +339,22 @@ public class WallController{
 					context.getActivityPubWorker().sendQuoteRequest(author, post, repost, foreignRepostAuthor);
 			}
 
+			if(StringUtils.isNotEmpty(guid)){
+				synchronized(guids){
+					guids.put(guid, new PostGuidInfo(postID, Instant.now()));
+				}
+			}
+
 			return post;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void removeExpiredGuids(){
+		synchronized(guids){
+			Instant hourAgo=Instant.now().minus(1, ChronoUnit.HOURS);
+			guids.entrySet().removeIf(e->e.getValue().time.isBefore(hourAgo));
 		}
 	}
 
@@ -1143,4 +1176,6 @@ public class WallController{
 		OWNER,
 		OTHERS
 	}
+
+	private record PostGuidInfo(int postID, Instant time){}
 }
