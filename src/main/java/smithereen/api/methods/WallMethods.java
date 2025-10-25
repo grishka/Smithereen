@@ -22,8 +22,10 @@ import smithereen.api.model.ApiUser;
 import smithereen.api.model.ApiWallPost;
 import smithereen.controllers.WallController;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
+import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.Post;
@@ -206,6 +208,37 @@ public class WallMethods{
 
 	public static Object post(ApplicationContext ctx, ApiCallContext actx){
 		int ownerID=actx.requireParamIntNonZero("owner_id");
+		Actor owner;
+		if(ownerID>0)
+			owner=ctx.getUsersController().getUserOrThrow(ownerID);
+		else
+			owner=ctx.getGroupsController().getGroupOrThrow(-ownerID);
+
+		return createPost(ctx, actx, owner, null, null);
+	}
+
+	public static Object repost(ApplicationContext ctx, ApiCallContext actx){
+		Post post=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("post_id"));
+		return createPost(ctx, actx, actx.self.user, post, null);
+	}
+
+	public static Object createComment(ApplicationContext ctx, ApiCallContext actx){
+		Post post=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("post_id"));
+		if(post.getReplyLevel()!=0)
+			throw new ObjectNotFoundException();
+		Post replyTo;
+		if(actx.hasParam("reply_to_comment")){
+			Post comment=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("reply_to_comment"));
+			if(comment.getReplyLevel()==0 || comment.replyKey.getFirst()!=post.id)
+				throw new ObjectNotFoundException();
+			replyTo=comment;
+		}else{
+			replyTo=post;
+		}
+		return createPost(ctx, actx, ctx.getWallController().getContentAuthorAndOwner(post).owner(), null, replyTo);
+	}
+
+	private static Object createPost(ApplicationContext ctx, ApiCallContext actx, Actor owner, Post repost, Post replyTo){
 		String message=actx.optParamString("message");
 		JsonArray attachments=actx.optParamJsonArray("attachments");
 		String cw=actx.optParamString("content_warning");
@@ -254,26 +287,26 @@ public class WallMethods{
 						attachmentIDs.add("photo:"+photoID);
 					}
 					case "poll" -> {
-						if(!(obj.get("poll_id") instanceof JsonPrimitive jId))
-							throw actx.paramError("attachments["+i+"].poll_id is undefined");
-						int id=jId.getAsInt();
-						// TODO
+						if(replyTo==null){
+							if(!(obj.get("poll_id") instanceof JsonPrimitive jId))
+								throw actx.paramError("attachments["+i+"].poll_id is undefined");
+							int id=jId.getAsInt();
+							// TODO
+						}else{
+							throw actx.paramError("attachments["+i+"].type must be one of image, photo");
+						}
 					}
-					default -> throw actx.paramError("attachments["+i+"].type must be one of image, photo, poll");
+					default -> throw actx.paramError("attachments["+i+"].type must be one of image, photo"+(replyTo==null ? ", poll" : ""));
 				}
 				i++;
+				if(i==(replyTo==null ? 10 : 2))
+					break;
 			}
 		}else{
 			attachmentIDs=List.of();
 			attachmentAltTexts=Map.of();
 		}
 
-		Actor owner;
-		if(ownerID>0)
-			owner=ctx.getUsersController().getUserOrThrow(ownerID);
-		else
-			owner=ctx.getGroupsController().getGroupOrThrow(-ownerID);
-
-		return ctx.getWallController().createWallPost(actx.self.user, owner, null, message, textFormat, cw, attachmentIDs, poll, null, attachmentAltTexts, null, ctx.getAppsController().getAppByID(actx.token.appID()), guid).id;
+		return ctx.getWallController().createWallPost(actx.self.user, owner, replyTo, message, textFormat, cw, attachmentIDs, poll, repost, attachmentAltTexts, null, ctx.getAppsController().getAppByID(actx.token.appID()), guid).id;
 	}
 }
