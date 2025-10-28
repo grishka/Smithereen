@@ -201,7 +201,14 @@ public class MediaStorageUtils{
 		Lang l=lang(req);
 		try{
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, MAX_IMAGE_SIZE, -1L, 0));
-			Part part=req.raw().getPart("file");
+			Part part;
+			try{
+				part=req.raw().getPart("file");
+			}catch(IllegalStateException x){
+				// Payload Too Large
+				Spark.halt(413, l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(MAX_IMAGE_SIZE))));
+				return null;
+			}
 			if(part==null)
 				throw new BadRequestException();
 			if(part.getSize()>MAX_IMAGE_SIZE){
