@@ -38,6 +38,7 @@ import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
@@ -93,21 +94,15 @@ public class PostRoutes{
 		if(StringUtils.isNotEmpty(pollQuestion)){
 			List<String> pollOptions=Arrays.stream(req.queryParams("pollOption")!=null ? req.queryMap("pollOption").values() : new String[0]).map(String::trim).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
 			if(pollOptions.size()>=2){
-				poll=new Poll();
-				poll.question=pollQuestion;
-				poll.anonymous="on".equals(req.queryParams("pollAnonymous"));
-				poll.multipleChoice="on".equals(req.queryParams("pollMultiChoice"));
+				Instant pollEndTime=null;
 				boolean timeLimit="on".equals(req.queryParams("pollTimeLimit"));
 				if(timeLimit){
 					int seconds=parseIntOrDefault(req.queryParams("pollTimeLimitValue"), 0);
 					if(seconds>60)
-						poll.endTime=Instant.now().plusSeconds(seconds);
+						pollEndTime=Instant.now().plusSeconds(seconds);
 				}
-				poll.options=pollOptions.stream().map(o->{
-					PollOption opt=new PollOption();
-					opt.text=o;
-					return opt;
-				}).collect(Collectors.toList());
+				int pollID=ctx.getWallController().createPoll(self.user, owner, pollQuestion, pollOptions, "on".equals(req.queryParams("pollAnonymous")), "on".equals(req.queryParams("pollMultiChoice")), pollEndTime);
+				poll=ctx.getWallController().getPollByID(pollID);
 			}else{
 				poll=null;
 			}
@@ -310,32 +305,35 @@ public class PostRoutes{
 		return model.pageTitle(lang(req).get(post.getReplyLevel()>0 ? "editing_comment" : "editing_post"));
 	}
 
-	public static Object editPost(Request req, Response resp, Account self, ApplicationContext ctx){
+	public static Object editPost(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
 		int id=parseIntOrDefault(req.params(":postID"), 0);
 		String text=req.queryParams("text");
 		Poll poll;
 		String pollQuestion=req.queryParams("pollQuestion");
 		if(StringUtils.isNotEmpty(pollQuestion)){
 			Post post=ctx.getWallController().getPostOrThrow(id);
+			OwnerAndAuthor oaa=ctx.getWallController().getContentAuthorAndOwner(post);
 			List<String> pollOptions=Arrays.stream(req.queryParams("pollOption")!=null ? req.queryMap("pollOption").values() : new String[0]).map(String::trim).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
+
 			if(pollOptions.size()>=2){
-				poll=new Poll();
-				poll.question=pollQuestion;
-				poll.anonymous="on".equals(req.queryParams("pollAnonymous"));
-				poll.multipleChoice="on".equals(req.queryParams("pollMultiChoice"));
+				Instant pollEndTime=null;
 				boolean timeLimit="on".equals(req.queryParams("pollTimeLimit"));
 				if(timeLimit){
 					int seconds=parseIntOrDefault(req.queryParams("pollTimeLimitValue"), 0);
 					if(seconds>60)
-						poll.endTime=Instant.now().plusSeconds(seconds);
+						pollEndTime=Instant.now().plusSeconds(seconds);
 					else if(seconds==-1 && post.poll!=null)
-						poll.endTime=post.poll.endTime;
+						pollEndTime=post.poll.endTime;
 				}
-				poll.options=pollOptions.stream().map(o->{
-					PollOption opt=new PollOption();
-					opt.text=o;
-					return opt;
-				}).collect(Collectors.toList());
+				boolean anonymous="on".equals(req.queryParams("pollAnonymous"));
+				boolean multiChoice="on".equals(req.queryParams("pollMultiChoice"));
+				if(post.poll!=null && post.poll.question.equals(pollQuestion) && post.poll.options.stream().map(o->o.text).toList().equals(pollOptions)
+						&& post.poll.anonymous==anonymous && post.poll.multipleChoice==multiChoice && Objects.equals(pollEndTime, post.poll.endTime)){
+					poll=post.poll;
+				}else{
+					int pollID=ctx.getWallController().createPoll(info.account.user, oaa.owner(), pollQuestion, pollOptions, anonymous, multiChoice, pollEndTime);
+					poll=ctx.getWallController().getPollByID(pollID);
+				}
 			}else{
 				poll=null;
 			}
@@ -362,13 +360,13 @@ public class PostRoutes{
 			attachmentAltTexts=Map.of();
 		}
 
-		Post post=ctx.getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, poll, attachmentAltTexts);
+		Post post=ctx.getWallController().editPost(info.account.user, info.permissions, id, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, poll, attachmentAltTexts);
 		if(isAjax(req)){
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(post.getInternalURL().toString());
 
 			PostViewModel postVM=new PostViewModel(post);
-			ctx.getWallController().populateReposts(self.user, List.of(postVM), 2);
+			ctx.getWallController().populateReposts(info.account.user, List.of(postVM), 2);
 			String templateName;
 			boolean fromLayer;
 			if(req.queryParams("fromLayer")!=null && !isMobile(req)){
@@ -402,7 +400,7 @@ public class PostRoutes{
 					needInteractions.add(topLevel);
 				}catch(ObjectNotFoundException ignore){}
 			}
-			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, self.user);
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, info.account.user);
 			model.with("postInteractions", interactions);
 			return new WebDeltaResponse(resp).setContent("postInner"+post.id+ridSuffix, fromLayer ? model.renderToString() : model.renderBlock("postInner"))
 					.show("postInner"+post.id+ridSuffix)

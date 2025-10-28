@@ -515,25 +515,12 @@ public class SystemRoutes{
 		}
 	}
 
-	public static Object votePoll(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object votePoll(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=parseIntOrDefault(req.queryParams("id"), 0);
 		if(id==0)
 			throw new ObjectNotFoundException();
-		Poll poll=PostStorage.getPoll(id, null);
-		if(poll==null)
-			throw new ObjectNotFoundException();
+		Poll poll=ctx.getWallController().getPollByID(id);
 
-		Actor owner;
-		if(poll.ownerID>0){
-			User _owner=UserStorage.getById(poll.ownerID);
-			ensureUserNotBlocked(self.user, _owner);
-			owner=_owner;
-		}else{
-			Group _owner=ctx.getGroupsController().getGroupOrThrow(-poll.ownerID);
-			ensureUserNotBlocked(self.user, _owner);
-			ctx.getPrivacyController().enforceUserAccessToGroupContent(self.user, _owner);
-			owner=_owner;
-		}
 
 		String[] _options=req.queryMap("option").values();
 		if(_options.length<1)
@@ -543,53 +530,21 @@ public class SystemRoutes{
 		if(_options.length>poll.options.size())
 			throw new BadRequestException("invalid option count");
 		int[] optionIDs=new int[_options.length];
-		List<PollOption> options=new ArrayList<>(_options.length);
+		
 		for(int i=0;i<_options.length;i++){
 			int optID=parseIntOrDefault(_options[i], 0);
 			if(optID<=0)
 				throw new BadRequestException("invalid option id '"+_options[i]+"'");
-			PollOption option=null;
-			for(PollOption opt:poll.options){
-				if(opt.id==optID){
-					option=opt;
-					break;
-				}
-			}
-			if(option==null)
-				throw new BadRequestException("option with id "+optID+" does not exist in this poll");
-			if(options.contains(option))
-				throw new BadRequestException("option with id "+optID+" seen more than once");
 			optionIDs[i]=optID;
-			options.add(option);
 		}
 
-		if(poll.isExpired())
-			return wrapError(req, resp, "err_poll_expired");
-
-		int[] voteIDs=PostStorage.voteInPoll(self.user.id, poll.id, optionIDs);
-		if(voteIDs==null)
-			return wrapError(req, resp, "err_poll_already_voted");
-
-		poll.numVoters++;
-		for(PollOption opt:options)
-			opt.numVotes++;
-
-		ctx.getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
-		int postID=PostStorage.getPostIdByPollId(id);
-		Post post;
-		if(postID>0){
-			post=ctx.getWallController().getPostOrThrow(postID);
-			post.poll=poll; // So the last vote time is as it was before the vote
-			ctx.getWallController().sendUpdateQuestionIfNeeded(post);
-		}else{
-			post=null;
-		}
+		ctx.getWallController().voteInPoll(self.user, poll, optionIDs);
 
 		if(isAjax(req)){
 			UserInteractions interactions=new UserInteractions();
 			interactions.pollChoices=Arrays.stream(optionIDs).boxed().collect(Collectors.toList());
 			RenderedTemplateResponse model=new RenderedTemplateResponse("poll", req).with("poll", poll).with("interactions", interactions);
-			model.with("post", new PostViewModel(post));
+			model.with("post", new PostViewModel(ctx.getWallController().getPostOrThrow(ctx.getWallController().getPostIDForPoll(poll))));
 			return new WebDeltaResponse(resp).setContent("poll"+poll.id, model.renderBlock("inner"));
 		}
 
