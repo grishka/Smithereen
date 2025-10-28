@@ -1149,7 +1149,7 @@ public class PostRoutes{
 		if(post.getReplyLevel()>0){
 			try{
 				Post topLevel=ctx.getWallController().getPostOrThrow(post.replyKey.getFirst());
-				if(topLevel.privacy!=Post.Privacy.PUBLIC || topLevel.ownerID!=post.authorID){
+				if(topLevel.privacy!=Post.Privacy.PUBLIC || topLevel.ownerID!=topLevel.authorID){
 					throw new UserActionNotAllowedException();
 				}
 				model.with("topLevelPost", topLevel);
