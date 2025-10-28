@@ -1750,7 +1750,7 @@ function setMenuCounters(counters:{[key:string]:number}){
 function activateNotificationsPostForm(id:string, postID:string, type:PostFormReplyType, randomID:string){
 	var ev=window.event;
 	var target=ev.target as HTMLElement;
-	if(target.tagName=='A' || target.tagName=='LABEL' || target.tagName=='INPUT')
+	if((ev.target as HTMLElement).closest("a, label, input"))
 		return true;
 	var formEl=ge("wallPostForm_"+id);
 	if(!formEl)
