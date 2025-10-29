@@ -14,6 +14,7 @@ import java.util.Map;
 import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiGroup;
@@ -25,15 +26,19 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
-import smithereen.model.OwnerAndAuthor;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.Post;
+import smithereen.model.PostSource;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.model.attachments.Attachment;
+import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.text.FormattedTextFormat;
+import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
 public class WallMethods{
@@ -214,12 +219,12 @@ public class WallMethods{
 		else
 			owner=ctx.getGroupsController().getGroupOrThrow(-ownerID);
 
-		return createPost(ctx, actx, owner, null, null);
+		return createOrUpdatePost(ctx, actx, owner, null, null, null);
 	}
 
 	public static Object repost(ApplicationContext ctx, ApiCallContext actx){
 		Post post=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("post_id"));
-		return createPost(ctx, actx, actx.self.user, post, null);
+		return createOrUpdatePost(ctx, actx, actx.self.user, post, null, null);
 	}
 
 	public static Object createComment(ApplicationContext ctx, ApiCallContext actx){
@@ -235,10 +240,10 @@ public class WallMethods{
 		}else{
 			replyTo=post;
 		}
-		return createPost(ctx, actx, ctx.getWallController().getContentAuthorAndOwner(post).owner(), null, replyTo);
+		return createOrUpdatePost(ctx, actx, ctx.getWallController().getContentAuthorAndOwner(post).owner(), null, replyTo, null);
 	}
 
-	private static Object createPost(ApplicationContext ctx, ApiCallContext actx, Actor owner, Post repost, Post replyTo){
+	private static Object createOrUpdatePost(ApplicationContext ctx, ApiCallContext actx, Actor owner, Post repost, Post replyTo, Post edit){
 		String message=actx.optParamString("message");
 		JsonArray attachments=actx.optParamJsonArray("attachments");
 		String cw=actx.optParamString("content_warning");
@@ -253,6 +258,7 @@ public class WallMethods{
 		if(StringUtils.isNotEmpty(guid)){
 			guid=actx.token.getEncodedID()+"|"+guid;
 		}
+		boolean isReply=replyTo!=null || (edit!=null && edit.getReplyLevel()>0);
 
 		Poll poll=null;
 		List<String> attachmentIDs;
@@ -287,19 +293,21 @@ public class WallMethods{
 						attachmentIDs.add("photo:"+photoID);
 					}
 					case "poll" -> {
-						if(replyTo==null){
+						if(!isReply){
 							if(!(obj.get("poll_id") instanceof JsonPrimitive jId))
 								throw actx.paramError("attachments["+i+"].poll_id is undefined");
+							if(poll!=null)
+								throw actx.paramError("can't attach more than one poll");
 							int id=jId.getAsInt();
-							// TODO
+							poll=ctx.getWallController().getPollByID(id);
 						}else{
 							throw actx.paramError("attachments["+i+"].type must be one of image, photo");
 						}
 					}
-					default -> throw actx.paramError("attachments["+i+"].type must be one of image, photo"+(replyTo==null ? ", poll" : ""));
+					default -> throw actx.paramError("attachments["+i+"].type must be one of image, photo"+(isReply ? "" : ", poll"));
 				}
 				i++;
-				if(i==(replyTo==null ? 10 : 2))
+				if(i==(isReply ? 2 : 10))
 					break;
 			}
 		}else{
@@ -307,6 +315,51 @@ public class WallMethods{
 			attachmentAltTexts=Map.of();
 		}
 
+		if(edit!=null){
+			ctx.getWallController().editPost(actx.self.user, actx.permissions, edit.id, message, textFormat, cw, attachmentIDs, poll, attachmentAltTexts);
+			return edit.id;
+		}
 		return ctx.getWallController().createWallPost(actx.self.user, owner, replyTo, message, textFormat, cw, attachmentIDs, poll, repost, attachmentAltTexts, null, ctx.getAppsController().getAppByID(actx.token.appID()), guid).id;
+	}
+
+	public static Object getEditSource(ApplicationContext ctx, ApiCallContext actx){
+		Post post=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("post_id"));
+		if(!actx.permissions.canEditPost(post))
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "no access to edit this post");
+		PostSource source=ctx.getWallController().getPostSource(post);
+		List<Map<String, Object>> attachments=new ArrayList<>();
+		for(Attachment att:post.getProcessedAttachments()){
+			if(att instanceof PhotoAttachment pa){
+				if(pa.photoID!=0){
+					attachments.add(Map.of(
+							"type", "photo",
+							"photo_id", XTEA.encodeObjectID(pa.photoID, ObfuscatedObjectIDType.PHOTO)
+					));
+				}else if(pa.image instanceof LocalImage li && li.fileRecord!=null){
+					Map<String, Object> sa=new HashMap<>();
+					sa.put("type", "image");
+					sa.put("file_id", XTEA.encodeObjectID(li.fileID, ObfuscatedObjectIDType.MEDIA_FILE));
+					sa.put("file_hash", li.fileRecord.id().getEncodedRandomID());
+					sa.put("text", li.name);
+					attachments.add(sa);
+				}
+			}
+		}
+		if(post.poll!=null){
+			attachments.add(Map.of(
+					"type", "poll",
+					"poll_id", post.poll.id
+			));
+		}
+
+		record SourceResponse(String text, String format, List<Map<String, Object>> attachments){}
+		return new SourceResponse(source.text(), source.format().name().toLowerCase(), attachments);
+	}
+
+	public static Object edit(ApplicationContext ctx, ApiCallContext actx){
+		Post post=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("post_id"));
+		if(!actx.permissions.canEditPost(post))
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "no access to edit this post");
+		return createOrUpdatePost(ctx, actx, ctx.getWallController().getContentAuthorAndOwner(post).owner(), null, null, post);
 	}
 }

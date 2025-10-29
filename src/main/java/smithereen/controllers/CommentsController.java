@@ -354,45 +354,43 @@ public class CommentsController{
 			int maxAttachments=comment.parentObjectID.type().getMaxAttachments();
 			int attachmentCount=0;
 			String attachments=null;
-			if(!attachmentIDs.isEmpty()){
-				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
+			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 
-				ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
-				if(comment.attachments!=null){
-					for(ActivityPubObject att:comment.attachments){
-						if(att instanceof LocalImage li){
-							String localID=li.fileRecord.id().getIDForClient();
-							if(!newlyAddedAttachments.remove(localID)){
-								LOG.debug("Deleting attachment: {}", localID);
-								MediaStorage.deleteMediaFileReference(comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, li.fileID);
-							}else{
-								li.name=attachAltTexts.get(li.getLocalID());
-								attachObjects.add(li);
-							}
+			ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
+			if(comment.attachments!=null){
+				for(ActivityPubObject att:comment.attachments){
+					if(att instanceof LocalImage li){
+						String localID=li.fileRecord.id().getIDForClient();
+						if(!newlyAddedAttachments.remove(localID)){
+							LOG.debug("Deleting attachment: {}", localID);
+							MediaStorage.deleteMediaFileReference(comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, li.fileID);
 						}else{
-							attachObjects.add(att);
+							li.name=attachAltTexts.get(li.getLocalID());
+							attachObjects.add(li);
 						}
-					}
-				}
-
-				if(!newlyAddedAttachments.isEmpty()){
-					MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
-					for(ActivityPubObject att:attachObjects){
-						if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
-							MediaStorage.createMediaFileReference(li.fileID, comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, comment.ownerID);
-						}
-					}
-				}
-				if(!attachObjects.isEmpty()){
-					if(attachObjects.size()==1){
-						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 					}else{
-						JsonArray ar=new JsonArray();
-						for(ActivityPubObject o:attachObjects){
-							ar.add(MediaStorageUtils.serializeAttachment(o));
-						}
-						attachments=ar.toString();
+						attachObjects.add(att);
 					}
+				}
+			}
+
+			if(!newlyAddedAttachments.isEmpty()){
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
+				for(ActivityPubObject att:attachObjects){
+					if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
+						MediaStorage.createMediaFileReference(li.fileID, comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, comment.ownerID);
+					}
+				}
+			}
+			if(!attachObjects.isEmpty()){
+				if(attachObjects.size()==1){
+					attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
+				}else{
+					JsonArray ar=new JsonArray();
+					for(ActivityPubObject o:attachObjects){
+						ar.add(MediaStorageUtils.serializeAttachment(o));
+					}
+					attachments=ar.toString();
 				}
 			}
 

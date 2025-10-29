@@ -496,45 +496,43 @@ public class WallController{
 			int maxAttachments=parent!=null ? 2 : 10;
 			int attachmentCount=poll!=null ? 1 : 0;
 			String attachments=null;
-			if(!attachmentIDs.isEmpty()){
-				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
+			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 
-				ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
-				if(post.attachments!=null){
-					for(ActivityPubObject att:post.attachments){
-						if(att instanceof LocalImage li){
-							String localID=li.getLocalID();
-							if(!newlyAddedAttachments.remove(localID)){
-								LOG.debug("Deleting attachment: {}", localID);
-								MediaStorage.deleteMediaFileReference(post.id, MediaFileReferenceType.WALL_ATTACHMENT, li.fileID);
-							}else{
-								li.name=attachAltTexts.get(li.getLocalID());
-								attachObjects.add(li);
-							}
+			ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
+			if(post.attachments!=null){
+				for(ActivityPubObject att:post.attachments){
+					if(att instanceof LocalImage li){
+						String localID=li.getLocalID();
+						if(!newlyAddedAttachments.remove(localID)){
+							LOG.debug("Deleting attachment: {}", localID);
+							MediaStorage.deleteMediaFileReference(post.id, MediaFileReferenceType.WALL_ATTACHMENT, li.fileID);
 						}else{
-							attachObjects.add(att);
+							li.name=attachAltTexts.get(li.getLocalID());
+							attachObjects.add(li);
 						}
-					}
-				}
-
-				if(!newlyAddedAttachments.isEmpty()){
-					MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
-					for(ActivityPubObject att:attachObjects){
-						if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
-							MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
-						}
-					}
-				}
-				if(!attachObjects.isEmpty()){
-					if(attachObjects.size()==1){
-						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 					}else{
-						JsonArray ar=new JsonArray();
-						for(ActivityPubObject o:attachObjects){
-							ar.add(MediaStorageUtils.serializeAttachment(o));
-						}
-						attachments=ar.toString();
+						attachObjects.add(att);
 					}
+				}
+			}
+
+			if(!newlyAddedAttachments.isEmpty()){
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
+				for(ActivityPubObject att:attachObjects){
+					if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
+						MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
+					}
+				}
+			}
+			if(!attachObjects.isEmpty()){
+				if(attachObjects.size()==1){
+					attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
+				}else{
+					JsonArray ar=new JsonArray();
+					for(ActivityPubObject o:attachObjects){
+						ar.add(MediaStorageUtils.serializeAttachment(o));
+					}
+					attachments=ar.toString();
 				}
 			}
 
