@@ -216,8 +216,9 @@ class PostForm{
 	private onInputKeyDown(ev:KeyboardEvent):void{
 		if(ev.keyCode==13 && (isApple ? ev.metaKey : ev.ctrlKey)){
 			this.send(this.onSendDone);
+			return;
 		}
-		if(ev.keyCode==9 && this.completionList && this.completionList.selectedCompletion){ // tab
+		if((ev.keyCode==9 || ev.keyCode==13) && this.completionList && this.completionList.selectedCompletion){ // tab || enter
 			ev.preventDefault();
 			this.insertMention(this.completionList.selectedCompletion.dataset.username);
 		}
