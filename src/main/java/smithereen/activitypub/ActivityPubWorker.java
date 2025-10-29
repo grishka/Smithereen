@@ -183,7 +183,7 @@ public class ActivityPubWorker{
 		switch(setting.baseRule){
 			case EVERYONE -> inboxes.addAll(UserStorage.getFollowerInboxes(owner.id, setting.getAllExceptUsers()));
 			case FRIENDS, FRIENDS_OF_FRIENDS -> inboxes.addAll(UserStorage.getFriendInboxes(owner.id, setting.getAllExceptUsers()));
-			case NONE -> context.getUsersController().getUsers(setting.getAllAllowUsers()).values().stream().map(this::actorInbox).forEach(inboxes::add);
+			case NONE -> context.getUsersController().getUsers(setting.getAllAllowUsers()).values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).forEach(inboxes::add);
 		}
 	}
 
