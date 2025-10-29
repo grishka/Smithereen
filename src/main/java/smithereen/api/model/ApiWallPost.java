@@ -68,7 +68,7 @@ public class ApiWallPost{
 			UserInteractions postInteractions=interactions.get(id);
 			if(postInteractions!=null){
 				likes=new Likes(postInteractions.likeCount, postInteractions.canLike, postInteractions.isLiked);
-				reposts=new Reposts(postInteractions.repostCount, postInteractions.canRepost, postInteractions.isReposted);
+				reposts=new Reposts(postInteractions.repostCount, postInteractions.canRepost && actx.self!=null, postInteractions.isReposted);
 				if(p.getReplyLevel()==0){
 					comments=new Comments(postInteractions.commentCount, postInteractions.canComment);
 				}

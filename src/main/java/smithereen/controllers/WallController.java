@@ -710,9 +710,6 @@ public class WallController{
 					ownerID=post.post.ownerID;
 				}
 
-				if(self==null)
-					continue;
-
 				// Can't comment on posts or in threads that don't exist
 				if(post.post.isMastodonStyleRepost() && post.repost!=null && (post.repost.post()==null || (post.repost.post().post.getReplyLevel()>0 && post.repost.topLevel()==null)))
 					ui.canComment=false;
@@ -729,6 +726,9 @@ public class WallController{
 						ui.canRepost=false; // Comment on a wall-to-wall post
 					}
 				}
+
+				if(self==null)
+					continue;
 
 				if(post.post.ownerID>0)
 					ui.canLike=!blockingUsers.contains(post.post.ownerID);
