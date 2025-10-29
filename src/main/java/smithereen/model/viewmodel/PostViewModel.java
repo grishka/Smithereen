@@ -32,7 +32,7 @@ public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 	}
 
 	public void collectRepostIDs(Collection<Integer> ids){
-		if(repost!=null){
+		if(repost!=null && !ids.contains(repost.post.post.id)){
 			ids.add(repost.post.post.id);
 			repost.post.collectRepostIDs(ids);
 		}
@@ -68,11 +68,15 @@ public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 	}
 
 	public static void collectAppIDs(Collection<PostViewModel> posts, Set<Long> appIDs){
+		collectAppIDs(posts, appIDs, 0);
+	}
+
+	private static void collectAppIDs(Collection<PostViewModel> posts, Set<Long> appIDs, int depth){
 		for(PostViewModel pvm:posts){
 			if(pvm.post.appID!=0)
 				appIDs.add(pvm.post.appID);
-			if(pvm.repost!=null)
-				collectAppIDs(Set.of(pvm.repost.post), appIDs);
+			if(pvm.repost!=null && depth<10)
+				collectAppIDs(Set.of(pvm.repost.post), appIDs, depth+1);
 		}
 	}
 
