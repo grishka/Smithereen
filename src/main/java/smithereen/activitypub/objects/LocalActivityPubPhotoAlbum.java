@@ -29,6 +29,7 @@ public class LocalActivityPubPhotoAlbum extends ActivityPubPhotoAlbum{
 			obj.addProperty("uploadsRestricted", restrictUploads);
 			obj.addProperty("commentingDisabled", disableCommenting);
 		}
+		serializerContext.addSmAlias("displayOrder");
 		obj.addProperty("displayOrder", nativeAlbum.displayOrder);
 		obj.addProperty("comments", activityPubComments.toString());
 		if(nativeAlbum.systemType!=null){

@@ -172,6 +172,10 @@ public class PrivacySetting{
 		setting.add("allowedTo", allowed);
 		if(!except.isEmpty())
 			setting.add("except", except);
+
+		serializerContext.addSmAlias("allowedTo");
+		serializerContext.addSmAlias("except");
+
 		return setting;
 	}
 
