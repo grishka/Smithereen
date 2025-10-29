@@ -522,9 +522,11 @@ public class PrivacyController{
 			for(UserPrivacySettingKey key:affectedUserSettings){
 				settingsToBeUpdated.add(owner.privacySettings.get(key));
 			}
+			HashMap<Long, PrivacySetting> albumOldViewSettings=new HashMap<>();
 			for(PhotoAlbum album:affectedPhotoAlbums){
 				settingsToBeUpdated.add(album.viewPrivacy);
 				settingsToBeUpdated.add(album.commentPrivacy);
+				albumOldViewSettings.put(album.id, new PrivacySetting(album.viewPrivacy));
 			}
 			for(PrivacySetting ps:settingsToBeUpdated){
 				ps.allowListUsers=Set.of();
@@ -539,7 +541,7 @@ public class PrivacyController{
 			}
 			for(PhotoAlbum album:affectedPhotoAlbums){
 				PhotoStorage.updateUserAlbumPrivacy(album.id, album.viewPrivacy, album.commentPrivacy);
-				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
+				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album, albumOldViewSettings.get(album.id));
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

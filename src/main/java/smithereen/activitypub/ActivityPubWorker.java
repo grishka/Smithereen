@@ -181,9 +181,9 @@ public class ActivityPubWorker{
 
 	public void getInboxesWithPrivacy(Set<URI> inboxes, User owner, PrivacySetting setting) throws SQLException{
 		switch(setting.baseRule){
-			case EVERYONE -> inboxes.addAll(UserStorage.getFollowerInboxes(owner.id, setting.exceptUsers));
-			case FRIENDS, FRIENDS_OF_FRIENDS -> inboxes.addAll(UserStorage.getFriendInboxes(owner.id, setting.exceptUsers));
-			case NONE -> context.getUsersController().getUsers(setting.allowUsers).values().stream().map(this::actorInbox).forEach(inboxes::add);
+			case EVERYONE -> inboxes.addAll(UserStorage.getFollowerInboxes(owner.id, setting.getAllExceptUsers()));
+			case FRIENDS, FRIENDS_OF_FRIENDS -> inboxes.addAll(UserStorage.getFriendInboxes(owner.id, setting.getAllExceptUsers()));
+			case NONE -> context.getUsersController().getUsers(setting.getAllAllowUsers()).values().stream().map(this::actorInbox).forEach(inboxes::add);
 		}
 	}
 
@@ -940,11 +940,21 @@ public class ActivityPubWorker{
 		sendActivityForPhotoAlbum(actor, album, delete);
 	}
 
-	public void sendUpdatePhotoAlbum(Actor actor, PhotoAlbum album){
+	public void sendUpdatePhotoAlbum(Actor actor, PhotoAlbum album, PrivacySetting prevViewPrivacy){
 		Update update=new Update()
 				.withActorLinkAndObject(actor, ActivityPubPhotoAlbum.fromNativeAlbum(album, context));
 		update.activityPubID=new UriBuilder(album.getActivityPubID()).fragment("update"+rand()).build();
-		sendActivityForPhotoAlbum(actor, album, update);
+		if(actor instanceof User user){
+			HashSet<URI> inboxes=new HashSet<>();
+			try{
+				getInboxesWithPrivacy(inboxes, user, prevViewPrivacy==null ? album.viewPrivacy : PrivacySetting.combine(album.viewPrivacy, prevViewPrivacy));
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+			submitActivity(update, user, inboxes, Server.Feature.PHOTO_ALBUMS);
+		}else if(actor instanceof Group group){
+			submitActivityForMembers(update, group, Server.Feature.PHOTO_ALBUMS);
+		}
 	}
 
 	// endregion

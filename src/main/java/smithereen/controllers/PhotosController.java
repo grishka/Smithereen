@@ -460,13 +460,14 @@ public class PhotosController{
 					}
 				}
 			}
+			PrivacySetting prevViewPrivacy=album.viewPrivacy;
 			album.title=title;
 			album.description=description;
 			album.viewPrivacy=viewPrivacy;
 			album.commentPrivacy=commentPrivacy;
 			albumCache.put(album.id, album);
 			context.getNewsfeedController().clearFriendsFeedCache();
-			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album, prevViewPrivacy);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -513,7 +514,7 @@ public class PhotosController{
 			album.flags=newFlags;
 			albumCache.put(album.id, album);
 			context.getNewsfeedController().clearGroupsFeedCache();
-			context.getActivityPubWorker().sendUpdatePhotoAlbum(context.getGroupsController().getGroupOrThrow(-album.ownerID), album);
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(context.getGroupsController().getGroupOrThrow(-album.ownerID), album, null);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -584,7 +585,7 @@ public class PhotosController{
 
 			if(needUpdateCover){
 				album.coverID=id;
-				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
+				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album, null);
 			}
 			if(numPhotos!=0)
 				album.numPhotos=numPhotos;
@@ -1135,7 +1136,7 @@ public class PhotosController{
 			albumCache.put(album.id, album);
 			Photo newPhoto=getPhotoIgnoringPrivacy(id);
 			context.getActivityPubWorker().sendAddPhotoToAlbum(self, newPhoto, album);
-			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album, null);
 			return newPhoto;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

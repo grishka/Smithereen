@@ -10,6 +10,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.Config;
 import smithereen.Utils;
@@ -43,6 +45,18 @@ public class PrivacySetting{
 	@SerializedName("xlu")
 	public Set<Integer> exceptListUsers=Set.of();
 
+	public PrivacySetting(){}
+
+	public PrivacySetting(PrivacySetting other){
+		this.baseRule=other.baseRule;
+		this.allowUsers=new HashSet<>(other.allowUsers);
+		this.exceptUsers=new HashSet<>(other.exceptUsers);
+		this.allowLists=new HashSet<>(other.allowLists);
+		this.exceptLists=new HashSet<>(other.exceptLists);
+		this.allowListUsers=new HashSet<>(other.allowListUsers);
+		this.exceptListUsers=new HashSet<>(other.exceptListUsers);
+	}
+
 	@Override
 	public String toString(){
 		return "PrivacySetting{"+
@@ -67,6 +81,47 @@ public class PrivacySetting{
 	@Override
 	public int hashCode(){
 		return Objects.hash(baseRule, allowUsers, exceptUsers);
+	}
+
+	/**
+	 * Get the most-public combination of two privacy settings to send things like a photo album update when its viewing privacy has changed
+	 */
+	public static PrivacySetting combine(PrivacySetting a, PrivacySetting b){
+		if(a.equals(b) && a.allowListUsers.equals(b.allowListUsers) && a.exceptListUsers.equals(b.exceptListUsers))
+			return a;
+		PrivacySetting c=new PrivacySetting();
+		c.baseRule=Rule.values()[Math.min(a.baseRule.ordinal(), b.baseRule.ordinal())];
+
+		// Combine all allowed users together
+		c.allowUsers=new HashSet<>(a.allowUsers);
+		c.allowUsers.addAll(b.allowUsers);
+		c.allowLists=new HashSet<>(a.allowLists);
+		c.allowLists.addAll(b.allowLists);
+		c.allowListUsers=new HashSet<>(a.allowListUsers);
+		c.allowListUsers.addAll(b.allowListUsers);
+
+		// Intersect all excepted users
+		c.exceptUsers=a.exceptUsers.stream().filter(b.exceptUsers::contains).collect(Collectors.toSet());
+		c.exceptLists=a.exceptLists.stream().filter(b.exceptLists::contains).collect(Collectors.toSet());
+		c.exceptListUsers=a.exceptListUsers.stream().filter(b.exceptListUsers::contains).collect(Collectors.toSet());
+
+		return c;
+	}
+
+	public Set<Integer> getAllAllowUsers(){
+		if(allowListUsers.isEmpty())
+			return allowUsers;
+		if(allowUsers.isEmpty())
+			return allowListUsers;
+		return Stream.of(allowUsers, allowListUsers).flatMap(Set::stream).collect(Collectors.toSet());
+	}
+
+	public Set<Integer> getAllExceptUsers(){
+		if(exceptListUsers.isEmpty())
+			return exceptUsers;
+		if(exceptUsers.isEmpty())
+			return exceptListUsers;
+		return Stream.of(exceptUsers, exceptListUsers).flatMap(Set::stream).collect(Collectors.toSet());
 	}
 
 	public boolean isFullyPrivate(){
