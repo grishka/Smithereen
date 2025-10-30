@@ -9,15 +9,12 @@ import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.Utils;
-import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.LikeableContentObject;
 import smithereen.model.ObfuscatedObjectIDType;
-import smithereen.model.OwnedContentObject;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.SessionInfo;
@@ -82,7 +79,7 @@ public class UserInteractionsRoutes{
 		User self=info!=null && info.account!=null ? info.account.user : null;
 
 		context(req).getPrivacyController().enforceObjectPrivacy(self, obj);
-		List<Integer> users=ctx.getUserInteractionsController().getLikesForObject(obj, self, 0, 6).list;
+		List<Integer> users=ctx.getUserInteractionsController().getLikesForObject(obj, self, 0, 6, true, false).list;
 		String _content=new RenderedTemplateResponse("like_popover", req).with("ids", users).with("users", ctx.getUsersController().getUsers(users)).renderToString();
 		UserInteractions interactions=obj instanceof Post post ?
 				ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self).get(post.getIDForInteractions())
@@ -134,7 +131,7 @@ public class UserInteractionsRoutes{
 				ctx.getWallController().getUserInteractions(List.of(new PostViewModel(post)), self!=null ? self.user : null).get(post.getIDForInteractions())
 				: ctx.getUserInteractionsController().getUserInteractions(List.of(obj), self!=null ? self.user : null).get(obj.getObjectID());
 		int offset=offset(req);
-		PaginatedList<Integer> likes=ctx.getUserInteractionsController().getLikesForObject(obj, null, offset, 100);
+		PaginatedList<Integer> likes=ctx.getUserInteractionsController().getLikesForObject(obj, self!=null ? self.user : null, offset, 100, false, false);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(likes.list);
 		RenderedTemplateResponse model;
 		if(isMobile(req)){

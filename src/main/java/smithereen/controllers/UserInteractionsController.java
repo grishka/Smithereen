@@ -29,7 +29,6 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
-import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
@@ -37,7 +36,6 @@ import smithereen.storage.CommentStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
-import smithereen.storage.UserStorage;
 
 public class UserInteractionsController{
 	private final ApplicationContext context;
@@ -46,12 +44,17 @@ public class UserInteractionsController{
 		this.context=context;
 	}
 
-	public PaginatedList<Integer> getLikesForObject(LikeableContentObject object, User self, int offset, int count){
+	public PaginatedList<Integer> getLikesForObject(LikeableContentObject object, User self, int offset, int count, boolean excludeSelf, boolean friendsOnly){
 		try{
 			long id=object.getObjectID();
 			if(object instanceof Post post)
 				id=post.getIDForInteractions();
-			return LikeStorage.getLikes(id, object.getLikeObjectType(), self!=null ? self.id : 0, offset, count);
+			if(friendsOnly){
+				if(self==null)
+					throw new IllegalArgumentException("Getting friends' likes requires a user");
+				return LikeStorage.getFriendsLikes(id, object.getLikeObjectType(), self.id, offset, count);
+			}
+			return LikeStorage.getLikes(id, object.getLikeObjectType(), self!=null && excludeSelf ? self.id : 0, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -233,6 +236,22 @@ public class UserInteractionsController{
 	public PaginatedList<LikedObjectID> getLikedObjects(User self, int offset, int count){
 		try{
 			return LikeStorage.getLikedObjectIDs(self.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getLikeCount(LikeableContentObject obj){
+		try{
+			return LikeStorage.getLikeCount(obj.getObjectID(), obj.getLikeObjectType());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public boolean isLiked(LikeableContentObject obj, User user){
+		try{
+			return LikeStorage.isLiked(obj.getObjectID(), obj.getLikeObjectType(), user.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -126,6 +126,47 @@ public class LikeStorage{
 		}
 	}
 
+	public static PaginatedList<Integer> getFriendsLikes(long objectID, Like.ObjectType objectType, int selfID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("likes")
+					.count()
+					.join("RIGHT JOIN followings ON user_id=followee_id")
+					.where("object_id=? AND object_type=? AND follower_id=? AND mutual=1 AND accepted=1", objectID, objectType, selfID)
+					.executeAndGetInt();
+
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<Integer> userIDs=new SQLQueryBuilder(conn)
+					.selectFrom("likes")
+					.columns("user_id")
+					.join("RIGHT JOIN followings ON user_id=followee_id")
+					.where("object_id=? AND object_type=? AND follower_id=? AND mutual=1 AND accepted=1", objectID, objectType, selfID)
+					.orderBy("likes.id ASC")
+					.limit(count, offset)
+					.executeAndGetIntStream()
+					.boxed().toList();
+			return new PaginatedList<>(userIDs, total, offset, count);
+		}
+	}
+
+	public static int getLikeCount(long objectID, Like.ObjectType objectType) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("likes")
+				.count()
+				.where("object_id=? AND object_type=?", objectID, objectType)
+				.executeAndGetInt();
+	}
+
+	public static boolean isLiked(long objectID, Like.ObjectType objectType, int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("likes")
+				.count()
+				.where("object_id=? AND object_type=? AND user_id=?", objectID, objectType, userID)
+				.executeAndGetInt()==1;
+	}
+
 	public static Like getByID(int id) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt=conn.prepareStatement("SELECT user_id, object_id, object_type FROM likes WHERE id=?");
@@ -184,7 +225,7 @@ public class LikeStorage{
 					.where("user_id=?", ownerID)
 					.orderBy("id DESC")
 					.limit(count, offset)
-					.executeAsStream(res->new LikedObjectID(Like.ObjectType.values()[res.getInt("object_type")], res.getLong("object_id")))
+					.executeAsStream(res->new LikedObjectID(smithereen.activitypub.objects.activities.Like.ObjectType.values()[res.getInt("object_type")], res.getLong("object_id")))
 					.toList();
 			return new PaginatedList<>(ids, total, offset, count);
 		}

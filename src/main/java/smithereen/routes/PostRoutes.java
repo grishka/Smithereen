@@ -584,7 +584,7 @@ public class PostRoutes{
 		model.with("title", post.post.getShortTitle(50)+" | "+author.getFullName());
 		if(req.attribute("mobile")!=null){
 			model.with("toolbarTitle", lang(req).get("wall_post_title"));
-			List<Integer> likers=ctx.getUserInteractionsController().getLikesForObject(post.post, info!=null && info.account!=null ? info.account.user : null, 0, 10).list;
+			List<Integer> likers=ctx.getUserInteractionsController().getLikesForObject(post.post, info!=null && info.account!=null ? info.account.user : null, 0, 10, true, false).list;
 			model.with("likedBy", likers);
 			needUsers.addAll(likers);
 		}
