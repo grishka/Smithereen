@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.api.methods.FriendsMethods;
 import smithereen.api.methods.GroupsMethods;
+import smithereen.api.methods.PhotosMethods;
 import smithereen.api.methods.ServerMethods;
 import smithereen.api.methods.UsersMethods;
 import smithereen.api.methods.UtilsMethods;
@@ -63,6 +64,8 @@ public class ApiDispatcher{
 		registerMethod("wall.createComment", WallMethods::createComment, ClientAppPermission.WALL_WRITE);
 		registerMethod("wall.getEditSource", WallMethods::getEditSource, ClientAppPermission.WALL_WRITE);
 		registerMethod("wall.edit", WallMethods::edit, ClientAppPermission.WALL_WRITE);
+
+		registerMethod("photos.getAttachmentUploadServer", PhotosMethods::getAttachmentUploadServer, true);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

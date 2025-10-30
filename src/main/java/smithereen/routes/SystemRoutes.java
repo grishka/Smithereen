@@ -1,10 +1,6 @@
 package smithereen.routes;
 
-import com.google.gson.JsonObject;
-
-import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.AttributeProvider;
 import org.commonmark.renderer.html.HtmlRenderer;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
@@ -17,7 +13,6 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -28,12 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,18 +40,14 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
-import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.RemoteObjectFetchException;
-import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
@@ -76,7 +62,6 @@ import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
-import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.ServerRule;
 import smithereen.model.admin.ViolationReport;
@@ -92,8 +77,6 @@ import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.GraffitiAttachment;
 import smithereen.model.comments.Comment;
-import smithereen.model.comments.CommentReplyParent;
-import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.util.QuickSearchResults;
@@ -101,7 +84,6 @@ import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
-import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
@@ -425,7 +407,7 @@ public class SystemRoutes{
 	}
 
 	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti){
-		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, self, isGraffiti);
+		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, self, isGraffiti, "file");
 		if(isAjax(req)){
 			resp.type("application/json");
 			PhotoViewerInlineData pvData=new PhotoViewerInlineData(0, "rawFile/"+photo.getLocalID(), photo.getURLsForPhotoViewer());

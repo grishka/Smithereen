@@ -999,6 +999,8 @@ public class SmithereenApplication{
 			get("/method/:method", ApiRoutes::apiCall);
 			post("/method/:method", ApiRoutes::apiCall);
 			options("/method/:method", ApiRoutes::apiCallPreflight);
+			post("/uploadAttachmentPhoto", ApiRoutes::uploadAttachmentPhoto);
+			options("/uploadAttachmentPhoto", ApiRoutes::apiCallPreflight);
 		});
 		path("/oauth", ()->{
 			get("/authorize", ApiRoutes::oauthAuthorize);

@@ -4,6 +4,8 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,28 +30,35 @@ import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.api.ApiCallContext;
 import smithereen.api.ApiDispatcher;
 import smithereen.api.ApiErrorException;
+import smithereen.api.methods.ApiUtils;
 import smithereen.api.model.ApiError;
 import smithereen.api.model.ApiErrorResponse;
 import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiResponse;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
 import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.AppAuthCode;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.CryptoUtils;
 import smithereen.util.FloodControl;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
+import smithereen.util.XTEA;
+import spark.HaltException;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -447,5 +456,40 @@ public class ApiRoutes{
 		resp.header("Access-Control-Allow-Origin", "*");
 		resp.header("Access-Control-Allow-Methods", "POST, GET");
 		resp.header("Access-Control-Max-Age", "7200");
+	}
+
+	public static Object uploadAttachmentPhoto(Request req, Response resp){
+		requireQueryParams(req, "d");
+		resp.type("application/json");
+		JsonObject data;
+		try{
+			byte[] encrypted=Base64.getUrlDecoder().decode(req.queryParams("d"));
+			data=JsonParser.parseString(new String(CryptoUtils.aesGcmDecrypt(encrypted, ApiUtils.UPLOAD_KEY), StandardCharsets.UTF_8)).getAsJsonObject();
+		}catch(IllegalArgumentException | JsonParseException x){
+			resp.status(403);
+			return new JsonObjectBuilder().add("error", "Invalid upload URL. Call photos.getAttachmentUploadServer again to get a new one.").build();
+		}
+		int accountID=data.get("id").getAsInt();
+		long created=data.get("ct").getAsLong();
+		long now=System.currentTimeMillis()/1000L;
+		if(now-created>60){
+			resp.status(403);
+			return new JsonObjectBuilder().add("error", "This upload URL has expired. Call photos.getAttachmentUploadServer again to get a new one.").build();
+		}
+		ApplicationContext ctx=context(req);
+		Account self=ctx.getUsersController().getAccountOrThrow(accountID);
+		try{
+			LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false, "photo");
+			return new JsonObjectBuilder()
+					.add("id", XTEA.encodeObjectID(img.fileID, ObfuscatedObjectIDType.MEDIA_FILE))
+					.add("hash", img.fileRecord.id().getEncodedRandomID())
+					.build();
+		}catch(HaltException x){
+			resp.status(x.statusCode());
+			return new JsonObjectBuilder().add("error", x.body()).build();
+		}catch(BadRequestException x){
+			resp.status(400);
+			return new JsonObjectBuilder().add("error", "Field 'photo' not found").build();
+		}
 	}
 }

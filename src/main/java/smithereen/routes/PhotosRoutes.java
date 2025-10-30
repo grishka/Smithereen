@@ -230,7 +230,7 @@ public class PhotosRoutes{
 		if(album.systemType!=null || !info.permissions.canUploadToPhotoAlbum(album))
 			throw new UserActionNotAllowedException();
 
-		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, info.account, false);
+		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, info.account, false, "file");
 		long photoID=ctx.getPhotosController().createPhoto(info.account.user, album, photo.fileID, null, null);
 		SizedImage.Type sizeType=SizedImage.Type.PHOTO_THUMB_SMALL;
 		SizedImage.Dimensions size=photo.getDimensionsForSize(sizeType);

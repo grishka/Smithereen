@@ -35,9 +35,12 @@ import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.PostViewModel;
+import smithereen.util.CryptoUtils;
 import smithereen.util.XTEA;
 
-class ApiUtils{
+public class ApiUtils{
+	public static final byte[] UPLOAD_KEY=CryptoUtils.randomBytes(16);
+
 	public static List<ApiUser> getUsers(Collection<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
 		List<Integer> idList=switch(ids){
 			case List<Integer> l -> l;

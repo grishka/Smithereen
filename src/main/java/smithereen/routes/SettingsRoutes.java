@@ -11,8 +11,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -211,7 +209,7 @@ public class SettingsRoutes{
 			rotation=null;
 		}
 
-		LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false);
+		LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false, "file");
 		img.rotation=rotation;
 		try{
 			ctx.getPhotosController().updateAvatar(self, group, img, cropRects);

@@ -118,6 +118,12 @@ public class CryptoUtils{
 		}
 	}
 
+	public static byte[] randomBytes(int count){
+		byte[] b=new byte[count];
+		RANDOM.nextBytes(b);
+		return b;
+	}
+
 	private static class SimpleASN1InputStream extends FilterInputStream{
 
 		protected SimpleASN1InputStream(InputStream in){
