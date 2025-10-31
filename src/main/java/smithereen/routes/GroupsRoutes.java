@@ -33,15 +33,12 @@ import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.controllers.WallController;
 import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorWithDescription;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
-import smithereen.model.UserBanInfo;
-import smithereen.model.UserBanStatus;
 import smithereen.model.groups.GroupAdmin;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -431,7 +428,7 @@ public class GroupsRoutes{
 
 	public static Object leave(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
-		ctx.getGroupsController().leaveGroup(group, self.user);
+		ctx.getGroupsController().leaveGroup(group, self.user, false);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}

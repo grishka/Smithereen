@@ -33,7 +33,6 @@ import java.util.stream.IntStream;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
-import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
@@ -47,8 +46,6 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
 import smithereen.model.OwnedContentObject;
-import smithereen.model.UserBanInfo;
-import smithereen.model.UserBanStatus;
 import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.GroupActionLogAction;
 import smithereen.model.groups.GroupBanInfo;
@@ -77,8 +74,6 @@ import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.NotificationsStorage;
-import smithereen.storage.SessionStorage;
-import smithereen.storage.UserStorage;
 import smithereen.storage.utils.IntPair;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
@@ -359,10 +354,10 @@ public class GroupsController{
 	}
 
 	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative){
-		joinGroup(group, user, tentative, false);
+		joinGroup(group, user, tentative, false, false);
 	}
 
-	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative, boolean forceAccepted){
+	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative, boolean forceAccepted, boolean ignoreIfMember){
 		try{
 			if(!forceAccepted)
 				Utils.ensureUserNotBlocked(user, group);
@@ -383,11 +378,15 @@ public class GroupsController{
 					if((state==Group.MembershipState.MEMBER && !tentative) || (state==Group.MembershipState.TENTATIVE_MEMBER && tentative) || state==Group.MembershipState.REQUESTED){
 						if(forceAccepted)
 							return;
+						if(ignoreIfMember)
+							return;
 						throw new UserErrorException("err_group_already_member");
 					}
 				}else{
 					if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER || state==Group.MembershipState.REQUESTED){
 						if(forceAccepted)
+							return;
+						if(ignoreIfMember)
 							return;
 						throw new UserErrorException("err_group_already_member");
 					}
@@ -432,12 +431,14 @@ public class GroupsController{
 		}
 	}
 
-	public void leaveGroup(@NotNull Group group, @NotNull User user){
+	public void leaveGroup(@NotNull Group group, @NotNull User user, boolean ignoreIfNonMember){
 		try{
 			Group.MembershipState state;
 			synchronized(groupMembershipLock){
 				state=GroupStorage.getUserMembershipState(group.id, user.id);
 				if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.REQUESTED){
+					if(ignoreIfNonMember)
+						return;
 					throw new UserErrorException("err_group_not_member");
 				}
 				GroupStorage.leaveGroup(group, user.id, state==Group.MembershipState.TENTATIVE_MEMBER, state!=Group.MembershipState.REQUESTED);

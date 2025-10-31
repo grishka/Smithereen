@@ -36,7 +36,7 @@ public class AddGroupHandler extends ActivityTypeHandler<ForeignUser, Add, Group
 						return;
 					try{
 						context.appContext.getObjectLinkResolver().ensureObjectIsInCollection(object, tentative ? foreignGroup.tentativeMembers : foreignGroup.getMembersCollection(), actor.activityPubID);
-						context.appContext.getGroupsController().joinGroup(foreignGroup, actor, tentative, true);
+						context.appContext.getGroupsController().joinGroup(foreignGroup, actor, tentative, true, false);
 					}catch(Exception x){
 						LOG.warn("Error verifying that object {} belongs to collection {} or saving membership", object.activityPubID, target, x);
 					}

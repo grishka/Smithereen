@@ -62,6 +62,9 @@ public class ApiGroup{
 	public List<Link> links;
 	public Counters counters;
 
+	// groups.getInvites only
+	public Integer invitedBy;
+
 	public ApiGroup(ApiCallContext actx, Group group, EnumSet<Field> fields, Map<Integer, Group.AdminLevel> adminLevels, Map<Integer, Group.MembershipState> memberStates,
 					Set<Integer> canPost, Set<Integer> canCreateTopic, Set<Integer> favoritedGroups, Map<Integer, Photo> profilePhotos){
 		id=group.id;

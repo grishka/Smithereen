@@ -34,6 +34,9 @@ public class ApiDispatcher{
 
 		registerMethod("groups.get", GroupsMethods::get, false);
 		registerMethod("groups.getById", GroupsMethods::getById, false);
+		registerMethod("groups.getInvites", GroupsMethods::getInvites, ClientAppPermission.GROUPS_READ);
+		registerMethod("groups.join", GroupsMethods::join, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.leave", GroupsMethods::leave, ClientAppPermission.GROUPS_WRITE);
 
 		registerMethod("friends.get", FriendsMethods::get, false);
 		registerMethod("friends.getOnline", FriendsMethods::getOnline, false);

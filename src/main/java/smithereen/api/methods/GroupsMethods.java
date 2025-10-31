@@ -1,6 +1,8 @@
 package smithereen.api.methods;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -9,12 +11,15 @@ import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiErrorType;
+import smithereen.api.model.ApiGroup;
 import smithereen.api.model.ApiPaginatedList;
+import smithereen.api.model.ApiPaginatedListWithActors;
 import smithereen.controllers.GroupsController;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.model.groups.GroupInvitation;
 
 public class GroupsMethods{
 	private static final Pattern ID_PATTERN=Pattern.compile("^\\d+$");
@@ -73,5 +78,43 @@ public class GroupsMethods{
 		}else{
 			return new ApiPaginatedList<>(groups.total, groups.list.stream().map(g->g.id).toList());
 		}
+	}
+
+	public static Object getInvites(ApplicationContext ctx, ApiCallContext actx){
+		boolean events="events".equals(actx.optParamString("type", "groups"));
+		int offset=actx.getOffset();
+		int count=actx.getCount(20, 500);
+		PaginatedList<GroupInvitation> invites=ctx.getGroupsController().getUserInvitations(actx.self, events, offset, count);
+		List<ApiGroup> apiGroups=ApiUtils.getGroups(invites.list.stream().map(i->i.group).toList(), ctx, actx);
+		for(int i=0;i<apiGroups.size();i++){
+			apiGroups.get(i).invitedBy=invites.list.get(i).inviter.id;
+		}
+		if(actx.booleanParam("extended")){
+			ApiPaginatedListWithActors<ApiGroup> res=new ApiPaginatedListWithActors<>(invites.total, apiGroups);
+			Set<Integer> seenUsers=new HashSet<>();
+			ArrayList<User> users=new ArrayList<>();
+			for(GroupInvitation invite:invites.list){
+				if(seenUsers.contains(invite.inviter.id))
+					continue;
+				seenUsers.add(invite.inviter.id);
+				users.add(invite.inviter);
+			}
+			res.profiles=ApiUtils.getUsers(users, ctx, actx);
+			return res;
+		}else{
+			return new ApiPaginatedList<>(invites.total, apiGroups);
+		}
+	}
+
+	public static Object join(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ctx.getGroupsController().getGroupOrThrow(actx.requireParamIntPositive("group_id"));
+		ctx.getGroupsController().joinGroup(group, actx.self.user, actx.booleanParam("not_sure"), false, true);
+		return true;
+	}
+
+	public static Object leave(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ctx.getGroupsController().getGroupOrThrow(actx.requireParamIntPositive("group_id"));
+		ctx.getGroupsController().leaveGroup(group, actx.self.user, true);
+		return true;
 	}
 }

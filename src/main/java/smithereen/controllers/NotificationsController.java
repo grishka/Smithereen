@@ -528,7 +528,7 @@ public class NotificationsController{
 						}
 					}else if(object instanceof Group group){
 						SizedImage groupAva=group.getAvatar();
-						extraImage=new RealtimeNotification.ImageURLs(
+						extraImage=groupAva==null ? null : new RealtimeNotification.ImageURLs(
 								groupAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, SizedImage.Format.JPEG).toString(),
 								groupAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, SizedImage.Format.WEBP).toString(),
 								groupAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, SizedImage.Format.JPEG).toString(),
