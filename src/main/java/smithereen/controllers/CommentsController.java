@@ -55,6 +55,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
+import smithereen.util.FloodControl;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
@@ -137,6 +138,8 @@ public class CommentsController{
 				throw new BadRequestException("Empty comment");
 
 			List<Long> replyKey=inReplyTo==null ? null : inReplyTo.getReplyKeyForReplies();
+
+			FloodControl.POSTS.incrementOrThrow(self);
 
 			long id=CommentStorage.createComment(self.id, parent.getOwnerID(), parentID, text, new FormattedTextSource(textSource, sourceFormat), replyKey,
 					mentionedUsers.stream().map(u->u.id).collect(Collectors.toSet()), attachments, contentWarning);

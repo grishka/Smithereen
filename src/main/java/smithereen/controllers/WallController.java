@@ -73,6 +73,7 @@ import smithereen.storage.UserStorage;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.FloodControl;
 import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
 
@@ -287,6 +288,9 @@ public class WallController{
 			}else{
 				replyKey=null;
 			}
+
+			FloodControl.POSTS.incrementOrThrow(author);
+
 			String extra=null;
 			if(app!=null){
 				extra=new JsonObjectBuilder()

@@ -14,6 +14,7 @@ import java.util.function.Function;
 import smithereen.Utils;
 import smithereen.model.Account;
 import smithereen.exceptions.FloodControlViolationException;
+import smithereen.model.User;
 
 /**
  * A thing that allows some action to be performed no more than X times over a period of time.
@@ -26,6 +27,7 @@ public class FloodControl<K>{
 	public static final FloodControl<Account> ACTION_CONFIRMATION=FloodControl.ofObjectKey(5, 10, TimeUnit.MINUTES, acc->"account"+acc.id);
 	public static final FloodControl<Account> PASSWORD_CHECK=FloodControl.ofObjectKey(5, 1, TimeUnit.MINUTES, acc->"account"+acc.id);
 	public static final FloodControl<InetAddress> API_REQUESTS_ANON=FloodControl.ofIPKey(3, 1, TimeUnit.SECONDS);
+	public static final FloodControl<User> POSTS=FloodControl.ofObjectKey(300, 3, TimeUnit.HOURS, u->"user"+u.id);
 	public static final FloodControl<byte[]> API_REQUESTS=FloodControl.ofByteArrayKey(3, 1, TimeUnit.SECONDS);
 
 	private long timeout;
