@@ -164,6 +164,14 @@ public class SearchController{
 		}
 	}
 
+	public PaginatedList<Integer> searchAllGroupIDs(String query, boolean events, int offset, int count){
+		try{
+			return SearchStorage.searchAllGroups(query, events, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public PaginatedList<Group> searchGroups(User self, String query, boolean events, User target, int offset, int count){
 		try{
 			PaginatedList<Integer> ids=SearchStorage.searchGroups(query, events, target.id, offset, count, self!=null && self.id==target.id);

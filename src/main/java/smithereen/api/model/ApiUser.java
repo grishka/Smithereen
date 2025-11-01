@@ -98,6 +98,9 @@ public class ApiUser{
 
 	public Counters counters;
 
+	// groups.getMembers with filter=managers only
+	public String role;
+
 	public ApiUser(ApiCallContext actx, User user, EnumSet<Field> fields, Map<Integer, User> extraUsers, Map<Integer, UserPresence> onlines, Set<Integer> blockingIDs,
 				   Set<Integer> blockedIDs, Map<Integer, Set<UserPrivacySettingKey>> allowedPrivacySettings, Map<Integer, Integer> mutualCounts,
 				   Map<Integer, FriendshipStatus> friendStatuses, Set<Integer> bookmarkedIDs, Map<Integer, BitSet> friendLists, Set<Integer> mutedIDs,

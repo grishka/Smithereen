@@ -3,6 +3,7 @@ package smithereen.api.methods;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -14,11 +15,14 @@ import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiGroup;
 import smithereen.api.model.ApiPaginatedList;
 import smithereen.api.model.ApiPaginatedListWithActors;
+import smithereen.api.model.ApiUser;
 import smithereen.controllers.GroupsController;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
+import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupInvitation;
 
 public class GroupsMethods{
@@ -116,5 +120,120 @@ public class GroupsMethods{
 		Group group=ctx.getGroupsController().getGroupOrThrow(actx.requireParamIntPositive("group_id"));
 		ctx.getGroupsController().leaveGroup(group, actx.self.user, true);
 		return true;
+	}
+
+	public static Object search(ApplicationContext ctx, ApiCallContext actx){
+		String query=actx.requireParamString("q").trim();
+		if(query.isEmpty())
+			throw actx.paramError("q is empty");
+		PaginatedList<Integer> ids=ctx.getSearchController().searchAllGroupIDs(query, "events".equals(actx.optParamString("type")), actx.getOffset(), actx.getCount(100, 100));
+		if(actx.hasParam("fields")){
+			return new ApiPaginatedList<>(ids.total, ApiUtils.getGroups(ids.list, ctx, actx));
+		}else{
+			return new ApiPaginatedList<>(ids);
+		}
+	}
+
+	public static Object isMember(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ctx.getGroupsController().getGroupOrThrow(actx.requireParamIntPositive("group_id"));
+		User self=actx.hasPermission(ClientAppPermission.GROUPS_READ) ? actx.self.user : null;
+		ctx.getPrivacyController().enforceUserAccessToGroupProfile(self, group);
+		boolean extended=actx.booleanParam("extended");
+		if(actx.hasParam("user_id") && !extended){
+			Group.MembershipState state=ctx.getGroupsController().getUserMembershipState(group, ApiUtils.getUser(ctx, actx, "user_id"));
+			return state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER;
+		}
+		record ResponseItem(int userId, boolean member, Boolean canInvite, Boolean invitation, Boolean request){}
+		Set<Integer> userIDs;
+		if(actx.hasParam("user_id")){
+			userIDs=Set.of(actx.requireParamIntPositive("user_id"));
+		}else{
+			userIDs=actx.requireCommaSeparatedStringSet("user_ids")
+					.stream()
+					.map(Utils::safeParseInt)
+					.filter(id->id>0)
+					.collect(Collectors.toSet());
+			if(userIDs.isEmpty())
+				throw actx.paramError("user_ids does not contain any valid user IDs");
+		}
+		List<ResponseItem> items=new ArrayList<>();
+		Map<Integer, User> users=ctx.getUsersController().getUsers(userIDs);
+		userIDs=userIDs.stream().filter(users::containsKey).collect(Collectors.toSet());
+		boolean canManage=false, needCheckPrivacy=false;
+		if(extended && actx.self!=null){
+			needCheckPrivacy=true;
+			canManage=actx.hasPermission(ClientAppPermission.GROUPS_READ) && actx.permissions.canManageGroup(group);
+		}
+		Map<Integer, Group.MembershipState> states=ctx.getGroupsController().getMembershipStates(userIDs, group, canManage);
+		for(int id:userIDs){
+			Group.MembershipState state=states.get(id);
+			items.add(new ResponseItem(id, state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER,
+					needCheckPrivacy ? state==Group.MembershipState.NONE && ctx.getPrivacyController().checkUserPrivacy(actx.self.user, users.get(id), UserPrivacySettingKey.GROUP_INVITE) : null,
+					canManage ? state==Group.MembershipState.INVITED : null, canManage ? state==Group.MembershipState.REQUESTED : null));
+		}
+		return items;
+	}
+
+	public static Object getMembers(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ctx.getGroupsController().getGroupOrThrow(actx.requireParamIntPositive("group_id"));
+		User self=actx.hasPermission(ClientAppPermission.GROUPS_READ) ? actx.self.user : null;
+		boolean canManage=self!=null && actx.permissions.canManageGroup(group);
+		ctx.getPrivacyController().enforceUserAccessToGroupProfile(self, group);
+		GroupsController.MemberSortOrder sort=switch(actx.optParamString("sort", "id_asc")){
+			case "id_desc" -> GroupsController.MemberSortOrder.ID_DESC;
+			case "random" -> GroupsController.MemberSortOrder.RANDOM;
+			case "time_asc" -> GroupsController.MemberSortOrder.TIME_ASC;
+			case "time_desc" -> GroupsController.MemberSortOrder.TIME_DESC;
+			case null, default -> GroupsController.MemberSortOrder.ID_ASC;
+		};
+		if((sort==GroupsController.MemberSortOrder.TIME_ASC || sort==GroupsController.MemberSortOrder.TIME_DESC) && !canManage)
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "this sorting requires a token with groups:read permission and is only available for group managers");
+
+		int offset=actx.getOffset();
+		int count=actx.getCount(100, 1000);
+		String filter=actx.optParamString("filter");
+		if("managers".equals(filter)){
+			if(!canManage)
+				throw actx.error(ApiErrorType.ACCESS_DENIED, "this filter requires a token with groups:read permission and is only available for group managers");
+			List<GroupAdmin> admins=ctx.getGroupsController().getAdmins(group);
+			if(actx.hasParam("fields")){
+				List<ApiUser> users=ApiUtils.getUsers(admins.stream().map(ga->ga.userID).toList(), ctx, actx);
+				for(int i=0;i<users.size();i++){
+					users.get(i).role=switch(admins.get(i).level){
+						case OWNER -> "creator";
+						case ADMIN -> "administrator";
+						case MODERATOR -> "moderator";
+						case REGULAR -> throw new IllegalStateException("Group admins aren't supposed to have the REGULAR level, what happened here?");
+					};
+				}
+				return new ApiPaginatedList<>(users.size(), users);
+			}else{
+				record ApiGroupAdmin(int id, String role){}
+				return new ApiPaginatedList<>(admins.size(), admins.stream()
+						.map(ga->new ApiGroupAdmin(ga.userID, switch(ga.level){
+							case OWNER -> "creator";
+							case ADMIN -> "administrator";
+							case MODERATOR -> "moderator";
+							case REGULAR -> throw new IllegalStateException("Group admins aren't supposed to have the REGULAR level, what happened here?");
+						}))
+						.toList());
+			}
+		}
+
+		boolean friendsOnly="friends".equals(filter) || "unsure_friends".equals(filter);
+		boolean tentative="unsure".equals(filter) || "unsure_friends".equals(filter);
+		PaginatedList<Integer> memberIDs;
+		if(friendsOnly){
+			if(actx.self.user==null)
+				throw actx.error(ApiErrorType.ACCESS_DENIED, "filtering by friends requires an access token");
+			memberIDs=ctx.getGroupsController().getFriendsMembers(group, offset, count, tentative, sort, actx.self.user);
+		}else{
+			memberIDs=ctx.getGroupsController().getMembers(group, offset, count, tentative, sort);
+		}
+
+		if(actx.hasParam("fields"))
+			return new ApiPaginatedList<>(memberIDs.total, ApiUtils.getUsers(memberIDs.list, ctx, actx));
+		else
+			return new ApiPaginatedList<>(memberIDs);
 	}
 }

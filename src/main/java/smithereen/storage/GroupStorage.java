@@ -39,15 +39,12 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
-import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
-import smithereen.model.UserBanStatus;
 import smithereen.model.admin.GroupActionLogAction;
 import smithereen.model.groups.GroupAdmin;
-import smithereen.model.groups.GroupBanInfo;
 import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.groups.GroupInvitation;
 import smithereen.model.groups.GroupLink;
@@ -518,18 +515,17 @@ public class GroupStorage{
 		return result;
 	}
 
-	public static List<User> getRandomMembersForProfile(int groupID, boolean tentative) throws SQLException{
-		return UserStorage.getByIdAsList(
-				new SQLQueryBuilder()
+	public static List<Integer> getRandomMembers(int groupID, Boolean tentative, int count) throws SQLException{
+		return new SQLQueryBuilder()
 						.selectFrom("group_memberships")
-						.where("group_id=? AND tentative=? AND accepted=1", groupID, tentative)
+						.columns("user_id")
+						.where("group_id=? AND accepted=1"+(tentative==null ? "" : " AND tentative=?"), groupID, tentative)
 						.orderBy("RAND()")
-						.limit(6, 0)
-						.executeAndGetIntList()
-		);
+						.limit(count, 0)
+						.executeAndGetIntList();
 	}
 
-	public static PaginatedList<Integer> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative) throws SQLException{
+	public static PaginatedList<Integer> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative, GroupsController.MemberSortOrder order) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
 			int total=new SQLQueryBuilder(conn)
@@ -541,7 +537,56 @@ public class GroupStorage{
 				return PaginatedList.emptyList(count);
 			List<Integer> ids=new SQLQueryBuilder(conn)
 					.selectFrom("group_memberships")
+					.columns("user_id")
 					.where("group_id=? AND accepted=1"+_tentative, groupID)
+					.orderBy(switch(order){
+						case ID_ASC -> "user_id ASC";
+						case ID_DESC -> "user_id DESC";
+						case TIME_ASC -> "time ASC";
+						case TIME_DESC -> "time DESC";
+						case RANDOM -> throw new IllegalArgumentException();
+					})
+					.limit(count, offset)
+					.executeAndGetIntList();
+			return new PaginatedList<>(ids, total, offset, count);
+		}
+	}
+
+	public static List<Integer> getRandomFriendsMembers(int groupID, Boolean tentative, int count, int userID) throws SQLException{
+		String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
+		return new SQLQueryBuilder()
+				.selectFrom("group_memberships")
+				.columns("user_id")
+				.join("RIGHT JOIN followings ON user_id=followee_id")
+				.where("group_id=? AND group_memberships.accepted=1 AND followings.accepted=1 AND mutual=1 AND follower_id=?"+_tentative, groupID, userID)
+				.orderBy("RAND()")
+				.limit(count, 0)
+				.executeAndGetIntList();
+	}
+
+	public static PaginatedList<Integer> getFriendsMembers(int groupID, int offset, int count, @Nullable Boolean tentative, GroupsController.MemberSortOrder order, int userID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.count()
+					.join("RIGHT JOIN followings ON user_id=followee_id")
+					.where("group_id=? AND group_memberships.accepted=1 AND followings.accepted=1 AND mutual=1 AND follower_id=?"+_tentative, groupID, userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> ids=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("user_id")
+					.join("RIGHT JOIN followings ON user_id=followee_id")
+					.where("group_id=? AND group_memberships.accepted=1 AND followings.accepted=1 AND mutual=1 AND follower_id=?"+_tentative, groupID, userID)
+					.orderBy(switch(order){
+						case ID_ASC -> "user_id ASC";
+						case ID_DESC -> "user_id DESC";
+						case TIME_ASC -> "time ASC";
+						case TIME_DESC -> "time DESC";
+						case RANDOM -> throw new IllegalArgumentException();
+					})
 					.limit(count, offset)
 					.executeAndGetIntList();
 			return new PaginatedList<>(ids, total, offset, count);
@@ -591,6 +636,44 @@ public class GroupStorage{
 						.columns("group_id")
 						.whereIn("group_id", remainingIDs)
 						.andWhere("invitee_id=?", userID)
+						.executeAndGetIntStream()
+						.forEach(id->states.put(id, Group.MembershipState.INVITED));
+			}
+
+			return states;
+		}
+	}
+
+	public static Map<Integer, Group.MembershipState> getMembershipStates(int groupID, Collection<Integer> userIDs, boolean needInvites) throws SQLException{
+		if(userIDs.size()==1){
+			int id=userIDs.iterator().next();
+			return Map.of(id, getUserMembershipState(groupID, id));
+		}
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			HashMap<Integer, Group.MembershipState> states=new HashMap<>();
+			for(int id:userIDs)
+				states.put(id, Group.MembershipState.NONE);
+			Set<Integer> remainingIDs=new HashSet<>(userIDs);
+
+			try(ResultSet res=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("user_id", "accepted", "tentative")
+					.whereIn("user_id", userIDs)
+					.andWhere("group_id=?", groupID)
+					.execute()){
+				while(res.next()){
+					int id=res.getInt("user_id");
+					states.put(id, res.getBoolean("accepted") ? (res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER) : Group.MembershipState.REQUESTED);
+					remainingIDs.remove(id);
+				}
+			}
+
+			if(!remainingIDs.isEmpty() && needInvites){
+				new SQLQueryBuilder(conn)
+						.selectFrom("group_invites")
+						.columns("invitee_id")
+						.whereIn("invitee_id", remainingIDs)
+						.andWhere("group_id=?", groupID)
 						.executeAndGetIntStream()
 						.forEach(id->states.put(id, Group.MembershipState.INVITED));
 			}

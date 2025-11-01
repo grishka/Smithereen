@@ -264,10 +264,10 @@ public class GroupsRoutes{
 		}
 
 		// Public info: still visible for non-members in public groups
-		List<User> members=ctx.getGroupsController().getRandomMembersForProfile(group, false);
+		List<User> members=ctx.getUsersController().getUsersAsList(ctx.getGroupsController().getMembers(group, 0, 6, false, GroupsController.MemberSortOrder.RANDOM).list);
 		model.with("group", group).with("members", members);
 		if(group.isEvent())
-			model.with("tentativeMembers", ctx.getGroupsController().getRandomMembersForProfile(group, true));
+			model.with("tentativeMembers", ctx.getUsersController().getUsersAsList(ctx.getGroupsController().getMembers(group, 0, 6, true, GroupsController.MemberSortOrder.RANDOM).list));
 		model.with("title", group.name);
 		List<GroupAdmin> admins=ctx.getGroupsController().getAdmins(group);
 		model.with("canAccessContent", canAccessContent);
@@ -518,7 +518,7 @@ public class GroupsRoutes{
 		SessionInfo info=sessionInfo(req);
 		ctx.getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
-		PaginatedList<Integer> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative);
+		PaginatedList<Integer> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative, GroupsController.MemberSortOrder.ID_ASC);
 		model.paginate(members);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(members.list);
 		model.with("users", users);
@@ -576,7 +576,7 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
-		PaginatedList<Integer> ids=ctx.getGroupsController().getAllMembers(group, offset(req), 100);
+		PaginatedList<Integer> ids=ctx.getGroupsController().getAllMembers(group, offset(req), 100, GroupsController.MemberSortOrder.TIME_ASC);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(ids.list);
 		model.paginate(new PaginatedList<User>(ids, ids.list.stream().map(users::get).toList()));
 		model.with("group", group).with("title", group.name);

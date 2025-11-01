@@ -203,17 +203,31 @@ public class GroupsController{
 		}
 	}
 
-	public PaginatedList<Integer> getMembers(@NotNull Group group, int offset, int count, boolean tentative){
+	public PaginatedList<Integer> getMembers(@NotNull Group group, int offset, int count, boolean tentative, MemberSortOrder order){
 		try{
-			return GroupStorage.getMembers(group.id, offset, count, tentative);
+			if(order==MemberSortOrder.RANDOM)
+				return new PaginatedList<>(GroupStorage.getRandomMembers(group.id, tentative, count), tentative ? group.tentativeMemberCount : group.memberCount, 0, count);
+			return GroupStorage.getMembers(group.id, offset, count, tentative, order);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public PaginatedList<Integer> getAllMembers(@NotNull Group group, int offset, int count){
+	public PaginatedList<Integer> getAllMembers(@NotNull Group group, int offset, int count, MemberSortOrder order){
 		try{
-			return GroupStorage.getMembers(group.id, offset, count, null);
+			if(order==MemberSortOrder.RANDOM)
+				return new PaginatedList<>(GroupStorage.getRandomMembers(group.id, null, count), group.tentativeMemberCount+group.memberCount, 0, count);
+			return GroupStorage.getMembers(group.id, offset, count, null, order);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Integer> getFriendsMembers(@NotNull Group group, int offset, int count, boolean tentative, MemberSortOrder order, @NotNull User user){
+		try{
+			if(order==MemberSortOrder.RANDOM)
+				return new PaginatedList<>(GroupStorage.getRandomFriendsMembers(group.id, tentative, count, user.id), tentative ? group.tentativeMemberCount : group.memberCount, 0, count);
+			return GroupStorage.getFriendsMembers(group.id, offset, count, tentative, order, user.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -230,14 +244,6 @@ public class GroupsController{
 	public GroupAdmin getAdmin(@NotNull Group group, int userID){
 		try{
 			return GroupStorage.getGroupAdmin(group.id, userID);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
-	public List<User> getRandomMembersForProfile(@NotNull Group group, boolean tentative){
-		try{
-			return GroupStorage.getRandomMembersForProfile(group.id, tentative);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -276,6 +282,16 @@ public class GroupsController{
 			return Map.of();
 		try{
 			return GroupStorage.getUserMembershipStates(groups.stream().map(g->g.id).collect(Collectors.toSet()), user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, Group.MembershipState> getMembershipStates(Collection<Integer> userIDs, Group group, boolean needInvites){
+		if(userIDs.isEmpty())
+			return Map.of();
+		try{
+			return GroupStorage.getMembershipStates(group.id, userIDs, needInvites);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -1083,6 +1099,14 @@ public class GroupsController{
 		FUTURE,
 		PAST,
 		ALL
+	}
+
+	public enum MemberSortOrder{
+		ID_ASC,
+		ID_DESC,
+		RANDOM,
+		TIME_ASC,
+		TIME_DESC
 	}
 
 	private record PendingHintsRankIncrement(int userID, int groupID, int amount){}

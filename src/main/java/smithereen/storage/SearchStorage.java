@@ -148,6 +148,23 @@ public class SearchStorage{
 		}
 	}
 
+	public static PaginatedList<Integer> searchAllGroups(String query, boolean events, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			query=prepareQuery(query);
+			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT COUNT(*) FROM qsearch_index JOIN `groups` ON group_id=`groups`.id WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND `groups`.`type`=? AND groups.access_type<>2",
+					query, events ? Group.Type.EVENT : Group.Type.GROUP).executeQuery());
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> list=DatabaseUtils.intResultSetToList(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT qsearch_index.group_id FROM qsearch_index " +
+							"JOIN `groups` ON qsearch_index.group_id=`groups`.id " +
+							"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND `groups`.`type`=? AND groups.access_type<>2 LIMIT ? OFFSET ?",
+					query, events ? Group.Type.EVENT : Group.Type.GROUP, count, offset).executeQuery());
+			return new PaginatedList<>(list, total, offset, count);
+		}
+	}
+
 	public static PaginatedList<Integer> searchBookmarkedUsers(String query, int selfID, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			query=prepareQuery(query);
