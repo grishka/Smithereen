@@ -10,6 +10,7 @@ import smithereen.ApplicationContext;
 import smithereen.api.methods.FriendsMethods;
 import smithereen.api.methods.GroupsMethods;
 import smithereen.api.methods.LikesMethods;
+import smithereen.api.methods.NewsfeedMethods;
 import smithereen.api.methods.PhotosMethods;
 import smithereen.api.methods.ServerMethods;
 import smithereen.api.methods.UsersMethods;
@@ -78,6 +79,8 @@ public class ApiDispatcher{
 		registerMethod("likes.delete", LikesMethods::delete, ClientAppPermission.LIKES_WRITE);
 		registerMethod("likes.isLiked", LikesMethods::isLiked, false);
 		registerMethod("likes.getList", LikesMethods::getList, false);
+
+		registerMethod("newsfeed.get", NewsfeedMethods::get, ClientAppPermission.NEWSFEED);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

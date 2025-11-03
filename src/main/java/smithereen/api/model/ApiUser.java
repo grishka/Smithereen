@@ -142,15 +142,7 @@ public class ApiUser{
 		if(fields.contains(Field.HOME_TOWN))
 			homeTown=user.hometown;
 		if(fields.contains(Field.RELATION) && user.relationship!=null){
-			relation=switch(user.relationship){
-				case SINGLE -> "single";
-				case IN_RELATIONSHIP -> "in_relationship";
-				case ENGAGED -> "engaged";
-				case MARRIED -> "married";
-				case IN_LOVE -> "in_love";
-				case COMPLICATED -> "complicated";
-				case ACTIVELY_SEARCHING -> "actively_searching";
-			};
+			relation=mapRelationshipStatus(user.relationship);
 			if(user.relationship.canHavePartner() && user.relationshipPartnerID!=0){
 				User partner=extraUsers.get(user.relationshipPartnerID);
 				if(user.relationship.needsPartnerApproval()){
@@ -395,6 +387,18 @@ public class ApiUser{
 			nicknameIns=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.INSTRUMENTAL);
 		if(fields.contains(Field.NICKNAME_ABL))
 			nicknameAbl=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.PREPOSITIONAL);
+	}
+
+	public static String mapRelationshipStatus(User.RelationshipStatus status){
+		return switch(status){
+			case SINGLE -> "single";
+			case IN_RELATIONSHIP -> "in_relationship";
+			case ENGAGED -> "engaged";
+			case MARRIED -> "married";
+			case IN_LOVE -> "in_love";
+			case COMPLICATED -> "complicated";
+			case ACTIVELY_SEARCHING -> "actively_searching";
+		};
 	}
 
 	private static String enumToLowercaseString(Enum<?> e){

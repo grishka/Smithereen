@@ -384,8 +384,8 @@ public class ApiUtils{
 		return result;
 	}
 
-	public static List<ApiWallPost> getPosts(List<PostViewModel> posts, ApplicationContext ctx, ApiCallContext actx, boolean needLikes, boolean needReposts){
-		User self=actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
+	public static List<ApiWallPost> getPosts(List<PostViewModel> posts, ApplicationContext ctx, ApiCallContext actx, boolean needLikes, boolean needReposts, boolean enforcePermission){
+		User self=(!enforcePermission && actx.self!=null) || actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
 		if(needReposts){
 			int repostDepth=actx.optParamIntPositive("repost_history_depth", 2);
 			ctx.getWallController().populateReposts(self, posts, repostDepth);
@@ -400,11 +400,10 @@ public class ApiUtils{
 		Map<Integer, List<Integer>> pinnedIDs=new HashMap<>();
 		Set<Long> needPhotos=new HashSet<>();
 		for(PostViewModel p:posts){
-			if(p.post.ownerID<0 || pinnedIDs.containsKey(p.post.ownerID))
-				continue;
 			PostViewModel post=p;
 			do{
-				pinnedIDs.put(post.post.ownerID, ctx.getWallController().getPinnedPostIDs(post.post.ownerID));
+				if(post.post.ownerID>0 && !pinnedIDs.containsKey(post.post.ownerID))
+					pinnedIDs.put(post.post.ownerID, ctx.getWallController().getPinnedPostIDs(post.post.ownerID));
 				List<Attachment> attachments=post.post.getProcessedAttachments();
 				for(Attachment att:attachments){
 					if(att instanceof PhotoAttachment pa && pa.photoID!=0){

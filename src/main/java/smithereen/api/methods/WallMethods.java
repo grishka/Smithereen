@@ -72,7 +72,7 @@ public class WallMethods{
 		int offset=actx.getOffset();
 		int count=actx.getCount(20, 100);
 		PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getWallController().getWallPosts(self, owner, mode, offset, count));
-		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true));
+		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true, true));
 		if(actx.booleanParam("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(posts.list, needUsers, needGroups);
@@ -102,7 +102,7 @@ public class WallMethods{
 		}
 		ctx.getPrivacyController().filterPostViewModels(self, posts);
 
-		List<ApiWallPost> res=ApiUtils.getPosts(posts, ctx, actx, true, true);
+		List<ApiWallPost> res=ApiUtils.getPosts(posts, ctx, actx, true, true, true);
 		if(actx.booleanParam("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(posts, needUsers, needGroups);
@@ -149,7 +149,7 @@ public class WallMethods{
 
 		record CommentsResponse(int count, List<ApiWallPost> items, String viewType, List<ApiUser> profiles, List<ApiGroup> groups){}
 
-		List<ApiWallPost> apiComments=ApiUtils.getPosts(comments.list, ctx, actx, needLikes, false);
+		List<ApiWallPost> apiComments=ApiUtils.getPosts(comments.list, ctx, actx, needLikes, false, true);
 		if(actx.booleanParam("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(comments.list, needUsers, needGroups);
@@ -165,7 +165,7 @@ public class WallMethods{
 		ctx.getPrivacyController().enforcePostPrivacy(self, post);
 
 		PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getWallController().getPostReposts(post, actx.getOffset(), actx.getCount(20, 100)));
-		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true));
+		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true, true));
 		if(actx.booleanParam("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(posts.list, needUsers, needGroups);

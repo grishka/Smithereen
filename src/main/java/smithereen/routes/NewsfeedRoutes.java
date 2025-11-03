@@ -194,8 +194,12 @@ public class NewsfeedRoutes{
 		if(filter==null)
 			filter=EnumSet.allOf(FriendsNewsfeedTypeFilter.class);
 		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, filter, timeZoneForRequest(req), startFromID, offset, 25);
-		if(!feed.list.isEmpty() && startFromID==0)
-			startFromID=feed.list.getFirst().id;
+		if(!feed.list.isEmpty() && startFromID==0){
+			startFromID=switch(feed.list.getFirst()){
+				case GroupedNewsfeedEntry gne -> gne.childEntries.getFirst().id;
+				case NewsfeedEntry e -> e.id;
+			};
+		}
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "feed_filters");
 		Templates.addJsLangForNewPostForm(req);
 
