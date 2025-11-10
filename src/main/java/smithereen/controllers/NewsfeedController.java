@@ -175,13 +175,15 @@ public class NewsfeedController{
 
 					int sizeBefore=cache.feed.size();
 					cache.add(newPage);
-					int i=0;
-					for(NewsfeedEntry e:newPage){
-						if(e.id>=startFrom){
-							startIndex=i+sizeBefore;
-							break;
+					if(startFrom>0){
+						int i=0;
+						for(NewsfeedEntry e: newPage){
+							if(e.id>=startFrom){
+								startIndex=i+sizeBefore;
+								break;
+							}
+							i++;
 						}
-						i++;
 					}
 				}
 			}
@@ -352,13 +354,15 @@ public class NewsfeedController{
 
 					int sizeBefore=cache.feed.size();
 					cache.add(newPage);
-					int i=0;
-					for(NewsfeedEntry e:newPage){
-						if(e.id>=startFrom){
-							startIndex=i+sizeBefore;
-							break;
+					if(startFrom>0){
+						int i=0;
+						for(NewsfeedEntry e: newPage){
+							if(e.id>=startFrom){
+								startIndex=i+sizeBefore;
+								break;
+							}
+							i++;
 						}
-						i++;
 					}
 				}
 			}
