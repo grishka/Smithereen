@@ -210,7 +210,8 @@ public class PhotosRoutes{
 			String paginationID=req.queryParams("pagination");
 			if(StringUtils.isNotEmpty(paginationID)){
 				WebDeltaResponse r=new WebDeltaResponse(resp)
-						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+						.runScript("renderBlurhashes();");
 				if(photos.offset+photos.perPage>=photos.total){
 					r.remove("ajaxPagination_"+paginationID);
 				}else{
@@ -1066,7 +1067,8 @@ public class PhotosRoutes{
 		model.paginate(photos);
 
 		WebDeltaResponse r=new WebDeltaResponse(resp)
-				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+				.runScript("renderBlurhashes();");
 		if(photos.offset+photos.perPage>=photos.total){
 			r.remove("ajaxPagination_"+paginationID);
 		}else{
@@ -1147,7 +1149,8 @@ public class PhotosRoutes{
 		if(req.queryParams("pagination")!=null){
 			String paginationID=req.queryParams("pagination");
 			WebDeltaResponse r=new WebDeltaResponse(resp)
-					.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+					.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+					.runScript("renderBlurhashes();");
 			if(photos.offset+photos.perPage>=photos.total){
 				r.remove("ajaxPagination_"+paginationID);
 			}else{
@@ -1307,7 +1310,8 @@ public class PhotosRoutes{
 			String paginationID=req.queryParams("pagination");
 			if(StringUtils.isNotEmpty(paginationID)){
 				WebDeltaResponse r=new WebDeltaResponse(resp)
-						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+						.runScript("renderBlurhashes();");
 				if(photos.offset+photos.perPage>=photos.total){
 					r.remove("ajaxPagination_"+paginationID);
 				}else{
@@ -1374,7 +1378,8 @@ public class PhotosRoutes{
 			String paginationID=req.queryParams("pagination");
 			if(StringUtils.isNotEmpty(paginationID)){
 				WebDeltaResponse r=new WebDeltaResponse(resp)
-						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+						.runScript("renderBlurhashes();");
 				if(photos.offset+photos.perPage>=photos.total){
 					r.remove("ajaxPagination_"+paginationID);
 				}else{

@@ -3,6 +3,7 @@ package smithereen.templates.functions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -16,6 +17,8 @@ import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.templates.MediaLayoutHelper;
 import smithereen.text.TextProcessor;
+import smithereen.util.BlurHash;
+import spark.utils.StringUtils;
 
 public class RenderPhotoGridFunction implements Function{
 	@Override
@@ -67,8 +70,17 @@ public class RenderPhotoGridFunction implements Function{
 			PhotoViewerInlineData data=new PhotoViewerInlineData(i, list, ph.image.getURLsForPhotoViewer());
 			String attrs="onclick=\"return openPhotoViewer(this)\" data-pv=\""+TextProcessor.escapeHTML(Utils.gson.toJson(data))+"\"";
 
+			List<String> imgAttrs=null;
+			String blurhash=ph.getBlurHash();
+			if(StringUtils.isNotEmpty(blurhash)){
+				imgAttrs=List.of(
+						String.format(Locale.US, "style=\"background-color: #%06X\"", BlurHash.decodeToSingleColor(blurhash)),
+						"data-blurhash=\""+blurhash+"\""
+				);
+			}
+
 			lines.add("<a href=\""+ph.getURL()+"\" style=\""+style+"\" "+attrs+">");
-			lines.add(ph.image.generateHTML(type, null, "", 0, 0, true, null));
+			lines.add(ph.image.generateHTML(type, null, imgAttrs, 0, 0, true, null));
 			lines.add("</a>");
 			i++;
 		}

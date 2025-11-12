@@ -21,7 +21,7 @@ import smithereen.storage.ImgProxy;
 import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.util.XTEA;
 
-public class LocalImage extends Image implements SizedImage{
+public non-sealed class LocalImage extends Image implements SizedImage{
 	public Dimensions size=Dimensions.UNKNOWN;
 	public long fileID;
 	public MediaFileRecord fileRecord;
@@ -201,6 +201,11 @@ public class LocalImage extends Image implements SizedImage{
 					.build();
 		}
 		return MediaFileStorageDriver.getInstance().getFilePublicURL(fileRecord.id());
+	}
+
+	@Override
+	public String getBlurHash(){
+		return blurHash;
 	}
 
 	public void fillIn(MediaFileRecord mfr){

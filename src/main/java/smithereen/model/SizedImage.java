@@ -15,10 +15,11 @@ import smithereen.storage.ImgProxy;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
-public interface SizedImage{
+public sealed interface SizedImage permits LocalImage, RemoteImage{
 	URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback);
 	Dimensions getOriginalDimensions();
 	URI getOriginalURI();
+	String getBlurHash();
 
 	default Dimensions getDimensionsForSize(Type size, Dimensions dimensions){
 		return size.getResizedDimensions(dimensions);
@@ -49,7 +50,7 @@ public interface SizedImage{
 		return getUriForSizeAndFormat(size, format, false, true);
 	}
 
-	default String generateHTML(Type size, List<String> additionalClasses, String styleAttr, int width, int height, boolean add2x, String altText){
+	default String generateHTML(Type size, List<String> additionalClasses, List<String> extraAttrs, int width, int height, boolean add2x, String altText){
 		StringBuilder sb=new StringBuilder("<picture>");
 		appendHtmlForFormat(size, Format.WEBP, sb, add2x);
 		appendHtmlForFormat(size, Format.JPEG, sb, add2x);
@@ -69,10 +70,11 @@ public interface SizedImage{
 			}
 			sb.append('"');
 		}
-		if(StringUtils.isNotEmpty(styleAttr)){
-			sb.append(" style=\"");
-			sb.append(styleAttr);
-			sb.append('"');
+		if(extraAttrs!=null && !extraAttrs.isEmpty()){
+			for(String attr:extraAttrs){
+				sb.append(' ');
+				sb.append(attr);
+			}
 		}
 		if(width>0){
 			sb.append(" width=\"");

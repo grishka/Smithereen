@@ -23,6 +23,7 @@ import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
+import smithereen.model.RemoteImage;
 import smithereen.model.SizedImage;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
@@ -397,11 +398,14 @@ public class PhotoStorage{
 			Map<URI, MediaCache.Item> items=MediaCache.getInstance().get(needCacheItems);
 			for(Photo p:remotePhotos){
 				MediaCache.Item item=items.get(p.remoteSrc);
+				RemoteImage ri;
 				if(item instanceof MediaCache.PhotoItem pi){
-					p.image=new CachedRemoteImage(pi, p.remoteSrc);
+					ri=new CachedRemoteImage(pi, p.remoteSrc);
 				}else{
-					p.image=new NonCachedRemoteImage(new NonCachedRemoteImage.AlbumPhotoArgs(p), new SizedImage.Dimensions(p.metadata.width, p.metadata.height), p.remoteSrc);
+					ri=new NonCachedRemoteImage(new NonCachedRemoteImage.AlbumPhotoArgs(p), new SizedImage.Dimensions(p.metadata.width, p.metadata.height), p.remoteSrc);
 				}
+				ri.blurHash=p.getBlurHash();
+				p.image=ri;
 			}
 		}
 	}
