@@ -31,5 +31,15 @@
   "oauth_scope_notifications_info": "The app will receive access to your notifications",
   "oauth_scope_offline": "Access at any time",
   "oauth_scope_offline_info": "The app will be able to access your data any time, even when you are offline",
-  "oauth_grant_access": "Allow"
+  "oauth_grant_access": "Allow",
+  "apps_app_name": "Name",
+  "apps_app_description": "Description",
+  "apps_upload_logo": "Upload a logo",
+  "apps_app_created": "Application created",
+  "apps_app_id": "Identifier",
+  "apps_app_id_explanation": "Pass as client_id for authorization requests",
+  "apps_edit_title": "Edit application",
+  "err_app_logo_not_square": "The logo must be a square image.",
+  "err_app_logo_too_small": "The logo must be at least {size}x{size}.",
+  "apps_info_updated": "Application information was saved"
 }

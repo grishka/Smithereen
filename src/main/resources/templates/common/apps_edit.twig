@@ -1,0 +1,47 @@
+{% extends "page" %}
+{% import "forms" as form %}
+{% block content %}
+<div class="gray singleColumn">
+	<div style="display: flex">
+		<form style="flex-grow: 1" method="post" action="/apps{% if app is null %}/create{% else %}/{{ app.id }}/edit{% endif %}?csrf={{ csrf }}" data-ajax>
+		<input type="hidden" id="logoIdField" name="logo"{% if app is not null and app.logo is not null %} value="{{ app.logo.localID }}"{% endif %}/>
+		{{ form.start("appInfo", appInfoMessage) }}
+			{{ form.textInput('name', L('apps_app_name'), app is null ? '' : app.name, {'required': true, 'maxlength': 50}) }}
+			{{ form.textArea('description', L('apps_app_description'), app is null ? '' : app.description) }}
+			{% if app is not null %}
+			{{ form.labeledText(L('apps_app_id'), app.activityPubID, {'explanation': L('apps_app_id_explanation')}) }}
+			{% endif %}
+			{{ form.footer(L(app is null ? 'create' : 'save')) }}
+		{{ form.end() }}
+		</form>
+		<div style="width: 100px; flex: none; padding-top: 8px; text-align: center">
+			<input type="file" accept="image/*" id="logoUploadField" style="display: none" onchange="cur.uploadLogo()"/>
+			<label for="logoUploadField" class="link">
+				<div class="marginAfter" id="logoImageW">
+					{% if app is not null %}
+					{{ app | pictureForAvatar('b', 75) }}
+					{% else %}
+					<span class="ava avaPlaceholder sizeB" style="--ava-width: 75px;--ava-height: 75px"></span>
+					{% endif %}
+				</div>
+				<div style="padding: 0 10px" id="logoUploadText">{{ L('apps_upload_logo') }}</div>
+				<div id="logoLoader" class="loader" style="display: none"></div>
+			</label>
+		</div>
+	</div>
+</div>
+{% script %}
+cur.uploadLogo=function(){
+	ge("logoUploadText").hide();
+	ge("logoLoader").show();
+	var field=ge("logoUploadField");
+	var file=field.files[0];
+	field.value="";
+	ajaxUpload("/apps/uploadLogo", "file", file, null, function(errorMsg){
+		ge("logoUploadText").show();
+		ge("logoLoader").hide();
+		new MessageBox(lang("error"), errorMsg || lang("network_error"), lang("close")).show();
+	});
+};
+{% endscript %}
+{% endblock %}

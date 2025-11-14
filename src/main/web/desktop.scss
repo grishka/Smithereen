@@ -289,6 +289,9 @@ small{
 		max-width: 600px;
 		margin: auto;
 	}
+	#headerNav{
+		flex-grow: 1;
+	}
 }
 
 .leftMenu{
@@ -836,7 +839,7 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	margin-top: 10px;
 }
 
-.narrowForms form{
+.narrowForms{
 	h2{
 		width: 400px;
 		margin: auto;

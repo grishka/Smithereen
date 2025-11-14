@@ -31,5 +31,15 @@
   "oauth_scope_notifications_info": "Приложению будут доступны ваши уведомления",
   "oauth_scope_offline": "Доступ в любое время",
   "oauth_scope_offline_info": "Приложение сможет получать доступ к вашим данным в любое время, даже когда вы будете не в сети",
-  "oauth_grant_access": "Разрешить"
+  "oauth_grant_access": "Разрешить",
+  "apps_app_name": "Название",
+  "apps_app_description": "Описание",
+  "apps_upload_logo": "Загрузить логотип",
+  "apps_app_created": "Приложение создано",
+  "apps_app_id": "Идентификатор",
+  "apps_app_id_explanation": "Передавайте в параметре client_id при авторизации",
+  "apps_edit_title": "Редактирование приложения",
+  "err_app_logo_not_square": "Изображение для логотипа должно быть квадратным.",
+  "err_app_logo_too_small": "Размер логотипа должен быть как минимум {size}х{size}.",
+  "apps_info_updated": "Информация о приложении сохранена"
 }

@@ -227,7 +227,7 @@ public class SystemRoutes{
 				mime="image/jpeg";
 				long appID=safeParseLong(req.queryParams("app_id"));
 				ClientApp app=ctx.getAppsController().getAppByID(appID);
-				if(Config.isLocal(app.apID)){
+				if(app.apID==null){
 					LOG.warn("downloading app_logo: app {} is local", appID);
 					return "";
 				}

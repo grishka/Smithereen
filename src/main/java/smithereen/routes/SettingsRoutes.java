@@ -24,7 +24,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -53,6 +55,8 @@ import smithereen.model.UserDataExport;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.admin.UserRole;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.apps.AppAccessGrant;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.filtering.FilterContext;
 import smithereen.model.filtering.WordFilter;
@@ -1242,5 +1246,33 @@ public class SettingsRoutes{
 		}
 		ctx.getUserDataExportWorker().startExport(self);
 		return ajaxAwareRedirect(req, resp, "/settings/export");
+	}
+
+	public static Object apps(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_apps", req)
+				.pageTitle(l.get("menu_apps"))
+				.mobileToolbarTitle(l.get("settings"));
+		List<AppAccessGrant> grants=ctx.getAppsController().getAllAccessGrants(self);
+		List<Long> managedApps=ctx.getAppsController().getUserManagedApps(self.user);
+		Set<Long> needApps=Stream.of(managedApps.stream(), grants.stream().map(AppAccessGrant::appID))
+				.flatMap(Function.identity())
+				.collect(Collectors.toSet());
+		Map<Long, ClientApp> apps=ctx.getAppsController().getAppsByIDs(needApps);
+		model.with("grants", grants.stream().map(g->apps.get(g.appID())).toList())
+				.with("managed", managedApps.stream().map(apps::get).toList());
+		return model;
+	}
+
+	public static Object appsRevokeAccess(Request req, Response resp, Account self, ApplicationContext ctx){
+		long id=safeParseInt(req.params(":id"));
+		ClientApp app=ctx.getAppsController().getAppByID(id);
+		ctx.getAppsController().deleteAccessGrantAndRevokeTokens(self, app);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.setContent("appRevoke"+id, "<span class=\"grayText\">— "+lang(req).get("settings_apps_revoked")+"</span>");
+		}
+		resp.redirect(back(req));
+		return "";
 	}
 }

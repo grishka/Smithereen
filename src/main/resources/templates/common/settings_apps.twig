@@ -1,0 +1,38 @@
+{% extends "page" %}
+{% block content %}
+{% include "settings_tabbar" with {'tab': 'apps'} %}
+<div class="singleColumn gray narrowForms">
+	<h2>{{ L('settings_apps_grants') }}</h2>
+	<div class="form">
+		{% if grants is empty %}
+		<div class="emptyState compact">{{ L('settings_apps_grants_empty') }}</div>
+		{% else %}
+		<div class="textByItself">{{ L('settings_apps_grants_summary', {'count': grants | length}) }}</div>
+		<ul class="actualList">
+		{% for app in grants %}
+			<li><span>
+				{{ app.name }}
+				<span id="appRevoke{{ app.id }}">(<a href="/settings/apps/{{ app.id }}/revoke?csrf={{ csrf }}" data-ajax data-ajax-show="appRevokeLoader{{ app.id }}" data-ajax-hide="appRevoke{{ app.id }}">{{ L('settings_apps_revoke') }}</a>)</span>
+				<span class="inlineLoader" id="appRevokeLoader{{ app.id }}" style="display: none"></span>
+			</span></li>
+		{% endfor %}
+		</ul>
+		{% endif %}
+	</div>
+	<h2>{{ L('settings_apps_development') }}</h2>
+	<div class="form">
+		<div class="textByItself">
+			<p>{{ L('settings_apps_dev_explanation', {}, {'docs': {'href': 'https://smithereen.software/docs/api/creating-app/', 'target': '_blank'} }) }}</p>
+			{% if managed is not empty %}<p>{{ L('settings_apps_managed_summary', {'count': managed | length}) }}</p>{% endif %}
+		</div>
+		{% if managed is not empty %}
+		<ul class="actualList">
+		{% for app in managed %}
+			<li><a href="/apps/{{ app.id }}/edit">{{ app.name }}</a></li>
+		{% endfor %}
+		</ul>
+		{% endif %}
+		<div class="marginBefore"><a class="button" href="/apps/create">{{ L('settings_apps_create') }}</a></div>
+	</div>
+</div>
+{% endblock %}

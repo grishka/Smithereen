@@ -70,6 +70,7 @@ import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.routes.ActivityPubRoutes;
 import smithereen.routes.ApiRoutes;
+import smithereen.routes.AppsRoutes;
 import smithereen.routes.BoardRoutes;
 import smithereen.routes.FaspApiRoutes;
 import smithereen.routes.MastodonApiRoutes;
@@ -396,6 +397,10 @@ public class SmithereenApplication{
 			getLoggedIn("/export", SettingsRoutes::dataExports);
 			getLoggedIn("/requestExport", SettingsRoutes::requestDataExportForm);
 			postWithCSRF("/requestExport", SettingsRoutes::requestDataExport);
+			path("/apps", ()->{
+				getLoggedIn("", SettingsRoutes::apps);
+				getWithCSRF("/:id/revoke", SettingsRoutes::appsRevokeAccess);
+			});
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminGeneralRoutes::serverInfo);
@@ -808,6 +813,16 @@ public class SmithereenApplication{
 			getActivityPubCollection("/pinnedTopics", 100, ActivityPubRoutes::groupPinnedTopics);
 
 			getRequiringPermission("/groupinfo", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupInfo);
+		});
+
+		path("/apps", ()->{
+			getLoggedIn("/create", AppsRoutes::createAppForm);
+			postWithCSRF("/create", AppsRoutes::createApp);
+			postWithCSRF("/uploadLogo", AppsRoutes::uploadAppLogo);
+			path("/:id", ()->{
+				getLoggedIn("/edit", AppsRoutes::editAppForm);
+				postWithCSRF("/edit", AppsRoutes::editApp);
+			});
 		});
 
 		path("/posts/:postID", ()->{

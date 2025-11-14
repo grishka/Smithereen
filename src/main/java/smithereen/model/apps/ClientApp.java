@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import smithereen.Config;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Image;
@@ -138,5 +139,9 @@ public class ClientApp{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public URI getActivityPubID(){
+		return apID==null ? Config.localURI("/apps/"+id) : apID;
 	}
 }

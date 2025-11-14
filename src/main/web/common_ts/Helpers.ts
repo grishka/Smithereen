@@ -349,6 +349,8 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 			if(onDone(resp))
 				return;
 		}
+		if(resp[0]=='[')
+			resp=JSON.parse(resp);
 		if(resp instanceof Array){
 			for(var i=0;i<resp.length;i++){
 				applyServerCommand(resp[i]);
@@ -364,7 +366,6 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 		if(onProgress)
 			onProgress(ev.loaded/ev.total);
 	};
-	xhr.responseType="json";
 	xhr.send(formData);
 }
 

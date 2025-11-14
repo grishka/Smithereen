@@ -67,12 +67,11 @@ public class PictureForAvatarFilter implements Filter{
 		}
 
 		List<String> classes=new ArrayList<>();
-		classes.add("avaImage");
 		if(args.containsKey("classes")){
 			classes.add(args.get("classes").toString());
 		}
-		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(args.containsKey("wrapperClasses") ? (" "+args.get("wrapperClasses")) : "")+"\""+(isRect || args.containsKey("size") ? (" style=\"--ava-width: "+width+"px;--ava-height: "+height+"px\"") : "")+">"
-				+image.generateHTML(type, classes, null, 0, 0, true, null)+"</span>");
+		List<String> wrapperClasses=args.containsKey("wrapperClasses") ? List.of(args.get("wrapperClasses").toString().split(" ")) : List.of();
+		return new SafeString(image.generateAvatarHTML(type, width, height, classes, wrapperClasses));
 	}
 
 	@Override

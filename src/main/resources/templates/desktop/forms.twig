@@ -162,7 +162,7 @@ autoSizeTextArea(ge("{{ name }}"));
 	</tr>
 {%endmacro%}
 
-{%macro labeledText(label, text)%}
+{%macro labeledText(label, text, options)%}
 	<tr>
 		<td class="label">
 				{% if label is not empty %}
@@ -171,6 +171,9 @@ autoSizeTextArea(ge("{{ name }}"));
 		</td>
 		<td class="text">
 			{{ text }}
+			{% if options.explanation is not empty %}
+				<div class="formExplanation smallMarginBefore">{{ options.explanation }}</div>
+			{% endif %}
 		</td>
 	</tr>
 {%endmacro%}

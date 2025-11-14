@@ -37,7 +37,7 @@ function renderBlurhashes(root:HTMLElement=null){
 			img.removeEventListener("load", listener);
 		};
 		el.addEventListener("load", listener);
-		
+
 		var numComponents=decode83(hash[0]);
 		var numY=Math.floor(numComponents/9)+1;
 		var numX=(numComponents%9)+1;

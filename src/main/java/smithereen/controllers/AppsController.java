@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -25,15 +26,21 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
 import smithereen.Utils;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Account;
+import smithereen.model.User;
 import smithereen.model.apps.AppAuthCode;
 import smithereen.model.apps.AppAccessGrant;
 import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.model.media.MediaFileID;
+import smithereen.model.media.MediaFileReferenceType;
 import smithereen.storage.AppsStorage;
+import smithereen.storage.MediaStorage;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.SessionStorage;
 import smithereen.util.ByteArrayMapKey;
 import smithereen.util.JsonObjectBuilder;
@@ -131,6 +138,50 @@ public class AppsController{
 		}
 	}
 
+	public long createApp(User self, String name, String description, String logoID){
+		try{
+			LocalImage logo=null;
+			if(StringUtils.isNotEmpty(logoID)){
+				logo=MediaStorageUtils.getLocalImage(logoID);
+			}
+			long id=AppsStorage.createApp(self.id, name, description, logo);
+			if(logo!=null){
+				MediaStorage.createMediaFileReference(logo.fileID, id, MediaFileReferenceType.APP_LOGO, self.id);
+			}
+			return id;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateApp(ClientApp app, String name, String description, String logoID){
+		try{
+			LocalImage logo=app.logo instanceof LocalImage li ? li : null;
+			String existingLogoID=logo!=null ? logo.getLocalID() : null;
+			if(existingLogoID!=null && !existingLogoID.equals(logoID)){
+				MediaStorage.deleteMediaFileReference(app.id, MediaFileReferenceType.APP_LOGO, ((LocalImage)app.logo).fileID);
+			}
+			if(StringUtils.isNotEmpty(logoID)){
+				logo=MediaStorageUtils.getLocalImage(logoID);
+			}
+			AppsStorage.updateApp(app.id, name, description, logo);
+			if(!Objects.equals(logoID, existingLogoID) && logo!=null)
+				MediaStorage.createMediaFileReference(logo.fileID, app.id, MediaFileReferenceType.APP_LOGO, app.developerID);
+			appsCache.remove(app.id);
+			// TODO Update{Application}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<Long> getUserManagedApps(User self){
+		try{
+			return AppsStorage.getUserManagedApps(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	// endregion
 	// region Access grants
 
@@ -142,12 +193,40 @@ public class AppsController{
 		}
 	}
 
+	public List<AppAccessGrant> getAllAccessGrants(Account account){
+		try{
+			return AppsStorage.getAllAccessGrants(account.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteAccessGrantAndRevokeTokens(Account account, ClientApp app){
+		try{
+			AppAccessGrant grant=AppsStorage.getAccessGrant(account.id, app.id);
+			if(grant==null)
+				return;
+			AppsStorage.deleteAccessGrant(account.id, app.id);
+			// TODO send Remove{Application}
+			List<byte[]> tokens=AppsStorage.getUserAppAccessTokens(account.id, app.id);
+			if(tokens.isEmpty())
+				return;
+			AppsStorage.deleteAccessTokens(tokens);
+			for(byte[] token:tokens){
+				accessTokenCache.remove(new ByteArrayMapKey(token));
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	// endregion
 	// region Access tokens
 
 	public AppAccessToken createAccessToken(Account account, ClientApp app, EnumSet<ClientAppPermission> permissions, Request req){
 		try{
 			AppsStorage.createOrUpdateAccessGrant(account.id, app.id, permissions);
+			// TODO send Add{Application}
 			Instant expiresAt=permissions.contains(ClientAppPermission.OFFLINE) || permissions.contains(ClientAppPermission.PASSWORD_GRANT_USED) ? null : Instant.now().plus(1, ChronoUnit.HOURS);
 			byte[] id=new byte[64];
 			srand.nextBytes(id);

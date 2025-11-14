@@ -300,6 +300,11 @@ public class ObjectLinkResolver{
 						case APPLICATION -> context.getAppsController().getAppByID(res.localID);
 					}, expectedType);
 				}
+
+				matcher=APPS.matcher(link.getPath());
+				if(matcher.find()){
+					return ensureTypeAndCast(context.getAppsController().getAppByID(safeParseLong(matcher.group(1))), expectedType);
+				}
 			}else{
 				ObjectTypeAndID tid=FederationStorage.getObjectTypeAndID(link);
 				if(tid!=null){

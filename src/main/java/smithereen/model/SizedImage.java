@@ -108,6 +108,16 @@ public sealed interface SizedImage permits LocalImage, RemoteImage{
 		sb.append("\"/>");
 	}
 
+	default String generateAvatarHTML(Type size, int width, int height, List<String> classes, List<String> wrapperClasses){
+		classes=new ArrayList<>(classes);
+		classes.add("avaImage");
+		String typeStr=size.suffix;
+		if(size.isRect())
+			typeStr=typeStr.substring(1);
+		return "<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(String.join(" ", wrapperClasses))+"\""+(size.isRect() || width!=size.maxWidth || height!=size.maxHeight ? (" style=\"--ava-width: "+width+"px;--ava-height: "+height+"px\"") : "")+">"
+				+generateHTML(size, classes, null, 0, 0, true, null)+"</span>";
+	}
+
 	enum Type{
 		/**
 		 * Photos: 100x100

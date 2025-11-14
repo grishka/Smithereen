@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.URI;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Instant;
@@ -14,16 +17,20 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.apps.AppAuthCode;
 import smithereen.model.apps.AppAccessGrant;
 import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -97,18 +104,23 @@ public class AppsStorage{
 	}
 
 	public static ClientApp getAppByID(long id) throws SQLException{
-		return new SQLQueryBuilder()
+		ClientApp app=new SQLQueryBuilder()
 				.selectFrom("api_applications")
 				.where("id=?", id)
 				.executeAndGetSingleObject(ClientApp::fromResultSet);
+		if(app!=null)
+			postprocessApps(List.of(app));
+		return app;
 	}
 
 	public static Map<Long, ClientApp> getAppsByIDs(Collection<Long> ids) throws SQLException{
-		return new SQLQueryBuilder()
+		Map<Long, ClientApp> apps=new SQLQueryBuilder()
 				.selectFrom("api_applications")
 				.whereIn("id", ids)
 				.executeAsStream(ClientApp::fromResultSet)
 				.collect(Collectors.toMap(a->a.id, Function.identity()));
+		postprocessApps(apps.values());
+		return apps;
 	}
 
 	public static long getAppIdByActivityPubID(URI apID) throws SQLException{
@@ -117,6 +129,68 @@ public class AppsStorage{
 				.where("ap_id=?", apID.toString())
 				.executeAndGetLong();
 		return id==-1 ? 0 : id;
+	}
+
+	public static long createApp(int userID, String name, String description, LocalImage logo) throws SQLException{
+		byte[] publicKey, privateKey;
+		try{
+			KeyPairGenerator kpg=KeyPairGenerator.getInstance("RSA");
+			kpg.initialize(2048);
+			KeyPair pair=kpg.generateKeyPair();
+			publicKey=pair.getPublic().getEncoded();
+			privateKey=pair.getPrivate().getEncoded();
+		}catch(NoSuchAlgorithmException x){
+			throw new RuntimeException(x);
+		}
+		JsonObject serializedLogo=MediaStorageUtils.serializeAttachment(logo);
+		return new SQLQueryBuilder()
+				.insertInto("api_applications")
+				.value("name", name)
+				.value("description", description)
+				.value("logo", serializedLogo==null ? null : serializedLogo.toString())
+				.value("developer_id", userID)
+				.value("public_key", publicKey)
+				.value("private_key", privateKey)
+				.executeAndGetIDLong();
+	}
+
+	public static void updateApp(long id, String name, String description, LocalImage logo) throws SQLException{
+		JsonObject serializedLogo=MediaStorageUtils.serializeAttachment(logo);
+		new SQLQueryBuilder()
+				.update("api_applications")
+				.where("id=?", id)
+				.value("name", name)
+				.value("description", description)
+				.value("logo", serializedLogo==null ? null : serializedLogo.toString())
+				.executeNoResult();
+	}
+
+	public static List<Long> getUserManagedApps(int userID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("api_applications")
+				.columns("id")
+				.where("developer_id=?", userID)
+				.executeAndGetLongStream()
+				.boxed()
+				.toList();
+	}
+
+	private static void postprocessApps(Collection<ClientApp> apps) throws SQLException{
+		Set<Long> needFiles=apps.stream()
+				.map(a->a.logo instanceof LocalImage li ? li : null)
+				.filter(Objects::nonNull)
+				.map(li->li.fileID)
+				.collect(Collectors.toSet());
+		if(needFiles.isEmpty())
+			return;
+		Map<Long, MediaFileRecord> fileRecords=MediaStorage.getMediaFileRecords(needFiles);
+		for(ClientApp a:apps){
+			if(a.logo instanceof LocalImage li){
+				MediaFileRecord mfr=fileRecords.get(li.fileID);
+				if(mfr!=null)
+					li.fillIn(mfr);
+			}
+		}
 	}
 
 	// endregion
@@ -144,6 +218,15 @@ public class AppsStorage{
 				.deleteFrom("api_grants")
 				.where("account_id=? AND app_id=?", accountID, appID)
 				.executeNoResult();
+	}
+
+	public static List<AppAccessGrant> getAllAccessGrants(int accountID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("api_grants")
+				.where("account_id=?", accountID)
+				.orderBy("granted_at DESC")
+				.executeAsStream(AppAccessGrant::fromResultSet)
+				.toList();
 	}
 
 	// endregion
@@ -200,6 +283,15 @@ public class AppsStorage{
 				.value("user_agent", uaHash)
 				.where("id=?", (Object)id)
 				.executeNoResult();
+	}
+
+	public static List<byte[]> getUserAppAccessTokens(int accountID, long appID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("api_tokens")
+				.columns("id")
+				.where("account_id=? AND app_id=?", accountID, appID)
+				.executeAsStream(r->r.getBytes(1))
+				.toList();
 	}
 
 	// endregion

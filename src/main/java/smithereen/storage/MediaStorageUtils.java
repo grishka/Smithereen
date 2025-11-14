@@ -21,6 +21,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import jakarta.servlet.MultipartConfigElement;
@@ -155,23 +156,9 @@ public class MediaStorageUtils{
 				img.fillIn(mfr);
 				attachObjects.add(img);
 			}else{
-				long fileID;
-				byte[] fileRandomID;
-				try{
-					byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
-					fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
-					if(_fileID.length!=8 || fileRandomID.length!=18)
-						continue;
-					fileID=XTEA.deobfuscateObjectID(Utils.unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
-				}catch(IllegalArgumentException x){
+				LocalImage img=getLocalImage(id);
+				if(img==null)
 					continue;
-				}
-				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(fileID);
-				if(mfr==null || !Arrays.equals(mfr.id().randomID(), fileRandomID))
-					continue;
-				LocalImage img=new LocalImage();
-				img.fileID=fileID;
-				img.fillIn(mfr);
 				img.name=altTexts.get(id);
 				attachObjects.add(img);
 			}
@@ -179,6 +166,30 @@ public class MediaStorageUtils{
 			if(attachmentCount==maxAttachments)
 				break;
 		}
+	}
+
+	public static LocalImage getLocalImage(String id) throws SQLException{
+		String[] idParts=id.split(":");
+		if(idParts.length!=2)
+			return null;
+		long fileID;
+		byte[] fileRandomID;
+		try{
+			byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
+			fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
+			if(_fileID.length!=8 || fileRandomID.length!=18)
+				return null;
+			fileID=XTEA.deobfuscateObjectID(Utils.unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
+		}catch(IllegalArgumentException x){
+			return null;
+		}
+		MediaFileRecord mfr=MediaStorage.getMediaFileRecord(fileID);
+		if(mfr==null || !Arrays.equals(mfr.id().randomID(), fileRandomID))
+			return null;
+		LocalImage img=new LocalImage();
+		img.fileID=fileID;
+		img.fillIn(mfr);
+		return img;
 	}
 
 	public static void deleteAbandonedFiles(){
@@ -198,6 +209,10 @@ public class MediaStorageUtils{
 	}
 
 	public static LocalImage saveUploadedImage(Request req, Response resp, Account self, boolean isGraffiti, String fieldName){
+		return saveUploadedImage(req, resp, self, isGraffiti, fieldName, null);
+	}
+
+	public static LocalImage saveUploadedImage(Request req, Response resp, Account self, boolean isGraffiti, String fieldName, Consumer<VipsImage> extraValidator){
 		Lang l=lang(req);
 		try{
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, MAX_IMAGE_SIZE, -1L, 0));
@@ -248,6 +263,8 @@ public class MediaStorageUtils{
 			LocalImage photo=new LocalImage();
 			MediaFileRecord fileRecord;
 			try{
+				if(extraValidator!=null)
+					extraValidator.accept(img);
 				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
 				int[] outSize={0,0};
 				writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
