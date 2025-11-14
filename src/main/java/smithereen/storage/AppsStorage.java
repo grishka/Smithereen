@@ -142,7 +142,7 @@ public class AppsStorage{
 		}catch(NoSuchAlgorithmException x){
 			throw new RuntimeException(x);
 		}
-		JsonObject serializedLogo=MediaStorageUtils.serializeAttachment(logo);
+		JsonObject serializedLogo=logo==null ? null : MediaStorageUtils.serializeAttachment(logo);
 		return new SQLQueryBuilder()
 				.insertInto("api_applications")
 				.value("name", name)
@@ -155,7 +155,7 @@ public class AppsStorage{
 	}
 
 	public static void updateApp(long id, String name, String description, LocalImage logo) throws SQLException{
-		JsonObject serializedLogo=MediaStorageUtils.serializeAttachment(logo);
+		JsonObject serializedLogo=logo==null ? null : MediaStorageUtils.serializeAttachment(logo);
 		new SQLQueryBuilder()
 				.update("api_applications")
 				.where("id=?", id)
