@@ -9,6 +9,7 @@ import java.security.SecureRandom;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -18,7 +19,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -36,7 +36,6 @@ import smithereen.model.apps.AppAccessGrant;
 import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
-import smithereen.model.media.MediaFileID;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.storage.AppsStorage;
 import smithereen.storage.MediaStorage;
@@ -262,6 +261,32 @@ public class AppsController{
 				asyncUpdater.schedule(this::doPendingTokenAccessUpdates, 10, TimeUnit.SECONDS);
 			}
 			accessTokenPendingAccessUpdates.put(key, new AccessTokenLastUseUpdate(ip, userAgent));
+		}
+	}
+
+	public void revokeUserAccessTokensExcept(Account account, byte[] token){
+		try{
+			List<byte[]> tokensToRevoke=AppsStorage.getAllUserAccessTokens(account.id)
+					.stream()
+					.filter(t->!Arrays.equals(t, token))
+					.toList();
+			if(tokensToRevoke.isEmpty())
+				return;
+			AppsStorage.deleteAccessTokens(tokensToRevoke);
+			for(byte[] t:tokensToRevoke){
+				accessTokenCache.remove(new ByteArrayMapKey(t));
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void revokeAccessToken(byte[] token){
+		try{
+			AppsStorage.deleteAccessToken(token);
+			accessTokenCache.remove(new ByteArrayMapKey(token));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 

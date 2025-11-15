@@ -285,5 +285,7 @@
   "settings_apps_dev_explanation": "You can register your application on this server. To learn more about application identity and metadata, see the <a id=\"docs\">developer documentation</a>.",
   "settings_apps_create": "Create an application",
   "settings_apps_create_title": "Create an application",
-  "settings_apps_managed_summary": "You registered {count, plural, one {# application} other {# applications}}:"
+  "settings_apps_managed_summary": "You registered {count, plural, one {# application} other {# applications}}:",
+  "settings_activity_api": "App {appName}",
+  "settings_activity_api_short": "{time} ({ip}, {appName} application)"
 }

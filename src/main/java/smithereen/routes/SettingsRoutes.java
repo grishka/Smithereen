@@ -104,11 +104,21 @@ public class SettingsRoutes{
 		model.with("title", l.get("settings"));
 		OtherSession session=ctx.getUsersController().getAccountMostRecentSession(self);
 		if(session!=null){
-			model.with("lastActivityDescription", l.get("settings_activity_web_short", Map.of(
-					"time", l.formatDate(session.lastActive(), timeZoneForRequest(req), false),
-					"ip", session.ip().getHostAddress(),
-					"browserName", session.browserInfo().name()
-			)));
+			String descr;
+			if(session.appID()==0){
+				descr=l.get("settings_activity_web_short", Map.of(
+						"time", l.formatDate(session.lastActive(), timeZoneForRequest(req), false),
+						"ip", session.ip().getHostAddress(),
+						"browserName", session.browserInfo().name()
+				));
+			}else{
+				descr=l.get("settings_activity_api_short", Map.of(
+						"time", l.formatDate(session.lastActive(), timeZoneForRequest(req), false),
+						"ip", session.ip().getHostAddress(),
+						"appName", ctx.getAppsController().getAppByID(session.appID()).name
+				));
+			}
+			model.with("lastActivityDescription", descr);
 		}
 		if(req.queryParams("sessionsTerminated")!=null){
 			model.with("accountActivityMessage", l.get("settings_sessions_ended"));
@@ -715,7 +725,10 @@ public class SettingsRoutes{
 
 	public static Object sessions(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "settings_activity_history" : "content_wrap", req);
-		model.with("sessions", ctx.getUsersController().getAccountSessions(info.account))
+		List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(info.account, 0, 20);
+		Set<Long> needApps=sessions.stream().map(OtherSession::appID).filter(id->id!=0).collect(Collectors.toSet());
+		model.with("sessions", sessions)
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps))
 				.with("currentSessionID", Base64.getDecoder().decode(req.cookie("psid")))
 				.with("isAjax", isAjax(req));
 		Lang l=lang(req);

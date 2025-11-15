@@ -294,6 +294,15 @@ public class AppsStorage{
 				.toList();
 	}
 
+	public static List<byte[]> getAllUserAccessTokens(int accountID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("api_tokens")
+				.columns("id")
+				.where("account_id=?", accountID)
+				.executeAsStream(r->r.getBytes(1))
+				.toList();
+	}
+
 	// endregion
 	// region OAuth auth codes
 

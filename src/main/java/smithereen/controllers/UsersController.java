@@ -450,9 +450,9 @@ public class UsersController{
 		}
 	}
 
-	public List<OtherSession> getAccountSessions(Account acc){
+	public List<OtherSession> getAccountSessions(Account acc, int offset, int count){
 		try{
-			return SessionStorage.getAccountSessions(acc.id);
+			return SessionStorage.getAccountSessions(acc.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -460,7 +460,8 @@ public class UsersController{
 
 	public OtherSession getAccountMostRecentSession(Account acc){
 		try{
-			return SessionStorage.getAccountMostRecentSession(acc.id);
+			List<OtherSession> s=SessionStorage.getAccountSessions(acc.id, 0, 1);
+			return s.isEmpty() ? null : s.getFirst();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -497,6 +498,7 @@ public class UsersController{
 		try{
 			byte[] sid=Base64.getDecoder().decode(psid);
 			SessionStorage.deleteSessionsExcept(self.id, sid);
+			context.getAppsController().revokeUserAccessTokensExcept(self, sid);
 			SmithereenApplication.invalidateAllSessionsForAccount(self.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);

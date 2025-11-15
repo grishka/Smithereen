@@ -833,7 +833,10 @@ public class ModerationController{
 
 	public void terminateUserSession(User self, Account account, OtherSession session){
 		try{
-			SessionStorage.deleteSession(account.id, session.fullID());
+			if(session.appID()!=0)
+				context.getAppsController().revokeAccessToken(session.fullID());
+			else
+				SessionStorage.deleteSession(account.id, session.fullID());
 			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.END_USER_SESSION, account.user.id, 0, null, Map.of("ip", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeInetAddress(session.ip()))));
 			SmithereenApplication.invalidateAllSessionsForAccount(account.id);
 		}catch(SQLException x){

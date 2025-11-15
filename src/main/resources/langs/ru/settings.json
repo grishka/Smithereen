@@ -285,5 +285,7 @@
   "settings_apps_dev_explanation": "Вы можете зарегистрировать своё приложение на этом сервере. Подробнее об идентификации и метаданных приложений читайте в <a id=\"docs\">документации для разработчиков</a>.",
   "settings_apps_create": "Создать приложение",
   "settings_apps_create_title": "Создание приложения",
-  "settings_apps_managed_summary": "Вы зарегистрировали {count, plural, one {# приложение} few {# приложения} other {# приложений}}:"
+  "settings_apps_managed_summary": "Вы зарегистрировали {count, plural, one {# приложение} few {# приложения} other {# приложений}}:",
+  "settings_activity_api": "Приложение {appName}",
+  "settings_activity_api_short": "{time} ({ip}, приложение {appName})"
 }

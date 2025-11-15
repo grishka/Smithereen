@@ -181,7 +181,10 @@ public class AdminUsersRoutes{
 					model.with("inviter", ctx.getUsersController().getAccountOrThrow(account.inviterAccountID).user);
 				}catch(ObjectNotFoundException ignore){}
 			}
-			model.with("sessions", ctx.getUsersController().getAccountSessions(account));
+			List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(account, 0, 10000);
+			Set<Long> needApps=sessions.stream().map(OtherSession::appID).filter(id->id!=0).collect(Collectors.toSet());
+			model.with("sessions", sessions)
+					.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 		}else{
 			account=null;
 		}
@@ -232,7 +235,7 @@ public class AdminUsersRoutes{
 	public static Object endUserSession(Request req, Response resp, Account self, ApplicationContext ctx){
 		Account target=ctx.getUsersController().getAccountOrThrow(safeParseInt(req.queryParams("accountID")));
 		int sessionID=safeParseInt(req.queryParams("sessionID"));
-		List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(target);
+		List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(target, 0, 10000);
 		OtherSession sessionToRevoke=null;
 		for(OtherSession session:sessions){
 			if(session.id()==sessionID){
