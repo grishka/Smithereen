@@ -61,7 +61,7 @@ public class AppsRoutes{
 				.with("app", app)
 				.addNavBarItem(l.get("settings"), "/settings")
 				.addNavBarItem(l.get("menu_apps"), "/settings/apps")
-				.addNavBarItem(app.name, "/apps/"+app.id)
+				.addNavBarItem(app.name, app.getURL())
 				.addNavBarItem(l.get("apps_edit_title"))
 				.pageTitle(l.get("apps_edit_title"))
 				.addMessage(req, "appsMessage", "appInfoMessage");
@@ -120,5 +120,19 @@ public class AppsRoutes{
 				.show("logoUploadText")
 				.setInputValue("logoIdField", img.getLocalID())
 				.setContent("logoImageW", img.generateAvatarHTML(SizedImage.Type.AVA_SQUARE_MEDIUM, 75, 75, List.of(), List.of()));
+	}
+
+	public static Object appPage(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		ClientApp app=ctx.getAppsController().getAppByID(safeParseLong(req.params(":id")));
+		return ajaxAwareRedirect(req, resp, app.getURL());
+	}
+
+	public static Object appPage(Request req, Response resp, long id){
+		ApplicationContext ctx=context(req);
+		ClientApp app=ctx.getAppsController().getAppByID(id);
+		return new RenderedTemplateResponse("app_page", req)
+				.with("app", app)
+				.pageTitle(app.name);
 	}
 }

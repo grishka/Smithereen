@@ -819,6 +819,7 @@ public class SmithereenApplication{
 			postWithCSRF("/create", AppsRoutes::createApp);
 			postWithCSRF("/uploadLogo", AppsRoutes::uploadAppLogo);
 			path("/:id", ()->{
+				get("", AppsRoutes::appPage);
 				getActivityPub("", ActivityPubRoutes::appActor);
 				getLoggedIn("/edit", AppsRoutes::editAppForm);
 				postWithCSRF("/edit", AppsRoutes::editApp);

@@ -63,7 +63,7 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class ProfileRoutes{
-	private static final Pattern ID_PATTERN=Pattern.compile("^(id|club|event)(\\d+)$");
+	private static final Pattern ID_PATTERN=Pattern.compile("^(id|club|event|app)(\\d+)$");
 
 	public static Object profile(Request req, Response resp){
 		ApplicationContext ctx=context(req);
@@ -75,6 +75,9 @@ public class ProfileRoutes{
 			Matcher matcher=ID_PATTERN.matcher(username);
 			if(matcher.find()){
 				int id=safeParseInt(matcher.group(2));
+				if("app".equals(matcher.group(1))){
+					return AppsRoutes.appPage(req, resp, id);
+				}
 				try{
 					Actor actor=switch(matcher.group(1)){
 						case "id" -> ctx.getUsersController().getUserOrThrow(id);
@@ -90,7 +93,7 @@ public class ProfileRoutes{
 		return switch(ur.type()){
 			case USER -> userProfile(req, resp, ctx.getUsersController().getUserOrThrow(ur.localID()));
 			case GROUP -> GroupsRoutes.groupProfile(req, resp, ctx.getGroupsController().getGroupOrThrow(ur.localID()));
-			case APPLICATION -> ""; // TODO
+			case APPLICATION -> AppsRoutes.appPage(req, resp, ur.localID());
 		};
 	}
 
