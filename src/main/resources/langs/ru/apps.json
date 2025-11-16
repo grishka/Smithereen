@@ -44,5 +44,6 @@
   "apps_info_updated": "Информация о приложении сохранена",
   "apps_redirect_urls": "Адреса перенаправления OAuth",
   "apps_redirect_urls_explanation": "По одному на строку",
-  "err_app_redirect_url_invalid": "Адрес перенаправления \"{url}\" не является корректным URL."
+  "err_app_redirect_url_invalid": "Адрес перенаправления \"{url}\" не является корректным URL.",
+  "apps_standalone_placeholder": "<b>{appName}</b> является standalone-приложением."
 }
