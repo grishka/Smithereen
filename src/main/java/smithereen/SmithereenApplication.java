@@ -711,8 +711,7 @@ public class SmithereenApplication{
 				}
 				return "";
 			});
-			get("", "application/activity+json", ActivityPubRoutes::groupActor);
-			get("", "application/ld+json", ActivityPubRoutes::groupActor);
+			getActivityPub("", ActivityPubRoutes::groupActor);
 
 			postWithCSRF("/createWallPost", PostRoutes::createGroupWallPost);
 
@@ -820,6 +819,7 @@ public class SmithereenApplication{
 			postWithCSRF("/create", AppsRoutes::createApp);
 			postWithCSRF("/uploadLogo", AppsRoutes::uploadAppLogo);
 			path("/:id", ()->{
+				getActivityPub("", ActivityPubRoutes::appActor);
 				getLoggedIn("/edit", AppsRoutes::editAppForm);
 				postWithCSRF("/edit", AppsRoutes::editApp);
 			});
@@ -1028,7 +1028,7 @@ public class SmithereenApplication{
 		path("/:username", ()->{
 			get("", ProfileRoutes::profile);
 			// These also handle groups
-			getActivityPub("", ActivityPubRoutes::userActor);
+			getActivityPub("", ActivityPubRoutes::actorByUsername);
 		});
 
 

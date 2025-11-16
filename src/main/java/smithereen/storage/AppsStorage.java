@@ -2,6 +2,7 @@ package smithereen.storage;
 
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.model.apps.AppAuthCode;
 import smithereen.model.apps.AppAccessGrant;
@@ -191,6 +193,24 @@ public class AppsStorage{
 					li.fillIn(mfr);
 			}
 		}
+	}
+
+	public static long getAppIdByUsername(@NotNull String username) throws SQLException{
+		String domain;
+		if(username.contains("@")){
+			String[] parts=username.split("@", 2);
+			username=parts[0];
+			domain=parts[1];
+		}else{
+			domain="";
+		}
+		if(username.length()>Actor.USERNAME_MAX_LENGTH)
+			username=username.substring(0, Actor.USERNAME_MAX_LENGTH);
+		return new SQLQueryBuilder()
+				.selectFrom("api_applications")
+				.columns("id")
+				.where("username=? AND domain=?", username, domain)
+				.executeAndGetLong();
 	}
 
 	// endregion

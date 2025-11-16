@@ -217,10 +217,10 @@ public abstract class Actor extends ActivityPubObject{
 			throw new IllegalArgumentException("id is required for actors");
 
 		username=optString(obj, "preferredUsername");
-		if(username==null && activityPubID!=null){
-			username=Utils.getLastPathSegment(activityPubID);
-		}
 		if(!skipChecks){
+			if(username==null && activityPubID!=null){
+				username=Utils.getLastPathSegment(activityPubID);
+			}
 			if(StringUtils.isEmpty(username)){
 				throw new FederationException("Unable to determine actor username: preferredUsername not present and last path segment of ID is blank");
 			}

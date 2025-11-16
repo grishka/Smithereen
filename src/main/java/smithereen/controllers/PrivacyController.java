@@ -381,6 +381,23 @@ public class PrivacyController{
 		LOG.trace("Actor {} was allowed to access object {} in a {} group {}", signer.activityPubID, req.pathInfo(), group.accessType, group.activityPubID);
 	}
 
+	public void enforceGroupProfileAccess(@NotNull spark.Request req, @NotNull Group group){
+		try{
+			if(group.accessType==Group.AccessType.PRIVATE){
+				Actor requester;
+				try{
+					requester=ActivityPub.verifyHttpSignature(req, null);
+				}catch(Exception x){
+					throw new UserActionNotAllowedException("This is a private group. Valid HTTP signature of a group member or invitee is required.", x);
+				}
+				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, requester.domain) && !GroupStorage.areThereGroupInvitationsWithDomain(group.id, requester.domain))
+					throw new UserActionNotAllowedException("This is a private group and there are no "+requester.domain+" members or invitees in it.");
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public boolean isUserBlocked(User self, Actor target){
 		try{
 			if(target instanceof User user){

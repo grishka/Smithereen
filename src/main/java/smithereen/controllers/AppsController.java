@@ -1,5 +1,6 @@
 package smithereen.controllers;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -176,6 +177,14 @@ public class AppsController{
 	public List<Long> getUserManagedApps(User self){
 		try{
 			return AppsStorage.getUserManagedApps(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public long tryGetAppIdForUsername(@NotNull String username){
+		try{
+			return AppsStorage.getAppIdByUsername(username);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

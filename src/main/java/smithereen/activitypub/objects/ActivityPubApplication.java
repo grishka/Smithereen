@@ -6,11 +6,13 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.activitypub.ParserContext;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppType;
@@ -90,5 +92,35 @@ public class ActivityPubApplication extends Actor{
 		app.apSharedInbox=sharedInbox;
 		app.allowedRedirectURIs=redirectUri==null ? Set.of() : new HashSet<>(redirectUri);
 		return app;
+	}
+
+	public static ActivityPubApplication fromNativeApp(ClientApp app, ApplicationContext ctx){
+		ActivityPubApplication aa=new LocalActivityPubApplication(app);
+		aa.activityPubID=app.getActivityPubID();
+		if(StringUtils.isNotEmpty(app.username))
+			aa.username=app.username;
+		aa.domain=app.domain;
+		aa.publicKey=app.publicKey;
+		aa.name=app.name;
+		aa.summary=app.description;
+		if(app.logo!=null)
+			aa.icon=List.of(app.logo);
+		if(app.developerID>0)
+			aa.attributedTo=ctx.getUsersController().getUserOrThrow(app.developerID).activityPubID;
+		aa.inbox=Config.localURI("/apps/"+app.id+"/inbox");
+		aa.sharedInbox=Config.localURI("/activitypub/sharedInbox");
+		if(app.allowedRedirectURIs!=null)
+			aa.redirectUri=new ArrayList<>(app.allowedRedirectURIs);
+		return aa;
+	}
+
+	@Override
+	protected boolean canBeFollowed(){
+		return false;
+	}
+
+	@Override
+	protected boolean canFollowOtherActors(){
+		return false;
 	}
 }

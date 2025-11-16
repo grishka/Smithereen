@@ -100,6 +100,7 @@ import smithereen.activitypub.handlers.UpdatePhotoHandler;
 import smithereen.activitypub.handlers.UserRemovePhotoHandler;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubActorStatus;
+import smithereen.activitypub.objects.ActivityPubApplication;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -145,6 +146,7 @@ import smithereen.model.CommentViewType;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.NodeInfo;
@@ -316,47 +318,48 @@ public class ActivityPubRoutes{
 		typeOnlyHandlers.add(new ActivityTypeOnlyHandlerRecord<>(activityClass, handler));
 	}
 
-	public static Object userActor(Request req, Response resp) throws SQLException{
-		String username=req.params(":username");
-		Actor actor;
-		if(username!=null){
-			actor=UserStorage.getByUsername(username);
-			if(actor==null){
-				return groupActor(req, resp);
-			}
-		}else{
-			actor=UserStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
-		}
-		if(actor!=null && !(actor instanceof ForeignUser)){
-			resp.type(ActivityPub.CONTENT_TYPE);
-			return actor;
-		}
-		throw new ObjectNotFoundException();
+	public static Object actorByUsername(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		ObjectLinkResolver.UsernameResolutionResult rr=ctx.getObjectLinkResolver().resolveUsernameLocally(req.params(":username"));
+		return switch(rr.type()){
+			case USER -> userActor(req, resp, rr.localID());
+			case GROUP -> groupActor(req, resp, rr.localID());
+			case APPLICATION -> appActor(req, resp, rr.localID());
+		};
 	}
 
-	public static Object groupActor(Request req, Response resp) throws SQLException{
-		String username=req.params(":username");
-		Group group;
-		if(username!=null)
-			group=GroupStorage.getByUsername(username);
-		else
-			group=GroupStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
-		if(group!=null && !(group instanceof ForeignGroup)){
-			if(group.accessType==Group.AccessType.PRIVATE){
-				Actor requester;
-				try{
-					requester=ActivityPub.verifyHttpSignature(req, null);
-				}catch(Exception x){
-					throw new UserActionNotAllowedException("This is a private group. Valid HTTP signature of a group member or invitee is required.", x);
-				}
-				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, requester.domain) && !GroupStorage.areThereGroupInvitationsWithDomain(group.id, requester.domain))
-					throw new UserActionNotAllowedException("This is a private group and there are no "+requester.domain+" members or invitees in it.");
-			}
-			group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
-			resp.type(ActivityPub.CONTENT_TYPE);
-			return group;
-		}
-		throw new ObjectNotFoundException();
+	public static Object userActor(Request req, Response resp){
+		return userActor(req, resp, safeParseInt(req.params(":id")));
+	}
+
+	private static Object userActor(Request req, Response resp, int id){
+		resp.type(ActivityPub.CONTENT_TYPE);
+		return context(req).getUsersController().getLocalUserOrThrow(id);
+	}
+
+	public static Object groupActor(Request req, Response resp){
+		return groupActor(req, resp, safeParseInt(req.params(":id")));
+	}
+
+	private static Object groupActor(Request req, Response resp, int id){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(id);
+		ctx.getPrivacyController().enforceGroupProfileAccess(req, group);
+		group.adminsForActivityPub=ctx.getGroupsController().getAdmins(group);
+		resp.type(ActivityPub.CONTENT_TYPE);
+		return group;
+	}
+
+	public static Object appActor(Request req, Response resp){
+		return appActor(req, resp, safeParseLong(req.params(":id")));
+	}
+
+	public static Object appActor(Request req, Response resp, long id){
+		ApplicationContext ctx=context(req);
+		ClientApp app=ctx.getAppsController().getAppByID(id);
+		if(!app.isLocal())
+			throw new ObjectNotFoundException();
+		return ActivityPubApplication.fromNativeApp(app, ctx);
 	}
 
 	public static Object post(Request req, Response resp) throws SQLException{

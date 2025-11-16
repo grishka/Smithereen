@@ -79,6 +79,13 @@ public class DatabaseUtils{
 					.executeAndGetInt();
 			if(groupCount>0)
 				return false;
+			int appCount=new SQLQueryBuilder(conn)
+					.selectFrom("api_applications")
+					.count()
+					.where("username=? AND domain=''", username)
+					.executeAndGetInt();
+			if(appCount>0)
+				return false;
 			action.run();
 			return true;
 		}finally{

@@ -144,4 +144,8 @@ public class ClientApp{
 	public URI getActivityPubID(){
 		return apID==null ? Config.localURI("/apps/"+id) : apID;
 	}
+
+	public boolean isLocal(){
+		return apID==null;
+	}
 }

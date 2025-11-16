@@ -603,6 +603,12 @@ public class ObjectLinkResolver{
 				return new UsernameResolutionResult(UsernameOwnerType.GROUP, group);
 		}
 
+		if(allowedTypes.contains(UsernameOwnerType.APPLICATION)){
+			long app=context.getAppsController().tryGetAppIdForUsername(username);
+			if(app>0)
+				return new UsernameResolutionResult(UsernameOwnerType.APPLICATION, (int)app);
+		}
+
 		if(allowFetching && domain!=null){
 			URI id;
 			try{
