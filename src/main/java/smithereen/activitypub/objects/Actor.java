@@ -463,5 +463,7 @@ public abstract class Actor extends ActivityPubObject{
 		public String boardTopics;
 		@SerializedName("pp")
 		public String pinnedPosts;
+		@SerializedName("ap")
+		public String apps;
 	}
 }

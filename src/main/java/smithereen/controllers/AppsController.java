@@ -220,7 +220,9 @@ public class AppsController{
 			if(grant==null)
 				return;
 			AppsStorage.deleteAccessGrant(account.id, app.id);
-			// TODO send Remove{Application}
+			removeAppUser(account.user, app);
+			if(!app.isLocal())
+				context.getActivityPubWorker().sendRemoveAppToAppServer(account.user, app);
 			List<byte[]> tokens=AppsStorage.getUserAppAccessTokens(account.id, app.id);
 			if(tokens.isEmpty())
 				return;
@@ -239,7 +241,9 @@ public class AppsController{
 	public AppAccessToken createAccessToken(Account account, ClientApp app, EnumSet<ClientAppPermission> permissions, Request req){
 		try{
 			AppsStorage.createOrUpdateAccessGrant(account.id, app.id, permissions);
-			// TODO send Add{Application}
+			if(addAppUser(account.user, app) && !app.isLocal()){
+				context.getActivityPubWorker().sendAddAppToAppServer(account.user, app);
+			}
 			Instant expiresAt=permissions.contains(ClientAppPermission.OFFLINE) || permissions.contains(ClientAppPermission.PASSWORD_GRANT_USED) ? null : Instant.now().plus(1, ChronoUnit.HOURS);
 			byte[] id=new byte[64];
 			srand.nextBytes(id);
@@ -346,6 +350,25 @@ public class AppsController{
 	public AppAuthCode getAndDeleteAuthCode(byte[] id){
 		try{
 			return AppsStorage.getAndDeleteAuthCode(id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+	// region App installs
+
+	public boolean addAppUser(User user, ClientApp app){
+		try{
+			return AppsStorage.addAppUser(user.id, app.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void removeAppUser(User user, ClientApp app){
+		try{
+			AppsStorage.removeAppUser(user.id, app.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

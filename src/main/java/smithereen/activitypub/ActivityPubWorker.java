@@ -99,6 +99,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
@@ -1268,6 +1269,35 @@ public class ActivityPubWorker{
 				.withActorFragmentID("deleteTopic"+topic.getIdString());
 
 		sendActivityForBoardTopic(delete, topic, group);
+	}
+
+	// endregion
+	// region Apps
+
+	public void sendAddAppToAppServer(User self, ClientApp app){
+		URI inbox=app.apSharedInbox==null ? app.apInbox : app.apSharedInbox;
+		if(inbox==null){
+			LOG.debug("Not sending Add{Application} for {} because it does not have an inbox", app.apID);
+			return;
+		}
+		Add add=new Add()
+				.withActorAndObjectLinks(self, app)
+				.withTarget(self.getAppsURL())
+				.withActorFragmentID("addApp"+app.id+"_"+rand());
+		submitActivity(add, self, inbox);
+	}
+
+	public void sendRemoveAppToAppServer(User self, ClientApp app){
+		URI inbox=app.apSharedInbox==null ? app.apInbox : app.apSharedInbox;
+		if(inbox==null){
+			LOG.debug("Not sending Remove{Application} for {} because it does not have an inbox", app.apID);
+			return;
+		}
+		Remove add=new Remove()
+				.withActorAndObjectLinks(self, app)
+				.withTarget(self.getAppsURL())
+				.withActorFragmentID("removeApp"+app.id+"_"+rand());
+		submitActivity(add, self, inbox);
 	}
 
 	// endregion

@@ -364,4 +364,22 @@ public class AppsStorage{
 	}
 
 	// endregion
+	// region App installs
+
+	public static boolean addAppUser(int userID, long appID) throws SQLException{
+		return new SQLQueryBuilder()
+				.insertIgnoreInto("api_app_installs")
+				.value("user_id", userID)
+				.value("app_id", appID)
+				.executeUpdate()>0;
+	}
+
+	public static void removeAppUser(int userID, long appID) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("api_app_installs")
+				.where("user_id=? AND app_id=?", userID, appID)
+				.executeNoResult();
+	}
+
+	// endregion
 }

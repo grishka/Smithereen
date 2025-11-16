@@ -33,7 +33,7 @@ import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
 
-	private URI wall, friends, groups, photoAlbums, taggedPhotos, wallComments, pinnedPosts;
+	private URI wall, friends, groups, photoAlbums, taggedPhotos, wallComments, pinnedPosts, apps;
 	public URI movedToURL;
 	public boolean isServiceActor;
 
@@ -71,6 +71,7 @@ public class ForeignUser extends User implements ForeignActor{
 		photoAlbums=tryParseURL(ep.photoAlbums);
 		taggedPhotos=tryParseURL(ep.taggedPhotos);
 		pinnedPosts=tryParseURL(ep.pinnedPosts);
+		apps=tryParseURL(ep.apps);
 	}
 
 	@Override
@@ -432,6 +433,11 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
+	public URI getAppsURL(){
+		return apps;
+	}
+
+	@Override
 	protected NonCachedRemoteImage.Args getAvatarArgs(){
 		return new NonCachedRemoteImage.UserProfilePictureArgs(id);
 	}
@@ -452,6 +458,8 @@ public class ForeignUser extends User implements ForeignActor{
 			ep.taggedPhotos=taggedPhotos.toString();
 		if(pinnedPosts!=null)
 			ep.pinnedPosts=pinnedPosts.toString();
+		if(apps!=null)
+			ep.apps=apps.toString();
 		return ep;
 	}
 

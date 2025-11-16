@@ -546,6 +546,8 @@ public class User extends Actor{
 
 		serializerContext.addType("featured", "toot:featured", "@id");
 		obj.addProperty("featured", getPinnedPostsURL().toString());
+		serializerContext.addSmIdType("apps");
+		obj.addProperty("apps", getAppsURL().toString());
 
 		return obj;
 	}
@@ -706,6 +708,10 @@ public class User extends Actor{
 
 	public URI getPinnedPostsURL(){
 		return Config.localURI("/users/"+id+"/pinnedPosts");
+	}
+
+	public URI getAppsURL(){
+		return Config.localURI("/users/"+id+"/apps");
 	}
 
 	@Override

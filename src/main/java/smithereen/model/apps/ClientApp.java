@@ -23,6 +23,7 @@ import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.SizedImage;
@@ -32,7 +33,7 @@ import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
 
-public class ClientApp{
+public class ClientApp implements ActivityPubRepresentable{
 	public long id;
 	public URI apID;
 	public String username;
@@ -141,6 +142,7 @@ public class ClientApp{
 		}
 	}
 
+	@Override
 	public URI getActivityPubID(){
 		return apID==null ? Config.localURI("/apps/"+id) : apID;
 	}
