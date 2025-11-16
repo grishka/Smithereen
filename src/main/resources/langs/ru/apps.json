@@ -41,5 +41,8 @@
   "apps_edit_title": "Редактирование приложения",
   "err_app_logo_not_square": "Изображение для логотипа должно быть квадратным.",
   "err_app_logo_too_small": "Размер логотипа должен быть как минимум {size}х{size}.",
-  "apps_info_updated": "Информация о приложении сохранена"
+  "apps_info_updated": "Информация о приложении сохранена",
+  "apps_redirect_urls": "Адреса перенаправления OAuth",
+  "apps_redirect_urls_explanation": "По одному на строку",
+  "err_app_redirect_url_invalid": "Адрес перенаправления \"{url}\" не является корректным URL."
 }
