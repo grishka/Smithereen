@@ -45,5 +45,5 @@
   "apps_redirect_urls": "OAuth redirect URLs",
   "apps_redirect_urls_explanation": "One per line",
   "err_app_redirect_url_invalid": "Redirect URL \"{url}\" is not valid.",
-  "apps_standalone_placeholder": "<b>{appName}</b> is a standalone app."
+  "apps_standalone_placeholder": "<b>{appName}</b> is a standalone application."
 }
