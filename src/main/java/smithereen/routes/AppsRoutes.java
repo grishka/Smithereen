@@ -1,12 +1,17 @@
 package smithereen.routes;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.SizedImage;
@@ -17,6 +22,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
 import spark.Spark;
+import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
 
@@ -35,7 +41,7 @@ public class AppsRoutes{
 		String name=req.queryParams("name");
 		String description=req.queryParams("description");
 		String logoID=req.queryParams("logo");
-		long id=ctx.getAppsController().createApp(self.user, name, description, logoID);
+		long id=ctx.getAppsController().createApp(self.user, name, description, logoID, parseRedirectUris(req));
 		req.session().attribute("appsMessage", lang(req).get("apps_app_created"));
 		return ajaxAwareRedirect(req, resp, "/apps/"+id+"/edit");
 	}
@@ -68,7 +74,7 @@ public class AppsRoutes{
 		String name=req.queryParams("name");
 		String description=req.queryParams("description");
 		String logoID=req.queryParams("logo");
-		ctx.getAppsController().updateApp(app, name, description, logoID);
+		ctx.getAppsController().updateApp(app, name, description, logoID, parseRedirectUris(req));
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp)
 					.show("formMessage_appInfo")
@@ -78,11 +84,32 @@ public class AppsRoutes{
 		return "";
 	}
 
+	private static Set<URI> parseRedirectUris(Request req){
+		String redirectUrls=req.queryParams("redirect_urls");
+		if(StringUtils.isNotEmpty(redirectUrls)){
+			LinkedHashSet<URI> redirectUris=new LinkedHashSet<>();
+			for(String urlStr:redirectUrls.split("\n")){
+				urlStr=urlStr.trim();
+				try{
+					URI uri=new URI(urlStr);
+					if(StringUtils.isEmpty(uri.getAuthority()) || StringUtils.isEmpty(uri.getScheme()))
+						throw new URISyntaxException(urlStr, "Scheme and authority are required");
+					redirectUris.add(uri);
+				}catch(URISyntaxException x){
+					throw new UserErrorException("err_app_redirect_url_invalid", Map.of("url", urlStr));
+				}
+			}
+			return redirectUris;
+		}else{
+			return Set.of();
+		}
+	}
+
 	public static Object uploadAppLogo(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(!isAjax(req))
 			throw new BadRequestException();
 		Lang l=lang(req);
-		LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false, "file", vi->{
+		LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false, "file", 400, 0, vi->{
 			if(vi.getWidth()!=vi.getHeight())
 				Spark.halt(422, l.get("err_app_logo_not_square"));
 			if(vi.getWidth()<200)

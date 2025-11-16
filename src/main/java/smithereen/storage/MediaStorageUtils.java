@@ -209,10 +209,10 @@ public class MediaStorageUtils{
 	}
 
 	public static LocalImage saveUploadedImage(Request req, Response resp, Account self, boolean isGraffiti, String fieldName){
-		return saveUploadedImage(req, resp, self, isGraffiti, fieldName, null);
+		return saveUploadedImage(req, resp, self, isGraffiti, fieldName, 2560, 0, null);
 	}
 
-	public static LocalImage saveUploadedImage(Request req, Response resp, Account self, boolean isGraffiti, String fieldName, Consumer<VipsImage> extraValidator){
+	public static LocalImage saveUploadedImage(Request req, Response resp, Account self, boolean isGraffiti, String fieldName, int maxWidthOrSize, int maxHeight, Consumer<VipsImage> extraValidator){
 		Lang l=lang(req);
 		try{
 			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, MAX_IMAGE_SIZE, -1L, 0));
@@ -267,7 +267,7 @@ public class MediaStorageUtils{
 					extraValidator.accept(img);
 				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
 				int[] outSize={0,0};
-				writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
+				writeResizedWebpImage(img, maxWidthOrSize, maxHeight, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
 				MediaFileMetadata meta=new ImageMetadata(outSize[0], outSize[1], BlurHash.encode(img, 4, 4), null);
 				fileRecord=MediaStorage.createMediaFileRecord(isGraffiti ? MediaFileType.IMAGE_GRAFFITI : MediaFileType.IMAGE_PHOTO, resizedFile.length(), self.user.id, meta);
 				photo.fileID=fileRecord.id().id();

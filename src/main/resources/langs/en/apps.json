@@ -41,5 +41,8 @@
   "apps_edit_title": "Edit application",
   "err_app_logo_not_square": "The logo must be a square image.",
   "err_app_logo_too_small": "The logo must be at least {size}x{size}.",
-  "apps_info_updated": "Application information was saved"
+  "apps_info_updated": "Application information was saved",
+  "apps_redirect_urls": "OAuth redirect URLs",
+  "apps_redirect_urls_explanation": "One per line",
+  "err_app_redirect_url_invalid": "Redirect URL \"{url}\" is not valid."
 }

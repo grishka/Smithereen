@@ -11,6 +11,8 @@
 			{% if app is not null %}
 			{{ form.labeledText(L('apps_app_id'), app.activityPubID, {'explanation': L('apps_app_id_explanation')}) }}
 			{% endif %}
+			{{ form.textArea('redirect_urls', L('apps_redirect_urls'), app is null ? '' : app.allowedRedirectURIs | join("
+"), {'explanation': L('apps_redirect_urls_explanation')}) }}
 			{{ form.footer(L(app is null ? 'create' : 'save')) }}
 		{{ form.end() }}
 		</form>

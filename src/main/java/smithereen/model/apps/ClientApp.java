@@ -13,7 +13,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -94,7 +94,7 @@ public class ClientApp{
 		String extra=res.getString("extra");
 		if(extra!=null){
 			JsonObject e=JsonParser.parseString(extra).getAsJsonObject();
-			a.allowedRedirectURIs=e.get("redirectURIs").getAsJsonArray().asList().stream().map(JsonElement::getAsString).collect(Collectors.toSet());
+			a.allowedRedirectURIs=e.get("redirectURIs").getAsJsonArray().asList().stream().map(JsonElement::getAsString).collect(Collectors.toCollection(LinkedHashSet::new));
 		}
 
 		return a;

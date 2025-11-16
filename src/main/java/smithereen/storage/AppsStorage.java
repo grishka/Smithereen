@@ -133,7 +133,7 @@ public class AppsStorage{
 		return id==-1 ? 0 : id;
 	}
 
-	public static long createApp(int userID, String name, String description, LocalImage logo) throws SQLException{
+	public static long createApp(int userID, String name, String description, LocalImage logo, String extraFields) throws SQLException{
 		byte[] publicKey, privateKey;
 		try{
 			KeyPairGenerator kpg=KeyPairGenerator.getInstance("RSA");
@@ -153,10 +153,11 @@ public class AppsStorage{
 				.value("developer_id", userID)
 				.value("public_key", publicKey)
 				.value("private_key", privateKey)
+				.value("extra", extraFields)
 				.executeAndGetIDLong();
 	}
 
-	public static void updateApp(long id, String name, String description, LocalImage logo) throws SQLException{
+	public static void updateApp(long id, String name, String description, LocalImage logo, String extraFields) throws SQLException{
 		JsonObject serializedLogo=logo==null ? null : MediaStorageUtils.serializeAttachment(logo);
 		new SQLQueryBuilder()
 				.update("api_applications")
@@ -164,6 +165,7 @@ public class AppsStorage{
 				.value("name", name)
 				.value("description", description)
 				.value("logo", serializedLogo==null ? null : serializedLogo.toString())
+				.value("extra", extraFields)
 				.executeNoResult();
 	}
 

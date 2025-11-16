@@ -15,9 +15,11 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -138,13 +140,15 @@ public class AppsController{
 		}
 	}
 
-	public long createApp(User self, String name, String description, String logoID){
+	public long createApp(User self, String name, String description, String logoID, Set<URI> redirectURIs){
 		try{
 			LocalImage logo=null;
 			if(StringUtils.isNotEmpty(logoID)){
 				logo=MediaStorageUtils.getLocalImage(logoID);
 			}
-			long id=AppsStorage.createApp(self.id, name, description, logo);
+			ClientApp app=new ClientApp();
+			app.allowedRedirectURIs=redirectURIs==null ? null : redirectURIs.stream().map(URI::toString).collect(Collectors.toCollection(LinkedHashSet::new));
+			long id=AppsStorage.createApp(self.id, name, description, logo, app.serializeExtraFields());
 			if(logo!=null){
 				MediaStorage.createMediaFileReference(logo.fileID, id, MediaFileReferenceType.APP_LOGO, self.id);
 			}
@@ -154,7 +158,7 @@ public class AppsController{
 		}
 	}
 
-	public void updateApp(ClientApp app, String name, String description, String logoID){
+	public void updateApp(ClientApp app, String name, String description, String logoID, Set<URI> redirectURIs){
 		try{
 			LocalImage logo=app.logo instanceof LocalImage li ? li : null;
 			String existingLogoID=logo!=null ? logo.getLocalID() : null;
@@ -164,7 +168,8 @@ public class AppsController{
 			if(StringUtils.isNotEmpty(logoID)){
 				logo=MediaStorageUtils.getLocalImage(logoID);
 			}
-			AppsStorage.updateApp(app.id, name, description, logo);
+			app.allowedRedirectURIs=redirectURIs==null ? null : redirectURIs.stream().map(URI::toString).collect(Collectors.toCollection(LinkedHashSet::new));
+			AppsStorage.updateApp(app.id, name, description, logo, app.serializeExtraFields());
 			if(!Objects.equals(logoID, existingLogoID) && logo!=null)
 				MediaStorage.createMediaFileReference(logo.fileID, app.id, MediaFileReferenceType.APP_LOGO, app.developerID);
 			appsCache.remove(app.id);

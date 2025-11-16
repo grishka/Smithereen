@@ -14,8 +14,10 @@ import java.util.Set;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.SerializerContext;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppType;
+import smithereen.util.JsonArrayBuilder;
 import spark.utils.StringUtils;
 
 public class ActivityPubApplication extends Actor{
@@ -34,6 +36,19 @@ public class ActivityPubApplication extends Actor{
 		}
 
 		return this;
+	}
+
+	@Override
+	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
+		obj=super.asActivityPubObject(obj, serializerContext);
+		serializerContext.addSmAlias("redirectUri");
+		if(redirectUri!=null){
+			if(redirectUri.size()==1)
+				obj.addProperty("redirectUri", redirectUri.getFirst());
+			else
+				obj.add("redirectUri", redirectUri.stream().collect(JsonArrayBuilder.COLLECTOR));
+		}
+		return obj;
 	}
 
 	@Override
