@@ -48,6 +48,7 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	public Action action;
 	public URI mastodonQuoteAuth;
 	public long appID;
+	public URI appApID;
 
 	@Override
 	public URI getActivityPubID(){
@@ -264,13 +265,18 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	}
 
 	public String serializeExtraFields(){
+		JsonObjectBuilder jb=new JsonObjectBuilder();
 		if(mastodonQuoteAuth!=null){
-			return new JsonObjectBuilder()
-					.add("quoteAuth", mastodonQuoteAuth.toString())
-					.build()
-					.toString();
+			jb.add("quoteAuth", mastodonQuoteAuth.toString());
 		}
-		return null;
+		if(appID!=0){
+			jb.add("app", appID);
+		}
+		if(appApID!=null){
+			jb.add("appAP", appApID.toString());
+		}
+		JsonObject o=jb.build();
+		return o.isEmpty() ? null : o.toString();
 	}
 
 	public enum Privacy{
