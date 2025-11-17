@@ -94,6 +94,7 @@ import smithereen.activitypub.handlers.UndoFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoInviteGroupHandler;
 import smithereen.activitypub.handlers.UndoLikeObjectHandler;
+import smithereen.activitypub.handlers.UpdateApplicationHandler;
 import smithereen.activitypub.handlers.UpdateGroupHandler;
 import smithereen.activitypub.handlers.UpdateNoteHandler;
 import smithereen.activitypub.handlers.UpdatePersonHandler;
@@ -283,6 +284,7 @@ public class ActivityPubRoutes{
 		// Apps
 		registerActivityHandler(ForeignUser.class, Add.class, ActivityPubApplication.class, new AddApplicationHandler());
 		registerActivityHandler(ForeignUser.class, Remove.class, ActivityPubApplication.class, new RemoveApplicationHandler());
+		registerActivityHandler(ActivityPubApplication.class, Update.class, ActivityPubApplication.class, new UpdateApplicationHandler());
 
 		// More general handlers at the end so they match last
 		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());

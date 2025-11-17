@@ -381,5 +381,17 @@ public class AppsStorage{
 				.executeNoResult();
 	}
 
+	public static Set<URI> getAppUserInboxes(long appID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("api_app_installs")
+				.distinct()
+				.selectExpr("IFNULL(ap_shared_inbox, ap_inbox)")
+				.join("JOIN users ON users.id=user_id")
+				.where("app_id=? AND ap_inbox IS NOT NULL", appID)
+				.executeAsStream(r->r.getString(1))
+				.map(URI::create)
+				.collect(Collectors.toSet());
+	}
+
 	// endregion
 }

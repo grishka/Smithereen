@@ -173,7 +173,9 @@ public class AppsController{
 			if(!Objects.equals(logoID, existingLogoID) && logo!=null)
 				MediaStorage.createMediaFileReference(logo.fileID, app.id, MediaFileReferenceType.APP_LOGO, app.developerID);
 			appsCache.remove(app.id);
-			// TODO Update{Application}
+			Set<URI> inboxes=AppsStorage.getAppUserInboxes(app.id);
+			if(!inboxes.isEmpty())
+				context.getActivityPubWorker().sendUpdateAppToUsers(app, inboxes);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

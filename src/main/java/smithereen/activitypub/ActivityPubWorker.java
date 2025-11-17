@@ -34,6 +34,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubActorStatus;
+import smithereen.activitypub.objects.ActivityPubApplication;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhoto;
@@ -1298,6 +1299,14 @@ public class ActivityPubWorker{
 				.withTarget(self.getAppsURL())
 				.withActorFragmentID("removeApp"+app.id+"_"+rand());
 		submitActivity(add, self, inbox);
+	}
+
+	public void sendUpdateAppToUsers(ClientApp app, Set<URI> inboxes){
+		ActivityPubApplication apApp=ActivityPubApplication.fromNativeApp(app, context);
+		Update update=new Update()
+				.withActorLinkAndObject(apApp, apApp)
+				.withObjectFragmentID("updateSelf"+rand());
+		submitActivity(update, apApp, inboxes);
 	}
 
 	// endregion
