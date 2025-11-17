@@ -89,6 +89,7 @@ public class ObjectLinkResolver{
 
 	private final HashMap<URI, ActorToken> actorTokensCache=new HashMap<>();
 	private final NamedMutexCollection actorTokenMutexes=new NamedMutexCollection();
+	private final NamedMutexCollection objectFetchMutexes=new NamedMutexCollection();
 	private final LruCache<URI, ForeignUser> serviceActorCache=new LruCache<>(200);
 
 	private final ApplicationContext context;
@@ -184,46 +185,55 @@ public class ObjectLinkResolver{
 		}else{
 			link=_link;
 		}
-		if(!forceRefetch || Config.isLocal(link)){
-			if(allowFetching){
-				try{
+		String mutexID=link.toString();
+		if(allowFetching && allowStorage && !forceRefetch)
+			objectFetchMutexes.acquire(mutexID);
+		try{
+			if(!forceRefetch || Config.isLocal(link)){
+				if(allowFetching){
+					try{
+						return resolveLocally(link, expectedType);
+					}catch(ObjectNotFoundException ignore){}
+				}else{
 					return resolveLocally(link, expectedType);
-				}catch(ObjectNotFoundException ignore){}
-			}else{
-				return resolveLocally(link, expectedType);
-			}
-		}
-		if(!Config.isLocal(link)){
-			if(allowFetching){
-				try{
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context, acceptHTML, enforceContentType);
-					if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
-						User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
-						if(author.banStatus==UserBanStatus.SUSPENDED)
-							throw new ObjectNotFoundException("Post author is suspended on this server");
-						return ensureTypeAndCast(obj, expectedType);
-					}
-					T o=convertToNativeObject(obj, expectedType);
-					if(!bypassCollectionCheck){ // TODO make this a generalized interface OwnedObject or something
-						if(o instanceof Post post && obj.inReplyTo==null && post.ownerID!=post.authorID){
-							Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
-							ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
-						}
-					}
-					if(o instanceof Post post){
-						User author=context.getUsersController().getUserOrThrow(post.authorID);
-						if(author.banStatus==UserBanStatus.SUSPENDED)
-							throw new ObjectNotFoundException("Post author is suspended on this server");
-					}
-					if(allowStorage)
-						storeOrUpdateRemoteObject(o, obj);
-					return o;
-				}catch(IOException x){
-					throw new ObjectNotFoundException("Can't resolve remote object: "+link, x);
 				}
 			}
-			throw new ObjectNotFoundException("Can't resolve remote object locally: "+link);
+			if(!Config.isLocal(link)){
+				if(allowFetching){
+					try{
+						ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context, acceptHTML, enforceContentType);
+						if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
+							User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
+							if(author.banStatus==UserBanStatus.SUSPENDED)
+								throw new ObjectNotFoundException("Post author is suspended on this server");
+							return ensureTypeAndCast(obj, expectedType);
+						}
+						T o=convertToNativeObject(obj, expectedType);
+						if(!bypassCollectionCheck){ // TODO make this a generalized interface OwnedObject or something
+							if(o instanceof Post post && obj.inReplyTo==null && post.ownerID!=post.authorID){
+								Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
+								ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
+							}
+						}
+						if(o instanceof Post post){
+							User author=context.getUsersController().getUserOrThrow(post.authorID);
+							if(author.banStatus==UserBanStatus.SUSPENDED)
+								throw new ObjectNotFoundException("Post author is suspended on this server");
+						}
+						if(allowStorage)
+							storeOrUpdateRemoteObject(o, obj);
+						return o;
+					}catch(IOException x){
+						throw new ObjectNotFoundException("Can't resolve remote object: "+link, x);
+					}
+				}
+				throw new ObjectNotFoundException("Can't resolve remote object locally: "+link);
+			}
+		}finally{
+			if(allowFetching && allowStorage && !forceRefetch)
+				objectFetchMutexes.release(mutexID);
 		}
+
 
 		throw new ObjectNotFoundException("Invalid local URI");
 	}
