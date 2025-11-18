@@ -37,6 +37,7 @@ class ImageAreaSelector{
 
 	private mouseUpListener:any;
 	private mouseMoveListener:any;
+	private clickListener:any;
 	private touchUpListener:any;
 	private touchMoveListener:any;
 
@@ -182,9 +183,9 @@ class ImageAreaSelector{
 		var touch=ev.touches[0];
 		this.trackedTouchID=touch.identifier;
 		this.onPointerDown(Math.round(touch.clientX), Math.round(touch.clientY), touch.target as HTMLElement);
-		window.addEventListener("touchend", this.touchUpListener=this.onTouchUp.bind(this), false);
-		window.addEventListener("touchcancel", this.touchUpListener, false);
-		window.addEventListener("touchmove", this.touchMoveListener=this.onTouchMove.bind(this), false);
+		window.addEventListener("touchend", this.touchUpListener=this.onTouchUp.bind(this), true);
+		window.addEventListener("touchcancel", this.touchUpListener, true);
+		window.addEventListener("touchmove", this.touchMoveListener=this.onTouchMove.bind(this), true);
 	}
 
 	private onTouchMove(ev:TouchEvent):void{
@@ -199,6 +200,7 @@ class ImageAreaSelector{
 	}
 
 	private onTouchUp(ev:TouchEvent):void{
+		ev.stopPropagation();
 		ev.preventDefault();
 		for(var i=0;i<ev.changedTouches.length;i++){
 			var touch=ev.changedTouches[i];
@@ -216,19 +218,32 @@ class ImageAreaSelector{
 	private onMouseDown(ev:MouseEvent):void{
 		var rect=this.container.getBoundingClientRect();
 		this.onPointerDown(ev.clientX-rect.left, ev.clientY-rect.top, ev.target as HTMLElement);
-		window.addEventListener("mouseup", this.mouseUpListener=this.onMouseUp.bind(this), false);
-		window.addEventListener("mousemove", this.mouseMoveListener=this.onMouseMove.bind(this), false);
+		window.addEventListener("mouseup", this.mouseUpListener=this.onMouseUp.bind(this), true);
+		window.addEventListener("mousemove", this.mouseMoveListener=this.onMouseMove.bind(this), true);
+		window.addEventListener("click", this.clickListener=this.onClick.bind(this), true);
 	}
 
 	private onMouseUp(ev:MouseEvent):void{
+		ev.stopPropagation();
+		ev.preventDefault();
 		this.onPointerUp();
-		window.removeEventListener("mouseup", this.mouseUpListener);
-		window.removeEventListener("mousemove", this.mouseMoveListener);
+		setTimeout(()=>{ // Only remove the event listeners *after* all events have been dispatched and intercepted
+			window.removeEventListener("mouseup", this.mouseUpListener, true);
+			window.removeEventListener("mousemove", this.mouseMoveListener, true);
+			window.removeEventListener("click", this.clickListener, true);
+		});
 	}
 
 	private onMouseMove(ev:MouseEvent):void{
+		ev.stopPropagation();
+		ev.preventDefault();
 		var rect=this.container.getBoundingClientRect();
 		this.onPointerMove(ev.clientX-rect.left, ev.clientY-rect.top, ev);
+	}
+
+	private onClick(ev:MouseEvent){
+		ev.stopPropagation();
+		ev.preventDefault();
 	}
 
 	private onPointerDown(x:number, y:number, target:HTMLElement):void{
