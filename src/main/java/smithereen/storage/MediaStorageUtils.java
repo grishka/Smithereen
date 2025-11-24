@@ -53,6 +53,8 @@ import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
 import smithereen.model.photos.Photo;
 import smithereen.storage.media.MediaFileStorageDriver;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.util.BlurHash;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
@@ -200,9 +202,12 @@ public class MediaStorageUtils{
 				return;
 			}
 			LOG.trace("Deleting: {}", fileRecords);
-			Set<MediaFileID> deleted=MediaFileStorageDriver.getInstance().deleteFiles(fileRecords.stream().map(MediaFileRecord::id).collect(Collectors.toSet()));
-			if(!deleted.isEmpty())
-				MediaStorage.deleteMediaFileRecords(deleted.stream().map(MediaFileID::id).collect(Collectors.toSet()));
+			Set<MediaFileID> idsToDelete=fileRecords.stream().map(MediaFileRecord::id).collect(Collectors.toSet());
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				DatabaseUtils.doWithTransaction(conn, ()->MediaStorage.deleteMediaFileRecords(idsToDelete.stream().map(MediaFileID::id).collect(Collectors.toSet())));
+			}
+			// Make sure that we only delete actual files on disk if the corresponding rows in the media_files table were successfully deleted.
+			MediaFileStorageDriver.getInstance().deleteFiles(idsToDelete);
 		}catch(SQLException x){
 			LOG.warn("Failed to delete unused media files", x);
 		}
