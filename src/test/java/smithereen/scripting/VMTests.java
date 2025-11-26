@@ -646,4 +646,10 @@ public class VMTests{
 		Script s=Script.compile("Args.c555||0002;63554;555555555||0002;63555555!=052;");
 		assertDoesNotThrow(()->ScriptVM.execute(s));
 	}
+
+	@Test
+	public void testIssue219_3(){
+		Script s=Script.compile("Args.c5333323333333555>-555550||00550||005052;63555555!=052;");
+		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
 }

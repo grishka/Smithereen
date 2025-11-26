@@ -150,7 +150,7 @@ class Tokenizer{
 			if(peek()=='\n')
 				line++;
 			char c=advance();
-			if(c=='\\'){
+			if(c=='\\' && !isAtEnd()){
 				sb.append(switch(advance()){
 					case 'n' -> '\n';
 					case 'r' -> '\r';

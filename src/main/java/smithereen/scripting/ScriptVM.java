@@ -363,6 +363,8 @@ public class ScriptVM{
 		return switch(v){
 			case ScriptValue.Num(double n) -> n;
 			case ScriptValue.Str(String s) -> {
+				if(s==null)
+					yield 0;
 				try{
 					yield Double.parseDouble(s);
 				}catch(NumberFormatException x){

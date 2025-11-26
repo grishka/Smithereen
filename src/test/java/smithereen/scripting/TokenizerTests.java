@@ -325,4 +325,9 @@ public class TokenizerTests{
 	public void testIssue219_6(){
 		assertThrows(ScriptCompilationException.class, ()->Script.compile("{-w/"));
 	}
+
+	@Test
+	public void testIssue219_7(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("y(P(hh(y1(S'\\"));
+	}
 }
