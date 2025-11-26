@@ -690,7 +690,7 @@ public class VMTests{
 	@Test
 	public void testIssue219_10(){
 		Script s=Script.compile("Args.s.length;Args.ss;");
-		assertDoesNotThrow(()->ScriptVM.execute(s));
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
 	}
 
 	@Test
@@ -709,5 +709,23 @@ public class VMTests{
 	public void testIssue219_13(){
 		Script s=Script.compile("parseInt(\"333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333dqg\")-0;");
 		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_14(){
+		Script s=Script.compile("parseDouble(Args.ull);");
+		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_15(){
+		Script s=Script.compile("Args.p3.substr(2);");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_16(){
+		Script s=Script.compile("Args.p.indexOf(\");ndexOf(\");");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
 	}
 }
