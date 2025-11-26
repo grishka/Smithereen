@@ -12,6 +12,8 @@ public enum ApiErrorType{
 	BAD_REQUEST(8, "Invalid request"),
 	TOO_MANY_SIMILAR_ACTIONS(9, "Flood control", 429),
 	INTERNAL_SERVER_ERROR(10, "Internal server error", 500),
+	EXECUTE_COMPILE_FAILED(12, "Code compilation failed", 422),
+	EXECUTE_RUNTIME_ERROR(13, "Runtime error occurred", 422),
 	CAPTCHA_NEEDED(14, "Captcha needed"),
 	ACCESS_DENIED(15, "Access denied", 403),
 	VALIDATION_NEEDED(17, "Validation required"),

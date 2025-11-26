@@ -1218,7 +1218,10 @@ public class SmithereenApplication{
 
 		responseTypeSerializer(ApiSerializable.class, (out, obj, req, resp)->{
 			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
-			ApiRoutes.gson.toJson(obj, writer);
+			if(req.attribute("serializeNulls")!=null)
+				ApiRoutes.gsonWithNulls.toJson(obj, writer);
+			else
+				ApiRoutes.gson.toJson(obj, writer);
 			writer.flush();
 		});
 

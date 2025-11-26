@@ -10,6 +10,7 @@ public class ApiError{
 	public String errorMsg;
 	public transient ApiErrorType errorType;
 	public List<RequestParameter> requestParams;
+	public String method;
 
 	public ApiError(ApiErrorType type, String message, Map<String, String> params){
 		errorType=type;

@@ -43,6 +43,16 @@ public class ApiCallContext{
 		this.permissions=permissions;
 	}
 
+	public ApiCallContext(ApiCallContext toWrap, Map<String, String> params){
+		token=toWrap.token;
+		self=toWrap.self;
+		httpRequest=toWrap.httpRequest;
+		versionMajor=toWrap.versionMajor;
+		versionMinor=toWrap.versionMinor;
+		permissions=toWrap.permissions;
+		this.params=params;
+	}
+
 	public ApiErrorException error(ApiErrorType type){
 		return new ApiErrorException(new ApiError(type, null, params));
 	}

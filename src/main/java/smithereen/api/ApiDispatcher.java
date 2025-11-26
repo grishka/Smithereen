@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.api.methods.ExecuteMethods;
 import smithereen.api.methods.FriendsMethods;
 import smithereen.api.methods.GroupsMethods;
 import smithereen.api.methods.LikesMethods;
@@ -81,6 +82,8 @@ public class ApiDispatcher{
 		registerMethod("likes.getList", LikesMethods::getList, false);
 
 		registerMethod("newsfeed.get", NewsfeedMethods::get, ClientAppPermission.NEWSFEED);
+
+		registerMethod("execute", ExecuteMethods::execute, true);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

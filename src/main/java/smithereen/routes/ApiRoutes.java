@@ -39,6 +39,7 @@ import smithereen.api.model.ApiError;
 import smithereen.api.model.ApiErrorResponse;
 import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiResponse;
+import smithereen.api.model.ExecuteErrorsApiResponse;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -51,6 +52,8 @@ import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.AppAuthCode;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.scripting.ScriptValue;
+import smithereen.scripting.ScriptValueGsonTypeAdapterFactory;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.util.CryptoUtils;
@@ -73,7 +76,10 @@ public class ApiRoutes{
 	public static final Gson gson=new GsonBuilder()
 			.disableHtmlEscaping()
 			.setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+			.registerTypeAdapterFactory(new ScriptValueGsonTypeAdapterFactory())
 			.create();
+
+	public static final Gson gsonWithNulls=gson.newBuilder().serializeNulls().create();
 
 	private static Object oauthAuthorizeError(Request req, String error){
 		return new RenderedTemplateResponse("oauth_error", req)
@@ -436,7 +442,13 @@ public class ApiRoutes{
 					locale=Locale.US;
 				actx.lang=Lang.get(locale);
 			}
-			return new ApiResponse(ApiDispatcher.doApiCall(method, ctx, actx));
+			Object result=ApiDispatcher.doApiCall(method, ctx, actx);
+			if("execute".equals(method) && req.attribute("executeErrors")!=null){
+				ExecuteErrorsApiResponse responseWithErrors=new ExecuteErrorsApiResponse(result);
+				responseWithErrors.executeErrors=req.attribute("executeErrors");
+				return responseWithErrors;
+			}
+			return new ApiResponse(result);
 		}catch(ApiErrorException x){
 			resp.status(x.error.errorType.httpStatusCode);
 			return new ApiErrorResponse(x.error);
