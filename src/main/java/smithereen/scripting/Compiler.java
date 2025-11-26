@@ -349,6 +349,8 @@ class Compiler{
 	private void parseDeleteStatement(){
 		insideDeleteStatement=true;
 		parseExpression();
+		if(opsBuffer.get(opsBuffer.size()-1)!=Op.DELETE_OBJECT_FIELD)
+			throw new ScriptCompilationException("'delete' on something other than an object field", previous.lineNumber());
 		insideDeleteStatement=false;
 		consume(TokenType.SEMICOLON, "Expected ';' after delete");
 	}

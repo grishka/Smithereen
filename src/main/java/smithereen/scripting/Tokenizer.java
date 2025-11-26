@@ -192,7 +192,7 @@ class Tokenizer{
 	}
 
 	private char peekNext(){
-		return isAtEnd() ? '\0' : input.charAt(offset+1);
+		return offset>input.length()-2 ? '\0' : input.charAt(offset+1);
 	}
 
 	private boolean match(char expected){

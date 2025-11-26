@@ -295,4 +295,34 @@ public class TokenizerTests{
 				tokens
 		);
 	}
+
+	@Test
+	public void testIssue219_1(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("n/"));
+	}
+
+	@Test
+	public void testIssue219_2(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile(".8."));
+	}
+
+	@Test
+	public void testIssue219_3(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("{/"));
+	}
+
+	@Test
+	public void testIssue219_4(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("/"));
+	}
+
+	@Test
+	public void testIssue219_5(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("8[.8."));
+	}
+
+	@Test
+	public void testIssue219_6(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("{-w/"));
+	}
 }

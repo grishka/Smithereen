@@ -635,4 +635,15 @@ public class VMTests{
 			return null;
 		})));
 	}
+
+	@Test
+	public void testIssue219_1(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("delete!6;!6;"));
+	}
+
+	@Test
+	public void testIssue219_2(){
+		Script s=Script.compile("Args.c555||0002;63554;555555555||0002;63555555!=052;");
+		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
 }

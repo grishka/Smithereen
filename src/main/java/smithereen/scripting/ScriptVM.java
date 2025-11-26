@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
 
+import spark.utils.StringUtils;
+
 public class ScriptVM{
 	// For tests only
 	static ScriptValue execute(Script script){
@@ -320,7 +322,7 @@ public class ScriptVM{
 	private static boolean castValueToBool(ScriptValue v){
 		return switch(v){
 			case ScriptValue.Bool(boolean b) -> b;
-			case ScriptValue.Str(String s) -> !s.isEmpty();
+			case ScriptValue.Str(String s) -> StringUtils.isNotEmpty(s);
 			case ScriptValue.Num(double n) -> n!=0;
 			case ScriptValue.Obj obj -> true;
 			case ScriptValue.Arr arr -> true;
