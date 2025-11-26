@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
+import java.util.stream.Collectors;
 
 import spark.utils.StringUtils;
 
@@ -147,9 +148,9 @@ public class ScriptVM{
 					if(!(keyV instanceof ScriptValue.Str(String key)))
 						throw new IllegalStateException("Invalid operand types");
 					if(objV instanceof ScriptValue.Arr(List<ScriptValue> arr) && "length".equals(key)){
-						stack.push(ScriptValue.of(arr.size()));
+						stack.push(arr==null ? null : ScriptValue.of(arr.size()));
 					}else if(objV instanceof ScriptValue.Str(String s) && "length".equals(key)){
-						stack.push(ScriptValue.of(s.length()));
+						stack.push(s==null ? null : ScriptValue.of(s.length()));
 					}else{
 						if(!(objV instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)))
 							throw new ScriptRuntimeException("Invalid operand types for object property access", script.getLineNumber(ip-1));
@@ -160,7 +161,9 @@ public class ScriptVM{
 					ScriptValue value=stack.pop();
 					ScriptValue keyV=stack.pop();
 					ScriptValue objV=stack.pop();
-					if(!(keyV instanceof ScriptValue.Str(String key)) || !(objV instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)))
+					if(!(objV instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)))
+						throw new ScriptRuntimeException("Invalid operand types for object property assignment", script.getLineNumber(ip-1));
+					if(!(keyV instanceof ScriptValue.Str(String key)))
 						throw new IllegalStateException("Invalid operand types");
 					obj.put(key, value);
 					if(script.operands[ip-1]==1)
@@ -169,7 +172,9 @@ public class ScriptVM{
 				case Op.DELETE_OBJECT_FIELD -> {
 					ScriptValue keyV=stack.pop();
 					ScriptValue objV=stack.pop();
-					if(!(keyV instanceof ScriptValue.Str(String key)) || !(objV instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)))
+					if(!(objV instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)))
+						throw new ScriptRuntimeException("Invalid operand types for object property deletion", script.getLineNumber(ip-1));
+					if(!(keyV instanceof ScriptValue.Str(String key)))
 						throw new IllegalStateException("Invalid operand types");
 					obj.remove(key);
 				}
@@ -177,7 +182,9 @@ public class ScriptVM{
 				case Op.GET_ARRAY_ELEMENT -> {
 					ScriptValue indexV=stack.pop();
 					ScriptValue arrayV=stack.pop();
-					if(arrayV instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)){
+					if(indexV==null){
+						stack.push(null);
+					}else if(arrayV instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)){
 						// object['value']
 						String key=switch(indexV){
 							case ScriptValue.Num(double n) -> numberToString(n);
@@ -253,7 +260,7 @@ public class ScriptVM{
 						throw new ScriptRuntimeException("Invalid operand type for '@.'", script.getLineNumber(ip-1));
 					stack.push(ScriptValue.of(arr.stream()
 							.map(el->el instanceof ScriptValue.Obj(Map<String, ScriptValue> obj) ? obj.get(key) : null)
-							.toList()));
+							.collect(Collectors.toCollection(()->new ArrayList<>()))));
 				}
 				case Op.DUPLICATE -> stack.push(stack.peek());
 				case Op.CALL_FUNCTION -> {

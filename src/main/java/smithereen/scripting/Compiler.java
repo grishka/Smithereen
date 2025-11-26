@@ -545,6 +545,9 @@ class Compiler{
 			emitInstruction(Op.SET_OBJECT_FIELD, 1);
 		}else{
 			emitInstruction(Op.LOAD_CONST, nameID);
+			if(insideDeleteStatement && !canAssign){
+				throw new ScriptCompilationException("Invalid argument for 'delete'", previous.lineNumber());
+			}
 			if(insideDeleteStatement && check(TokenType.SEMICOLON)){
 				emitInstruction(Op.DELETE_OBJECT_FIELD);
 			}else{

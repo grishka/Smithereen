@@ -652,4 +652,62 @@ public class VMTests{
 		Script s=Script.compile("Args.c5333323333333555>-555550||00550||005052;63555555!=052;");
 		assertDoesNotThrow(()->ScriptVM.execute(s));
 	}
+
+	@Test
+	public void testIssue219_4(){
+		Script s=Script.compile("'W'.Q=5;");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_5(){
+		Script s=Script.compile("delete''.cE;");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_6(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("delete!7&&2.T9;"));
+	}
+
+	@Test
+	public void testIssue219_7(){
+		Script s=Script.compile("5.a=9;");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_8(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("delete-8&&7.UT;"));
+	}
+
+	@Test
+	public void testIssue219_9(){
+		Script s=Script.compile("return [8][null];");
+		assertNull(ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_10(){
+		Script s=Script.compile("Args.s.length;Args.ss;");
+		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_11(){
+		Script s=Script.compile("[2]@.E.pop();");
+		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_12(){
+		Script s=Script.compile("(([].p([]@.h.unshift(false))).r).r;");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_13(){
+		Script s=Script.compile("parseInt(\"333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333dqg\")-0;");
+		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
 }

@@ -16,8 +16,11 @@ class BuiltInFunctions{
 			case ScriptValue.Bool(boolean b) -> b ? 1 : 0;
 			case ScriptValue.Str(String s) -> {
 				Matcher m=INT_REGEX.matcher(s);
-				if(m.find())
-					yield Long.parseLong(m.group(1));
+				if(m.find()){
+					try{
+						yield Long.parseLong(m.group(1));
+					}catch(NumberFormatException ignore){}
+				}
 				yield 0;
 			}
 			case ScriptValue.Num(double n) -> (long)n;
@@ -34,8 +37,11 @@ class BuiltInFunctions{
 			case ScriptValue.Bool(boolean b) -> b ? 1 : 0;
 			case ScriptValue.Str(String s) -> {
 				Matcher m=DOUBLE_REGEX.matcher(s);
-				if(m.find())
-					yield Double.parseDouble(m.group(1));
+				if(m.find()){
+					try{
+						yield Double.parseDouble(m.group(1));
+					}catch(NumberFormatException ignore){}
+				}
 				yield 0;
 			}
 			case ScriptValue.Num(double n) -> n;
