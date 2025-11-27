@@ -40,6 +40,8 @@ class BuiltInMethods{
 				end+=arr.size();
 			}else if(end<-arr.size()){
 				end=0;
+			}else if(end>arr.size()){
+				end=arr.size();
 			}
 		}else{
 			end=arr.size();
@@ -128,7 +130,7 @@ class BuiltInMethods{
 		int length;
 		if(args.size()==2 && args.get(1) instanceof ScriptValue.Num(double _length)){
 			length=(int)_length;
-			if(length<0)
+			if(length<0 || length<_length-1)
 				return ScriptValue.of("");
 			if(start+length>str.length())
 				length=str.length()-start;

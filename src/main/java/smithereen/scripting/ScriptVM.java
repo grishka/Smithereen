@@ -220,7 +220,7 @@ public class ScriptVM{
 						String key=switch(indexV){
 							case ScriptValue.Num(double n) -> numberToString(n);
 							case ScriptValue.Str(String s) -> s;
-							default -> throw new ScriptRuntimeException("Invalid operand type for '[]='", script.getLineNumber(ip-1));
+							case null, default -> throw new ScriptRuntimeException("Invalid operand type for '[]='", script.getLineNumber(ip-1));
 						};
 						obj.put(key, value);
 					}else if(arrayV instanceof ScriptValue.Arr(List<ScriptValue> arr)){
@@ -233,7 +233,7 @@ public class ScriptVM{
 									throw new ScriptRuntimeException("Invalid operand type for '[]='", script.getLineNumber(ip-1));
 								}
 							}
-							default -> throw new ScriptRuntimeException("Invalid operand type for '[]='", script.getLineNumber(ip-1));
+							case null, default -> throw new ScriptRuntimeException("Invalid operand type for '[]='", script.getLineNumber(ip-1));
 						};
 						if(index>=arr.size() || index<0)
 							throw new ScriptRuntimeException("Index "+index+" is outside of the bounds of the array", script.getLineNumber(ip-1));

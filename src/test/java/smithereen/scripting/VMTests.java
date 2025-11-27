@@ -728,4 +728,29 @@ public class VMTests{
 		Script s=Script.compile("Args.p.indexOf(\");ndexOf(\");");
 		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
 	}
+
+	@Test
+	public void testIssue219_17(){
+		Script s=Script.compile("[{}[{}.i]=6];");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_18(){
+		Script s=Script.compile("for(;74;[9].splice(-0,1))[2].slice(-1,55);");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_19(){
+		Script s=Script.compile("while(7)2+(\"}}}}\".substr(3,88888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888-5\n"+
+				")).length;");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_20(){
+		Script s=Script.compile("[[[0][0]=[0][[0][00]=0]=0][0]=[0][null]=0][5]=[0][[0][0]=[0][[0][0]=0]=00]=[0][[0][0]=0][5]=[[0][0]=[0][[0][00]=0]=0][0]=[0];");
+		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+	}
 }
