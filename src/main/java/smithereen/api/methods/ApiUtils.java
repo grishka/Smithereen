@@ -344,34 +344,50 @@ public class ApiUtils{
 						.map(l->{
 							SizedImage img=l.getImage();
 							String objID=null;
-							String objType=switch(l.object.type()){
-								case USER -> {
-									objID=l.object.id()+"";
-									yield "user";
-								}
-								case GROUP -> {
-									objID=l.object.id()+"";
-									yield "group";
-								}
-								case POST -> {
-									objID=l.object.id()+"";
-									yield "post";
-								}
-								case PHOTO ->{
-									objID=XTEA.encodeObjectID(l.object.id(), ObfuscatedObjectIDType.PHOTO);
-									yield "photo";
-								}
-								case PHOTO_ALBUM ->{
-									objID=XTEA.encodeObjectID(l.object.id(), ObfuscatedObjectIDType.PHOTO_ALBUM);
-									yield "photo_album";
-								}
-								case BOARD_TOPIC ->{
-									objID=XTEA.encodeObjectID(l.object.id(), ObfuscatedObjectIDType.BOARD_TOPIC);
-									yield "topic";
-								}
-								default -> null;
-							};
-							return new ApiGroup.Link(l.id, l.url.toString(), l.title, l.getDescription(),
+							String objType;
+							String title=l.title;
+							if(l.object==null){
+								objType=null;
+							}else{
+								objType=switch(l.object.type()){
+									case USER -> {
+										objID=l.object.id()+"";
+										try{
+											title=ctx.getUsersController().getUserOrThrow((int)l.object.id()).getFullName();
+										}catch(ObjectNotFoundException x){
+											title="DELETED";
+										}
+										yield "user";
+									}
+									case GROUP -> {
+										objID=l.object.id()+"";
+										try{
+											title=ctx.getGroupsController().getGroupOrThrow((int)l.object.id()).name;
+										}catch(ObjectNotFoundException x){
+											title="DELETED";
+										}
+										yield "group";
+									}
+									case POST -> {
+										objID=l.object.id()+"";
+										yield "post";
+									}
+									case PHOTO -> {
+										objID=XTEA.encodeObjectID(l.object.id(), ObfuscatedObjectIDType.PHOTO);
+										yield "photo";
+									}
+									case PHOTO_ALBUM -> {
+										objID=XTEA.encodeObjectID(l.object.id(), ObfuscatedObjectIDType.PHOTO_ALBUM);
+										yield "photo_album";
+									}
+									case BOARD_TOPIC -> {
+										objID=XTEA.encodeObjectID(l.object.id(), ObfuscatedObjectIDType.BOARD_TOPIC);
+										yield "topic";
+									}
+									default -> null;
+								};
+							}
+							return new ApiGroup.Link(l.id, l.url.toString(), title, l.getDescription(),
 									img==null ? null : img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, actx.imageFormat).toString(),
 									img==null ? null : img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, actx.imageFormat).toString(),
 									img==null ? null : img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_LARGE, actx.imageFormat).toString(),
