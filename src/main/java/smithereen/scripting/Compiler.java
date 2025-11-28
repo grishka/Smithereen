@@ -227,6 +227,8 @@ class Compiler{
 	}
 
 	private void parseTernaryOperator(boolean canAssign){
+		if(insideDeleteStatement)
+			throw new ScriptCompilationException("'delete' on something other than an object field", previous.lineNumber());
 		int falseJump=opsBuffer.size();
 		emitInstruction(Op.JUMP_IF_FALSE);
 		parseExpression();

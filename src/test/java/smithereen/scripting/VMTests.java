@@ -753,4 +753,15 @@ public class VMTests{
 		Script s=Script.compile("[[[0][0]=[0][[0][00]=0]=0][0]=[0][null]=0][5]=[0][[0][0]=[0][[0][0]=0]=00]=[0][[0][0]=0][5]=[[0][0]=[0][[0][00]=0]=0][0]=[0];");
 		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
 	}
+
+	@Test
+	public void testIssue219_21(){
+		Script s=Script.compile("\"\".split(''+4).push('+');");
+		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testIssue219_22(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("delete{}.p;delete{}.p;delete{}?7:7.p;"));
+	}
 }

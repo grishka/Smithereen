@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 class BuiltInMethods{
 	// region Array
@@ -113,7 +114,7 @@ class BuiltInMethods{
 		int limit=-1;
 		if(args.size()==2 && args.get(1) instanceof ScriptValue.Num(double _limit))
 			limit=(int)_limit;
-		return ScriptValue.of(Arrays.stream(str.split(Pattern.quote(separator), limit)).map(s->(ScriptValue)ScriptValue.of(s)).toList());
+		return ScriptValue.of(Arrays.stream(str.split(Pattern.quote(separator), limit)).map(s->(ScriptValue)ScriptValue.of(s)).collect(Collectors.toCollection(()->new ArrayList<>())));
 	}
 
 	public static ScriptValue stringSubstr(ScriptValue this_, List<ScriptValue> args, int lineNumber){
