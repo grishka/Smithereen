@@ -51,7 +51,7 @@ public class ApiUser{
 	public List<CustomProfileField> custom;
 
 	public String city;
-	public String matrix, xmpp, telegram, signal, twitter, instagram, facebook, vkontakte, snapchat, discord, git, mastodon, pixelfed, phoneNumber, email;
+	public Connections connections;
 	public String site;
 
 	public String activities, interests, music, movies, tv, books, games, quotes, about;
@@ -195,23 +195,24 @@ public class ApiUser{
 		if(fields.contains(Field.CITY))
 			city=user.location;
 		if(fields.contains(Field.CONNECTIONS)){
+			connections=new Connections();
 			user.contacts.forEach((k, v)->{
 				switch(k){
-					case MATRIX -> matrix=v;
-					case XMPP -> xmpp=v;
-					case TELEGRAM -> telegram=v;
-					case SIGNAL -> signal=v;
-					case TWITTER -> twitter=v;
-					case INSTAGRAM -> instagram=v;
-					case FACEBOOK -> facebook=v;
-					case VKONTAKTE -> vkontakte=v;
-					case SNAPCHAT -> snapchat=v;
-					case DISCORD -> discord=v;
-					case GIT -> git=v;
-					case MASTODON -> mastodon=v;
-					case PIXELFED -> pixelfed=v;
-					case PHONE_NUMBER -> phoneNumber=v;
-					case EMAIL -> email=v;
+					case MATRIX -> connections.matrix=v;
+					case XMPP -> connections.xmpp=v;
+					case TELEGRAM -> connections.telegram=v;
+					case SIGNAL -> connections.signal=v;
+					case TWITTER -> connections.twitter=v;
+					case INSTAGRAM -> connections.instagram=v;
+					case FACEBOOK -> connections.facebook=v;
+					case VKONTAKTE -> connections.vkontakte=v;
+					case SNAPCHAT -> connections.snapchat=v;
+					case DISCORD -> connections.discord=v;
+					case GIT -> connections.git=v;
+					case MASTODON -> connections.mastodon=v;
+					case PIXELFED -> connections.pixelfed=v;
+					case PHONE_NUMBER -> connections.phoneNumber=v;
+					case EMAIL -> connections.email=v;
 				}
 			});
 		}
@@ -410,6 +411,10 @@ public class ApiUser{
 	public record PersonalViews(String political, String religion, String inspiredBy, String peopleMain, String lifeMain, String smoking, String alcohol){}
 	public record LastSeen(long time, String platform){}
 	public record Counters(int albums, int photos, long friends, long groups, int onlineFriends, int mutualFriends, int userPhotos, long followers, long subscriptions){}
+
+	public class Connections{
+		public String matrix, xmpp, telegram, signal, twitter, instagram, facebook, vkontakte, snapchat, discord, git, mastodon, pixelfed, phoneNumber, email;
+	}
 
 	public enum Field{
 		// Basics
