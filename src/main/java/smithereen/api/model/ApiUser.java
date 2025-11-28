@@ -360,7 +360,7 @@ public class ApiUser{
 			firstNameAcc=actx.lang.inflectNamePart(user.firstName, Inflector.NamePart.FIRST, user.gender, Inflector.Case.ACCUSATIVE);
 		if(fields.contains(Field.FIRST_NAME_INS))
 			firstNameIns=actx.lang.inflectNamePart(user.firstName, Inflector.NamePart.FIRST, user.gender, Inflector.Case.INSTRUMENTAL);
-		if(fields.contains(Field.FIRST_NAME_ABL))
+		if(fields.contains(Field.FIRST_NAME_PRE))
 			firstNameAbl=actx.lang.inflectNamePart(user.firstName, Inflector.NamePart.FIRST, user.gender, Inflector.Case.PREPOSITIONAL);
 
 		if(fields.contains(Field.LAST_NAME_NOM))
@@ -373,7 +373,7 @@ public class ApiUser{
 			lastNameAcc=actx.lang.inflectNamePart(user.lastName, Inflector.NamePart.LAST, user.gender, Inflector.Case.ACCUSATIVE);
 		if(fields.contains(Field.LAST_NAME_INS))
 			lastNameIns=actx.lang.inflectNamePart(user.lastName, Inflector.NamePart.LAST, user.gender, Inflector.Case.INSTRUMENTAL);
-		if(fields.contains(Field.LAST_NAME_ABL))
+		if(fields.contains(Field.LAST_NAME_PRE))
 			lastNameAbl=actx.lang.inflectNamePart(user.lastName, Inflector.NamePart.LAST, user.gender, Inflector.Case.PREPOSITIONAL);
 
 		if(fields.contains(Field.NICKNAME_NOM))
@@ -386,7 +386,7 @@ public class ApiUser{
 			nicknameAcc=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.ACCUSATIVE);
 		if(fields.contains(Field.NICKNAME_INS))
 			nicknameIns=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.INSTRUMENTAL);
-		if(fields.contains(Field.NICKNAME_ABL))
+		if(fields.contains(Field.NICKNAME_PRE))
 			nicknameAbl=actx.lang.inflectNamePart(user.middleName, Inflector.NamePart.MIDDLE, user.gender, Inflector.Case.PREPOSITIONAL);
 	}
 
@@ -497,19 +497,19 @@ public class ApiUser{
 		FIRST_NAME_DAT,
 		FIRST_NAME_ACC,
 		FIRST_NAME_INS,
-		FIRST_NAME_ABL,
+		FIRST_NAME_PRE,
 		LAST_NAME_NOM,
 		LAST_NAME_GEN,
 		LAST_NAME_DAT,
 		LAST_NAME_ACC,
 		LAST_NAME_INS,
-		LAST_NAME_ABL,
+		LAST_NAME_PRE,
 		NICKNAME_NOM,
 		NICKNAME_GEN,
 		NICKNAME_DAT,
 		NICKNAME_ACC,
 		NICKNAME_INS,
-		NICKNAME_ABL,
+		NICKNAME_PRE,
 		;
 
 		public static Field valueOfApi(String v){
@@ -583,19 +583,19 @@ public class ApiUser{
 				case "first_name_dat" -> FIRST_NAME_DAT;
 				case "first_name_acc" -> FIRST_NAME_ACC;
 				case "first_name_ins" -> FIRST_NAME_INS;
-				case "first_name_abl" -> FIRST_NAME_ABL;
+				case "first_name_pre", "first_name_abl" -> FIRST_NAME_PRE;
 				case "last_name_nom" -> LAST_NAME_NOM;
 				case "last_name_gen" -> LAST_NAME_GEN;
 				case "last_name_dat" -> LAST_NAME_DAT;
 				case "last_name_acc" -> LAST_NAME_ACC;
 				case "last_name_ins" -> LAST_NAME_INS;
-				case "last_name_abl" -> LAST_NAME_ABL;
+				case "last_name_pre", "last_name_abl" -> LAST_NAME_PRE;
 				case "nickname_nom" -> NICKNAME_NOM;
 				case "nickname_gen" -> NICKNAME_GEN;
 				case "nickname_dat" -> NICKNAME_DAT;
 				case "nickname_acc" -> NICKNAME_ACC;
 				case "nickname_ins" -> NICKNAME_INS;
-				case "nickname_abl" -> NICKNAME_ABL;
+				case "nickname_pre", "nickname_abl" -> NICKNAME_PRE;
 
 				default -> null;
 			};
