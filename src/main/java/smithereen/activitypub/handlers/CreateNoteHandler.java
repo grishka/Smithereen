@@ -41,6 +41,7 @@ import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoMetadata;
@@ -280,8 +281,9 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 			if(nativePost.ownerID!=nativePost.authorID){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
-				if(nativePost.ownerID<0)
-					context.appContext.getNewsfeedController().clearGroupsFeedCache();
+				if(nativePost.ownerID<0){
+					context.appContext.getNewsfeedController().putGroupsFeedEntry((Group)owner, nativePost.id, NewsfeedEntry.Type.POST, nativePost.createdAt);
+				}
 			}else{
 				context.appContext.getNewsfeedController().clearFriendsFeedCache();
 			}

@@ -171,7 +171,7 @@ public class ApiUser{
 								case "dat" -> Inflector.Case.DATIVE;
 								case "acc" -> Inflector.Case.ACCUSATIVE;
 								case "ins" -> Inflector.Case.INSTRUMENTAL;
-								case "abl" -> Inflector.Case.PREPOSITIONAL;
+								case "pre", "abl" -> Inflector.Case.PREPOSITIONAL;
 								default -> Inflector.Case.NOMINATIVE;
 							};
 						}
