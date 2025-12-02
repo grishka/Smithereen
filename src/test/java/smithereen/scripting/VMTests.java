@@ -764,4 +764,10 @@ public class VMTests{
 	public void testIssue219_22(){
 		assertThrows(ScriptCompilationException.class, ()->Script.compile("delete{}.p;delete{}.p;delete{}?7:7.p;"));
 	}
+
+	@Test
+	public void testIssue219_23(){
+		Script s=Script.compile("if(7)2;else{return-0;}");
+		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
 }

@@ -29,6 +29,7 @@ class Compiler{
 	int variableCount=0;
 	private HashMap<ScriptValue, Integer> constantIDs=new HashMap<>();
 	private boolean insideDeleteStatement;
+	private boolean lastStatementHadJump;
 
 	private interface ParseFunction{
 		void parse(boolean canAssign);
@@ -127,7 +128,7 @@ class Compiler{
 			parseDeclaration();
 		}
 		variableCount=Math.max(variableCount, variables.size());
-		if(opsBuffer.size()==0 || opsBuffer.get(opsBuffer.size()-1)!=Op.RETURN){
+		if(opsBuffer.size()==0 || opsBuffer.get(opsBuffer.size()-1)!=Op.RETURN || lastStatementHadJump){
 			// The script doesn't end with a return statement. Add `return null`.
 			emitInstruction(Op.LOAD_NULL);
 			emitInstruction(Op.RETURN);
@@ -163,6 +164,7 @@ class Compiler{
 	}
 
 	private void parseStatement(){
+		lastStatementHadJump=false;
 		if(match(TokenType.LEFT_BRACE)){
 			beginScope();
 			parseBlock();
@@ -201,6 +203,7 @@ class Compiler{
 		if(offset>0xffff)
 			throw new ScriptCompilationException("Too many opcodes to jump over", previous.lineNumber());
 		operandsBuffer.set(location, (char)offset);
+		lastStatementHadJump=true;
 	}
 
 	private void parseBlock(){
