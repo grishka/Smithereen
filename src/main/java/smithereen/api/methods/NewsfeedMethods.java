@@ -23,6 +23,7 @@ import smithereen.model.User;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
+import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.PostViewModel;
@@ -48,20 +49,36 @@ public class NewsfeedMethods{
 		if(filters.isEmpty())
 			filters=EnumSet.allOf(FriendsNewsfeedTypeFilter.class);
 		boolean returnBanned=actx.booleanParam("return_banned");
-		String rawStartFrom=actx.optParamString("start_from");
-		int startFromID=0, offset=0;
-		if(StringUtils.isNotEmpty(rawStartFrom)){
-			String[] startFromParts=rawStartFrom.split(",");
-			if(startFromParts.length==2){
-				startFromID=Math.max(0, Utils.safeParseInt(startFromParts[0]));
-				offset=Math.max(0, Utils.safeParseInt(startFromParts[1]));
+		StartFrom sf=getStartFrom(actx);
+
+		// TODO returnBanned
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(actx.self, filters, actx.self.prefs.timeZone, sf.id, sf.offset, actx.getCount(25, 100));
+
+		return makeFeed(ctx, actx, feed, sf.id, sf.offset, false);
+	}
+
+	public static Object getGroups(ApplicationContext ctx, ApiCallContext actx){
+		EnumSet<GroupsNewsfeedTypeFilter> filters=EnumSet.noneOf(GroupsNewsfeedTypeFilter.class);
+		if(actx.hasParam("filters")){
+			for(String filter:actx.requireCommaSeparatedStringSet("filters")){
+				switch(filter){
+					case "post" -> filters.add(GroupsNewsfeedTypeFilter.POSTS);
+					case "photo" -> filters.add(GroupsNewsfeedTypeFilter.PHOTOS);
+					case "board" -> filters.add(GroupsNewsfeedTypeFilter.TOPICS);
+				}
 			}
 		}
+		if(filters.isEmpty())
+			filters=EnumSet.allOf(GroupsNewsfeedTypeFilter.class);
 
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(actx.self, filters, actx.self.prefs.timeZone, startFromID, offset, actx.getCount(25, 100));
+		StartFrom sf=getStartFrom(actx);
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getGroupsFeed(actx.self, filters, actx.self.prefs.timeZone, sf.id, sf.offset, actx.getCount(25, 100));
+		return makeFeed(ctx, actx, feed, sf.id, sf.offset, true);
+	}
 
+	private static Feed makeFeed(ApplicationContext ctx, ApiCallContext actx, PaginatedList<NewsfeedEntry> feed, int startFromID, int offset, boolean isGroups){
 		Set<Integer> needPosts=new HashSet<>(), needUsers=new HashSet<>(), needGroups=new HashSet<>();
-		for(NewsfeedEntry e:feed.list){
+		for(NewsfeedEntry e: feed.list){
 			if(e.authorID>0)
 				needUsers.add(e.authorID);
 			else
@@ -155,11 +172,6 @@ public class NewsfeedMethods{
 			feedTopics=Map.of();
 		}
 
-		record PhotosInfo(int count, List<ApiPhoto> items, String listId){}
-		record RelationInfo(String status, Integer partner){}
-		record FriendsFeedItem(String type, int id, int userId, ApiWallPost post, PhotosInfo photos, List<Long> friendIds, List<Long> groupIds, List<ApiBoardTopic> topics, RelationInfo relation){}
-		record FriendsFeed(List<FriendsFeedItem> items, List<ApiUser> profiles, List<ApiGroup> groups, String nextFrom){}
-
 		if(!feed.list.isEmpty() && startFromID==0){
 			startFromID=switch(feed.list.getFirst()){
 				case GroupedNewsfeedEntry gne -> gne.childEntries.getFirst().id;
@@ -167,35 +179,33 @@ public class NewsfeedMethods{
 			};
 		}
 
-		return new FriendsFeed(
+		return new Feed(
 				feed.list.stream()
 						.map(e->{
 							NewsfeedEntry.Type type=e instanceof GroupedNewsfeedEntry gne ? gne.childEntriesType : e.type;
 							List<Long> objectIDs=e instanceof GroupedNewsfeedEntry gne ? gne.childEntries.stream().map(ce->ce.objectID).toList() : List.of(e.objectID);
 							int entryID=e instanceof GroupedNewsfeedEntry gne ? gne.childEntries.getFirst().id : e.id;
 							return switch(type){
-								case POST -> new FriendsFeedItem("post", e.id, e.authorID, feedPosts.get((int)e.objectID), null, null, null, null, null);
-								case JOIN_GROUP, CREATE_GROUP, JOIN_EVENT, CREATE_EVENT ->
-										new FriendsFeedItem(switch(type){
-											case JOIN_GROUP -> "group_join";
-											case JOIN_EVENT -> "event_join";
-											case CREATE_GROUP -> "group_create";
-											case CREATE_EVENT -> "event_create";
-											default -> throw new IllegalStateException("Unexpected value: " + type);
-										}, entryID, e.authorID, null, null, null, objectIDs, null, null);
-								case ADD_FRIEND -> new FriendsFeedItem("friend", entryID, e.authorID, null, null, objectIDs, null, null, null);
-								case ADD_PHOTO, PHOTO_TAG ->
-										new FriendsFeedItem(type==NewsfeedEntry.Type.PHOTO_TAG ? "photo_tag" : "photo",
-												entryID, e.authorID, null,
-												new PhotosInfo(objectIDs.size(), objectIDs.stream().limit(10).map(feedPhotos::get).toList(), "friends/"+entryID),
-												null, null, null, null);
-								case BOARD_TOPIC -> new FriendsFeedItem("board", entryID, e.authorID, null, null, null, null, objectIDs.stream().map(feedTopics::get).toList(), null);
+								case POST -> new FeedItem("post", e.id, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, feedPosts.get((int) e.objectID), null, null, null, null, null);
+								case JOIN_GROUP, CREATE_GROUP, JOIN_EVENT, CREATE_EVENT -> new FeedItem(switch(type){
+									case JOIN_GROUP -> "group_join";
+									case JOIN_EVENT -> "event_join";
+									case CREATE_GROUP -> "group_create";
+									case CREATE_EVENT -> "event_create";
+									default -> throw new IllegalStateException("Unexpected value: "+type);
+								}, entryID, e.authorID, null, null, null, null, objectIDs, null, null);
+								case ADD_FRIEND -> new FeedItem("friend", entryID, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, null, null, objectIDs, null, null, null);
+								case ADD_PHOTO, PHOTO_TAG -> new FeedItem(type==NewsfeedEntry.Type.PHOTO_TAG ? "photo_tag" : "photo",
+										entryID, e.authorID, null, null,
+										new PhotosInfo(objectIDs.size(), objectIDs.stream().limit(10).map(feedPhotos::get).toList(), (isGroups ? "groups/" : "friends/")+entryID),
+										null, null, null, null);
+								case BOARD_TOPIC -> new FeedItem("board", entryID, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, null, null, null, null, objectIDs.stream().map(feedTopics::get).toList(), null);
 								case RELATIONSHIP_STATUS -> {
-									User.RelationshipStatus status=User.RelationshipStatus.values()[(int)(e.objectID >> 56)];
-									int partnerID=(int)e.objectID;
-									yield new FriendsFeedItem("relation", e.id, e.authorID, null, null, null, null, null, new RelationInfo(ApiUser.mapRelationshipStatus(status), partnerID>0 ? partnerID : null));
+									User.RelationshipStatus status=User.RelationshipStatus.values()[(int) (e.objectID >> 56)];
+									int partnerID=(int) e.objectID;
+									yield new FeedItem("relation", e.id, e.authorID, null, null, null, null, null, null, new RelationInfo(ApiUser.mapRelationshipStatus(status), partnerID>0 ? partnerID : null));
 								}
-								default -> throw new IllegalStateException("Unexpected value: " + type);
+								default -> throw new IllegalStateException("Unexpected value: "+type);
 							};
 						})
 						.toList(),
@@ -204,4 +214,24 @@ public class NewsfeedMethods{
 				startFromID+","+(offset+feed.list.size())
 		);
 	}
+
+	private static StartFrom getStartFrom(ApiCallContext actx){
+		String rawStartFrom=actx.optParamString("start_from");
+		int startFromID=0, offset=0;
+		if(StringUtils.isNotEmpty(rawStartFrom)){
+			String[] startFromParts=rawStartFrom.split(",");
+			if(startFromParts.length==2){
+				startFromID=Math.max(0, Utils.safeParseInt(startFromParts[0]));
+				offset=Math.max(0, Utils.safeParseInt(startFromParts[1]));
+			}
+		}
+		return new StartFrom(startFromID, offset);
+	}
+
+	record PhotosInfo(int count, List<ApiPhoto> items, String listId){}
+	record RelationInfo(String status, Integer partner){}
+	record FeedItem(String type, int id, Integer userId, Integer groupId, ApiWallPost post, PhotosInfo photos, List<Long> friendIds, List<Long> groupIds, List<ApiBoardTopic> topics, RelationInfo relation){}
+	record Feed(List<FeedItem> items, List<ApiUser> profiles, List<ApiGroup> groups, String nextFrom){}
+
+	private record StartFrom(int id, int offset){}
 }
