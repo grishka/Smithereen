@@ -614,11 +614,11 @@ public class PostStorage{
 		}
 	}
 
-	public static Map<Integer, PaginatedList<Post>> getRepliesForFeed(Set<List<Integer>> postReplyKeys, boolean flat) throws SQLException{
+	public static Map<Integer, PaginatedList<Post>> getRepliesForFeed(Set<List<Integer>> postReplyKeys, boolean flat, int count) throws SQLException{
 		if(postReplyKeys.isEmpty())
 			return Collections.emptyMap();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postReplyKeys.size(), "(SELECT *, ? AS `parent_id` FROM wall_posts WHERE reply_key"+(flat ? " LIKE BINARY bin_prefix(?)" : "=?")+" ORDER BY created_at DESC LIMIT 3)")));
+			PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postReplyKeys.size(), "(SELECT *, ? AS `parent_id` FROM wall_posts WHERE reply_key"+(flat ? " LIKE BINARY bin_prefix(?)" : "=?")+" ORDER BY created_at DESC LIMIT "+count+")")));
 			int i=0;
 			for(List<Integer> id:postReplyKeys){
 				stmt.setInt(i+1, id.getLast());

@@ -1,5 +1,6 @@
 package smithereen.api.methods;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,18 +15,25 @@ import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiBoardTopic;
+import smithereen.api.model.ApiComment;
 import smithereen.api.model.ApiGroup;
 import smithereen.api.model.ApiPhoto;
 import smithereen.api.model.ApiUser;
 import smithereen.api.model.ApiWallPost;
+import smithereen.model.CommentViewType;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.board.BoardTopic;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentParentObjectID;
+import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.feed.CommentsNewsfeedObjectType;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.photos.Photo;
+import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import spark.utils.StringUtils;
 
@@ -227,10 +235,139 @@ public class NewsfeedMethods{
 		return new StartFrom(startFromID, offset);
 	}
 
+	public static Object getComments(ApplicationContext ctx, ApiCallContext actx){
+		EnumSet<CommentsNewsfeedObjectType> filters=EnumSet.noneOf(CommentsNewsfeedObjectType.class);
+		if(actx.hasParam("filters")){
+			for(String filter:actx.requireCommaSeparatedStringSet("filters")){
+				switch(filter){
+					case "post" -> filters.add(CommentsNewsfeedObjectType.POST);
+					case "photo" -> filters.add(CommentsNewsfeedObjectType.PHOTO);
+					case "board" -> filters.add(CommentsNewsfeedObjectType.BOARD_TOPIC);
+				}
+			}
+		}
+		if(filters.isEmpty())
+			filters=EnumSet.allOf(CommentsNewsfeedObjectType.class);
+		int lastCommentCount=Math.min(actx.optParamIntPositive("last_comments"), 3);
+		CommentViewType commentViewType=switch(actx.optParamString("comment_view_type")){
+			case "threaded" -> CommentViewType.THREADED;
+			case "two_level" -> CommentViewType.TWO_LEVEL;
+			case "flat" -> CommentViewType.FLAT;
+			case null, default -> actx.self.prefs.commentViewType;
+		};
+
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getCommentsFeed(actx.self, actx.getOffset(), actx.getCount(25, 100), filters);
+
+		HashSet<Integer> needPosts=new HashSet<>(), needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		HashSet<Long> needPhotos=new HashSet<>(), needTopics=new HashSet<>();
+		for(NewsfeedEntry e:feed.list){
+			switch(e.type){
+				case POST -> needPosts.add((int)e.objectID);
+				case PHOTO -> needPhotos.add(e.objectID);
+				case BOARD_TOPIC -> needTopics.add(e.objectID);
+			}
+		}
+
+		List<PostViewModel> feedPostsList=ctx.getWallController().getPosts(needPosts).values().stream().map(PostViewModel::new).toList();
+		Map<Integer, ApiWallPost> feedPosts=ApiUtils.getPosts(feedPostsList, ctx, actx, true, true, false)
+				.stream()
+				.collect(Collectors.toMap(p->p.id, Function.identity()));
+		Map<Integer, List<Integer>> postCommentIDs;
+		Map<Integer, ApiWallPost> allPostComments;
+		if(lastCommentCount>0){
+			ctx.getWallController().populateCommentPreviews(actx.self.user, feedPostsList, commentViewType, lastCommentCount);
+			allPostComments=ApiUtils.getPosts(feedPostsList.stream()
+						.flatMap(pvm->pvm.repliesObjects.stream())
+						.toList(), ctx, actx, false, false, false)
+					.stream()
+					.collect(Collectors.toMap(p->p.id, Function.identity()));
+			postCommentIDs=new HashMap<>();
+			for(PostViewModel pvm:feedPostsList){
+				postCommentIDs.put(pvm.post.id, pvm.repliesObjects.stream().map(r->r.post.id).toList());
+			}
+		}else{
+			postCommentIDs=Map.of();
+			allPostComments=Map.of();
+		}
+		PostViewModel.collectActorIDs(feedPostsList, needUsers, needGroups);
+
+		HashSet<CommentParentObjectID> needNonWallComments=new HashSet<>();
+
+		Map<Long, ApiPhoto> feedPhotos;
+		if(!needPhotos.isEmpty()){
+			Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+			for(Photo photo:photos.values()){
+				if(photo.ownerID>0)
+					needUsers.add(photo.ownerID);
+				else if(photo.ownerID<0)
+					needGroups.add(-photo.ownerID);
+				needUsers.add(photo.authorID);
+			}
+			feedPhotos=new HashMap<>();
+			for(Photo p:photos.values()){
+				feedPhotos.put(p.id, new ApiPhoto(p, actx, true));
+				if(lastCommentCount>0)
+					needNonWallComments.add(p.getCommentParentID());
+			}
+		}else{
+			feedPhotos=Map.of();
+		}
+
+		Map<Long, ApiBoardTopic> feedTopics;
+		if(!needTopics.isEmpty()){
+			Map<Long, BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(needTopics);
+			for(BoardTopic topic:topics.values()){
+				needGroups.add(topic.groupID);
+				needUsers.add(topic.authorID);
+				needUsers.add(topic.lastCommentAuthorID);
+			}
+			feedTopics=new HashMap<>();
+			for(BoardTopic t:topics.values()){
+				feedTopics.put(t.id, new ApiBoardTopic(t));
+				if(lastCommentCount>0)
+					needNonWallComments.add(t.getCommentParentID());
+			}
+		}else{
+			feedTopics=Map.of();
+		}
+
+		Map<CommentParentObjectID, List<ApiComment>> nonWallComments;
+		if(lastCommentCount>0 && !needNonWallComments.isEmpty()){
+			Map<CommentParentObjectID, PaginatedList<CommentViewModel>> rawNonWallComments=ctx.getCommentsController().getCommentsForFeed(needNonWallComments, commentViewType==CommentViewType.FLAT, lastCommentCount);
+			List<CommentViewModel> allComments=rawNonWallComments.values().stream().flatMap(l->l.list.stream()).toList();
+			CommentViewModel.collectUserIDs(allComments, needUsers);
+			Map<Long, ApiComment> comments=ApiUtils.getComments(allComments, ctx, actx, false)
+					.stream()
+					.collect(Collectors.toMap(c->c.rawID, Function.identity()));
+			nonWallComments=new HashMap<>();
+			rawNonWallComments.forEach((id, rawComments)->
+					nonWallComments.put(id, rawComments.list.stream().map(cvm->comments.get(cvm.post.id)).toList()));
+		}else{
+			nonWallComments=Map.of();
+		}
+
+		ArrayList<CommentsFeedItem> items=new ArrayList<>();
+		for(NewsfeedEntry e:feed.list){
+			items.add(switch(e.type){
+				case POST -> new CommentsFeedItem("post", feedPosts.get((int)e.objectID), null, null,
+						lastCommentCount==0 ? null : postCommentIDs.get((int)e.objectID).stream().map(allPostComments::get).toList());
+				case PHOTO -> new CommentsFeedItem("photo", null, feedPhotos.get(e.objectID), null,
+						lastCommentCount==0 ? null : nonWallComments.get(new CommentParentObjectID(CommentableObjectType.PHOTO, e.objectID)));
+				case BOARD_TOPIC -> new CommentsFeedItem("topic", null, null, feedTopics.get(e.objectID),
+						lastCommentCount==0 ? null : nonWallComments.get(new CommentParentObjectID(CommentableObjectType.BOARD_TOPIC, e.objectID)));
+				default -> throw new IllegalStateException("Unexpected value: " + e.type);
+			});
+		}
+
+		return new CommentsFeed(feed.total, items, ApiUtils.getUsers(needUsers, ctx, actx), ApiUtils.getGroups(needGroups, ctx, actx));
+	}
+
 	record PhotosInfo(int count, List<ApiPhoto> items, String listId){}
 	record RelationInfo(String status, Integer partner){}
 	record FeedItem(String type, int id, Integer userId, Integer groupId, ApiWallPost post, PhotosInfo photos, List<Long> friendIds, List<Long> groupIds, List<ApiBoardTopic> topics, RelationInfo relation){}
 	record Feed(List<FeedItem> items, List<ApiUser> profiles, List<ApiGroup> groups, String nextFrom){}
+	record CommentsFeedItem(String type, ApiWallPost post, ApiPhoto photo, ApiBoardTopic topic, List<?> comments){}
+	record CommentsFeed(int count, List<CommentsFeedItem> items, List<ApiUser> profiles, List<ApiGroup> groups){}
 
 	private record StartFrom(int id, int offset){}
 }

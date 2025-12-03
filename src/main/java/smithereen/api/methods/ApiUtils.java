@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.api.ApiCallContext;
+import smithereen.api.model.ApiComment;
 import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiGroup;
 import smithereen.api.model.ApiUser;
@@ -34,6 +35,7 @@ import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
+import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.util.CryptoUtils;
 import smithereen.util.XTEA;
@@ -431,5 +433,27 @@ public class ApiUtils{
 		}
 		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
 		return posts.stream().map(p->new ApiWallPost(p, actx, interactions, pinnedIDs, photos)).toList();
+	}
+
+	public static List<ApiComment> getComments(List<CommentViewModel> comments, ApplicationContext ctx, ApiCallContext actx, boolean needLikes){
+		User self=actx.self!=null ? actx.self.user : null;
+
+		Map<Long, UserInteractions> interactions;
+		if(needLikes)
+			interactions=ctx.getUserInteractionsController().getUserInteractions(comments.stream().map(cvm->cvm.post).toList(), self);
+		else
+			interactions=Map.of();
+
+		Set<Long> needPhotos=new HashSet<>();
+		for(CommentViewModel c:comments){
+			List<Attachment> attachments=c.post.getProcessedAttachments();
+			for(Attachment att:attachments){
+				if(att instanceof PhotoAttachment pa && pa.photoID!=0){
+					needPhotos.add(pa.photoID);
+				}
+			}
+		}
+		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+		return comments.stream().map(c->new ApiComment(c, actx, interactions, photos)).toList();
 	}
 }

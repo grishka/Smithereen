@@ -83,6 +83,7 @@ public class ApiDispatcher{
 
 		registerMethod("newsfeed.get", NewsfeedMethods::get, ClientAppPermission.NEWSFEED);
 		registerMethod("newsfeed.getGroups", NewsfeedMethods::getGroups, ClientAppPermission.NEWSFEED);
+		registerMethod("newsfeed.getComments", NewsfeedMethods::getComments, ClientAppPermission.NEWSFEED);
 
 		registerMethod("execute", ExecuteMethods::execute, true);
 	}

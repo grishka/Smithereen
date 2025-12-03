@@ -611,9 +611,19 @@ public class WallController{
 	 * @param posts List of posts to add comments to
 	 */
 	public void populateCommentPreviews(@Nullable User self, @NotNull List<PostViewModel> posts, CommentViewType viewType){
+		populateCommentPreviews(self, posts, viewType, 3);
+	}
+
+	/**
+	 * Add top-level comments to each post.
+	 *
+	 * @param posts List of posts to add comments to
+	 * @param count
+	 */
+	public void populateCommentPreviews(@Nullable User self, @NotNull List<PostViewModel> posts, CommentViewType viewType, int count){
 		try{
 			Set<List<Integer>> postIDs=posts.stream().map(PostViewModel::getReplyKeyForInteractions).collect(Collectors.toSet());
-			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs, viewType==CommentViewType.FLAT);
+			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs, viewType==CommentViewType.FLAT, count);
 			List<PostViewModel> commentsThatNeedAuthors=null;
 			if(viewType==CommentViewType.FLAT){
 				commentsThatNeedAuthors=new ArrayList<>();
