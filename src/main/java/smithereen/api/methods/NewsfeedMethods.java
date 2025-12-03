@@ -51,8 +51,7 @@ public class NewsfeedMethods{
 		boolean returnBanned=actx.booleanParam("return_banned");
 		StartFrom sf=getStartFrom(actx);
 
-		// TODO returnBanned
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(actx.self, filters, actx.self.prefs.timeZone, sf.id, sf.offset, actx.getCount(25, 100));
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(actx.self, filters, actx.self.prefs.timeZone, sf.id, sf.offset, actx.getCount(25, 100), returnBanned);
 
 		return makeFeed(ctx, actx, feed, sf.id, sf.offset, false);
 	}

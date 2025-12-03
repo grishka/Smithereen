@@ -16,21 +16,22 @@ import smithereen.storage.sql.SQLQueryBuilder;
 
 public class NewsfeedStorage{
 
-	public static PaginatedList<NewsfeedEntry> getFriendsFeed(int userID, long startFromID, int offset, int count, EnumSet<NewsfeedEntry.Type> types) throws SQLException{
+	public static PaginatedList<NewsfeedEntry> getFriendsFeed(int userID, long startFromID, int offset, int count, EnumSet<NewsfeedEntry.Type> types, boolean includeMuted) throws SQLException{
 		if(types.isEmpty())
 			return PaginatedList.emptyList(count);
+		String mutedCondition=includeMuted ? "" : " AND muted=0";
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("newsfeed")
 					.count()
 					.whereIn("type", types)
-					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1 AND muted=0) OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY))", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
+					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1"+mutedCondition+") OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY))", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
 					.executeAndGetInt();
 			List<NewsfeedEntry> feed=new SQLQueryBuilder(conn)
 					.selectFrom("newsfeed")
 					.columns("type", "object_id", "author_id", "id", "time")
 					.whereIn("type", types)
-					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1 AND muted=0) OR (type=0 AND author_id=?)) AND `id`<=?)", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
+					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1"+mutedCondition+") OR (type=0 AND author_id=?)) AND `id`<=?)", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
 					.orderBy("time DESC")
 					.limit(count, offset)
 					.executeAsStream(NewsfeedEntry::fromResultSet)

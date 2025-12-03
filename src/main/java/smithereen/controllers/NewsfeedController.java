@@ -16,7 +16,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -61,9 +60,9 @@ public class NewsfeedController{
 	}
 
 	// region Friends feed
-	public PaginatedList<NewsfeedEntry> getFriendsFeed(Account self, EnumSet<FriendsNewsfeedTypeFilter> filter, ZoneId timeZone, int startFrom, int offset, int count){
+	public PaginatedList<NewsfeedEntry> getFriendsFeed(Account self, EnumSet<FriendsNewsfeedTypeFilter> filter, ZoneId timeZone, int startFrom, int offset, int count, boolean includeMuted){
 		try{
-			FriendsFeedCacheKey cacheKey=new FriendsFeedCacheKey(self.user.id, EnumSet.copyOf(filter));
+			FriendsFeedCacheKey cacheKey=new FriendsFeedCacheKey(self.user.id, EnumSet.copyOf(filter), includeMuted);
 			CachedFeed cache;
 			synchronized(this){
 				cache=friendsNewsFeedCache.get(cacheKey);
@@ -107,7 +106,7 @@ public class NewsfeedController{
 
 				while(startIndex==-1 || startIndex+offset+count>=cache.feed.size()){
 					LOG.debug("Getting new feed page from database: userID={}, startFrom={}, offset={}, realOffset={}, count={}, filter={}", self.user.id, startFrom, offset, cache.realOffset, count, actualFilter);
-					PaginatedList<NewsfeedEntry> page=NewsfeedStorage.getFriendsFeed(self.user.id, 0, cache.realOffset, 100, actualFilter);
+					PaginatedList<NewsfeedEntry> page=NewsfeedStorage.getFriendsFeed(self.user.id, 0, cache.realOffset, 100, actualFilter, includeMuted);
 					ArrayList<NewsfeedEntry> newPage=new ArrayList<>(page.list);
 					cache.total=page.total;
 					cache.realOffset+=newPage.size();
@@ -668,7 +667,7 @@ public class NewsfeedController{
 		}
 	}
 
-	private record FriendsFeedCacheKey(int userID, EnumSet<FriendsNewsfeedTypeFilter> filter){}
+	private record FriendsFeedCacheKey(int userID, EnumSet<FriendsNewsfeedTypeFilter> filter, boolean includeMuted){}
 	private record GroupsFeedCacheKey(int userID, EnumSet<GroupsNewsfeedTypeFilter> filter){}
 	private record GroupedEntriesKey(LocalDate day, NewsfeedEntry.Type type, int authorID){}
 }

@@ -645,7 +645,7 @@ public class PhotosRoutes{
 					throw new UserActionNotAllowedException();
 				int id=safeParseInt(listParts[1]);
 				PaginatedList<NewsfeedEntry> feed=switch(listParts[0]){
-					case "friendsFeedGrouped" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100);
+					case "friendsFeedGrouped" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100, false);
 					case "groupsFeedGrouped" -> ctx.getNewsfeedController().getGroupsFeed(selfAccount, EnumSet.allOf(GroupsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100);
 					default -> throw new IllegalStateException("Unexpected value: " + listParts[0]);
 				};
@@ -667,7 +667,7 @@ public class PhotosRoutes{
 					throw new UserActionNotAllowedException();
 				int id=safeParseInt(listParts[1]);
 				List<NewsfeedEntry> feed=switch(listParts[0]){
-					case "friendsFeed" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1).list;
+					case "friendsFeed" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1, false).list;
 					case "groupsFeed" -> ctx.getNewsfeedController().getGroupsFeed(selfAccount, EnumSet.allOf(GroupsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1).list;
 					default -> throw new IllegalStateException("Unexpected value: " + listParts[0]);
 				};

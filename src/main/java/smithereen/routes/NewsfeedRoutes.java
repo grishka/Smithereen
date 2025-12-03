@@ -193,7 +193,7 @@ public class NewsfeedRoutes{
 		EnumSet<FriendsNewsfeedTypeFilter> filter=self.prefs.friendFeedFilter;
 		if(filter==null)
 			filter=EnumSet.allOf(FriendsNewsfeedTypeFilter.class);
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, filter, timeZoneForRequest(req), startFromID, offset, 25);
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, filter, timeZoneForRequest(req), startFromID, offset, 25, false);
 		if(!feed.list.isEmpty() && startFromID==0){
 			startFromID=switch(feed.list.getFirst()){
 				case GroupedNewsfeedEntry gne -> gne.childEntries.getFirst().id;
