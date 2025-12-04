@@ -3,6 +3,7 @@ package smithereen.api.methods;
 import smithereen.ApplicationContext;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiErrorType;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.RemoteObjectFetchException;
 import smithereen.model.Group;
 import smithereen.model.Post;
@@ -44,5 +45,16 @@ public class UtilsMethods{
 				case OTHER_ERROR -> ApiErrorType.REMOTE_FETCH_OTHER_ERROR;
 			}, x.getCause()!=null ? x.getCause().getMessage() : x.getMessage());
 		}
+	}
+
+	public static Object resolveScreenName(ApplicationContext ctx, ApiCallContext actx){
+		String screenName=actx.requireParamString("screen_name");
+		ObjectLinkResolver.UsernameResolutionResult res=ctx.getObjectLinkResolver().resolveUsernameLocally(screenName);
+		record ScreenNameResult(String type, long id){}
+		return new ScreenNameResult(switch(res.type()){
+			case USER -> "user";
+			case GROUP -> "group";
+			case APPLICATION -> "application";
+		}, res.localID());
 	}
 }

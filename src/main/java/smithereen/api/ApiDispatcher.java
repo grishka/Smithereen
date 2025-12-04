@@ -58,6 +58,7 @@ public class ApiDispatcher{
 
 		registerMethod("utils.getServerTime", UtilsMethods::getServerTime, false);
 		registerMethod("utils.loadRemoteObject", UtilsMethods::loadRemoteObject, true);
+		registerMethod("utils.resolveScreenName", UtilsMethods::resolveScreenName, false);
 
 		registerMethod("server.getInfo", ServerMethods::getInfo, false);
 		registerMethod("server.getRestrictedServers", ServerMethods::getRestrictedServers, false);
