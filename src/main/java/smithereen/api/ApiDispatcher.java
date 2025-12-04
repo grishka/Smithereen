@@ -57,6 +57,7 @@ public class ApiDispatcher{
 		registerMethod("friends.getRequests", FriendsMethods::getRequests, ClientAppPermission.FRIENDS_READ);
 
 		registerMethod("utils.getServerTime", UtilsMethods::getServerTime, false);
+		registerMethod("utils.loadRemoteObject", UtilsMethods::loadRemoteObject, true);
 
 		registerMethod("server.getInfo", ServerMethods::getInfo, false);
 		registerMethod("server.getRestrictedServers", ServerMethods::getRestrictedServers, false);

@@ -29,6 +29,12 @@ public enum ApiErrorType{
 	CANT_ADD_FRIEND_YOU_BLOCKED(176, "Can't add this user as a friend because you blocked them", 403),
 
 	TOO_MANY_FRIENDS(242, "Too many friends"),
+
+	REMOTE_FETCH_NETWORK_ERROR(301, "Failed to fetch remote object due to a network error", 422),
+	REMOTE_FETCH_UNSUPPORTED_TYPE(302, "Remote object is of an unsupported type", 422),
+	REMOTE_FETCH_TIMEOUT(303, "Request to the remote server timed out", 422),
+	REMOTE_FETCH_NOT_FOUND(304, "Remote object not found", 404),
+	REMOTE_FETCH_OTHER_ERROR(305, "Failed to fetch remote object due to other error", 422),
 	;
 
 	public final int code;

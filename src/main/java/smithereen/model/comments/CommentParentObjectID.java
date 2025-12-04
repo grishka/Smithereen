@@ -18,4 +18,18 @@ public record CommentParentObjectID(CommentableObjectType type, long id){
 			case BOARD_TOPIC -> null;
 		};
 	}
+
+	public String getApiType(){
+		return switch(type){
+			case PHOTO -> "photo";
+			case BOARD_TOPIC -> "topic";
+		};
+	}
+
+	public String getIdString(){
+		return switch(type){
+			case PHOTO -> XTEA.encodeObjectID(id, ObfuscatedObjectIDType.PHOTO);
+			case BOARD_TOPIC -> XTEA.encodeObjectID(id, ObfuscatedObjectIDType.BOARD_TOPIC);
+		};
+	}
 }
