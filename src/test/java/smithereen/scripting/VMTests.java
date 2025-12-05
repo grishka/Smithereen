@@ -770,4 +770,10 @@ public class VMTests{
 		Script s=Script.compile("if(7)2;else{return-0;}");
 		assertDoesNotThrow(()->ScriptVM.execute(s));
 	}
+
+	@Test
+	public void testIssue219_24(){
+		Script s=Script.compile("if(7)2;else{return-0;}{}");
+		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
 }

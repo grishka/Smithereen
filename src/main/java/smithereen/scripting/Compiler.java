@@ -1,6 +1,5 @@
 package smithereen.scripting;
 
-import java.io.ByteArrayOutputStream;
 import java.io.CharArrayWriter;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -29,7 +28,6 @@ class Compiler{
 	int variableCount=0;
 	private HashMap<ScriptValue, Integer> constantIDs=new HashMap<>();
 	private boolean insideDeleteStatement;
-	private boolean lastStatementHadJump;
 
 	private interface ParseFunction{
 		void parse(boolean canAssign);
@@ -128,7 +126,18 @@ class Compiler{
 			parseDeclaration();
 		}
 		variableCount=Math.max(variableCount, variables.size());
-		if(opsBuffer.size()==0 || opsBuffer.get(opsBuffer.size()-1)!=Op.RETURN || lastStatementHadJump){
+		// Check whether there are jumps to immediately after the last instruction.
+		// This happens when there are code paths that don't end with a return.
+		boolean thereAreJumpsToEnd=false;
+		int totalOps=opsBuffer.size();
+		for(int i=0;i<totalOps;i++){
+			int op=opsBuffer.get(i);
+			if((op==Op.JUMP || op==Op.JUMP_IF_FALSE || op==Op.JUMP_IF_TRUE) && operandsBuffer.get(i)+i+1==totalOps){
+				thereAreJumpsToEnd=true;
+				break;
+			}
+		}
+		if(opsBuffer.size()==0 || opsBuffer.get(opsBuffer.size()-1)!=Op.RETURN || thereAreJumpsToEnd){
 			// The script doesn't end with a return statement. Add `return null`.
 			emitInstruction(Op.LOAD_NULL);
 			emitInstruction(Op.RETURN);
@@ -164,7 +173,6 @@ class Compiler{
 	}
 
 	private void parseStatement(){
-		lastStatementHadJump=false;
 		if(match(TokenType.LEFT_BRACE)){
 			beginScope();
 			parseBlock();
@@ -203,7 +211,6 @@ class Compiler{
 		if(offset>0xffff)
 			throw new ScriptCompilationException("Too many opcodes to jump over", previous.lineNumber());
 		operandsBuffer.set(location, (char)offset);
-		lastStatementHadJump=true;
 	}
 
 	private void parseBlock(){
