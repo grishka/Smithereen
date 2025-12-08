@@ -1,6 +1,7 @@
 package smithereen.api.methods;
 
 import java.util.List;
+import java.util.Map;
 
 import smithereen.ApplicationContext;
 import smithereen.api.ApiCallContext;
@@ -29,7 +30,7 @@ public class LikesMethods{
 	private static Object setLiked(ApplicationContext ctx, ApiCallContext actx, boolean liked){
 		LikeableContentObject obj=getObject(ctx, actx);
 		ctx.getUserInteractionsController().setObjectLiked(obj, liked, actx.self.user);
-		return ctx.getUserInteractionsController().getLikeCount(obj);
+		return Map.of("likes", ctx.getUserInteractionsController().getLikeCount(obj));
 	}
 
 	public static Object isLiked(ApplicationContext ctx, ApiCallContext actx){
