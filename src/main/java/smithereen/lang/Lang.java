@@ -183,7 +183,7 @@ public class Lang{
 	public String inflectNamePart(String part, Inflector.NamePart which, User.Gender gender, Inflector.Case _case){
 		if(part==null)
 			return null;
-		return inflector.isInflectable(part) ? inflector.inflectNamePart(part, which, gender, _case) : part;
+		return inflector!=null && inflector.isInflectable(part) ? inflector.inflectNamePart(part, which, gender, _case) : part;
 	}
 
 	public User.Gender detectGenderForName(String first, String last, String middle){
