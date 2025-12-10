@@ -137,17 +137,14 @@ public class PhotosController{
 
 	public PhotoAlbum getUserTaggedPhotosPseudoAlbum(User self, User user){
 		PaginatedList<Photo> taggedPhotos=getUserTaggedPhotos(self, user, 0, 1, false);
-		if(taggedPhotos.total>0){
-			PhotoAlbum pseudoAlbum=new TaggedPhotosPseudoAlbum();
-			pseudoAlbum.ownerID=user.id;
-			pseudoAlbum.systemType=PhotoAlbum.SystemAlbumType.TAGGED;
-			pseudoAlbum.coverID=taggedPhotos.list.getFirst().id;
-			pseudoAlbum.numPhotos=taggedPhotos.total;
-			pseudoAlbum.title="Tagged photos";
-			pseudoAlbum.viewPrivacy=PrivacySetting.DEFAULT;
-			return pseudoAlbum;
-		}
-		return null;
+		PhotoAlbum pseudoAlbum=new TaggedPhotosPseudoAlbum();
+		pseudoAlbum.ownerID=user.id;
+		pseudoAlbum.systemType=PhotoAlbum.SystemAlbumType.TAGGED;
+		pseudoAlbum.coverID=taggedPhotos.list.isEmpty() ? 0 : taggedPhotos.list.getFirst().id;
+		pseudoAlbum.numPhotos=taggedPhotos.total;
+		pseudoAlbum.title="Tagged photos";
+		pseudoAlbum.viewPrivacy=PrivacySetting.DEFAULT;
+		return pseudoAlbum;
 	}
 
 	public List<PhotoAlbum> getAllAlbumsIgnoringPrivacy(Actor owner){
