@@ -245,7 +245,6 @@ public class WallMethods{
 
 	private static Object createOrUpdatePost(ApplicationContext ctx, ApiCallContext actx, Actor owner, Post repost, Post replyTo, Post edit){
 		String message=actx.optParamString("message");
-		JsonArray attachments=actx.optParamJsonArray("attachments");
 		String cw=actx.optParamString("content_warning");
 		FormattedTextFormat textFormat=switch(actx.optParamString("text_format")){
 			case "markdown" -> FormattedTextFormat.MARKDOWN;
@@ -254,72 +253,20 @@ public class WallMethods{
 			case null -> actx.self.prefs.textFormat;
 			default -> throw actx.paramError("text_format must be one of markdown, html, plain");
 		};
+		boolean isReply=replyTo!=null || (edit!=null && edit.getReplyLevel()>0);
+
+		ApiUtils.InputAttachments attachments=ApiUtils.parseAttachments(ctx, actx, isReply);
+
+		if(edit!=null){
+			ctx.getWallController().editPost(actx.self.user, actx.permissions, edit.id, message, textFormat, cw, attachments.ids(), attachments.poll(), attachments.altTexts());
+			return edit.id;
+		}
+
 		String guid=actx.optParamString("guid");
 		if(StringUtils.isNotEmpty(guid)){
 			guid=actx.token.getEncodedID()+"|"+guid;
 		}
-		boolean isReply=replyTo!=null || (edit!=null && edit.getReplyLevel()>0);
-
-		Poll poll=null;
-		List<String> attachmentIDs;
-		Map<String, String> attachmentAltTexts;
-		if(attachments!=null){
-			attachmentIDs=new ArrayList<>();
-			attachmentAltTexts=new HashMap<>();
-			int i=0;
-			for(JsonElement el:attachments){
-				if(!(el instanceof JsonObject obj))
-					throw actx.paramError("attachments["+i+"] is not an object");
-				if(!(obj.get("type") instanceof JsonPrimitive jType && jType.isString()))
-					throw actx.paramError("attachments["+i+"].type is not a string");
-				String type=jType.getAsString();
-				switch(type){
-					case "image" -> {
-						if(!(obj.get("file_id") instanceof JsonPrimitive jId))
-							throw actx.paramError("attachments["+i+"].file_id is undefined");
-						if(!(obj.get("file_hash") instanceof JsonPrimitive jHash))
-							throw actx.paramError("attachments["+i+"].file_hash is undefined");
-
-						String id=jId.getAsString()+":"+jHash.getAsString();
-						attachmentIDs.add(id);
-
-						if(obj.get("text") instanceof JsonPrimitive jText && jText.isString())
-							attachmentAltTexts.put(id, jText.getAsString());
-					}
-					case "photo" -> {
-						if(!(obj.get("photo_id") instanceof JsonPrimitive jId))
-							throw actx.paramError("attachments["+i+"].photo_id is undefined");
-						String photoID=jId.getAsString();
-						attachmentIDs.add("photo:"+photoID);
-					}
-					case "poll" -> {
-						if(!isReply){
-							if(!(obj.get("poll_id") instanceof JsonPrimitive jId))
-								throw actx.paramError("attachments["+i+"].poll_id is undefined");
-							if(poll!=null)
-								throw actx.paramError("can't attach more than one poll");
-							int id=jId.getAsInt();
-							poll=ctx.getWallController().getPollByID(id);
-						}else{
-							throw actx.paramError("attachments["+i+"].type must be one of image, photo");
-						}
-					}
-					default -> throw actx.paramError("attachments["+i+"].type must be one of image, photo"+(isReply ? "" : ", poll"));
-				}
-				i++;
-				if(i==(isReply ? 2 : 10))
-					break;
-			}
-		}else{
-			attachmentIDs=List.of();
-			attachmentAltTexts=Map.of();
-		}
-
-		if(edit!=null){
-			ctx.getWallController().editPost(actx.self.user, actx.permissions, edit.id, message, textFormat, cw, attachmentIDs, poll, attachmentAltTexts);
-			return edit.id;
-		}
-		return ctx.getWallController().createWallPost(actx.self.user, owner, replyTo, message, textFormat, cw, attachmentIDs, poll, repost, attachmentAltTexts, null, ctx.getAppsController().getAppByID(actx.token.appID()), guid).id;
+		return ctx.getWallController().createWallPost(actx.self.user, owner, replyTo, message, textFormat, cw, attachments.ids(), attachments.poll(), repost, attachments.altTexts(), null, ctx.getAppsController().getAppByID(actx.token.appID()), guid).id;
 	}
 
 	public static Object getEditSource(ApplicationContext ctx, ApiCallContext actx){

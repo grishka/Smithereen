@@ -94,7 +94,7 @@ public class CommentsRoutes{
 		}
 
 		Comment inReplyTo=replyTo!=0 ? ctx.getCommentsController().getCommentIgnoringPrivacy(replyTo) : null;
-		Comment comment=ctx.getCommentsController().createComment(self.user, parent, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts);
+		Comment comment=ctx.getCommentsController().createComment(self.user, parent, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts, null);
 
 		if(isAjax(req)){
 			String rid=req.queryParams("rid");

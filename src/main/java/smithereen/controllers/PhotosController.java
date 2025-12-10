@@ -136,7 +136,7 @@ public class PhotosController{
 	}
 
 	public PhotoAlbum getUserTaggedPhotosPseudoAlbum(User self, User user){
-		PaginatedList<Photo> taggedPhotos=getUserTaggedPhotos(self, user, 0, 1);
+		PaginatedList<Photo> taggedPhotos=getUserTaggedPhotos(self, user, 0, 1, false);
 		if(taggedPhotos.total>0){
 			PhotoAlbum pseudoAlbum=new TaggedPhotosPseudoAlbum();
 			pseudoAlbum.ownerID=user.id;
@@ -1418,6 +1418,14 @@ public class PhotosController{
 		}
 	}
 
+	public Map<Long, Integer> getTagCountsForPhotos(Collection<Long> ids){
+		try{
+			return PhotoStorage.getPhotoTagCounts(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void deletePhotoTag(User self, Photo photo, long tagID){
 		try{
 			PhotoTag tag=PhotoStorage.getPhotoTag(photo.id, tagID);
@@ -1455,14 +1463,14 @@ public class PhotosController{
 		}
 	}
 
-	public PaginatedList<Photo> getUserTaggedPhotos(User self, User user, int offset, int count){
+	public PaginatedList<Photo> getUserTaggedPhotos(User self, User user, int offset, int count, boolean reverseOrder){
 		context.getPrivacyController().enforceUserPrivacy(self, user, UserPrivacySettingKey.PHOTO_TAG_LIST);
-		return getUserTaggedPhotosIgnoringPrivacy(user, offset, count);
+		return getUserTaggedPhotosIgnoringPrivacy(user, offset, count, reverseOrder);
 	}
 
-	public PaginatedList<Photo> getUserTaggedPhotosIgnoringPrivacy(User user, int offset, int count){
+	public PaginatedList<Photo> getUserTaggedPhotosIgnoringPrivacy(User user, int offset, int count, boolean reverseOrder){
 		try{
-			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(user.id, offset, count, true);
+			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(user.id, offset, count, true, reverseOrder);
 			Map<Long, Photo> photos=getPhotosIgnoringPrivacy(ids.list);
 			return new PaginatedList<>(ids, ids.list.stream().map(photos::get).toList());
 		}catch(SQLException x){
@@ -1498,7 +1506,7 @@ public class PhotosController{
 
 	public PaginatedList<Photo> getUserUnapprovedTaggedPhotos(User self, int offset, int count){
 		try{
-			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(self.id, offset, count, false);
+			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(self.id, offset, count, false, false);
 			Map<Long, Photo> photos=getPhotosIgnoringPrivacy(ids.list);
 			return new PaginatedList<>(ids, ids.list.stream().map(photos::get).toList());
 		}catch(SQLException x){

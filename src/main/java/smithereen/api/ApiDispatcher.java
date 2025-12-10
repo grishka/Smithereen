@@ -77,6 +77,29 @@ public class ApiDispatcher{
 		registerMethod("wall.edit", WallMethods::edit, ClientAppPermission.WALL_WRITE);
 
 		registerMethod("photos.getAttachmentUploadServer", PhotosMethods::getAttachmentUploadServer, true);
+		registerMethod("photos.getAlbums", PhotosMethods::getAlbums, false);
+		registerMethod("photos.getAlbumsById", PhotosMethods::getAlbumsById, false);
+		registerMethod("photos.get", PhotosMethods::get, false);
+		registerMethod("photos.getById", PhotosMethods::getById, false);
+		registerMethod("photos.getAll", PhotosMethods::getAll, false);
+		registerMethod("photos.getUserPhotos", PhotosMethods::getUserPhotos, false);
+		registerMethod("photos.createAlbum", PhotosMethods::createAlbum, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.editAlbum", PhotosMethods::editAlbum, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.deleteAlbum", PhotosMethods::deleteAlbum, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.getNewTags", PhotosMethods::getNewTags, ClientAppPermission.PHOTOS_READ);
+		registerMethod("photos.edit", PhotosMethods::edit, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.makeCover", PhotosMethods::makeCover, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.delete", PhotosMethods::delete, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.copy", PhotosMethods::copy, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.getTags", PhotosMethods::getTags, false);
+		registerMethod("photos.putTag", PhotosMethods::putTag, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.removeTag", PhotosMethods::removeTag, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.confirmTag", PhotosMethods::confirmTag, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.getComments", PhotosMethods::getComments, false);
+		registerMethod("photos.createComment", PhotosMethods::createComment, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.deleteComment", PhotosMethods::deleteComment, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.getCommentEditSource", PhotosMethods::getCommentEditSource, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.editComment", PhotosMethods::editComment, ClientAppPermission.PHOTOS_WRITE);
 
 		registerMethod("likes.add", LikesMethods::add, ClientAppPermission.LIKES_WRITE);
 		registerMethod("likes.delete", LikesMethods::delete, ClientAppPermission.LIKES_WRITE);

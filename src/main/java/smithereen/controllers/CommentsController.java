@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -63,6 +65,7 @@ public class CommentsController{
 	private static final Logger LOG=LoggerFactory.getLogger(CommentsController.class);
 
 	private final ApplicationContext context;
+	private final HashMap<String, CommentGuidInfo> guids=new HashMap<>();
 
 	public CommentsController(ApplicationContext context){
 		this.context=context;
@@ -86,8 +89,22 @@ public class CommentsController{
 	}
 
 	public Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
-								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
-		return createComment(self, parent, inReplyTo, textSource, sourceFormat, contentWarning, attachmentIDs, attachAltTexts, false);
+								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts, String guid){
+		if(StringUtils.isNotEmpty(guid)){
+			CommentGuidInfo guidInfo=guids.get(guid);
+			if(guidInfo!=null && guidInfo.time.isAfter(Instant.now().minus(1, ChronoUnit.HOURS))){
+				try{
+					return getCommentIgnoringPrivacy(guidInfo.commentID);
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
+		Comment c=createComment(self, parent, inReplyTo, textSource, sourceFormat, contentWarning, attachmentIDs, attachAltTexts, false);
+		if(StringUtils.isNotEmpty(guid)){
+			synchronized(guids){
+				guids.put(guid, new CommentGuidInfo(c.id, Instant.now()));
+			}
+		}
+		return c;
 	}
 
 	Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
@@ -176,6 +193,13 @@ public class CommentsController{
 			return comment;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void removeExpiredGuids(){
+		synchronized(guids){
+			Instant hourAgo=Instant.now().minus(1, ChronoUnit.HOURS);
+			guids.entrySet().removeIf(e->e.getValue().time.isBefore(hourAgo));
 		}
 	}
 
@@ -559,4 +583,6 @@ public class CommentsController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	private record CommentGuidInfo(long commentID, Instant time){}
 }

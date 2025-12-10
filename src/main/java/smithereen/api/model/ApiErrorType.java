@@ -30,11 +30,13 @@ public enum ApiErrorType{
 
 	TOO_MANY_FRIENDS(242, "Too many friends"),
 
-	REMOTE_FETCH_NETWORK_ERROR(301, "Failed to fetch remote object due to a network error", 422),
-	REMOTE_FETCH_UNSUPPORTED_TYPE(302, "Remote object is of an unsupported type", 422),
-	REMOTE_FETCH_TIMEOUT(303, "Request to the remote server timed out", 422),
-	REMOTE_FETCH_NOT_FOUND(304, "Remote object not found", 404),
-	REMOTE_FETCH_OTHER_ERROR(305, "Failed to fetch remote object due to other error", 422),
+	TOO_MANY_PHOTO_ALBUMS(302, "Too many photo albums"),
+
+	REMOTE_FETCH_NETWORK_ERROR(401, "Failed to fetch remote object due to a network error", 422),
+	REMOTE_FETCH_UNSUPPORTED_TYPE(402, "Remote object is of an unsupported type", 422),
+	REMOTE_FETCH_TIMEOUT(403, "Request to the remote server timed out", 422),
+	REMOTE_FETCH_NOT_FOUND(404, "Remote object not found", 404),
+	REMOTE_FETCH_OTHER_ERROR(405, "Failed to fetch remote object due to other error", 422),
 	;
 
 	public final int code;

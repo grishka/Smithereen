@@ -1,5 +1,7 @@
 package smithereen.util;
 
+import java.util.regex.Pattern;
+
 import smithereen.Config;
 import smithereen.Utils;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -7,6 +9,8 @@ import smithereen.model.ObfuscatedObjectIDType;
 public class XTEA{
 	private static final int NUM_ROUNDS=32;
 	private static final int DELTA=0x9E3779B9;
+
+	private static Pattern OBJECT_ID_REGEX=Pattern.compile("^[a-zA-Z0-9_-]+$");
 
 	public static long encrypt(long v, int[] key){
 		if(key.length!=4)
@@ -51,5 +55,9 @@ public class XTEA{
 
 	public static long decodeObjectID(String id, ObfuscatedObjectIDType type){
 		return deobfuscateObjectID(Utils.decodeLong(id), type);
+	}
+
+	public static boolean isValidObjectID(String id){
+		return id.length()==11 && OBJECT_ID_REGEX.matcher(id).find();
 	}
 }

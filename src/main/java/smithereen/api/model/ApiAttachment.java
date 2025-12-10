@@ -36,7 +36,7 @@ public class ApiAttachment{
 			case PhotoAttachment pa -> {
 				type="photo";
 				if(pa.photoID!=0 && photos.containsKey(pa.photoID)){
-					this.photo=new ApiPhoto(photos.get(pa.photoID), actx, false);
+					this.photo=new ApiPhoto(photos.get(pa.photoID), actx, null, null);
 				}else{
 					OwnedContentObject ownedParent=(OwnedContentObject) parent;
 					Instant createdAt=switch(parent){

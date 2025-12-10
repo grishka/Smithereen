@@ -1123,7 +1123,7 @@ public class ActivityPubRoutes{
 		ApplicationContext ctx=context(req);
 		User user=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
 		ctx.getPrivacyController().enforceUserPrivacyForRemoteServer(req, user, user.getPrivacySetting(UserPrivacySettingKey.PHOTO_TAG_LIST));
-		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, offset, count);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, offset, count, false);
 		Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(photos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(photos.list.stream().map(p->p.apID==null ? new LinkOrObject(ActivityPubPhoto.fromNativePhoto(p, albums.get(p.albumID), ctx)) : new LinkOrObject(p.apID)).toList(), photos.total);
 	}

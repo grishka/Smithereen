@@ -230,7 +230,7 @@ public class UserDataExportWorker{
 
 				// Tagged photos
 				writeLocalObjectRemoteLinkCollections(offset->{
-					PaginatedList<Photo> photos=context.getPhotosController().getUserTaggedPhotos(user, user, offset, 100);
+					PaginatedList<Photo> photos=context.getPhotosController().getUserTaggedPhotos(user, user, offset, 100, false);
 					Set<Long> needAlbums=photos.list.stream().map(p->p.albumID).collect(Collectors.toSet());
 					Map<Long, PhotoAlbum> albums=context.getPhotosController().getAlbumsIgnoringPrivacy(needAlbums);
 					return new PaginatedList<>(photos, photos.list.stream().map(p->ActivityPubPhoto.fromNativePhoto(p, albums.get(p.albumID), context)).toList());

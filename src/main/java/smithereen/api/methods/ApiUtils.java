@@ -1,5 +1,11 @@
 package smithereen.api.methods;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -13,6 +19,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiComment;
 import smithereen.api.model.ApiErrorType;
@@ -21,8 +29,13 @@ import smithereen.api.model.ApiUser;
 import smithereen.api.model.ApiWallPost;
 import smithereen.controllers.FriendsController;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.PaginatedList;
+import smithereen.model.Poll;
+import smithereen.model.Post;
+import smithereen.model.PostSource;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
@@ -32,13 +45,18 @@ import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.board.BoardTopicsSortOrder;
+import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
+import smithereen.text.FormattedTextFormat;
 import smithereen.util.CryptoUtils;
 import smithereen.util.XTEA;
+import spark.utils.StringUtils;
 
 public class ApiUtils{
 	public static final byte[] UPLOAD_KEY=CryptoUtils.randomBytes(16);
@@ -193,7 +211,7 @@ public class ApiUtils{
 					ctx.getGroupsController().getUserGroups(user, self, 0, 1).total,
 					ctx.getFriendsController().getFriends(user, 0, 1, FriendsController.SortOrder.ID_ASCENDING, true, 0).total,
 					self==null || self.id==user.id ? 0 : ctx.getFriendsController().getMutualFriendsCount(self, user),
-					ctx.getPrivacyController().checkUserPrivacy(self, user, UserPrivacySettingKey.PHOTO_TAG_LIST) ? ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, 0, 1).total : 0,
+					ctx.getPrivacyController().checkUserPrivacy(self, user, UserPrivacySettingKey.PHOTO_TAG_LIST) ? ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, 0, 1, false).total : 0,
 					user.getFollowersCount(),
 					user.getFollowingCount()
 			);
@@ -215,6 +233,21 @@ public class ApiUtils{
 				return ctx.getUsersController().getUserOrThrow(actx.requireParamIntPositive(paramName));
 			}catch(ObjectNotFoundException x){
 				throw actx.error(ApiErrorType.NOT_FOUND, "user with this ID does not exist");
+			}
+		}else if(actx.self!=null){
+			return actx.self.user;
+		}else{
+			throw actx.paramError(paramName+" is required when this method is called without a token");
+		}
+	}
+
+	public static Actor getOwnerOrSelf(ApplicationContext ctx, ApiCallContext actx, String paramName){
+		if(actx.hasParam(paramName)){
+			int oid=actx.requireParamIntNonZero(paramName);
+			try{
+				return oid>0 ? ctx.getUsersController().getUserOrThrow(oid) : ctx.getGroupsController().getGroupOrThrow(-oid);
+			}catch(ObjectNotFoundException x){
+				throw actx.error(ApiErrorType.NOT_FOUND, (oid>0 ? "user" : "group")+" with this ID does not exist");
 			}
 		}else if(actx.self!=null){
 			return actx.self.user;
@@ -456,4 +489,177 @@ public class ApiUtils{
 		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
 		return comments.stream().map(c->new ApiComment(c, actx, interactions, photos)).toList();
 	}
+
+	public static Object getObjectComments(ApplicationContext ctx, ApiCallContext actx, CommentableContentObject parent){
+		CommentViewType viewType=switch(actx.optParamString("view_type")){
+			case "threaded" -> CommentViewType.THREADED;
+			case "two_level" -> CommentViewType.TWO_LEVEL;
+			case "flat" -> CommentViewType.FLAT;
+			case null, default -> actx.self==null ? CommentViewType.FLAT : actx.self.prefs.commentViewType;
+		};
+		int offset=actx.getOffset();
+		int count=actx.getCount(20, 100);
+		int secondaryCount=Math.min(100, actx.optParamIntPositive("secondary_count", 20));
+		String commentID=actx.optParamString("comment_id");
+		boolean needLikes=actx.booleanParam("need_likes");
+
+		List<Long> replyKey;
+		if(commentID!=null){
+			Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(commentID, ObfuscatedObjectIDType.COMMENT));
+			if(!comment.parentObjectID.equals(parent.getCommentParentID()))
+				throw actx.error(ApiErrorType.NOT_FOUND);
+			if(viewType==CommentViewType.TWO_LEVEL)
+				viewType=CommentViewType.FLAT;
+			replyKey=comment.getReplyKeyForReplies();
+		}else{
+			replyKey=List.of();
+		}
+
+		PaginatedList<CommentViewModel> comments=ctx.getCommentsController().getComments(parent, replyKey, offset, count, secondaryCount, viewType);
+
+		record CommentsResponse(int count, List<ApiComment> items, String viewType, List<ApiUser> profiles, List<ApiGroup> groups){}
+
+		List<ApiComment> apiComments=getComments(comments.list, ctx, actx, needLikes);
+		if(actx.booleanParam("extended")){
+			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+			CommentViewModel.collectUserIDs(comments.list, needUsers);
+			return new CommentsResponse(comments.total, apiComments, viewType.name().toLowerCase(), ApiUtils.getUsers(needUsers, ctx, actx), ApiUtils.getGroups(needGroups, ctx, actx));
+		}
+		return new CommentsResponse(comments.total, apiComments, viewType.name().toLowerCase(), null, null);
+	}
+
+	public static Object createComment(ApplicationContext ctx, ApiCallContext actx, CommentableContentObject parent){
+		Comment replyTo;
+		if(actx.hasParam("reply_to_comment")){
+			Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(actx.requireParamString("reply_to_comment"), ObfuscatedObjectIDType.COMMENT));
+			if(!comment.parentObjectID.equals(parent.getCommentParentID()))
+				throw new ObjectNotFoundException();
+			replyTo=comment;
+		}else{
+			replyTo=null;
+		}
+		return createOrUpdateComment(ctx, actx, parent, replyTo, null);
+	}
+
+	public static Object editComment(ApplicationContext ctx, ApiCallContext actx, Comment comment){
+		return createOrUpdateComment(ctx, actx, null, null, comment);
+	}
+
+	private static Object createOrUpdateComment(ApplicationContext ctx, ApiCallContext actx, CommentableContentObject parent, Comment replyTo, Comment edit){
+		String message=actx.optParamString("message");
+		String cw=actx.optParamString("content_warning");
+		FormattedTextFormat textFormat=switch(actx.optParamString("text_format")){
+			case "markdown" -> FormattedTextFormat.MARKDOWN;
+			case "html" -> FormattedTextFormat.HTML;
+			case "plain" -> FormattedTextFormat.PLAIN;
+			case null -> actx.self.prefs.textFormat;
+			default -> throw actx.paramError("text_format must be one of markdown, html, plain");
+		};
+
+		InputAttachments attachments=parseAttachments(ctx, actx, true);
+		if(StringUtils.isEmpty(message) && attachments.ids.isEmpty())
+			throw actx.paramError("both message and attachments are undefined");
+
+		if(edit!=null){
+			ctx.getCommentsController().editComment(actx.self.user, edit, message, textFormat, cw, attachments.ids, attachments.altTexts);
+			return edit.getIDString();
+		}
+
+		String guid=actx.optParamString("guid");
+		if(StringUtils.isNotEmpty(guid)){
+			guid=actx.token.getEncodedID()+"|"+guid;
+		}
+		return ctx.getCommentsController().createComment(actx.self.user, parent, replyTo, message, textFormat, cw, attachments.ids, attachments.altTexts, guid).getIDString();
+	}
+
+	public static Object getCommentEditSource(ApplicationContext ctx, ApiCallContext actx, CommentableObjectType expectedType){
+		Comment comment=ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(actx.requireParamString("comment_id"), ObfuscatedObjectIDType.COMMENT));
+		if(comment.parentObjectID.type()!=expectedType)
+			throw new ObjectNotFoundException();
+		if(!actx.permissions.canEditPost(comment))
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "no access to edit this post");
+		PostSource source=ctx.getCommentsController().getCommentSource(comment);
+		List<Map<String, Object>> attachments=new ArrayList<>();
+		for(Attachment att:comment.getProcessedAttachments()){
+			if(att instanceof PhotoAttachment pa){
+				if(pa.photoID!=0){
+					attachments.add(Map.of(
+							"type", "photo",
+							"photo_id", XTEA.encodeObjectID(pa.photoID, ObfuscatedObjectIDType.PHOTO)
+					));
+				}else if(pa.image instanceof LocalImage li && li.fileRecord!=null){
+					Map<String, Object> sa=new HashMap<>();
+					sa.put("type", "image");
+					sa.put("file_id", XTEA.encodeObjectID(li.fileID, ObfuscatedObjectIDType.MEDIA_FILE));
+					sa.put("file_hash", li.fileRecord.id().getEncodedRandomID());
+					sa.put("text", li.name);
+					attachments.add(sa);
+				}
+			}
+		}
+
+		record SourceResponse(String text, String format, List<Map<String, Object>> attachments){}
+		return new SourceResponse(source.text(), source.format().name().toLowerCase(), attachments);
+	}
+
+	public static InputAttachments parseAttachments(ApplicationContext ctx, ApiCallContext actx, boolean isReply){
+		JsonArray attachments=actx.optParamJsonArray("attachments");
+		Poll poll=null;
+		List<String> attachmentIDs;
+		Map<String, String> attachmentAltTexts;
+		if(attachments!=null){
+			attachmentIDs=new ArrayList<>();
+			attachmentAltTexts=new HashMap<>();
+			int i=0;
+			for(JsonElement el:attachments){
+				if(!(el instanceof JsonObject obj))
+					throw actx.paramError("attachments["+i+"] is not an object");
+				if(!(obj.get("type") instanceof JsonPrimitive jType && jType.isString()))
+					throw actx.paramError("attachments["+i+"].type is not a string");
+				String type=jType.getAsString();
+				switch(type){
+					case "image" -> {
+						if(!(obj.get("file_id") instanceof JsonPrimitive jId))
+							throw actx.paramError("attachments["+i+"].file_id is undefined");
+						if(!(obj.get("file_hash") instanceof JsonPrimitive jHash))
+							throw actx.paramError("attachments["+i+"].file_hash is undefined");
+
+						String id=jId.getAsString()+":"+jHash.getAsString();
+						attachmentIDs.add(id);
+
+						if(obj.get("text") instanceof JsonPrimitive jText && jText.isString())
+							attachmentAltTexts.put(id, jText.getAsString());
+					}
+					case "photo" -> {
+						if(!(obj.get("photo_id") instanceof JsonPrimitive jId))
+							throw actx.paramError("attachments["+i+"].photo_id is undefined");
+						String photoID=jId.getAsString();
+						attachmentIDs.add("photo:"+photoID);
+					}
+					case "poll" -> {
+						if(!isReply){
+							if(!(obj.get("poll_id") instanceof JsonPrimitive jId))
+								throw actx.paramError("attachments["+i+"].poll_id is undefined");
+							if(poll!=null)
+								throw actx.paramError("can't attach more than one poll");
+							int id=jId.getAsInt();
+							poll=ctx.getWallController().getPollByID(id);
+						}else{
+							throw actx.paramError("attachments["+i+"].type must be one of image, photo");
+						}
+					}
+					default -> throw actx.paramError("attachments["+i+"].type must be one of image, photo"+(isReply ? "" : ", poll"));
+				}
+				i++;
+				if(i==(isReply ? 2 : 10))
+					break;
+			}
+		}else{
+			attachmentIDs=List.of();
+			attachmentAltTexts=Map.of();
+		}
+		return new InputAttachments(attachmentIDs, attachmentAltTexts, poll);
+	}
+
+	public record InputAttachments(List<String> ids, Map<String, String> altTexts, Poll poll){}
 }

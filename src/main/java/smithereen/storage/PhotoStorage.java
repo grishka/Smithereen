@@ -694,6 +694,18 @@ public class PhotoStorage{
 				.collect(Collectors.groupingBy(PhotoTag::photoID));
 	}
 
+	public static Map<Long, Integer> getPhotoTagCounts(Collection<Long> photoIDs) throws SQLException{
+		if(photoIDs.isEmpty())
+			return Map.of();
+		return new SQLQueryBuilder()
+				.selectFrom("photo_tags")
+				.selectExpr("photo_id, count(*)")
+				.whereIn("photo_id", photoIDs)
+				.groupBy("photo_id")
+				.executeAsStream(r->new Pair<>(r.getLong(1), r.getInt(2)))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
 	public static PhotoTag getPhotoTag(long photoID, long tagID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("photo_tags")
@@ -724,7 +736,7 @@ public class PhotoStorage{
 				.executeNoResult();
 	}
 
-	public static PaginatedList<Long> getUserTaggedPhotos(int userID, int offset, int count, boolean approved) throws SQLException{
+	public static PaginatedList<Long> getUserTaggedPhotos(int userID, int offset, int count, boolean approved, boolean reverseOrder) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("photo_tags")
@@ -737,7 +749,7 @@ public class PhotoStorage{
 					.selectFrom("photo_tags")
 					.columns("photo_id")
 					.where("user_id=? AND approved=?", userID, approved)
-					.orderBy("created_at DESC")
+					.orderBy("created_at "+(reverseOrder ? "ASC" : "DESC"))
 					.limit(count, offset)
 					.executeAndGetLongStream()
 					.boxed()

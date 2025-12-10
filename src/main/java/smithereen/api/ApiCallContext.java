@@ -20,6 +20,7 @@ import smithereen.model.SizedImage;
 import smithereen.model.UserPermissions;
 import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.routes.ApiRoutes;
 import spark.Request;
 import spark.utils.StringUtils;
 
@@ -184,8 +185,37 @@ public class ApiCallContext{
 		}
 	}
 
+	public <T> T optParamJsonObject(String key, Class<T> objType){
+		String v=optParamString(key);
+		if(StringUtils.isEmpty(v))
+			return null;
+		try{
+			return ApiRoutes.gson.fromJson(v, objType);
+		}catch(JsonParseException x){
+			throw paramError(key+" contains invalid JSON");
+		}
+	}
+
+	public float requireParamFloat(String key){
+		String value=params.get(key);
+		if(StringUtils.isEmpty(value))
+			throw paramError(key+" is undefined");
+		try{
+			return Float.parseFloat(value);
+		}catch(NumberFormatException x){
+			throw paramError(key+" is not a number");
+		}
+	}
+
+	public float requireParamFloatInRange(String key, float min, float max){
+		float v=requireParamFloat(key);
+		if(v>=min && v<=max)
+			return v;
+		throw paramError(key+" is out of range ["+min+", "+max+"]");
+	}
+
 	public int getOffset(){
-		return Utils.safeParseInt(params.get("offset"));
+		return Math.max(0, Utils.safeParseInt(params.get("offset")));
 	}
 
 	public int getCount(int def, int max){

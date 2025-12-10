@@ -3,10 +3,12 @@ package smithereen.api.model;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import smithereen.api.ApiCallContext;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
+import smithereen.model.UserInteractions;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.photos.Photo;
 import smithereen.util.XTEA;
@@ -30,9 +32,10 @@ public class ApiPhoto{
 	public String text;
 	public long date;
 	public String blurhash;
-	public boolean hasTags;
 	public List<Size> sizes;
 	public int width, height;
+
+	public transient long rawID;
 
 	// Extended fields
 	public Likes likes;
@@ -40,10 +43,14 @@ public class ApiPhoto{
 	public Boolean canComment;
 	public Integer tags;
 
+	// photos.getNewTags fields
+	public Integer placerId;
+	public Long tagCreated, tagId;
+
 	public record Size(String type, String url, int width, int height){}
 	public record Likes(int count, boolean canLike, boolean userLikes){}
 
-	public ApiPhoto(Photo photo, ApiCallContext actx, boolean extended){
+	public ApiPhoto(Photo photo, ApiCallContext actx, Map<Long, UserInteractions> photosInteractions, Map<Long, Integer> tagCounts){
 		id=photo.getIdString();
 		apId=photo.getActivityPubID().toString();
 		url=photo.getActivityPubURL().toString();
@@ -53,10 +60,20 @@ public class ApiPhoto{
 		text=photo.description;
 		date=photo.createdAt.getEpochSecond();
 		blurhash=photo.getBlurHash();
-		// TODO hasTags
 		populateSizes(photo.image, actx);
 		width=photo.getWidth();
 		height=photo.getHeight();
+		rawID=photo.id;
+
+		if(photosInteractions!=null){
+			UserInteractions interactions=photosInteractions.get(photo.id);
+			if(interactions!=null){
+				likes=new Likes(interactions.likeCount, interactions.canLike, interactions.isLiked);
+				comments=interactions.commentCount;
+				canComment=interactions.canComment;
+			}
+			tags=tagCounts.getOrDefault(photo.id, 0);
+		}
 	}
 
 	public ApiPhoto(PhotoAttachment att, int ownerId, int authorId, Instant parentCreatedAt, ApiCallContext actx){

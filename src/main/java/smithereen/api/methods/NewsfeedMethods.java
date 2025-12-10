@@ -150,7 +150,7 @@ public class NewsfeedMethods{
 			}
 			feedPhotos=new HashMap<>();
 			for(Photo p:photos.values()){
-				feedPhotos.put(p.id, new ApiPhoto(p, actx, false));
+				feedPhotos.put(p.id, new ApiPhoto(p, actx, null, null));
 			}
 		}else{
 			feedPhotos=Map.of();
@@ -305,7 +305,7 @@ public class NewsfeedMethods{
 			}
 			feedPhotos=new HashMap<>();
 			for(Photo p:photos.values()){
-				feedPhotos.put(p.id, new ApiPhoto(p, actx, true));
+				feedPhotos.put(p.id, new ApiPhoto(p, actx, null, null));
 				if(lastCommentCount>0)
 					needNonWallComments.add(p.getCommentParentID());
 			}

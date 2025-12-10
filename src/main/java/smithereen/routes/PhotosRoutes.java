@@ -756,7 +756,7 @@ public class PhotosRoutes{
 			case "tagged" -> {
 				int uid=safeParseInt(listParts[1]);
 				User user=ctx.getUsersController().getUserOrThrow(uid);
-				PaginatedList<Photo> allPhotos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset(req), 10);
+				PaginatedList<Photo> allPhotos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset(req), 10, false);
 				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(allPhotos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
 				total=allPhotos.total;
 				title=null;
@@ -1363,7 +1363,7 @@ public class PhotosRoutes{
 			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
 		model.with("owner", owner).headerBack(owner).pageTitle(album.getLocalizedTitle(lang(req), self, owner));
 		int offset=offset(req);
-		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset, 100);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset, 100, false);
 		model.paginate(photos);
 
 		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
