@@ -24,7 +24,6 @@ import smithereen.model.CommentViewType;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.board.BoardTopic;
-import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.CommentsNewsfeedObjectType;
@@ -204,7 +203,7 @@ public class NewsfeedMethods{
 								case ADD_FRIEND -> new FeedItem("friend", entryID, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, null, null, objectIDs, null, null, null);
 								case ADD_PHOTO, PHOTO_TAG -> new FeedItem(type==NewsfeedEntry.Type.PHOTO_TAG ? "photo_tag" : "photo",
 										entryID, e.authorID, null, null,
-										new PhotosInfo(objectIDs.size(), objectIDs.stream().limit(10).map(feedPhotos::get).toList(), (isGroups ? "groups/" : "friends/")+entryID),
+										new PhotosInfo(objectIDs.size(), objectIDs.stream().limit(10).map(feedPhotos::get).toList(), (isGroups ? "groups/" : "friends/")+entryID+"/"+type.ordinal()+"/"+e.authorID+"/"+e.time.getEpochSecond()),
 										null, null, null, null);
 								case BOARD_TOPIC -> new FeedItem("board", entryID, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, null, null, null, null, objectIDs.stream().map(feedTopics::get).toList(), null);
 								case RELATIONSHIP_STATUS -> {

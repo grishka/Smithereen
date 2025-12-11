@@ -65,7 +65,7 @@
 		{% for ce in entry.mostRecentEntries %}
 		    {% set _=entryPhotos.add(photos[ce.objectID]) %}
 		{% endfor %}
-		{{ renderPhotoGrid(entryPhotos, "#{groupedPhotosList | default('friendsFeedGrouped')}/#{entry.childEntries.first.id}") }}
+		{{ renderPhotoGrid(entryPhotos, "#{groupedPhotosList | default('friendsFeed')}/#{entry.childEntries.first.id}/#{entry.childEntriesType.ordinal}/#{entry.authorID}/#{entry.time.epochSecond}") }}
 		</div>
 		{% elseif entry.childEntriesType=="BOARD_TOPIC" %}
 		{% for ce in entry.mostRecentEntries %}

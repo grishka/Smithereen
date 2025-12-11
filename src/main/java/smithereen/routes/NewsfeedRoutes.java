@@ -286,7 +286,7 @@ public class NewsfeedRoutes{
 				.with("paginationUrlPrefix", "/feed/groups?startFrom="+startFromID+"&offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed/groups")
 				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()))
 				.with("photosList", "groupsFeed")
-				.with("groupedPhotosList", "groupsFeedGrouped");
+				.with("groupedPhotosList", "groupsFeed");
 
 		prepareFeed(ctx, req, self, feed.list, model, false, FilterContext.GROUPS_FEED);
 

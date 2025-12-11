@@ -115,7 +115,7 @@ public class PhotosController{
 			if(needTagged && owner instanceof User user){
 				try{
 					PhotoAlbum album=getUserTaggedPhotosPseudoAlbum(self, user);
-					if(album!=null)
+					if(album.numPhotos>0)
 						albums.addFirst(album);
 				}catch(UserActionNotAllowedException ignore){}
 			}

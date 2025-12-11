@@ -1,7 +1,9 @@
 package smithereen.api.methods;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Base64;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +19,7 @@ import smithereen.api.model.ApiPaginatedList;
 import smithereen.api.model.ApiPhoto;
 import smithereen.api.model.ApiPhotoAlbum;
 import smithereen.api.model.ApiPrivacySetting;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Group;
@@ -28,6 +31,10 @@ import smithereen.model.UserInteractions;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
+import smithereen.model.feed.GroupedNewsfeedEntry;
+import smithereen.model.feed.GroupsNewsfeedTypeFilter;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.photos.ImageRect;
 import smithereen.model.photos.Photo;
@@ -38,6 +45,8 @@ import smithereen.util.CryptoUtils;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
+
+import static smithereen.Utils.*;
 
 public class PhotosMethods{
 	public static Object getAttachmentUploadServer(ApplicationContext ctx, ApiCallContext actx){
@@ -409,5 +418,39 @@ public class PhotosMethods{
 		if(comment.parentObjectID.type()!=CommentableObjectType.PHOTO)
 			throw new ObjectNotFoundException();
 		return ApiUtils.editComment(ctx, actx, comment);
+	}
+
+	public static Object getFeedEntry(ApplicationContext ctx, ApiCallContext actx){
+		String listID=actx.requireParamString("list_id");
+		String[] listParts=listID.split("/");
+		if(listParts.length!=5)
+			throw actx.paramError("list_id is invalid");
+
+		String feedType=listParts[0];
+		int id=safeParseInt(listParts[1]);
+		int expectedTypeOrdinal=parseIntOrDefault(listParts[2], -1);
+		int expectedAuthorID=safeParseInt(listParts[3]);
+		long rawExpectedTimestamp=safeParseLong(listParts[4]);
+		if(rawExpectedTimestamp==0)
+			throw actx.paramError("list_id is invalid");
+		Instant expectedTimestamp=Instant.ofEpochSecond(rawExpectedTimestamp);
+		NewsfeedEntry.Type expectedType=expectedTypeOrdinal>=0 && expectedTypeOrdinal<NewsfeedEntry.Type.values().length ? NewsfeedEntry.Type.values()[expectedTypeOrdinal] : null;
+		if(expectedType!=NewsfeedEntry.Type.ADD_PHOTO && expectedType!=NewsfeedEntry.Type.PHOTO_TAG)
+			throw actx.paramError("list_id is invalid");
+		int offset=actx.getOffset();
+		int count=actx.getCount(50, 1000);
+		PaginatedList<NewsfeedEntry> feed=switch(feedType){
+			case "friends" -> ctx.getNewsfeedController().getFriendsGroupedEntries(actx.self.user, expectedType, ctx.getUsersController().getUserOrThrow(expectedAuthorID),
+					id, expectedTimestamp, actx.self.prefs.timeZone, offset, count);
+			case "groups" -> ctx.getNewsfeedController().getGroupsGroupedEntries(actx.self.user, expectedType, ctx.getGroupsController().getGroupOrThrow(-expectedAuthorID),
+					id, expectedTimestamp, actx.self.prefs.timeZone, offset, count);
+			default -> throw actx.paramError("list_id is invalid");
+		};
+		if(feed.list.isEmpty())
+			throw new ObjectNotFoundException();
+
+		List<Long> photoIDs=feed.list.stream().map(e->e.objectID).toList();
+		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs);
+		return new ApiPaginatedList<>(feed.total, getPhotos(ctx, actx, photoIDs.stream().map(photos::get).toList()));
 	}
 }

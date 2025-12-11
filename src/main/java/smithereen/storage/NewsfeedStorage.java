@@ -160,4 +160,46 @@ public class NewsfeedStorage{
 				.where("id=? AND owner_id=?", id, userID)
 				.executeNoResult();
 	}
+
+	public static PaginatedList<NewsfeedEntry> getFriendsGroupedEntries(int authorID, int startFromID, NewsfeedEntry.Type type, Instant minTime, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed")
+					.count()
+					.where("id<=? AND author_id=? AND type=? AND time>?", startFromID, authorID, type, minTime)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<NewsfeedEntry> entries=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed")
+					.where("id<=? AND author_id=? AND type=? AND time>?", startFromID, authorID, type, minTime)
+					.orderBy("time DESC")
+					.limit(count, offset)
+					.executeAsStream(NewsfeedEntry::fromResultSet)
+					.toList();
+			return new PaginatedList<>(entries, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<NewsfeedEntry> getGroupsGroupedEntries(int groupID, int startFromID, NewsfeedEntry.Type type, Instant minTime, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed_groups")
+					.count()
+					.where("id<=? AND group_id=? AND type=? AND time>?", startFromID, groupID, type, minTime)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<NewsfeedEntry> entries=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed_groups")
+					.where("id<=? AND group_id=? AND type=? AND time>?", startFromID, groupID, type, minTime)
+					.orderBy("time DESC")
+					.limit(count, offset)
+					.executeAsStream(NewsfeedEntry::fromGroupsResultSet)
+					.toList();
+			return new PaginatedList<>(entries, total, offset, count);
+		}
+	}
 }

@@ -447,6 +447,13 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		this.loading=true;
 		ajaxGet(addParamsToURL(this.listURL, {list: this.listID, offset: offset.toString()}), (_r)=>{
 			var r=_r as PhotoViewerInfoAjaxResponse;
+			if(_r instanceof Array){
+				for(var cmd of _r)
+					applyServerCommand(cmd);
+				if(this.photosLoadedOffset==null)
+					this.dismiss();
+				return;
+			}
 			this.total=r.total;
 			this.updateTitle();
 			if(this.photosLoadedOffset==null){
@@ -467,7 +474,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				this.handleFailedLoad();
 			}
 		}, (msg)=>{
-			new MessageBox(lang("error"), msg, lang("close")).show();
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 			this.loading=false;
 		}, "json");
 	}

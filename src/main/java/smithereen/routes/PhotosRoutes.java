@@ -640,47 +640,37 @@ public class PhotosRoutes{
 				title=album.getLocalizedTitle(lang(req), self, ctx.getWallController().getContentAuthorAndOwner(album).owner());
 				yield makePhotoInfosForPhotoList(req, _photos.list, ctx, selfAccount, Map.of(album.id, album));
 			}
-			case "friendsFeedGrouped", "groupsFeedGrouped" -> {
-				if(self==null)
-					throw new UserActionNotAllowedException();
-				int id=safeParseInt(listParts[1]);
-				PaginatedList<NewsfeedEntry> feed=switch(listParts[0]){
-					case "friendsFeedGrouped" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100, false);
-					case "groupsFeedGrouped" -> ctx.getNewsfeedController().getGroupsFeed(selfAccount, EnumSet.allOf(GroupsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100);
-					default -> throw new IllegalStateException("Unexpected value: " + listParts[0]);
-				};
-				if(feed.list.isEmpty() || !(feed.list.getFirst() instanceof GroupedNewsfeedEntry gne) || (gne.childEntriesType!=NewsfeedEntry.Type.ADD_PHOTO && gne.childEntriesType!=NewsfeedEntry.Type.PHOTO_TAG))
-					throw new ObjectNotFoundException();
-				total=gne.childEntries.size();
-				title=null;
-				int offset=offset(req);
-				if(offset>=total)
-					throw new BadRequestException();
-				List<Long> photoIDs=gne.childEntries.subList(offset, Math.min(offset+10, total)).stream().map(e->e.objectID).toList();
-				Map<Long, Photo> _photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs);
-				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(_photos.values().stream().map(p->p.albumID).collect(Collectors.toSet()));
-
-				yield makePhotoInfosForPhotoList(req, photoIDs.stream().map(_photos::get).toList(), ctx, selfAccount, albums);
-			}
 			case "friendsFeed", "groupsFeed" -> {
 				if(self==null)
 					throw new UserActionNotAllowedException();
 				int id=safeParseInt(listParts[1]);
-				List<NewsfeedEntry> feed=switch(listParts[0]){
-					case "friendsFeed" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1, false).list;
-					case "groupsFeed" -> ctx.getNewsfeedController().getGroupsFeed(selfAccount, EnumSet.allOf(GroupsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1).list;
+				int expectedTypeOrdinal=parseIntOrDefault(listParts[2], -1);
+				int expectedAuthorID=safeParseInt(listParts[3]);
+				long rawExpectedTimestamp=safeParseLong(listParts[4]);
+				if(rawExpectedTimestamp==0)
+					throw new ObjectNotFoundException();
+				Instant expectedTimestamp=Instant.ofEpochSecond(rawExpectedTimestamp);
+				NewsfeedEntry.Type expectedType=expectedTypeOrdinal>=0 && expectedTypeOrdinal<NewsfeedEntry.Type.values().length ? NewsfeedEntry.Type.values()[expectedTypeOrdinal] : null;
+				if(expectedType!=NewsfeedEntry.Type.ADD_PHOTO && expectedType!=NewsfeedEntry.Type.PHOTO_TAG)
+					throw new ObjectNotFoundException();
+				int offset=offset(req);
+				int count=10;
+				PaginatedList<NewsfeedEntry> feed=switch(listParts[0]){
+					case "friendsFeed" -> ctx.getNewsfeedController().getFriendsGroupedEntries(self, expectedType, ctx.getUsersController().getUserOrThrow(expectedAuthorID),
+							id, expectedTimestamp, timeZoneForRequest(req), offset, count);
+					case "groupsFeed" -> ctx.getNewsfeedController().getGroupsGroupedEntries(self, expectedType, ctx.getGroupsController().getGroupOrThrow(-expectedAuthorID),
+							id, expectedTimestamp, timeZoneForRequest(req), offset, count);
 					default -> throw new IllegalStateException("Unexpected value: " + listParts[0]);
 				};
-				if(feed.isEmpty())
+				if(feed.list.isEmpty())
 					throw new ObjectNotFoundException();
-				NewsfeedEntry e=feed.getFirst();
-				if(e.type!=NewsfeedEntry.Type.ADD_PHOTO && e.type!=NewsfeedEntry.Type.PHOTO_TAG)
-					throw new ObjectNotFoundException();
-				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(e.objectID);
-				PhotoAlbum album=ctx.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID);
-				total=1;
+				total=feed.total;
 				title=null;
-				yield makePhotoInfosForPhotoList(req, List.of(photo), ctx, selfAccount, Map.of(album.id, album));
+				List<Long> photoIDs=feed.list.stream().map(e->e.objectID).toList();
+				Map<Long, Photo> _photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs);
+				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(_photos.values().stream().map(p->p.albumID).collect(Collectors.toSet()));
+
+				yield makePhotoInfosForPhotoList(req, photoIDs.stream().map(_photos::get).toList(), ctx, selfAccount, albums);
 			}
 			case "single" -> {
 				long id=XTEA.deobfuscateObjectID(decodeLong(listParts[1]), ObfuscatedObjectIDType.PHOTO);
