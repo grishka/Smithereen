@@ -99,7 +99,7 @@ public class MailController{
 			String attachments=null;
 			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 			if(!attachmentIDs.isEmpty()){
-				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, attachAltTexts, 0, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, attachAltTexts, 0, maxAttachments, false);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();

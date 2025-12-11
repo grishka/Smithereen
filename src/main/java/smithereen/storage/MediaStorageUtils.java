@@ -130,7 +130,7 @@ public class MediaStorageUtils{
 		return att.asActivityPubObject(null, new SerializerContext(null, (String)null));
 	}
 
-	public static void fillAttachmentObjects(ApplicationContext context, User self, List<ActivityPubObject> attachObjects, List<String> attachmentIDs, Map<String, String> altTexts, int attachmentCount, int maxAttachments) throws SQLException{
+	public static void fillAttachmentObjects(ApplicationContext context, User self, List<ActivityPubObject> attachObjects, List<String> attachmentIDs, Map<String, String> altTexts, int attachmentCount, int maxAttachments, boolean allowGraffiti) throws SQLException{
 		for(String id:attachmentIDs){
 			String[] idParts=id.split(":");
 			if(idParts.length!=2)
@@ -159,7 +159,7 @@ public class MediaStorageUtils{
 				attachObjects.add(img);
 			}else{
 				LocalImage img=getLocalImage(id);
-				if(img==null)
+				if(img==null || (img.isGraffiti && !allowGraffiti))
 					continue;
 				img.name=altTexts.get(id);
 				attachObjects.add(img);

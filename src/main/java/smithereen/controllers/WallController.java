@@ -215,7 +215,7 @@ public class WallController{
 			String attachments=null;
 			if(!attachmentIDs.isEmpty()){
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-				MediaStorageUtils.fillAttachmentObjects(context, author, attachObjects, attachmentIDs, attachAltTexts, attachmentCount, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, author, attachObjects, attachmentIDs, attachAltTexts, attachmentCount, maxAttachments, inReplyTo==null);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
@@ -521,7 +521,7 @@ public class WallController{
 			}
 
 			if(!newlyAddedAttachments.isEmpty()){
-				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments, post.getReplyLevel()==0);
 				for(ActivityPubObject att:attachObjects){
 					if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
 						MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
