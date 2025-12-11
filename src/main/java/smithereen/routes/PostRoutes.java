@@ -270,7 +270,9 @@ public class PostRoutes{
 
 		model.with("addClasses", "editing nonCollapsible").with("isEditing", true).with("id", "edit"+id+ridSuffix).with("editingPostID", id);
 		PostSource source=ctx.getWallController().getPostSource(post);
-		model.with("prefilledPostText", source.text()).with("sourceFormat", source.format());
+		model.with("prefilledPostText", source.text())
+				.with("sourceFormat", source.format())
+				.with("isComment", post.getReplyLevel()>0);
 		if(post.hasContentWarning())
 			model.with("contentWarning", post.contentWarning);
 		if(post.poll!=null)

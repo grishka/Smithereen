@@ -159,6 +159,8 @@ public class WallController{
 				LOG.warn("Invalid poll object passed to createWallPost: {}", poll);
 				poll=null;
 			}
+			if(inReplyTo!=null && poll!=null)
+				poll=null;
 
 			if(textSource.trim().isEmpty() && attachmentIDs.isEmpty() && poll==null && repost==null)
 				throw new BadRequestException("Empty post");
@@ -482,6 +484,8 @@ public class WallController{
 			if(!permissions.canEditPost(post))
 				throw new UserActionNotAllowedException();
 			context.getPrivacyController().enforceObjectPrivacy(self, post);
+			if(post.getReplyLevel()>0)
+				poll=null;
 			if(textSource.isEmpty() && attachmentIDs.isEmpty() && poll==null && post.repostOf==0)
 				throw new BadRequestException("Empty post");
 
