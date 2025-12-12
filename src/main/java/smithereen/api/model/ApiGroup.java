@@ -13,6 +13,7 @@ import smithereen.model.Group;
 import smithereen.model.SizedImage;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.groups.GroupBanStatus;
+import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.Photo;
 
 public class ApiGroup{
@@ -56,6 +57,7 @@ public class ApiGroup{
 	public String photo400Orig;
 	public String photoMaxOrig, photoMax;
 	public String photoId;
+	public ApiCropPhoto cropPhoto;
 	public Boolean hasPhoto;
 
 	public List<Manager> management;
@@ -149,7 +151,8 @@ public class ApiGroup{
 			hasPhoto=group.hasAvatar();
 
 		if(fields.contains(Field.PHOTO_50) || fields.contains(Field.PHOTO_100) || fields.contains(Field.PHOTO_200) || fields.contains(Field.PHOTO_200_ORIG)
-				|| fields.contains(Field.PHOTO_400) || fields.contains(Field.PHOTO_400_ORIG) || fields.contains(Field.PHOTO_ID) || fields.contains(Field.PHOTO_MAX) || fields.contains(Field.PHOTO_MAX_ORIG)){
+				|| fields.contains(Field.PHOTO_400) || fields.contains(Field.PHOTO_400_ORIG) || fields.contains(Field.PHOTO_ID) || fields.contains(Field.PHOTO_MAX) || fields.contains(Field.PHOTO_MAX_ORIG)
+				|| fields.contains(Field.CROP_PHOTO)){
 			SizedImage img=group.getAvatar();
 			if(img!=null){
 				if(fields.contains(Field.PHOTO_50))
@@ -175,7 +178,13 @@ public class ApiGroup{
 						photoId=photo.getIdString();
 				}
 
-				// TODO crop_photo (needs ApiPhoto object)
+				if(fields.contains(Field.CROP_PHOTO)){
+					Photo photo=profilePhotos.get(id);
+					if(photo!=null && photo.metadata!=null && photo.metadata.cropRects!=null){
+						AvatarCropRects rects=photo.metadata.cropRects;
+						cropPhoto=new ApiCropPhoto(new ApiPhoto(photo, actx, null, null), new ApiImageRect(rects.profile()), new ApiImageRect(rects.thumb()));
+					}
+				}
 			}
 		}
 

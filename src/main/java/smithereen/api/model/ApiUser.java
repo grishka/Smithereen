@@ -19,6 +19,7 @@ import smithereen.model.User;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.friends.FriendshipStatus;
+import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.Photo;
 import spark.utils.StringUtils;
 
@@ -89,6 +90,8 @@ public class ApiUser{
 	public String photo400Orig;
 	public String photoMaxOrig, photoMax;
 	public String photoId;
+	public ApiCropPhoto cropPhoto;
+	public Boolean hasPhoto;
 
 	public String timezone;
 
@@ -319,8 +322,12 @@ public class ApiUser{
 			}
 		}
 
+		if(fields.contains(Field.HAS_PHOTO))
+			hasPhoto=user.hasAvatar();
+
 		if(fields.contains(Field.PHOTO_50) || fields.contains(Field.PHOTO_100) || fields.contains(Field.PHOTO_200) || fields.contains(Field.PHOTO_200_ORIG)
-				|| fields.contains(Field.PHOTO_400) || fields.contains(Field.PHOTO_400_ORIG) || fields.contains(Field.PHOTO_ID) || fields.contains(Field.PHOTO_MAX) || fields.contains(Field.PHOTO_MAX_ORIG)){
+				|| fields.contains(Field.PHOTO_400) || fields.contains(Field.PHOTO_400_ORIG) || fields.contains(Field.PHOTO_ID) || fields.contains(Field.PHOTO_MAX) || fields.contains(Field.PHOTO_MAX_ORIG)
+				|| fields.contains(Field.CROP_PHOTO)){
 			SizedImage img=user.getAvatar();
 			if(img!=null){
 				if(fields.contains(Field.PHOTO_50))
@@ -346,7 +353,13 @@ public class ApiUser{
 						photoId=photo.getIdString();
 				}
 
-				// TODO crop_photo (needs ApiPhoto object)
+				if(fields.contains(Field.CROP_PHOTO)){
+					Photo photo=profilePhotos.get(id);
+					if(photo!=null && photo.metadata!=null && photo.metadata.cropRects!=null){
+						AvatarCropRects rects=photo.metadata.cropRects;
+						cropPhoto=new ApiCropPhoto(new ApiPhoto(photo, actx, null, null), new ApiImageRect(rects.profile()), new ApiImageRect(rects.thumb()));
+					}
+				}
 			}
 		}
 
