@@ -160,7 +160,7 @@
 		{% if extraLangArgs is not empty %}{% set _=langArgs.putAll(extraLangArgs) %}{% endif %}
 		{{ L("feed_#{langKey}", langArgs, {'author': {'href': profileURL(entry.authorID)}, 'target': {'href': targetHref} }) }}
 		{% if entry.type=="ADD_PHOTO" or entry.type=="PHOTO_TAG" %}
-		<div class="feedRowPhotos">{{ renderPhotoGrid([photos[entry.objectID]], "#{photosList | default('friendsFeed')}/#{entry.id}") }}</div>
+		<div class="feedRowPhotos">{{ renderPhotoGrid([photos[entry.objectID]], "#{photosList | default('friendsFeed')}/#{entry.id}/#{entry.type.ordinal}/#{entry.authorID}/#{entry.time.epochSecond}") }}</div>
 		{% endif %}
 		{% if entry.type=="BOARD_TOPIC" %}"<a href="{{ topics[entry.objectID].url }}">{{ topics[entry.objectID].title }}</a>".{% endif %}
 	</div>

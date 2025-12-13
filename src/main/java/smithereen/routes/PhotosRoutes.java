@@ -643,6 +643,8 @@ public class PhotosRoutes{
 			case "friendsFeed", "groupsFeed" -> {
 				if(self==null)
 					throw new UserActionNotAllowedException();
+				if(listParts.length!=5)
+					throw new BadRequestException();
 				int id=safeParseInt(listParts[1]);
 				int expectedTypeOrdinal=parseIntOrDefault(listParts[2], -1);
 				int expectedAuthorID=safeParseInt(listParts[3]);
