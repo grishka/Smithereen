@@ -650,7 +650,7 @@ public class ActivityPub{
 	private static String generateActorTokenStringToBeSigned(JsonObject obj){
 		return obj.keySet()
 				.stream()
-				.filter(key->!key.equals("signature"))
+				.filter(key->!key.equals("signatures"))
 				.map(key->key+": "+obj.getAsJsonPrimitive(key).toString())
 				.sorted()
 				.collect(Collectors.joining("\n"));
@@ -747,6 +747,7 @@ public class ActivityPub{
 	}
 
 	public static JsonObject fetchActorToken(@NotNull ApplicationContext context, @NotNull Actor actor, @NotNull ForeignGroup group){
+		LOG.debug("Fetching actor token for {} on behalf of {}", group.activityPubID, actor.activityPubID);
 		String url=Objects.requireNonNull(group.actorTokenEndpoint).toString();
 		HttpRequest.Builder builder=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10));
 		signRequest(builder, group.actorTokenEndpoint, actor, null, "get");

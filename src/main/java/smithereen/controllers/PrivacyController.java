@@ -352,8 +352,6 @@ public class PrivacyController{
 		}catch(Exception x){
 			throw new UserActionNotAllowedException("This object is in a "+group.accessType.toString().toLowerCase()+" group. Valid member HTTP signature is required.", x);
 		}
-		if(!(signer instanceof ForeignUser user))
-			throw new UserActionNotAllowedException("HTTP signature is valid but actor has wrong type: "+signer.getType());
 		if(group instanceof ForeignGroup foreignGroup){
 			String authHeader=req.headers("Authorization");
 			if(StringUtils.isEmpty(authHeader))
@@ -369,11 +367,11 @@ public class PrivacyController{
 			}catch(JsonParseException x){
 				throw new BadRequestException("Can't parse actor token: "+x.getMessage(), x);
 			}
-			ActivityPub.verifyActorToken(token, user, foreignGroup);
+			ActivityPub.verifyActorToken(token, signer, foreignGroup);
 		}else{
 			try{
-				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, user.domain))
-					throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+TextProcessor.escapeHTML(user.activityPubID.toString())+" is not its member");
+				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, signer.domain))
+					throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+TextProcessor.escapeHTML(signer.activityPubID.toString())+" is not its member");
 			}catch(SQLException x){
 				throw new InternalServerErrorException(x);
 			}

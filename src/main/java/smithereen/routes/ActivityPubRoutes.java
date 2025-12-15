@@ -1153,10 +1153,8 @@ public class ActivityPubRoutes{
 		}catch(Exception x){
 			throw new UserActionNotAllowedException("Valid member HTTP signature is required.");
 		}
-		if(!(signer instanceof ForeignUser user))
-			throw new UserActionNotAllowedException("HTTP signature is valid but actor has wrong type: "+signer.getType());
 		resp.type("application/json");
-		return ActivityPub.generateActorToken(context(req), user, group);
+		return ActivityPub.generateActorToken(context(req), signer, group);
 	}
 
 	public static Object userCollectionQuery(Request req, Response resp){
