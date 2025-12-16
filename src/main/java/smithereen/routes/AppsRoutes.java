@@ -17,6 +17,7 @@ import smithereen.model.Account;
 import smithereen.model.SizedImage;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.apps.ClientApp;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
@@ -74,7 +75,7 @@ public class AppsRoutes{
 		String name=req.queryParams("name");
 		String description=req.queryParams("description");
 		String logoID=req.queryParams("logo");
-		ctx.getAppsController().updateApp(app, name, description, logoID, parseRedirectUris(req));
+		ctx.getAppsController().updateApp(self.user, app, name, description, logoID, parseRedirectUris(req));
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp)
 					.show("formMessage_appInfo")
@@ -118,7 +119,7 @@ public class AppsRoutes{
 		return new WebDeltaResponse(resp)
 				.hide("logoLoader")
 				.show("logoUploadText")
-				.setInputValue("logoIdField", img.getLocalID())
+				.setInputValue("logoIdField", img.getLocalID(MediaFileUploadPurpose.APP_LOGO, self.user.id))
 				.setContent("logoImageW", img.generateAvatarHTML(SizedImage.Type.AVA_SQUARE_MEDIUM, 75, 75, List.of(), List.of()));
 	}
 

@@ -58,6 +58,8 @@ import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.media.PhotoViewerPhotoInfo;
 import smithereen.model.photos.AvatarCropRects;
@@ -702,6 +704,8 @@ public class PhotosRoutes{
 				yield makePhotoInfosForPhotoList(req, allPhotos.list, ctx, selfAccount, albums);
 			}
 			case "rawFile" -> {
+				if(self==null)
+					throw new UserActionNotAllowedException();
 				title=null;
 				total=1;
 
@@ -710,11 +714,9 @@ public class PhotosRoutes{
 					throw new BadRequestException();
 
 				long fileID;
-				byte[] fileRandomID;
 				try{
 					byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
-					fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
-					if(_fileID.length!=8 || fileRandomID.length!=18)
+					if(_fileID.length!=8)
 						throw new BadRequestException();
 					fileID=XTEA.deobfuscateObjectID(unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
 				}catch(IllegalArgumentException x){
@@ -726,7 +728,7 @@ public class PhotosRoutes{
 				}catch(SQLException x){
 					throw new InternalServerErrorException(x);
 				}
-				if(mfr==null || !Arrays.equals(mfr.id().randomID(), fileRandomID))
+				if(mfr==null || !MediaFileUploadTokens.verifyToken(idParts[1], mfr.id(), MediaFileUploadPurpose.ATTACHMENT, self.id))
 					throw new ObjectNotFoundException();
 				LocalImage img=new LocalImage();
 				img.fileID=fileID;

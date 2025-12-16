@@ -4,7 +4,7 @@
 <div class="gray singleColumn">
 	<div style="display: flex">
 		<form style="flex-grow: 1" method="post" action="/apps{% if app is null %}/create{% else %}/{{ app.id }}/edit{% endif %}?csrf={{ csrf }}" data-ajax>
-		<input type="hidden" id="logoIdField" name="logo"{% if app is not null and app.logo is not null %} value="{{ app.logo.localID }}"{% endif %}/>
+		<input type="hidden" id="logoIdField" name="logo"{% if app is not null and app.logo is not null %} value="{{ app.logo.getLocalID('APP_LOGO', currentUser.id) }}"{% endif %}/>
 		{{ form.start("appInfo", appInfoMessage) }}
 			{{ form.textInput('name', L('apps_app_name'), app is null ? '' : app.name, {'required': true, 'maxlength': 50}) }}
 			{{ form.textArea('description', L('apps_app_description'), app is null ? '' : app.description) }}

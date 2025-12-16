@@ -68,6 +68,7 @@ import smithereen.model.admin.ViolationReport;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.groups.GroupLink;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
@@ -410,9 +411,10 @@ public class SystemRoutes{
 		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, self, isGraffiti, "file");
 		if(isAjax(req)){
 			resp.type("application/json");
-			PhotoViewerInlineData pvData=new PhotoViewerInlineData(0, "rawFile/"+photo.getLocalID(), photo.getURLsForPhotoViewer());
+			String localID=photo.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id);
+			PhotoViewerInlineData pvData=new PhotoViewerInlineData(0, "rawFile/"+localID, photo.getURLsForPhotoViewer());
 			return new JsonObjectBuilder()
-					.add("id", photo.fileRecord.id().getIDForClient())
+					.add("id", localID)
 					.add("width", photo.width)
 					.add("height", photo.height)
 					.add("thumbs", new JsonObjectBuilder()

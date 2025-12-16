@@ -47,6 +47,7 @@ import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.CommentViewModel;
@@ -387,12 +388,12 @@ public class CommentsController{
 			if(comment.attachments!=null){
 				for(ActivityPubObject att:comment.attachments){
 					if(att instanceof LocalImage li){
-						String localID=li.fileRecord.id().getIDForClient();
+						String localID=li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.id);
 						if(!newlyAddedAttachments.remove(localID)){
 							LOG.debug("Deleting attachment: {}", localID);
 							MediaStorage.deleteMediaFileReference(comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, li.fileID);
 						}else{
-							li.name=attachAltTexts.get(li.getLocalID());
+							li.name=attachAltTexts.get(localID);
 							attachObjects.add(li);
 						}
 					}else{
@@ -404,7 +405,7 @@ public class CommentsController{
 			if(!newlyAddedAttachments.isEmpty()){
 				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments, false);
 				for(ActivityPubObject att:attachObjects){
-					if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
+					if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.id))){
 						MediaStorage.createMediaFileReference(li.fileID, comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, comment.ownerID);
 					}
 				}

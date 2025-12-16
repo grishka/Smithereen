@@ -51,6 +51,8 @@ import smithereen.model.media.MediaFileID;
 import smithereen.model.media.MediaFileMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.photos.Photo;
 import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.storage.sql.DatabaseConnection;
@@ -158,7 +160,7 @@ public class MediaStorageUtils{
 				img.fillIn(mfr);
 				attachObjects.add(img);
 			}else{
-				LocalImage img=getLocalImage(id);
+				LocalImage img=getLocalImage(id, MediaFileUploadPurpose.ATTACHMENT, self.id);
 				if(img==null || (img.isGraffiti && !allowGraffiti))
 					continue;
 				img.name=altTexts.get(id);
@@ -170,23 +172,21 @@ public class MediaStorageUtils{
 		}
 	}
 
-	public static LocalImage getLocalImage(String id) throws SQLException{
+	public static LocalImage getLocalImage(String id, MediaFileUploadPurpose expectedPurpose, int expectedOwnerID) throws SQLException{
 		String[] idParts=id.split(":");
 		if(idParts.length!=2)
 			return null;
 		long fileID;
-		byte[] fileRandomID;
 		try{
 			byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
-			fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
-			if(_fileID.length!=8 || fileRandomID.length!=18)
+			if(_fileID.length!=8)
 				return null;
 			fileID=XTEA.deobfuscateObjectID(Utils.unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
 		}catch(IllegalArgumentException x){
 			return null;
 		}
 		MediaFileRecord mfr=MediaStorage.getMediaFileRecord(fileID);
-		if(mfr==null || !Arrays.equals(mfr.id().randomID(), fileRandomID))
+		if(mfr==null || !MediaFileUploadTokens.verifyToken(idParts[1], mfr.id(), expectedPurpose, expectedOwnerID))
 			return null;
 		LocalImage img=new LocalImage();
 		img.fileID=fileID;

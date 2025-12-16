@@ -778,6 +778,30 @@ public class Utils{
 		return bldr.build();
 	}
 
+	public static byte[] packInt(int x){
+		byte[] r=new byte[4];
+		for(int i=3;i>=0;i--){
+			r[i]=(byte)x;
+			x>>=8;
+		}
+		return r;
+	}
+
+	public static int unpackInt(byte[] x){
+		return unpackInt(x, 0);
+	}
+
+	public static int unpackInt(byte[] x, int offset){
+		if(x==null || x.length-offset<4)
+			return 0;
+		int r=0;
+		for(int i=0;i<4;i++){
+			r<<=8;
+			r|=((int)x[i+offset]) & 0xFF;
+		}
+		return r;
+	}
+
 	public static byte[] packLong(long x){
 		byte[] r=new byte[8];
 		for(int i=7;i>=0;i--){

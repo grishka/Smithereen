@@ -7,9 +7,10 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.util.XTEA;
 
 public record MediaFileID(long id, byte[] randomID, int originalOwnerID, MediaFileType type){
-	public String getIDForClient(){
-		return Base64.getUrlEncoder().withoutPadding().encodeToString(Utils.packLong(XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.MEDIA_FILE)))
-				+":"+getEncodedRandomID();
+	public static final int RANDOM_ID_LENGTH=18;
+
+	public String getEncodedID(){
+		return XTEA.encodeObjectID(id, ObfuscatedObjectIDType.MEDIA_FILE);
 	}
 
 	public String getEncodedRandomID(){

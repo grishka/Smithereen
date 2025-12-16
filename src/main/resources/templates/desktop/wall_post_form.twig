@@ -33,14 +33,14 @@
 		<div id="postFormAttachments_{{id}}">
 			{%set attachIDs=""%}
 			{%for attachment in draftAttachments%}
-			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}"{% if attachPvData contains attachment.localID %} data-pv="{{ json(attachPvData[attachment.localID]) }}"{% endif %}>
+			<div class="attachment" id="attachment_{{attachment.getLocalID('ATTACHMENT', currentUser.id)}}" data-id="{{attachment.getLocalID('ATTACHMENT', currentUser.id)}}"{% if attachPvData contains attachment.getLocalID('ATTACHMENT', currentUser.id) %} data-pv="{{ json(attachPvData[attachment.getLocalID('ATTACHMENT', currentUser.id)]) }}"{% endif %}>
 				{{ attachment | pictureForPhoto('s') }}
 				{% if isEditing %}
 				<a href="#" class="deleteBtn" aria-label="{{ L('remove_attachment') }}" data-tooltip="{{ L('remove_attachment') }}"></a>
 				{% else %}
-				<a href="/system/deleteDraftAttachment?id={{attachment.localID}}&csrf={{csrf}}" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
+				<a href="/system/deleteDraftAttachment?id={{attachment.getLocalID('ATTACHMENT', currentUser.id)}}&csrf={{csrf}}" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
 				{% endif %}
-				{%set attachIDs=attachIDs+attachment.localID%}
+				{%set attachIDs=attachIDs+attachment.getLocalID('ATTACHMENT', currentUser.id)%}
 				{%if not loop.last%}{%set attachIDs=attachIDs+","%}{%endif%}
 			</div>
 			{%endfor%}

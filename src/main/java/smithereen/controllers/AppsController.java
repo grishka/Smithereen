@@ -40,6 +40,7 @@ import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.storage.AppsStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
@@ -144,7 +145,7 @@ public class AppsController{
 		try{
 			LocalImage logo=null;
 			if(StringUtils.isNotEmpty(logoID)){
-				logo=MediaStorageUtils.getLocalImage(logoID);
+				logo=MediaStorageUtils.getLocalImage(logoID, MediaFileUploadPurpose.APP_LOGO, self.id);
 			}
 			ClientApp app=new ClientApp();
 			app.allowedRedirectURIs=redirectURIs==null ? null : redirectURIs.stream().map(URI::toString).collect(Collectors.toCollection(LinkedHashSet::new));
@@ -158,15 +159,15 @@ public class AppsController{
 		}
 	}
 
-	public void updateApp(ClientApp app, String name, String description, String logoID, Set<URI> redirectURIs){
+	public void updateApp(User self, ClientApp app, String name, String description, String logoID, Set<URI> redirectURIs){
 		try{
 			LocalImage logo=app.logo instanceof LocalImage li ? li : null;
-			String existingLogoID=logo!=null ? logo.getLocalID() : null;
+			String existingLogoID=logo!=null ? logo.getLocalID(MediaFileUploadPurpose.APP_LOGO, self.id) : null;
 			if(existingLogoID!=null && !existingLogoID.equals(logoID)){
 				MediaStorage.deleteMediaFileReference(app.id, MediaFileReferenceType.APP_LOGO, ((LocalImage)app.logo).fileID);
 			}
 			if(StringUtils.isNotEmpty(logoID)){
-				logo=MediaStorageUtils.getLocalImage(logoID);
+				logo=MediaStorageUtils.getLocalImage(logoID, MediaFileUploadPurpose.APP_LOGO, self.id);
 			}
 			app.allowedRedirectURIs=redirectURIs==null ? null : redirectURIs.stream().map(URI::toString).collect(Collectors.toCollection(LinkedHashSet::new));
 			AppsStorage.updateApp(app.id, name, description, logo, app.serializeExtraFields());

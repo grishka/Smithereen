@@ -30,6 +30,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class CryptoUtils{
 	public static final SecureRandom RANDOM=new SecureRandom();
+	public static final int SHA256_LENGTH=32;
 
 	public static PublicKey decodeEcPublicKey(byte[] encoded){
 		if(encoded.length<32)

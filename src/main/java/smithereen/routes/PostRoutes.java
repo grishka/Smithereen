@@ -55,6 +55,7 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.groups.GroupFeatureState;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
@@ -280,12 +281,12 @@ public class PostRoutes{
 		if(post.attachments!=null && !post.attachments.isEmpty()){
 			model.with("draftAttachments", post.attachments);
 			model.with("attachAltTexts", post.attachments.stream()
-					.map(att->att instanceof LocalImage li && li.photoID==0 && li.name!=null ? new Pair<>(li.fileRecord.id().getIDForClient(), li.name) : null)
+					.map(att->att instanceof LocalImage li && li.photoID==0 && li.name!=null ? new Pair<>(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), li.name) : null)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toMap(Pair::first, Pair::second))
 			);
 			Map<String, PhotoViewerInlineData> pvData=post.attachments.stream()
-					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(), li.getURLsForPhotoViewer())) : null)
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), li.getURLsForPhotoViewer())) : null)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toMap(Pair::first, Pair::second, (a, b)->b));
 			model.with("attachPvData", pvData);

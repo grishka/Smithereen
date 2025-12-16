@@ -52,6 +52,8 @@ import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.AppAuthCode;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.scripting.ScriptValue;
 import smithereen.scripting.ScriptValueGsonTypeAdapterFactory;
 import smithereen.storage.MediaStorageUtils;
@@ -494,7 +496,7 @@ public class ApiRoutes{
 			LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false, "photo");
 			return new JsonObjectBuilder()
 					.add("id", XTEA.encodeObjectID(img.fileID, ObfuscatedObjectIDType.MEDIA_FILE))
-					.add("hash", img.fileRecord.id().getEncodedRandomID())
+					.add("hash", MediaFileUploadTokens.getToken(img.fileRecord.id(), MediaFileUploadPurpose.ATTACHMENT, self.user.id))
 					.build();
 		}catch(HaltException x){
 			resp.status(x.statusCode());

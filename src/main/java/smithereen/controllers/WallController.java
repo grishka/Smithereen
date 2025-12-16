@@ -63,6 +63,7 @@ import smithereen.model.admin.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.notifications.Notification;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.MediaStorage;
@@ -510,12 +511,12 @@ public class WallController{
 			if(post.attachments!=null){
 				for(ActivityPubObject att:post.attachments){
 					if(att instanceof LocalImage li){
-						String localID=li.getLocalID();
+						String localID=li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.id);
 						if(!newlyAddedAttachments.remove(localID)){
 							LOG.debug("Deleting attachment: {}", localID);
 							MediaStorage.deleteMediaFileReference(post.id, MediaFileReferenceType.WALL_ATTACHMENT, li.fileID);
 						}else{
-							li.name=attachAltTexts.get(li.getLocalID());
+							li.name=attachAltTexts.get(localID);
 							attachObjects.add(li);
 						}
 					}else{
@@ -527,7 +528,7 @@ public class WallController{
 			if(!newlyAddedAttachments.isEmpty()){
 				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments, post.getReplyLevel()==0);
 				for(ActivityPubObject att:attachObjects){
-					if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
+					if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.id))){
 						MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
 					}
 				}

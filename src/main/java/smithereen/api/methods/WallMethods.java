@@ -36,6 +36,8 @@ import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.text.FormattedTextFormat;
 import smithereen.util.XTEA;
@@ -286,7 +288,7 @@ public class WallMethods{
 					Map<String, Object> sa=new HashMap<>();
 					sa.put("type", "image");
 					sa.put("file_id", XTEA.encodeObjectID(li.fileID, ObfuscatedObjectIDType.MEDIA_FILE));
-					sa.put("file_hash", li.fileRecord.id().getEncodedRandomID());
+					sa.put("file_hash", MediaFileUploadTokens.getToken(li.fileRecord.id(), MediaFileUploadPurpose.ATTACHMENT, actx.self.user.id));
 					sa.put("text", li.name);
 					attachments.add(sa);
 				}

@@ -50,6 +50,8 @@ import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
@@ -591,7 +593,7 @@ public class ApiUtils{
 					Map<String, Object> sa=new HashMap<>();
 					sa.put("type", "image");
 					sa.put("file_id", XTEA.encodeObjectID(li.fileID, ObfuscatedObjectIDType.MEDIA_FILE));
-					sa.put("file_hash", li.fileRecord.id().getEncodedRandomID());
+					sa.put("file_hash", MediaFileUploadTokens.getToken(li.fileRecord.id(), MediaFileUploadPurpose.ATTACHMENT, actx.self.user.id));
 					sa.put("text", li.name);
 					attachments.add(sa);
 				}

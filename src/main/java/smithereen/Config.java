@@ -105,6 +105,7 @@ public class Config{
 	public static byte[] objectIdObfuscationKey;
 	public static int[][] objectIdObfuscationKeysByType=new int[ObfuscatedObjectIDType.values().length][];
 	public static byte[] emailUnsubscribeKey;
+	public static byte[] fileRandomIdKey;
 
 	public static int userExportCooldownDays, userExportRetentionDays;
 
@@ -285,6 +286,16 @@ public class Config{
 
 			userExportCooldownDays=Utils.parseIntOrDefault(dbValues.get("UserExportCooldown"), 7);
 			userExportRetentionDays=Utils.parseIntOrDefault(dbValues.get("UserExportRetention"), 2);
+
+			String fileIdKey=dbValues.get("FileRandomIdKey");
+			if(fileIdKey==null){
+				byte[] key=new byte[16];
+				new SecureRandom().nextBytes(key);
+				updateInDatabase("FileRandomIdKey", Base64.getEncoder().encodeToString(key));
+				fileRandomIdKey=key;
+			}else{
+				fileRandomIdKey=Base64.getDecoder().decode(fileIdKey);
+			}
 		}
 	}
 

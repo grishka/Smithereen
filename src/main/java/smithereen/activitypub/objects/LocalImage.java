@@ -14,6 +14,8 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.photos.AbsoluteImageRect;
 import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.ImageRect;
@@ -219,13 +221,17 @@ public non-sealed class LocalImage extends Image implements SizedImage{
 		isGraffiti=mfr.id().type()==MediaFileType.IMAGE_GRAFFITI;
 	}
 
-	public String getLocalID(){
+	public String getLocalID(MediaFileUploadPurpose purpose, int ownerID){
 		if(fileRecord==null){
 			LOG.warn("Tried to get a local ID for a LocalImage with fileRecord not set (file ID {})", fileID);
 			return null;
 		}
 		if(photoID!=0)
 			return "photo:"+XTEA.encodeObjectID(photoID, ObfuscatedObjectIDType.PHOTO);
-		return fileRecord.id().getIDForClient();
+		return fileRecord.id().getEncodedID()+":"+MediaFileUploadTokens.getToken(fileRecord.id(), purpose, ownerID);
+	}
+
+	public String getLocalID(String purpose, int ownerID){
+		return getLocalID(MediaFileUploadPurpose.valueOf(purpose), ownerID);
 	}
 }
