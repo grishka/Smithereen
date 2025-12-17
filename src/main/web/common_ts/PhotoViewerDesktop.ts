@@ -446,7 +446,6 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			throw new Error("already loading");
 		this.loading=true;
 		ajaxGet(addParamsToURL(this.listURL, {list: this.listID, offset: offset.toString()}), (_r)=>{
-			var r=_r as PhotoViewerInfoAjaxResponse;
 			if(_r instanceof Array){
 				for(var cmd of _r)
 					applyServerCommand(cmd);
@@ -454,6 +453,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 					this.dismiss();
 				return;
 			}
+			var r=_r as PhotoViewerInfoAjaxResponse;
 			this.total=r.total;
 			this.updateTitle();
 			if(this.photosLoadedOffset==null){

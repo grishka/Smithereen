@@ -34,6 +34,7 @@ class EndlessPagination{
 			this.link.show();
 			this.loader.hide();
 			this.loading=false;
+			initDynamicControls();
 		}, ()=>{
 			this.link.show();
 			this.loader.hide();
