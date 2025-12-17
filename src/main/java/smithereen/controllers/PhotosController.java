@@ -858,6 +858,11 @@ public class PhotosController{
 				ActivityPubPhoto origObj=p.second();
 
 				boolean isNew=photo.id==0;
+				if(!isNew){
+					Photo existing=getPhotoIgnoringPrivacy(photo.id);
+					if(photo.ownerID!=existing.ownerID)
+						throw new UserActionNotAllowedException();
+				}
 				if(photo.ownerID<0){
 					User self=context.getUsersController().getUserOrThrow(photo.authorID);
 					Group group=context.getGroupsController().getGroupOrThrow(-photo.ownerID);

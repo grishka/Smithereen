@@ -541,6 +541,7 @@ public class PhotoStorage{
 						.executeAndGetLong();
 				new SQLQueryBuilder(conn)
 						.update("photos")
+						.value("album_id", photo.albumID)
 						.value("remote_src", photo.remoteSrc)
 						.value("description", photo.description)
 						.value("metadata", Utils.gson.toJson(photo.metadata))
