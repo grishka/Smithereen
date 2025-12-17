@@ -138,6 +138,7 @@ public class PostRoutes{
 			inReplyTo=ctx.getWallController().getPostOrThrow(replyTo);
 			if(inReplyTo.isMastodonStyleRepost())
 				inReplyTo=ctx.getWallController().getPostOrThrow(inReplyTo.repostOf);
+			owner=ctx.getWallController().getContentAuthorAndOwner(inReplyTo).owner();
 		}
 
 		Post post=ctx.getWallController().createWallPost(self.user, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts, null, null, null);
