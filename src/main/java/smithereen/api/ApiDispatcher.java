@@ -101,6 +101,10 @@ public class ApiDispatcher{
 		registerMethod("photos.getCommentEditSource", PhotosMethods::getCommentEditSource, ClientAppPermission.PHOTOS_WRITE);
 		registerMethod("photos.editComment", PhotosMethods::editComment, ClientAppPermission.PHOTOS_WRITE);
 		registerMethod("photos.getFeedEntry", PhotosMethods::getFeedEntry, ClientAppPermission.PHOTOS_READ);
+		registerMethod("photos.getUploadServer", PhotosMethods::getUploadServer, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.save", PhotosMethods::save, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.getOwnerPhotoUploadServer", PhotosMethods::getOwnerPhotoUploadServer, ClientAppPermission.PHOTOS_WRITE);
+		registerMethod("photos.saveOwnerPhoto", PhotosMethods::saveOwnerPhoto, ClientAppPermission.PHOTOS_WRITE);
 
 		registerMethod("likes.add", LikesMethods::add, ClientAppPermission.LIKES_WRITE);
 		registerMethod("likes.delete", LikesMethods::delete, ClientAppPermission.LIKES_WRITE);

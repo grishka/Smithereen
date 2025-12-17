@@ -32,6 +32,7 @@ import jakarta.servlet.http.HttpSessionListener;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.api.methods.ApiUtils;
 import smithereen.api.model.ApiSerializable;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.MailController;
@@ -1016,7 +1017,11 @@ public class SmithereenApplication{
 			post("/method/:method", ApiRoutes::apiCall);
 			options("/method/:method", ApiRoutes::apiCallPreflight);
 			post("/uploadAttachmentPhoto", ApiRoutes::uploadAttachmentPhoto);
+			post("/uploadAlbumPhoto", ApiRoutes::uploadAlbumPhoto);
+			post("/uploadAvatar", ApiRoutes::uploadAvatar);
 			options("/uploadAttachmentPhoto", ApiRoutes::apiCallPreflight);
+			options("/uploadAlbumPhoto", ApiRoutes::apiCallPreflight);
+			options("/uploadAvatar", ApiRoutes::apiCallPreflight);
 		});
 		path("/oauth", ()->{
 			get("/authorize", ApiRoutes::oauthAuthorize);
@@ -1261,6 +1266,7 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(()->context.getAppsController().deleteExpiredCodesAndTokens(), 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(()->context.getWallController().removeExpiredGuids(), 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(()->context.getCommentsController().removeExpiredGuids(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(ApiUtils::removeOldUploadUrlIDs, 10, TimeUnit.MINUTES);
 		context.getUsersController().loadPresenceFromDatabase();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{

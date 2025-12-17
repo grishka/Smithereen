@@ -35,6 +35,7 @@ import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
@@ -176,22 +177,24 @@ public class MediaStorageUtils{
 		String[] idParts=id.split(":");
 		if(idParts.length!=2)
 			return null;
-		long fileID;
+		long fileID=XTEA.decodeObjectID(idParts[0], ObfuscatedObjectIDType.MEDIA_FILE);
+		if(fileID<=0)
+			return null;
+		return getLocalImage(fileID, idParts[1], expectedPurpose, expectedOwnerID);
+	}
+
+	public static LocalImage getLocalImage(long fileID, String token, MediaFileUploadPurpose expectedPurpose, int expectedOwnerID){
 		try{
-			byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
-			if(_fileID.length!=8)
+			MediaFileRecord mfr=MediaStorage.getMediaFileRecord(fileID);
+			if(mfr==null || !MediaFileUploadTokens.verifyToken(token, mfr.id(), expectedPurpose, expectedOwnerID))
 				return null;
-			fileID=XTEA.deobfuscateObjectID(Utils.unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
-		}catch(IllegalArgumentException x){
-			return null;
+			LocalImage img=new LocalImage();
+			img.fileID=fileID;
+			img.fillIn(mfr);
+			return img;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
-		MediaFileRecord mfr=MediaStorage.getMediaFileRecord(fileID);
-		if(mfr==null || !MediaFileUploadTokens.verifyToken(idParts[1], mfr.id(), expectedPurpose, expectedOwnerID))
-			return null;
-		LocalImage img=new LocalImage();
-		img.fileID=fileID;
-		img.fillIn(mfr);
-		return img;
 	}
 
 	public static void deleteAbandonedFiles(){

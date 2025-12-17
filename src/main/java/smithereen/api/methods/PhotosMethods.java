@@ -1,8 +1,6 @@
 package smithereen.api.methods;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +10,7 @@ import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.LocalImage;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiPaginatedList;
@@ -19,6 +18,7 @@ import smithereen.api.model.ApiPhoto;
 import smithereen.api.model.ApiPhotoAlbum;
 import smithereen.api.model.ApiPrivacySetting;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -31,31 +31,42 @@ import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.friends.FriendshipStatus;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.ImageRect;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoTag;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.text.FormattedTextFormat;
-import smithereen.util.CryptoUtils;
-import smithereen.util.JsonObjectBuilder;
-import smithereen.util.UriBuilder;
+import smithereen.util.NamedMutexCollection;
 import smithereen.util.XTEA;
 
 import static smithereen.Utils.*;
 
 public class PhotosMethods{
+	private static NamedMutexCollection uploadMutex=new NamedMutexCollection();
+
 	public static Object getAttachmentUploadServer(ApplicationContext ctx, ApiCallContext actx){
-		String data=new JsonObjectBuilder()
-				.add("id", actx.self.id)
-				.add("ct", System.currentTimeMillis()/1000L)
-				.build()
-				.toString();
-		String url=UriBuilder.local()
-				.path("api", "uploadAttachmentPhoto")
-				.queryParam("d", Base64.getUrlEncoder().withoutPadding().encodeToString(CryptoUtils.aesGcmEncrypt(data.getBytes(StandardCharsets.UTF_8), ApiUtils.UPLOAD_KEY)))
-				.build()
-				.toString();
-		return Map.of("upload_url", url);
+		return Map.of("upload_url", ApiUtils.getUploadURL(actx, "uploadAttachmentPhoto", Map.of()));
+	}
+
+	public static Object getUploadServer(ApplicationContext ctx, ApiCallContext actx){
+		long id=XTEA.decodeObjectID(actx.requireParamString("album_id"), ObfuscatedObjectIDType.PHOTO_ALBUM);
+		PhotoAlbum album=ctx.getPhotosController().getAlbum(id, actx.self.user);
+		if(album.systemType!=null || !actx.permissions.canUploadToPhotoAlbum(album))
+			throw new UserActionNotAllowedException();
+		return Map.of("upload_url", ApiUtils.getUploadURL(actx, "uploadAlbumPhoto", Map.of("oid", album.ownerID)));
+	}
+
+	public static Object getOwnerPhotoUploadServer(ApplicationContext ctx, ApiCallContext actx){
+		int groupID=actx.optParamIntPositive("group_id");
+		if(groupID!=0){
+			actx.requirePermission(ClientAppPermission.GROUPS_WRITE);
+			Group g=ctx.getGroupsController().getGroupOrThrow(groupID);
+			ctx.getGroupsController().enforceUserAdminLevel(g, actx.self.user, Group.AdminLevel.ADMIN);
+		}
+		return Map.of("upload_url", ApiUtils.getUploadURL(actx, "uploadAvatar", Map.of("oid", groupID==0 ? actx.self.id : -groupID)));
 	}
 
 	public static Object getAlbums(ApplicationContext ctx, ApiCallContext actx){
@@ -267,13 +278,7 @@ public class PhotosMethods{
 		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.decodeObjectID(photoID, ObfuscatedObjectIDType.PHOTO));
 		ctx.getPrivacyController().enforceObjectPrivacy(actx.self.user, photo);
 		String caption=actx.optParamString("caption", "");
-		FormattedTextFormat textFormat=switch(actx.optParamString("text_format")){
-			case "markdown" -> FormattedTextFormat.MARKDOWN;
-			case "html" -> FormattedTextFormat.HTML;
-			case "plain" -> FormattedTextFormat.PLAIN;
-			case null -> actx.self.prefs.textFormat;
-			default -> throw actx.paramError("text_format must be one of markdown, html, plain");
-		};
+		FormattedTextFormat textFormat=ApiUtils.getTextFormat(actx);
 		ctx.getPhotosController().updatePhotoDescription(actx.self.user, photo, caption, textFormat);
 		return true;
 	}
@@ -447,5 +452,69 @@ public class PhotosMethods{
 		List<Long> photoIDs=feed.list.stream().map(e->e.objectID).toList();
 		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs);
 		return new ApiPaginatedList<>(feed.total, getPhotos(ctx, actx, photoIDs.stream().map(photos::get).toList()));
+	}
+
+	public static Object save(ApplicationContext ctx, ApiCallContext actx){
+		long id=XTEA.decodeObjectID(actx.requireParamString("album_id"), ObfuscatedObjectIDType.PHOTO_ALBUM);
+		PhotoAlbum album=ctx.getPhotosController().getAlbum(id, actx.self.user);
+		if(album.systemType!=null || !actx.permissions.canUploadToPhotoAlbum(album))
+			throw new UserActionNotAllowedException();
+		long fileID=XTEA.decodeObjectID(actx.requireParamString("id"), ObfuscatedObjectIDType.MEDIA_FILE);
+		LocalImage img=MediaStorageUtils.getLocalImage(fileID, actx.requireParamString("hash"), MediaFileUploadPurpose.ALBUM_PHOTO, album.ownerID);
+		if(img==null)
+			throw actx.paramError("invalid file");
+		String mutexName="albumFile"+fileID;
+		try{
+			// Prevent a possible race condition when someone tries to call photos.save multiple times in parallel for the same file.
+			// If I don't do this, someone will report me a bug that "oh hey I can upload a file once and make duplicate photos sometimes" sooner or later.
+			uploadMutex.acquire(mutexName);
+
+			long photoID=ctx.getPhotosController().createPhoto(actx.self.user, album, fileID, actx.optParamString("caption"), ApiUtils.getTextFormat(actx));
+			return new ApiPhoto(ctx.getPhotosController().getPhotoIgnoringPrivacy(photoID), actx, null, null);
+		}finally{
+			uploadMutex.release(mutexName);
+		}
+	}
+
+	public static Object saveOwnerPhoto(ApplicationContext ctx, ApiCallContext actx){
+		int groupID=actx.optParamIntPositive("group_id");
+		Group group;
+		if(groupID!=0){
+			actx.requirePermission(ClientAppPermission.GROUPS_WRITE);
+			group=ctx.getGroupsController().getGroupOrThrow(groupID);
+			ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+		}else{
+			group=null;
+		}
+		long fileID=XTEA.decodeObjectID(actx.requireParamString("id"), ObfuscatedObjectIDType.MEDIA_FILE);
+		LocalImage img=MediaStorageUtils.getLocalImage(fileID, actx.requireParamString("hash"), MediaFileUploadPurpose.ALBUM_PHOTO, groupID==0 ? actx.self.user.id : -groupID);
+		if(img==null)
+			throw actx.paramError("invalid file");
+		String mutexName="avatarFile"+fileID;
+		AvatarCropRects cropRects=null;
+		if(actx.hasParam("crop_x1") && actx.hasParam("crop_y1") && actx.hasParam("crop_x2") && actx.hasParam("crop_y2")
+				&& actx.hasParam("square_x1") && actx.hasParam("square_y1") && actx.hasParam("square_x2") && actx.hasParam("square_y2")){
+			cropRects=new AvatarCropRects(
+					new ImageRect(
+							actx.requireParamFloatInRange("crop_x1", 0, 1),
+							actx.requireParamFloatInRange("crop_y1", 0, 1),
+							actx.requireParamFloatInRange("crop_x2", 0, 1),
+							actx.requireParamFloatInRange("crop_y2", 0, 1)
+					),
+					new ImageRect(
+							actx.requireParamFloatInRange("square_x1", 0, 1),
+							actx.requireParamFloatInRange("square_y1", 0, 1),
+							actx.requireParamFloatInRange("square_x2", 0, 1),
+							actx.requireParamFloatInRange("square_y2", 0, 1)
+					)
+			);
+		}
+		try{
+			uploadMutex.acquire(mutexName);
+			long photoID=ctx.getPhotosController().updateAvatar(actx.self, group, img, cropRects, ctx.getAppsController().getAppByID(actx.token.appID()));
+			return new ApiPhoto(ctx.getPhotosController().getPhotoIgnoringPrivacy(photoID), actx, null, null);
+		}finally{
+			uploadMutex.release(mutexName);
+		}
 	}
 }

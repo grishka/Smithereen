@@ -248,13 +248,7 @@ public class WallMethods{
 	private static Object createOrUpdatePost(ApplicationContext ctx, ApiCallContext actx, Actor owner, Post repost, Post replyTo, Post edit){
 		String message=actx.optParamString("message");
 		String cw=actx.optParamString("content_warning");
-		FormattedTextFormat textFormat=switch(actx.optParamString("text_format")){
-			case "markdown" -> FormattedTextFormat.MARKDOWN;
-			case "html" -> FormattedTextFormat.HTML;
-			case "plain" -> FormattedTextFormat.PLAIN;
-			case null -> actx.self.prefs.textFormat;
-			default -> throw actx.paramError("text_format must be one of markdown, html, plain");
-		};
+		FormattedTextFormat textFormat=ApiUtils.getTextFormat(actx);
 		boolean isReply=replyTo!=null || (edit!=null && edit.getReplyLevel()>0);
 
 		ApiUtils.InputAttachments attachments=ApiUtils.parseAttachments(ctx, actx, isReply);

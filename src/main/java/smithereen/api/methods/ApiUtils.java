@@ -5,7 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -57,11 +60,15 @@ import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.text.FormattedTextFormat;
 import smithereen.util.CryptoUtils;
+import smithereen.util.JsonObjectBuilder;
+import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
 public class ApiUtils{
 	public static final byte[] UPLOAD_KEY=CryptoUtils.randomBytes(16);
+	public static final HashMap<Integer, Long> uploadUrlIDs=new HashMap<>();
+	public static final AtomicInteger lastUploadUrlID=new AtomicInteger();
 
 	public static List<ApiUser> getUsers(Collection<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
 		List<Integer> idList=switch(ids){
@@ -550,13 +557,7 @@ public class ApiUtils{
 	private static Object createOrUpdateComment(ApplicationContext ctx, ApiCallContext actx, CommentableContentObject parent, Comment replyTo, Comment edit){
 		String message=actx.optParamString("message");
 		String cw=actx.optParamString("content_warning");
-		FormattedTextFormat textFormat=switch(actx.optParamString("text_format")){
-			case "markdown" -> FormattedTextFormat.MARKDOWN;
-			case "html" -> FormattedTextFormat.HTML;
-			case "plain" -> FormattedTextFormat.PLAIN;
-			case null -> actx.self.prefs.textFormat;
-			default -> throw actx.paramError("text_format must be one of markdown, html, plain");
-		};
+		FormattedTextFormat textFormat=getTextFormat(actx);
 
 		InputAttachments attachments=parseAttachments(ctx, actx, true);
 		if(StringUtils.isEmpty(message) && attachments.ids.isEmpty())
@@ -661,6 +662,38 @@ public class ApiUtils{
 			attachmentAltTexts=Map.of();
 		}
 		return new InputAttachments(attachmentIDs, attachmentAltTexts, poll);
+	}
+
+	public static String getUploadURL(ApiCallContext actx, String path, Map<String, Object> extraParams){
+		String data=new JsonObjectBuilder()
+				.add("id", actx.self.id)
+				.add("ct", System.currentTimeMillis()/1000L)
+				.add("s", ApiUtils.lastUploadUrlID.incrementAndGet())
+				.addAll(extraParams)
+				.build()
+				.toString();
+		return UriBuilder.local()
+				.path("api", path)
+				.queryParam("d", Base64.getUrlEncoder().withoutPadding().encodeToString(CryptoUtils.aesGcmEncrypt(data.getBytes(StandardCharsets.UTF_8), ApiUtils.UPLOAD_KEY)))
+				.build()
+				.toString();
+	}
+
+	public static void removeOldUploadUrlIDs(){
+		synchronized(uploadUrlIDs){
+			long now=System.currentTimeMillis();
+			uploadUrlIDs.values().removeIf(v->now-v>60_000);
+		}
+	}
+
+	public static FormattedTextFormat getTextFormat(ApiCallContext actx){
+		return switch(actx.optParamString("text_format")){
+			case "markdown" -> FormattedTextFormat.MARKDOWN;
+			case "html" -> FormattedTextFormat.HTML;
+			case "plain" -> FormattedTextFormat.PLAIN;
+			case null -> actx.self.prefs.textFormat;
+			default -> throw actx.paramError("text_format must be one of markdown, html, plain");
+		};
 	}
 
 	public record InputAttachments(List<String> ids, Map<String, String> altTexts, Poll poll){}

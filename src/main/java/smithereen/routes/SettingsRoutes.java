@@ -226,7 +226,7 @@ public class SettingsRoutes{
 		LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false, "file");
 		img.rotation=rotation;
 		try{
-			ctx.getPhotosController().updateAvatar(self, group, img, cropRects);
+			ctx.getPhotosController().updateAvatar(self, group, img, cropRects, null);
 		}catch(UserErrorException x){
 			LOG.error("Exception while processing a profile picture upload", x);
 			if(isAjax(req)){

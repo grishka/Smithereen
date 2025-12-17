@@ -54,7 +54,6 @@ import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.media.MediaFileUploadTokens;
-import smithereen.scripting.ScriptValue;
 import smithereen.scripting.ScriptValueGsonTypeAdapterFactory;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.templates.RenderedTemplateResponse;
@@ -473,6 +472,21 @@ public class ApiRoutes{
 	}
 
 	public static Object uploadAttachmentPhoto(Request req, Response resp){
+		return uploadPhoto(req, resp, "photos.getAttachmentUploadServer", MediaFileUploadPurpose.ATTACHMENT);
+	}
+
+	public static Object uploadAlbumPhoto(Request req, Response resp){
+		return uploadPhoto(req, resp, "photos.getUploadServer", MediaFileUploadPurpose.ALBUM_PHOTO);
+	}
+
+	public static Object uploadAvatar(Request req, Response resp){
+		return uploadPhoto(req, resp, "photos.getOwnerPhotoUploadServer", MediaFileUploadPurpose.AVATAR);
+	}
+
+	private static Object uploadPhoto(Request req, Response resp, String method, MediaFileUploadPurpose purpose){
+		if(StringUtils.isNotEmpty(req.headers("origin"))){
+			addCorsHeaders(resp);
+		}
 		requireQueryParams(req, "d");
 		resp.type("application/json");
 		JsonObject data;
@@ -481,22 +495,29 @@ public class ApiRoutes{
 			data=JsonParser.parseString(new String(CryptoUtils.aesGcmDecrypt(encrypted, ApiUtils.UPLOAD_KEY), StandardCharsets.UTF_8)).getAsJsonObject();
 		}catch(IllegalArgumentException | JsonParseException x){
 			resp.status(403);
-			return new JsonObjectBuilder().add("error", "Invalid upload URL. Call photos.getAttachmentUploadServer again to get a new one.").build();
+			return new JsonObjectBuilder().add("error", "Invalid upload URL. Call "+method+" again to get a new one.").build();
+		}
+		int seq=data.get("s").getAsInt();
+		synchronized(ApiUtils.uploadUrlIDs){
+			if(ApiUtils.uploadUrlIDs.containsKey(seq))
+				return new JsonObjectBuilder().add("error", "This upload URL has already been used. Call "+method+" again to get a new one.").build();
+			ApiUtils.uploadUrlIDs.put(seq, System.currentTimeMillis());
 		}
 		int accountID=data.get("id").getAsInt();
 		long created=data.get("ct").getAsLong();
 		long now=System.currentTimeMillis()/1000L;
 		if(now-created>60){
 			resp.status(403);
-			return new JsonObjectBuilder().add("error", "This upload URL has expired. Call photos.getAttachmentUploadServer again to get a new one.").build();
+			return new JsonObjectBuilder().add("error", "This upload URL has expired. Call "+method+" again to get a new one.").build();
 		}
 		ApplicationContext ctx=context(req);
 		Account self=ctx.getUsersController().getAccountOrThrow(accountID);
+		int ownerID=data.has("oid") ? data.get("oid").getAsInt() : self.user.id;
 		try{
 			LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false, "photo");
 			return new JsonObjectBuilder()
 					.add("id", XTEA.encodeObjectID(img.fileID, ObfuscatedObjectIDType.MEDIA_FILE))
-					.add("hash", MediaFileUploadTokens.getToken(img.fileRecord.id(), MediaFileUploadPurpose.ATTACHMENT, self.user.id))
+					.add("hash", MediaFileUploadTokens.getToken(img.fileRecord.id(), purpose, ownerID))
 					.build();
 		}catch(HaltException x){
 			resp.status(x.statusCode());

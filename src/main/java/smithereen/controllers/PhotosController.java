@@ -43,6 +43,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
@@ -539,7 +540,9 @@ public class PhotosController{
 	private long createPhotoInternal(User self, Actor owner, @NotNull PhotoAlbum album, long fileID, String descriptionSource, FormattedTextFormat descriptionFormat, PhotoMetadata metadata){
 		String parsedDescription=descriptionSource==null ? "" : TextProcessor.preprocessPostText(descriptionSource, null, descriptionFormat);
 		try{
-			long id;
+			long id=PhotoStorage.getPhotoIdByFileId(fileID, owner.getOwnerID());
+			if(id!=-1)
+				return id;
 			boolean needUpdateCover=!album.flags.contains(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
 			synchronized(photoCreationLock){
 				if(PhotoStorage.getAlbumSize(album.id)>=MAX_PHOTOS_PER_ALBUM)
@@ -1217,7 +1220,7 @@ public class PhotosController{
 		}
 	}
 
-	public void updateAvatar(Account self, @Nullable Group group, LocalImage img, AvatarCropRects crop){
+	public long updateAvatar(Account self, @Nullable Group group, LocalImage img, AvatarCropRects crop, ClientApp app){
 		if(group!=null)
 			context.getGroupsController().enforceUserAdminLevel(group, self.user, Group.AdminLevel.ADMIN);
 
@@ -1258,7 +1261,7 @@ public class PhotosController{
 		setPhotoToAvatar(owner, photo);
 
 		if(group==null){
-			Post post=context.getWallController().createWallPost(self.user, self.user, null, "", self.prefs.textFormat, null, List.of("photo:"+photo.getIdString()), null, null, Map.of(), Post.Action.AVATAR_UPDATE, null, null);
+			Post post=context.getWallController().createWallPost(self.user, self.user, null, "", self.prefs.textFormat, null, List.of("photo:"+photo.getIdString()), null, null, Map.of(), Post.Action.AVATAR_UPDATE, app, null);
 			photo.metadata.correspondingPostID=post.id;
 			try{
 				PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);
@@ -1266,6 +1269,7 @@ public class PhotosController{
 				throw new InternalServerErrorException(x);
 			}
 		}
+		return id;
 	}
 
 	public void setPhotoToAvatar(Actor owner, Photo photo){

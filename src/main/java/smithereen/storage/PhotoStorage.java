@@ -832,4 +832,12 @@ public class PhotoStorage{
 					return URI.create(apID);
 				}));
 	}
+
+	public static long getPhotoIdByFileId(long fileID, int ownerID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.columns("id")
+				.where("local_file_id=? AND owner_id=?", fileID, ownerID)
+				.executeAndGetLong();
+	}
 }
