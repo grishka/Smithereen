@@ -14,6 +14,7 @@ import smithereen.api.methods.LikesMethods;
 import smithereen.api.methods.NewsfeedMethods;
 import smithereen.api.methods.PhotosMethods;
 import smithereen.api.methods.ServerMethods;
+import smithereen.api.methods.StatusMethods;
 import smithereen.api.methods.UsersMethods;
 import smithereen.api.methods.UtilsMethods;
 import smithereen.api.methods.WallMethods;
@@ -116,6 +117,9 @@ public class ApiDispatcher{
 		registerMethod("newsfeed.getComments", NewsfeedMethods::getComments, ClientAppPermission.NEWSFEED);
 
 		registerMethod("execute", ExecuteMethods::execute, true);
+
+		registerMethod("status.get", StatusMethods::get, false);
+		registerMethod("status.set", StatusMethods::set, true);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){
