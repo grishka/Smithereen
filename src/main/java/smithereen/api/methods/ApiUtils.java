@@ -32,6 +32,7 @@ import smithereen.api.model.ApiUser;
 import smithereen.api.model.ApiWallPost;
 import smithereen.controllers.FriendsController;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -551,6 +552,8 @@ public class ApiUtils{
 	}
 
 	public static Object editComment(ApplicationContext ctx, ApiCallContext actx, Comment comment){
+		if(!actx.permissions.canEditPost(comment))
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "no access to edit this comment");
 		return createOrUpdateComment(ctx, actx, null, null, comment);
 	}
 
@@ -580,7 +583,7 @@ public class ApiUtils{
 		if(comment.parentObjectID.type()!=expectedType)
 			throw new ObjectNotFoundException();
 		if(!actx.permissions.canEditPost(comment))
-			throw actx.error(ApiErrorType.ACCESS_DENIED, "no access to edit this post");
+			throw actx.error(ApiErrorType.ACCESS_DENIED, "no access to edit this comment");
 		PostSource source=ctx.getCommentsController().getCommentSource(comment);
 		List<Map<String, Object>> attachments=new ArrayList<>();
 		for(Attachment att:comment.getProcessedAttachments()){

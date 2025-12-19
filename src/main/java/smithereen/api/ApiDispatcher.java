@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.api.methods.BoardMethods;
 import smithereen.api.methods.ExecuteMethods;
 import smithereen.api.methods.FriendsMethods;
 import smithereen.api.methods.GroupsMethods;
@@ -120,6 +121,21 @@ public class ApiDispatcher{
 
 		registerMethod("status.get", StatusMethods::get, false);
 		registerMethod("status.set", StatusMethods::set, true);
+
+		registerMethod("board.getTopics", BoardMethods::getTopics, false);
+		registerMethod("board.getTopicsById", BoardMethods::getTopicsById, false);
+		registerMethod("board.getComments", BoardMethods::getComments, false);
+		registerMethod("board.createComment", BoardMethods::createComment, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.getCommentEditSource", BoardMethods::getCommentEditSource, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.editComment", BoardMethods::editComment, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.deleteComment", BoardMethods::deleteComment, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.createTopic", BoardMethods::createTopic, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.editTopic", BoardMethods::editTopic, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.deleteTopic", BoardMethods::deleteTopic, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.openTopic", BoardMethods::openTopic, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.closeTopic", BoardMethods::closeTopic, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.pinTopic", BoardMethods::pinTopic, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.unpinTopic", BoardMethods::unpinTopic, ClientAppPermission.GROUPS_WRITE);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

@@ -17,6 +17,8 @@ public class ApiBoardTopic{
 	public int comments;
 	public String commentPreview;
 
+	public transient long rawID;
+
 	public ApiBoardTopic(BoardTopic topic){
 		id=topic.getIdString();
 		groupId=topic.groupID;
@@ -30,7 +32,6 @@ public class ApiBoardTopic{
 		isClosed=topic.isClosed;
 		isPinned=topic.isPinned;
 		comments=topic.numComments;
-
-		// TODO comment preview
+		rawID=topic.id;
 	}
 }

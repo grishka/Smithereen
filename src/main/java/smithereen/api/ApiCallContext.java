@@ -235,4 +235,22 @@ public class ApiCallContext{
 		if(!hasPermission(permission))
 			throw error(ApiErrorType.NO_PERMISSION, "this requires the "+permission.getScopeValue()+" permission");
 	}
+
+	public <E extends Enum<E>> E optParamEnum(String key, Map<String, E> mapping, E defValue){
+		String value=params.get(key);
+		if(StringUtils.isEmpty(value))
+			return defValue;
+		E res=mapping.get(value);
+		return res==null ? defValue : res;
+	}
+
+	public <E extends Enum<E>> E requireParamEnum(String key, Map<String, E> mapping){
+		String value=params.get(key);
+		if(StringUtils.isEmpty(value))
+			throw paramError(key+" is undefined");
+		E res=mapping.get(value);
+		if(res==null)
+			throw paramError(key+" must be one of "+String.join(", ", mapping.keySet()));
+		return res;
+	}
 }

@@ -66,7 +66,7 @@ public class CommentsController{
 	private static final Logger LOG=LoggerFactory.getLogger(CommentsController.class);
 
 	private final ApplicationContext context;
-	private final HashMap<String, CommentGuidInfo> guids=new HashMap<>();
+	final HashMap<String, CommentGuidInfo> guids=new HashMap<>();
 
 	public CommentsController(ApplicationContext context){
 		this.context=context;
@@ -585,5 +585,5 @@ public class CommentsController{
 		}
 	}
 
-	private record CommentGuidInfo(long commentID, Instant time){}
+	record CommentGuidInfo(long commentID, Instant time){}
 }

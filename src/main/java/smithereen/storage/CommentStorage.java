@@ -669,6 +669,20 @@ public class CommentStorage{
 				}));
 	}
 
+	public static Map<Long, Comment> getFirstOrLastBoardTopicComments(Collection<Long> topicIDs, boolean first, boolean needAttachments) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String order=first ? "ASC" : "DESC";
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "WITH tmp AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY parent_object_id ORDER BY created_at "+order+") AS _rownum" +
+					" FROM comments WHERE parent_object_id IN ("+topicIDs.stream().map(Object::toString).collect(Collectors.joining(","))+") AND parent_object_type=?)" +
+					" SELECT * FROM tmp WHERE _rownum=1", CommentableObjectType.BOARD_TOPIC);
+			ResultSet res=stmt.executeQuery();
+			Map<Long, Comment> comments=DatabaseUtils.resultSetToObjectStream(res, Comment::fromResultSet, null).collect(Collectors.toMap(c->c.parentObjectID.id(), Function.identity()));
+			if(needAttachments)
+				postprocessComments(comments.values());
+			return comments;
+		}
+	}
+
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{
 		Set<Long> needFileIDs=posts.stream()
 				.filter(p->p.attachments!=null && !p.attachments.isEmpty())
