@@ -1114,7 +1114,7 @@ public class SmithereenApplication{
 
 					SessionInfo info=req.session().attribute("info");
 					if(info.account!=null){
-						context(req).getUsersController().setOnline(info.account.user, isMobile(req) ? UserPresence.PresenceType.MOBILE_WEB : UserPresence.PresenceType.WEB, req.cookie("psid").hashCode());
+						context(req).getUsersController().setOnline(info.account.user, isMobile(req) ? UserPresence.PresenceType.MOBILE_WEB : UserPresence.PresenceType.WEB, req.cookie("psid").hashCode(), 0);
 					}
 
 					if(req.requestMethod().equalsIgnoreCase("get") && req.attribute("noHistory")==null){

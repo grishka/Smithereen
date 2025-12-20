@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.api.methods.AccountMethods;
 import smithereen.api.methods.BoardMethods;
 import smithereen.api.methods.ExecuteMethods;
 import smithereen.api.methods.FriendsMethods;
@@ -136,6 +137,11 @@ public class ApiDispatcher{
 		registerMethod("board.closeTopic", BoardMethods::closeTopic, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("board.pinTopic", BoardMethods::pinTopic, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("board.unpinTopic", BoardMethods::unpinTopic, ClientAppPermission.GROUPS_WRITE);
+
+		registerMethod("account.getCounters", AccountMethods::getCounters, true);
+		registerMethod("account.setOnline", AccountMethods::setOnline, true);
+		registerMethod("account.setOffline", AccountMethods::setOffline, true);
+		registerMethod("account.getAppPermissions", AccountMethods::getAppPermissions, true);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

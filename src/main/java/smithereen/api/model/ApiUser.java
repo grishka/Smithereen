@@ -61,6 +61,7 @@ public class ApiUser{
 
 	public Boolean online;
 	public Boolean onlineMobile;
+	public Long onlineAppId;
 	public LastSeen lastSeen;
 
 	public Boolean blocked, blockedByMe;
@@ -259,15 +260,16 @@ public class ApiUser{
 				online=true;
 				if(presence.isMobile())
 					onlineMobile=true;
+				if(presence.appID()!=0)
+					onlineAppId=presence.appID();
 			}
 		}
 		if(fields.contains(Field.LAST_SEEN)){
 			UserPresence presence=onlines.get(id);
 			if(presence!=null && !presence.isOnline()){
-				lastSeen=new LastSeen(presence.lastUpdated().getEpochSecond(), presence.isMobile() ? "mobile" : "desktop");
+				lastSeen=new LastSeen(presence.lastUpdated().getEpochSecond(), presence.isMobile() ? "mobile" : "desktop", presence.appID()==0 ? null : presence.appID());
 			}
 		}
-		// TODO API online status, return app ID
 
 		if(fields.contains(Field.BLOCKED))
 			blocked=blockingIDs.contains(id);
@@ -422,7 +424,7 @@ public class ApiUser{
 	public record RelationshipPartner(int id, String firstName, String lastName){}
 	public record CustomProfileField(String name, String value){}
 	public record PersonalViews(String political, String religion, String inspiredBy, String peopleMain, String lifeMain, String smoking, String alcohol){}
-	public record LastSeen(long time, String platform){}
+	public record LastSeen(long time, String platform, Long appId){}
 	public record Counters(int albums, int photos, long friends, long groups, int onlineFriends, int mutualFriends, int userPhotos, long followers, long subscriptions){}
 
 	public class Connections{

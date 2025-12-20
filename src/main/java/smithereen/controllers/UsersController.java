@@ -709,9 +709,9 @@ public class UsersController{
 		}
 	}
 
-	public void setOnline(User user, UserPresence.PresenceType type, long sessionID){
+	public void setOnline(User user, UserPresence.PresenceType type, long sessionID, long appID){
 		user.ensureLocal();
-		UserPresence presence=new UserPresence(true, Instant.now(), type);
+		UserPresence presence=new UserPresence(true, Instant.now(), type, appID);
 		LOG.trace("Setting user {} presence to online, type {}", user.id, type);
 		String mutexName=String.valueOf(user.id);
 
@@ -740,7 +740,7 @@ public class UsersController{
 		if(prevPresence!=null && prevPresence.sessionID==sessionID){
 			onlineLocalUsers.remove(prevPresence);
 			onlineLocalUsersByID.remove(userID);
-			pendingUserPresenceUpdates.put(userID, new UserPresence(false, prevPresence.presence.lastUpdated(), prevPresence.presence.type()));
+			pendingUserPresenceUpdates.put(userID, new UserPresence(false, prevPresence.presence.lastUpdated(), prevPresence.presence.type(), prevPresence.presence.appID()));
 		}
 		onlineMutexes.release(mutexName);
 	}
