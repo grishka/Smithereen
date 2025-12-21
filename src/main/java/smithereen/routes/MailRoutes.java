@@ -14,19 +14,21 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.controllers.FriendsController;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.MailMessage;
+import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.WebDeltaResponse;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
+import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
 import spark.utils.StringUtils;
@@ -64,7 +66,7 @@ public class MailRoutes{
 	}
 
 	public static Object viewMessage(Request req, Response resp, Account self, ApplicationContext ctx){
-		long id=req.attribute("id");
+		long id=XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.MAIL_MESSAGE);
 		MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 		if(msg.isUnread() && msg.senderID!=self.user.id){
 			ctx.getMailController().markMessageRead(self.user, msg);
@@ -134,7 +136,7 @@ public class MailRoutes{
 		Set<Integer> toUserIDs;
 		String subject=req.queryParams("subject");
 		if(StringUtils.isNotEmpty(_inReplyTo)){
-			long replyToID=decodeLong(_inReplyTo);
+			long replyToID=XTEA.decodeObjectID(_inReplyTo, ObfuscatedObjectIDType.MAIL_MESSAGE);
 			inReplyTo=ctx.getMailController().getMessage(self.user, replyToID, false);
 			toUserIDs=new HashSet<>();
 			if(inReplyTo.senderID==self.user.id){
@@ -204,7 +206,7 @@ public class MailRoutes{
 			String replyToID=req.queryParams("replyTo");
 			if(StringUtils.isNotEmpty(replyToID)){
 				try{
-					MailMessage replyTo=ctx.getMailController().getMessage(self.user, decodeLong(replyToID), false);
+					MailMessage replyTo=ctx.getMailController().getMessage(self.user, XTEA.decodeObjectID(replyToID, ObfuscatedObjectIDType.MAIL_MESSAGE), false);
 					model.with("replyTo", replyTo);
 					HashSet<Integer> needUsers=new HashSet<>(replyTo.to);
 					needUsers.addAll(replyTo.cc);
@@ -233,36 +235,36 @@ public class MailRoutes{
 	public static Object delete(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(!isAjax(req))
 			return "";
-		long id=req.attribute("id");
+		long id=XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.MAIL_MESSAGE);
 		MailMessage msg=ctx.getMailController().getMessage(self.user, id, true);
 		ctx.getMailController().deleteMessage(self.user, msg);
 		String csrf=sessionInfo(req).csrfToken;
 		Lang l=lang(req);
 		boolean fromView=req.queryParams("fromView")!=null;
 		String rowClasses=fromView ? "" : "mailMessageRow deleted";
-		String restoreHtml="<div class=\""+rowClasses+"\" id=\"msgDeletedRow"+msg.encodedID+"\"><div class=\"restore\">";
-		restoreHtml+="<div>"+l.get("mail_message_deleted")+"</div><div id=\"msgRestore"+msg.encodedID+"\">";
-		String restoreHref="/my/mail/messages/"+msg.encodedID+"/restore?csrf="+csrf;
-		String deleteForEveryoneHref="/my/mail/messages/"+msg.encodedID+"/deleteForEveryone?csrf="+csrf;
+		String restoreHtml="<div class=\""+rowClasses+"\" id=\"msgDeletedRow"+msg.getIdString()+"\"><div class=\"restore\">";
+		restoreHtml+="<div>"+l.get("mail_message_deleted")+"</div><div id=\"msgRestore"+msg.getIdString()+"\">";
+		String restoreHref="/my/mail/messages/"+msg.getIdString()+"/restore?csrf="+csrf;
+		String deleteForEveryoneHref="/my/mail/messages/"+msg.getIdString()+"/deleteForEveryone?csrf="+csrf;
 		String origElementID;
 		if(fromView){
 			restoreHref+="&fromView";
 			origElementID="messageViewInner";
 		}else{
-			origElementID="msgRow"+msg.encodedID;
+			origElementID="msgRow"+msg.getIdString();
 		}
 		if(msg.isUnread()){
 			restoreHtml+=TextProcessor.substituteLinks(l.get(msg.to.size()>1 ? "restore_or_delete_for_peer_multi" : "restore_or_delete_for_peer",
 					Map.of("name", ctx.getUsersController().getUserOrThrow(msg.getFirstRecipientID()).getFirstAndGender())),
 					Map.of(
-							"restore", Map.of("href", restoreHref, "data-ajax", "", "data-ajax-hide", "msgRestore"+msg.encodedID, "data-ajax-show", "msgRestoreLoader"+msg.encodedID),
-							"deleteForPeer", Map.of("href", deleteForEveryoneHref, "data-ajax", "", "data-ajax-hide", "msgRestore"+msg.encodedID, "data-ajax-show", "msgRestoreLoader"+msg.encodedID)
+							"restore", Map.of("href", restoreHref, "data-ajax", "", "data-ajax-hide", "msgRestore"+msg.getIdString(), "data-ajax-show", "msgRestoreLoader"+msg.getIdString()),
+							"deleteForPeer", Map.of("href", deleteForEveryoneHref, "data-ajax", "", "data-ajax-hide", "msgRestore"+msg.getIdString(), "data-ajax-show", "msgRestoreLoader"+msg.getIdString())
 					)
 			);
 		}else{
-			restoreHtml+="<a href=\""+restoreHref+"\" data-ajax data-ajax-hide=\"msgRestore"+msg.encodedID+"\" data-ajax-show=\"msgRestoreLoader"+msg.encodedID+"\">"+l.get("restore_message")+"</a>";
+			restoreHtml+="<a href=\""+restoreHref+"\" data-ajax data-ajax-hide=\"msgRestore"+msg.getIdString()+"\" data-ajax-show=\"msgRestoreLoader"+msg.getIdString()+"\">"+l.get("restore_message")+"</a>";
 		}
-		restoreHtml+="</div><div class=\"inlineLoader\" style=\"display: none\" id=\"msgRestoreLoader"+msg.encodedID+"\"></div></div></div>";
+		restoreHtml+="</div><div class=\"inlineLoader\" style=\"display: none\" id=\"msgRestoreLoader"+msg.getIdString()+"\"></div></div></div>";
 		return new WebDeltaResponse(resp)
 				.hide(origElementID)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_END, origElementID, restoreHtml);
@@ -271,16 +273,16 @@ public class MailRoutes{
 	public static Object deleteForEveryone(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(!isAjax(req))
 			return "";
-		long id=req.attribute("id");
+		long id=XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.MAIL_MESSAGE);
 		MailMessage msg=ctx.getMailController().getMessage(self.user, id, true);
 		ctx.getMailController().actuallyDeleteMessage(self.user, msg, true);
-		return new WebDeltaResponse(resp).remove("msgRestore"+msg.encodedID);
+		return new WebDeltaResponse(resp).remove("msgRestore"+msg.getIdString());
 	}
 
 	public static Object restore(Request req, Response resp, Account self, ApplicationContext ctx){
 		if(!isAjax(req))
 			return "";
-		long id=req.attribute("id");
+		long id=XTEA.decodeObjectID(req.params(":id"), ObfuscatedObjectIDType.MAIL_MESSAGE);
 		MailMessage msg=ctx.getMailController().getMessage(self.user, id, true);
 		ctx.getMailController().restoreMessage(self.user, msg);
 		boolean fromView=req.queryParams("fromView")!=null;
@@ -288,10 +290,10 @@ public class MailRoutes{
 		if(fromView){
 			origElementID="messageViewInner";
 		}else{
-			origElementID="msgRow"+msg.encodedID;
+			origElementID="msgRow"+msg.getIdString();
 		}
 		return new WebDeltaResponse(resp)
-				.remove("msgDeletedRow"+msg.encodedID)
+				.remove("msgDeletedRow"+msg.getIdString())
 				.show(origElementID);
 	}
 

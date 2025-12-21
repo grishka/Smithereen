@@ -49,7 +49,6 @@ import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
-import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -101,7 +100,6 @@ import smithereen.text.TextProcessor;
 import smithereen.util.InetAddressRange;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
-import smithereen.util.XTEA;
 import spark.Request;
 import spark.utils.StringUtils;
 
@@ -398,7 +396,7 @@ public class ModerationController{
 						context.getWallController().deletePostAsServerModerator(session.account.user, post);
 					}
 					case MailMessage msg -> {
-						if(context.getMailController().getMessagesAsModerator(Set.of(XTEA.obfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE))).isEmpty()){
+						if(context.getMailController().getMessagesAsModerator(Set.of(msg.id)).isEmpty()){
 							LOG.debug("Message {} already deleted", msg.id);
 							continue;
 						}

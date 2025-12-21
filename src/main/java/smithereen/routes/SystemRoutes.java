@@ -64,22 +64,22 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
 import smithereen.model.Post;
 import smithereen.model.ServerRule;
-import smithereen.model.admin.ViolationReport;
-import smithereen.model.apps.ClientApp;
-import smithereen.model.board.BoardTopic;
-import smithereen.model.groups.GroupLink;
-import smithereen.model.media.MediaFileUploadPurpose;
-import smithereen.model.media.PhotoViewerInlineData;
-import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.ViolationReport;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.attachments.GraffitiAttachment;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
+import smithereen.model.groups.GroupLink;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.util.QuickSearchResults;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
@@ -253,7 +253,7 @@ public class SystemRoutes{
 						requireQueryParams(req, "msg_id");
 						if(sess==null || sess.account==null)
 							yield null;
-						long msgID=decodeLong(req.queryParams("msg_id"));
+						long msgID=XTEA.decodeObjectID(req.queryParams("msg_id"), ObfuscatedObjectIDType.MAIL_MESSAGE);
 						yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
 					}
 					case "comment_photo" -> {
@@ -584,7 +584,7 @@ public class SystemRoutes{
 				otherServerDomain=group instanceof ForeignGroup fg ? fg.domain : null;
 			}
 			case "message" -> {
-				long id=decodeLong(rawID);
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.MAIL_MESSAGE);
 				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 				User user=ctx.getUsersController().getUserOrThrow(msg.senderID);
 				actorForAvatar=user;
@@ -689,7 +689,7 @@ public class SystemRoutes{
 				content=null;
 			}
 			case "message" -> {
-				long id=decodeLong(rawID);
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.MAIL_MESSAGE);
 				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 				target=ctx.getUsersController().getUserOrThrow(msg.senderID);
 				content=List.of(msg);

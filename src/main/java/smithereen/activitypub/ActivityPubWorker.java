@@ -3,7 +3,6 @@ package smithereen.activitypub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -73,9 +72,9 @@ import smithereen.activitypub.tasks.FetchAllWallRepliesTask;
 import smithereen.activitypub.tasks.FetchBoardTopicCommentsTask;
 import smithereen.activitypub.tasks.FetchCommentReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchPhotoAlbumPhotosTask;
+import smithereen.activitypub.tasks.FetchRepostChainTask;
 import smithereen.activitypub.tasks.FetchUserPinnedPostsTask;
 import smithereen.activitypub.tasks.FetchWallReplyThreadRunnable;
-import smithereen.activitypub.tasks.FetchRepostChainTask;
 import smithereen.activitypub.tasks.ForwardOneActivityRunnable;
 import smithereen.activitypub.tasks.RetryActivityRunnable;
 import smithereen.activitypub.tasks.SendActivitySequenceRunnable;
@@ -109,7 +108,6 @@ import smithereen.model.friends.FollowRelationship;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoTag;
-import smithereen.storage.BoardStorage;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
@@ -864,7 +862,7 @@ public class ActivityPubWorker{
 		read.to=to.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
 		if(msg.cc!=null && !msg.cc.isEmpty())
 			read.cc=msg.cc.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
-		read.activityPubID=UriBuilder.local().path("activitypub", "objects", "messages", msg.encodedID).fragment("read"+self.id).build();
+		read.activityPubID=UriBuilder.local().path("activitypub", "objects", "messages", msg.getIdString()).fragment("read"+self.id).build();
 
 		Set<URI> inboxes=users.values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).collect(Collectors.toSet());
 		submitActivity(read, self, inboxes);

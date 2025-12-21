@@ -7,7 +7,6 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -46,16 +45,13 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
-import smithereen.model.admin.ViolationReport;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.ViolationReport;
 import smithereen.model.admin.ViolationReportAction;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
-import smithereen.model.feed.FriendsNewsfeedTypeFilter;
-import smithereen.model.feed.GroupedNewsfeedEntry;
-import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileUploadPurpose;
@@ -387,7 +383,7 @@ public class PhotosRoutes{
 					.queryParam("id", saveID=switch(parent){
 						case Post post -> String.valueOf(post.id);
 						case Comment comment -> comment.getIDString();
-						case MailMessage msg -> msg.encodedID;
+						case MailMessage msg -> msg.getIdString();
 					})
 					.queryParam("index", String.valueOf(index))
 					.queryParam("csrf", sessionInfo(req).csrfToken)

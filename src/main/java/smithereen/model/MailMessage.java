@@ -46,12 +46,11 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 	public URI activityPubID;
 	public ReplyInfo replyInfo;
 
-	public transient String encodedID;
 	public transient URI inReplyTo;
 
 	public static MailMessage fromResultSet(ResultSet res) throws SQLException{
 		MailMessage msg=new MailMessage();
-		msg.id=XTEA.obfuscateObjectID(res.getLong("id"), ObfuscatedObjectIDType.MAIL_MESSAGE);
+		msg.id=res.getLong("id");
 		msg.senderID=res.getInt("sender_id");
 		msg.ownerID=res.getInt("owner_id");
 		msg.to=Utils.deserializeIntSet(res.getBytes("to"));
@@ -71,7 +70,7 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 		msg.readReceipts=Utils.deserializeIntSet(res.getBytes("read_receipts"));
 		HashSet<Long> relatedIDs=new HashSet<>();
 		Utils.deserializeLongCollection(res.getBytes("related_message_ids"), relatedIDs);
-		msg.relatedMessageIDs=relatedIDs.stream().map(id->XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet());
+		msg.relatedMessageIDs=relatedIDs;
 		String apID=res.getString("ap_id");
 		if(apID!=null)
 			msg.activityPubID=URI.create(apID);
@@ -79,7 +78,6 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 		if(StringUtils.isNotEmpty(replyInfo))
 			msg.replyInfo=Utils.gson.fromJson(replyInfo, ReplyInfo.class);
 
-		msg.encodedID=Utils.encodeLong(msg.id);
 		return msg;
 	}
 
@@ -107,7 +105,7 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 
 	@Override
 	public String getPhotoListID(){
-		return "messages/"+encodedID;
+		return "messages/"+getIdString();
 	}
 
 	public int getFirstRecipientID(){
@@ -118,7 +116,7 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 	public URI getActivityPubID(){
 		if(activityPubID!=null)
 			return activityPubID;
-		return Config.localURI("/activitypub/objects/messages/"+encodedID);
+		return Config.localURI("/activitypub/objects/messages/"+getIdString());
 	}
 
 	public int getTotalRecipientCount(){
@@ -134,7 +132,7 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 			return null;
 		JsonObjectBuilder jb=new JsonObjectBuilder()
 				.add("type", "message")
-				.add("id", XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE))
+				.add("id", id)
 				.add("sender", senderID)
 				.add("to", to.stream().collect(JsonArrayBuilder.COLLECTOR))
 				.add("created_at", createdAt.getEpochSecond())
@@ -162,12 +160,11 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 				attachments.add(ActivityPubObject.parse(jatt.getAsJsonObject(), ParserContext.LOCAL));
 			}
 		}
-		encodedID=String.valueOf(id);
 	}
 
 	@Override
 	public ReportableContentObjectID getReportableObjectID(){
-		return new ReportableContentObjectID(ReportableContentObjectType.MESSAGE, XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE));
+		return new ReportableContentObjectID(ReportableContentObjectType.MESSAGE, id);
 	}
 
 	@Override
@@ -183,6 +180,10 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 	@Override
 	public long getObjectID(){
 		return id;
+	}
+
+	public String getIdString(){
+		return XTEA.encodeObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE);
 	}
 
 	public enum ParentObjectType{

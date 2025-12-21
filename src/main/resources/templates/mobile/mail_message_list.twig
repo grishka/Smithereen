@@ -3,9 +3,9 @@
 {% if recentlySentMessage is not null %}
 <div class="settingsMessage">
 	{%- if (recentlySentMessage.to | length)>1 %}
-	{{- L('mail_message_sent_multi', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender, 'moreCount': (recentlySentMessage.to | length)-1}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.encodedID}"} }) }}
+	{{- L('mail_message_sent_multi', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender, 'moreCount': (recentlySentMessage.to | length)-1}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.idString}"} }) }}
 	{%- else %}
-	{{- L('mail_message_sent', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.encodedID}"} }) }}
+	{{- L('mail_message_sent', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.idString}"} }) }}
 	{%- endif %}
 </div>
 {% endif %}
@@ -13,7 +13,7 @@
 <a href="/my/mail/compose" class="fab iconPencil" title="{{ L('mail_compose') }}"></a>
 <div id="mailMessagesList">
 {% for msg in items %}
-<a href="/my/mail/messages/{{ msg.encodedID }}" class="mailMessageRow{{ msg.unread ? ' unread' : '' }}" id="msgRow{{ msg.encodedID }}">
+<a href="/my/mail/messages/{{ msg.idString }}" class="mailMessageRow{{ msg.unread ? ' unread' : '' }}" id="msgRow{{ msg.idString }}">
 	{%- if tab=="outbox" %}
 	{%- set user=users[msg.firstRecipientID] %}
 	{%- else %}
