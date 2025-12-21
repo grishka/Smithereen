@@ -2,7 +2,7 @@ package smithereen.api.model;
 
 // VKontakte-compatible error codes, see https://dev.vk.com/ru/reference/errors
 public enum ApiErrorType{
-	UNKNOWN_ERROR(1, "Other error"),
+	OTHER_ERROR(1, "Other error"),
 	//APP_DISABLED(2, "Application is disabled"),
 	UNKNOWN_METHOD(3, "Unknown method passed"),
 	//INVALID_SIGNATURE(4),

@@ -37,6 +37,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.PaginatedList;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.MessagesPrivacyGrant;
@@ -563,9 +564,9 @@ public class PrivacyController{
 		}
 	}
 
-	public List<User> getBlockedUsers(User self){
+	public PaginatedList<User> getBlockedUsers(User self, int offset, int count){
 		try{
-			return UserStorage.getBlockedUsers(self.id);
+			return UserStorage.getBlockedUsers(self.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -574,6 +575,27 @@ public class PrivacyController{
 	public List<String> getBlockedDomains(User self){
 		try{
 			return UserStorage.getBlockedDomains(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void blockDomain(User self, String domain){
+		try{
+			if(domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$")){
+				if(UserStorage.isDomainBlocked(self.id, domain))
+					throw new UserErrorException("err_domain_already_blocked");
+				UserStorage.blockDomain(self.id, domain);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void unblockDomain(User self, String domain){
+		try{
+			if(StringUtils.isNotEmpty(domain))
+				UserStorage.unblockDomain(self.id, domain);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

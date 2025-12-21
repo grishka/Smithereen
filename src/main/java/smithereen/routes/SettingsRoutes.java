@@ -346,7 +346,7 @@ public class SettingsRoutes{
 
 	public static Object blocking(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking", req).pageTitle(lang(req).get("settings_blocking")).mobileToolbarTitle(lang(req).get("settings"));
-		model.with("blockedUsers", ctx.getPrivacyController().getBlockedUsers(self.user));
+		model.with("blockedUsers", ctx.getPrivacyController().getBlockedUsers(self.user, 0, 1000).list);
 		model.with("blockedDomains", ctx.getPrivacyController().getBlockedDomains(self.user));
 		jsLangKey(req, "unblock", "yes", "no", "cancel");
 		return model;
@@ -357,13 +357,9 @@ public class SettingsRoutes{
 		return wrapForm(req, resp, "block_domain", "/settings/blockDomain", lang(req).get("block_a_domain"), "block", model);
 	}
 
-	public static Object blockDomain(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object blockDomain(Request req, Response resp, Account self, ApplicationContext ctx){
 		String domain=req.queryParams("domain");
-		if(domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$")){
-			if(UserStorage.isDomainBlocked(self.user.id, domain))
-				return wrapError(req, resp, "err_domain_already_blocked");
-			UserStorage.blockDomain(self.user.id, domain);
-		}
+		ctx.getPrivacyController().blockDomain(self.user, domain);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
@@ -377,10 +373,9 @@ public class SettingsRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", Map.of("domain", domain))).with("formAction", "/settings/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object unblockDomain(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object unblockDomain(Request req, Response resp, Account self, ApplicationContext ctx){
 		String domain=req.queryParams("domain");
-		if(StringUtils.isNotEmpty(domain))
-			UserStorage.unblockDomain(self.user.id, domain);
+		ctx.getPrivacyController().unblockDomain(self.user, domain);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));

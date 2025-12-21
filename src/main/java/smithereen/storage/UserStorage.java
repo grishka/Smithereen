@@ -1287,12 +1287,24 @@ public class UserStorage{
 				.executeNoResult();
 	}
 
-	public static List<User> getBlockedUsers(int selfID) throws SQLException{
-		return getByIdAsList(new SQLQueryBuilder()
-				.selectFrom("blocks_user_user")
-				.columns("user_id")
-				.where("owner_id=?", selfID)
-				.executeAndGetIntList());
+	public static PaginatedList<User> getBlockedUsers(int selfID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("blocks_user_user")
+					.count()
+					.where("owner_id=?", selfID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<User> users=getByIdAsList(new SQLQueryBuilder(conn)
+					.selectFrom("blocks_user_user")
+					.columns("user_id")
+					.where("owner_id=?", selfID)
+					.limit(count, offset)
+					.executeAndGetIntList());
+			return new PaginatedList<>(users, total, offset, count);
+		}
 	}
 
 	public static List<User> getBlockingUsers(int selfID) throws SQLException{

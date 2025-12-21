@@ -160,10 +160,7 @@ public class UserDataExportWorker{
 				}, filesToInclude, zos, null, "bookmarkedGroups", false);
 
 				// Blocked users
-				writeLinkCollections(offset->{
-					List<User> users=context.getPrivacyController().getBlockedUsers(user);
-					return new PaginatedList<>(users, users.size(), 0, users.size());
-				}, filesToInclude, zos, null, "blockedUsers", false);
+				writeLinkCollections(offset->context.getPrivacyController().getBlockedUsers(user, offset, 500), filesToInclude, zos, null, "blockedUsers", false);
 
 				// Blocked domains
 				writeJsonElement(context.getPrivacyController().getBlockedDomains(user).stream().collect(JsonArrayBuilder.COLLECTOR), zos, "blockedDomains");

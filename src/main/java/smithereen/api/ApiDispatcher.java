@@ -24,6 +24,7 @@ import smithereen.api.model.ApiErrorType;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserContentUnavailableException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.apps.ClientAppPermission;
 
@@ -142,6 +143,12 @@ public class ApiDispatcher{
 		registerMethod("account.setOnline", AccountMethods::setOnline, true);
 		registerMethod("account.setOffline", AccountMethods::setOffline, true);
 		registerMethod("account.getAppPermissions", AccountMethods::getAppPermissions, true);
+		registerMethod("account.getBannedUsers", AccountMethods::getBannedUsers, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.banUser", AccountMethods::banUser, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.unbanUser", AccountMethods::unbanUser, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.getBannedDomains", AccountMethods::getBannedDomains, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.banDomain", AccountMethods::banDomain, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.unbanDomain", AccountMethods::unbanDomain, ClientAppPermission.ACCOUNT_WRITE);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){
@@ -195,6 +202,9 @@ public class ApiDispatcher{
 			}catch(ObjectNotFoundException x){
 				String msg=x.getMessage();
 				throw actx.error(ApiErrorType.NOT_FOUND, msg==null ? null : Lang.get(Locale.US).get(msg));
+			}catch(UserErrorException x){
+				String msg=x.getMessage();
+				throw actx.error(ApiErrorType.OTHER_ERROR, msg==null ? null : Lang.get(Locale.US).get(msg));
 			}
 		}
 		throw actx.error(ApiErrorType.UNKNOWN_METHOD);
