@@ -240,7 +240,7 @@ public class PhotoStorage{
 				.executeAndGetInt();
 	}
 
-	public static long createLocalPhoto(int ownerID, int authorID, long albumID, long fileID, String description, String descriptionSrc, FormattedTextFormat descriptionFormat, PhotoMetadata metadata) throws SQLException{
+	public static long createLocalPhoto(int ownerID, int authorID, long albumID, long fileID, String description, @Nullable String descriptionSrc, @Nullable FormattedTextFormat descriptionFormat, @Nullable PhotoMetadata metadata) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int displayOrder=new SQLQueryBuilder(conn)
 					.selectFrom("photos")

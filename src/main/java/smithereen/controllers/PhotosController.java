@@ -519,7 +519,7 @@ public class PhotosController{
 		}
 	}
 
-	public long createPhoto(User self, @NotNull PhotoAlbum album, long fileID, String descriptionSource, FormattedTextFormat descriptionFormat){
+	public long createPhoto(User self, @NotNull PhotoAlbum album, long fileID, @Nullable String descriptionSource, @Nullable FormattedTextFormat descriptionFormat){
 		self.ensureLocal();
 		Actor owner;
 		if(album.ownerID>0){
@@ -538,7 +538,7 @@ public class PhotosController{
 		return createPhotoInternal(self, owner, album, fileID, descriptionSource, descriptionFormat, null);
 	}
 
-	private long createPhotoInternal(User self, Actor owner, @NotNull PhotoAlbum album, long fileID, String descriptionSource, FormattedTextFormat descriptionFormat, PhotoMetadata metadata){
+	private long createPhotoInternal(User self, Actor owner, @NotNull PhotoAlbum album, long fileID, @Nullable String descriptionSource, @Nullable FormattedTextFormat descriptionFormat, @Nullable PhotoMetadata metadata){
 		String parsedDescription=descriptionSource==null ? "" : TextProcessor.preprocessPostText(descriptionSource, null, descriptionFormat);
 		try{
 			long id=PhotoStorage.getPhotoIdByFileId(fileID, owner.getOwnerID());
