@@ -622,7 +622,7 @@ public class PhotosRoutes{
 			case "messages" -> {
 				if(self==null)
 					throw new UserActionNotAllowedException();
-				MailMessage msg=ctx.getMailController().getMessage(self, decodeLong(listParts[1]), false);
+				MailMessage msg=ctx.getMailController().getMessage(self, XTEA.decodeObjectID(listParts[1], ObfuscatedObjectIDType.MAIL_MESSAGE), false);
 				User author=ctx.getUsersController().getUserOrThrow(msg.senderID);
 
 				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, msg, author, msg.createdAt, selfAccount);
@@ -996,7 +996,7 @@ public class PhotosRoutes{
 			throw new BadRequestException();
 		AttachmentHostContentObject obj=switch(type){
 			case "post" -> ctx.getWallController().getPostOrThrow(safeParseInt(id));
-			case "message" -> ctx.getMailController().getMessage(self.user, decodeLong(id), false);
+			case "message" -> ctx.getMailController().getMessage(self.user, XTEA.decodeObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE), false);
 			case "comment" -> ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(id, ObfuscatedObjectIDType.COMMENT));
 			default -> throw new BadRequestException();
 		};
