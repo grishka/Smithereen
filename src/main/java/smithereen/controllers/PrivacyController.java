@@ -197,6 +197,9 @@ public class PrivacyController{
 	}
 
 	public boolean checkUserPrivacy(@Nullable User self, @NotNull User owner, @NotNull UserPrivacySettingKey key){
+		// Unconditionally deny any active actions to blocked users
+		if(!key.isForViewing() && isUserBlocked(self, owner))
+			return false;
 		boolean r=checkUserPrivacy(self, owner, owner.getPrivacySetting(key));
 		if(key==UserPrivacySettingKey.PRIVATE_MESSAGES && !r && self!=null){
 			try{
@@ -251,6 +254,8 @@ public class PrivacyController{
 	}
 
 	public void enforceUserPrivacy(@Nullable User self, @NotNull User owner, @NotNull PrivacySetting setting, boolean forViewing){
+		if(!forViewing && isUserBlocked(self, owner))
+			throw new UserActionNotAllowedException();
 		if(!checkUserPrivacy(self, owner, setting))
 			throw forViewing ? new UserContentUnavailableException() : new UserActionNotAllowedException();
 	}
@@ -399,6 +404,7 @@ public class PrivacyController{
 
 	public boolean isUserBlocked(User self, Actor target){
 		try{
+			// TODO cache
 			if(target instanceof User user){
 				if(self instanceof ForeignUser && UserStorage.isDomainBlocked(user.id, self.domain))
 					return true;
