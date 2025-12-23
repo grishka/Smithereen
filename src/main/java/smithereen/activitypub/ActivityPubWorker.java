@@ -1,5 +1,6 @@
 package smithereen.activitypub;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -818,7 +819,7 @@ public class ActivityPubWorker{
 		submitActivity(flag, ServiceActor.getInstance(), targetActor.inbox);
 	}
 
-	public void sendDirectMessage(User self, MailMessage msg){
+	public void sendDirectMessage(User self, @NotNull MailMessage msg){
 		HashSet<Integer> needUsers=new HashSet<>();
 		needUsers.addAll(msg.to);
 		needUsers.addAll(msg.cc);
@@ -835,13 +836,12 @@ public class ActivityPubWorker{
 
 	public void sendDeleteMessageActivity(User self, MailMessage msg){
 		HashSet<Integer> needUsers=new HashSet<>(msg.to);
-		if(msg.cc!=null)
-			needUsers.addAll(msg.cc);
+		needUsers.addAll(msg.cc);
 		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
 
 		Delete delete=new Delete().withActorAndObjectLinks(self, msg);
 		delete.to=msg.to.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
-		if(msg.cc!=null && !msg.cc.isEmpty())
+		if(!msg.cc.isEmpty())
 			delete.cc=msg.cc.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
 		delete.activityPubID=new UriBuilder(msg.getActivityPubID()).fragment("delete").build();
 
@@ -852,15 +852,14 @@ public class ActivityPubWorker{
 	public void sendReadMessageActivity(User self, MailMessage msg){
 		HashSet<Integer> needUsers=new HashSet<>(msg.to);
 		needUsers.add(msg.senderID);
-		if(msg.cc!=null)
-			needUsers.addAll(msg.cc);
+		needUsers.addAll(msg.cc);
 		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
 
 		Read read=new Read().withActorAndObjectLinks(self, msg);
 		HashSet<Integer> to=new HashSet<>(msg.to);
 		to.add(msg.senderID);
 		read.to=to.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
-		if(msg.cc!=null && !msg.cc.isEmpty())
+		if(!msg.cc.isEmpty())
 			read.cc=msg.cc.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
 		read.activityPubID=UriBuilder.local().path("activitypub", "objects", "messages", msg.getIdString()).fragment("read"+self.id).build();
 

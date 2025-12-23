@@ -1,5 +1,7 @@
 package smithereen.util;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.regex.Pattern;
 
 import smithereen.Config;
@@ -41,7 +43,7 @@ public class XTEA{
 		return ((long)v0 << 32) | ((long)v1 & 0xFFFFFFFFL);
 	}
 
-	public static long obfuscateObjectID(long id, ObfuscatedObjectIDType type){
+	public static long obfuscateObjectID(long id, @NotNull ObfuscatedObjectIDType type){
 		return encrypt(id, Config.objectIdObfuscationKeysByType[type.ordinal()]);
 	}
 
@@ -49,7 +51,7 @@ public class XTEA{
 		return decrypt(id, Config.objectIdObfuscationKeysByType[type.ordinal()]);
 	}
 
-	public static String encodeObjectID(long id, ObfuscatedObjectIDType type){
+	public static @NotNull String encodeObjectID(long id, @NotNull ObfuscatedObjectIDType type){
 		return Utils.encodeLong(obfuscateObjectID(id, type));
 	}
 

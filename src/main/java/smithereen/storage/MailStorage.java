@@ -1,5 +1,7 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -218,7 +220,7 @@ public class MailStorage{
 		}
 	}
 
-	public static MailMessage getMessage(int ownerID, long messageID, boolean wantDeleted) throws SQLException{
+	public static @Nullable MailMessage getMessage(int ownerID, long messageID, boolean wantDeleted) throws SQLException{
 		String where="id=? AND owner_id=?";
 		if(!wantDeleted)
 			where+=" AND deleted_at IS NULL";

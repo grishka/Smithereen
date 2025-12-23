@@ -2,6 +2,8 @@ package smithereen.controllers;
 
 import com.google.gson.JsonArray;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,7 +97,7 @@ public class MailController{
 		}
 	}
 
-	public long sendMessage(User self, Set<User> _to, String text, FormattedTextFormat textFormat, String subject, List<String> attachmentIDs, Map<String, String> attachAltTexts, MailMessage inReplyTo, String guid){
+	public long sendMessage(User self, @NotNull Set<User> _to, @Nullable String text, @NotNull FormattedTextFormat textFormat, @Nullable String subject, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts, @Nullable MailMessage inReplyTo, @Nullable String guid){
 		if(StringUtils.isNotEmpty(guid)){
 			MessageGuidInfo guidInfo=guids.get(guid);
 			if(guidInfo!=null && guidInfo.time.isAfter(Instant.now().minus(1, ChronoUnit.HOURS))){
@@ -380,7 +382,7 @@ public class MailController{
 			if(localOwners.isEmpty())
 				throw new UserActionNotAllowedException();
 			Map<Integer, Long> msgIDs=new HashMap<>();
-			MailStorage.createMessage(msg.text, msg.subject!=null ? msg.subject : "", msg.getSerializedAttachments(), msg.senderID, msg.to, msg.cc, localOwners, msg.activityPubID, replyInfos, msgIDs);
+			MailStorage.createMessage(msg.text, msg.subject, msg.getSerializedAttachments(), msg.senderID, msg.to, msg.cc, localOwners, msg.activityPubID, replyInfos, msgIDs);
 			for(int id:localOwners){
 				MessagesPrivacyGrant grant=MailStorage.getPrivacyGrant(id, msg.senderID);
 				if(grant!=null && grant.isValid())

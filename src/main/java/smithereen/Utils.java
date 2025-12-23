@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.ByteArrayInputStream;
@@ -60,34 +61,34 @@ import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FormValidationException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
-import smithereen.model.friends.FriendList;
-import smithereen.model.friends.PublicFriendList;
-import smithereen.text.TextProcessor;
-import smithereen.util.PublicSuffixList;
-import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.FormValidationException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.lang.Lang;
+import smithereen.model.friends.FriendList;
+import smithereen.model.friends.PublicFriendList;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
 import smithereen.util.EmailCodeActionType;
 import smithereen.util.FloodControl;
 import smithereen.util.InstantMillisJsonAdapter;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.LocaleJsonAdapter;
+import smithereen.util.PublicSuffixList;
 import smithereen.util.TimeZoneJsonAdapter;
+import smithereen.util.UriBuilder;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -476,7 +477,7 @@ public class Utils{
 		return os.toByteArray();
 	}
 
-	public static Set<Integer> deserializeIntSet(byte[] a){
+	public static @NotNull Set<Integer> deserializeIntSet(byte @Nullable [] a){
 		if(a==null)
 			return Set.of();
 		return Arrays.stream(deserializeIntArray(a)).boxed().collect(Collectors.toSet());
@@ -811,7 +812,7 @@ public class Utils{
 		return r;
 	}
 
-	public static String encodeLong(long x){
+	public static @NotNull String encodeLong(long x){
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(packLong(x));
 	}
 

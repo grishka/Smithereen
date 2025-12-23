@@ -4,6 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,6 +14,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -34,17 +38,17 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 	public long id;
 	public int senderID;
 	public int ownerID;
-	public Set<Integer> to;
-	public Set<Integer> cc;
-	public String text;
-	public String subject;
-	public List<ActivityPubObject> attachments;
-	public Instant createdAt;
-	public Instant updatedAt;
-	public Set<Integer> readReceipts;
-	public Set<Long> relatedMessageIDs;
-	public URI activityPubID;
-	public ReplyInfo replyInfo;
+	public @NotNull Set<Integer> to=Set.of();
+	public @NotNull Set<Integer> cc=Set.of();
+	public @NotNull String text="";
+	public @NotNull String subject="";
+	public @Nullable List<ActivityPubObject> attachments;
+	public @NotNull Instant createdAt=Instant.EPOCH;
+	public @Nullable Instant updatedAt;
+	public @NotNull Set<Integer> readReceipts=Set.of();
+	public @NotNull Set<Long> relatedMessageIDs=Set.of();
+	public @Nullable URI activityPubID;
+	public @Nullable ReplyInfo replyInfo;
 
 	public transient URI inReplyTo;
 
@@ -65,7 +69,7 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 			}catch(Exception ignore){}
 		}
 
-		msg.createdAt=DatabaseUtils.getInstant(res, "created_at");
+		msg.createdAt=Objects.requireNonNull(DatabaseUtils.getInstant(res, "created_at"));
 		msg.updatedAt=DatabaseUtils.getInstant(res, "updated_at");
 		msg.readReceipts=Utils.deserializeIntSet(res.getBytes("read_receipts"));
 		HashSet<Long> relatedIDs=new HashSet<>();
@@ -113,17 +117,14 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 	}
 
 	@Override
-	public URI getActivityPubID(){
+	public @NotNull URI getActivityPubID(){
 		if(activityPubID!=null)
 			return activityPubID;
 		return Config.localURI("/activitypub/objects/messages/"+getIdString());
 	}
 
 	public int getTotalRecipientCount(){
-		int c=to.size();
-		if(cc!=null)
-			c+=cc.size();
-		return c;
+		return to.size()+cc.size();
 	}
 
 	@Override
@@ -182,7 +183,7 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 		return id;
 	}
 
-	public String getIdString(){
+	public @NotNull String getIdString(){
 		return XTEA.encodeObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE);
 	}
 

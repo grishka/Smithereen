@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +25,8 @@ import java.util.regex.Pattern;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.activities.Accept;
 import smithereen.activitypub.objects.activities.Add;
 import smithereen.activitypub.objects.activities.Announce;
@@ -49,10 +50,9 @@ import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.board.BoardTopic;
+import smithereen.util.JsonArrayBuilder;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.UriBuilder;
-import smithereen.util.JsonArrayBuilder;
 import spark.utils.StringUtils;
 
 public abstract class ActivityPubObject{
@@ -65,7 +65,7 @@ public abstract class ActivityPubObject{
 	public URI audience;
 	public String content;
 	public URI context;
-	public String name;
+	public @Nullable String name;
 	public Instant endTime;
 	public LinkOrObject generator;
 	public List<Image> image;
@@ -76,7 +76,7 @@ public abstract class ActivityPubObject{
 	public Instant published;
 	public LinkOrObject replies;
 	public Instant startTime;
-	public String summary;
+	public @Nullable String summary;
 	public List<ActivityPubObject> tag;
 	public Instant updated;
 	public URI url;
@@ -345,7 +345,7 @@ public abstract class ActivityPubObject{
 		return sb.toString();
 	}
 
-	protected static String optString(JsonObject obj, String key){
+	protected static @Nullable String optString(@NotNull JsonObject obj, @NotNull String key){
 		return switch(obj.get(key)){
 			case JsonPrimitive primitive -> primitive.getAsString();
 			case JsonObject jobj when jobj.get("@value") instanceof JsonPrimitive primitive -> primitive.getAsString();

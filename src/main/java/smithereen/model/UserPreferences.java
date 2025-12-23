@@ -2,6 +2,8 @@ package smithereen.model;
 
 import com.google.gson.annotations.SerializedName;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.EnumSet;
@@ -23,7 +25,7 @@ public class UserPreferences{
 	@SerializedName("lsntf")
 	public int lastSeenNotificationID;
 	@SerializedName("tfmt")
-	public FormattedTextFormat textFormat=FormattedTextFormat.MARKDOWN;
+	public @NotNull FormattedTextFormat textFormat=FormattedTextFormat.MARKDOWN;
 	@SerializedName("cmv")
 	public CommentViewType commentViewType=CommentViewType.THREADED;
 	@SerializedName("ffeed")
