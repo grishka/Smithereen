@@ -1,10 +1,5 @@
 package smithereen.api.methods;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,7 +23,6 @@ import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
-import smithereen.model.Poll;
 import smithereen.model.Post;
 import smithereen.model.PostSource;
 import smithereen.model.User;
@@ -251,7 +245,7 @@ public class WallMethods{
 		FormattedTextFormat textFormat=ApiUtils.getTextFormat(actx);
 		boolean isReply=replyTo!=null || (edit!=null && edit.getReplyLevel()>0);
 
-		ApiUtils.InputAttachments attachments=ApiUtils.parseAttachments(ctx, actx, isReply);
+		ApiUtils.InputAttachments attachments=ApiUtils.parseAttachments(ctx, actx, isReply, !isReply);
 
 		if(edit!=null){
 			ctx.getWallController().editPost(actx.self.user, actx.permissions, edit.id, message, textFormat, cw, attachments.ids(), attachments.poll(), attachments.altTexts());

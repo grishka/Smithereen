@@ -32,13 +32,11 @@ import smithereen.api.model.ApiUser;
 import smithereen.api.model.ApiWallPost;
 import smithereen.controllers.FriendsController;
 import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
-import smithereen.model.Post;
 import smithereen.model.PostSource;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
@@ -562,7 +560,7 @@ public class ApiUtils{
 		String cw=actx.optParamString("content_warning");
 		FormattedTextFormat textFormat=getTextFormat(actx);
 
-		InputAttachments attachments=parseAttachments(ctx, actx, true);
+		InputAttachments attachments=parseAttachments(ctx, actx, true, false);
 		if(StringUtils.isEmpty(message) && attachments.ids.isEmpty())
 			throw actx.paramError("both message and attachments are undefined");
 
@@ -608,7 +606,7 @@ public class ApiUtils{
 		return new SourceResponse(source.text(), source.format().name().toLowerCase(), attachments);
 	}
 
-	public static InputAttachments parseAttachments(ApplicationContext ctx, ApiCallContext actx, boolean isReply){
+	public static InputAttachments parseAttachments(ApplicationContext ctx, ApiCallContext actx, boolean isReply, boolean allowPoll){
 		JsonArray attachments=actx.optParamJsonArray("attachments");
 		Poll poll=null;
 		List<String> attachmentIDs;
@@ -643,7 +641,7 @@ public class ApiUtils{
 						attachmentIDs.add("photo:"+photoID);
 					}
 					case "poll" -> {
-						if(!isReply){
+						if(allowPoll){
 							if(!(obj.get("poll_id") instanceof JsonPrimitive jId))
 								throw actx.paramError("attachments["+i+"].poll_id is undefined");
 							if(poll!=null)

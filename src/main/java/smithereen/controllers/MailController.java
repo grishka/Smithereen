@@ -43,6 +43,7 @@ import smithereen.storage.MailStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
+import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
 import spark.utils.StringUtils;
@@ -51,6 +52,7 @@ public class MailController{
 	private static final Logger LOG=LoggerFactory.getLogger(MailController.class);
 	private final ApplicationContext context;
 	private static final Pattern AP_ID_PATTERN=Pattern.compile("^/activitypub/objects/messages/([a-zA-Z0-9_-]+)$");
+	private final HashMap<String, MessageGuidInfo> guids=new HashMap<>();
 
 	public MailController(ApplicationContext context){
 		this.context=context;
@@ -83,7 +85,25 @@ public class MailController{
 		}
 	}
 
-	public long sendMessage(User self, int selfAccountID, Set<User> _to, String text, String subject, List<String> attachmentIDs, Map<String, String> attachAltTexts, MailMessage inReplyTo){
+	public Map<Long, MailMessage> getMessagesByIDs(User self, Collection<Long> ids, boolean wantDeleted){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return MailStorage.getMessagesByIDs(self.id, ids, wantDeleted);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public long sendMessage(User self, Set<User> _to, String text, FormattedTextFormat textFormat, String subject, List<String> attachmentIDs, Map<String, String> attachAltTexts, MailMessage inReplyTo, String guid){
+		if(StringUtils.isNotEmpty(guid)){
+			MessageGuidInfo guidInfo=guids.get(guid);
+			if(guidInfo!=null && guidInfo.time.isAfter(Instant.now().minus(1, ChronoUnit.HOURS))){
+				try{
+					return getMessage(self, guidInfo.msgID, false).id;
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
 		try{
 			if(StringUtils.isEmpty(text) && attachmentIDs.isEmpty())
 				throw new BadRequestException();
@@ -91,7 +111,7 @@ public class MailController{
 			if(to.isEmpty())
 				throw new UserActionNotAllowedException();
 			if(StringUtils.isNotEmpty(text)){
-				text=TextProcessor.preprocessPostHTML(text, null);
+				text=TextProcessor.preprocessPostText(text, null, textFormat);
 			}
 			int maxAttachments=10;
 			String attachments=null;
@@ -137,6 +157,13 @@ public class MailController{
 			}
 			HashMap<Integer, Long> allMessageIDs=new HashMap<>();
 			long id=MailStorage.createMessage(text, Objects.requireNonNullElse(subject, ""), attachments, self.id, to.stream().map(u->u.id).collect(Collectors.toSet()), null, localOwners, null, replyInfos, allMessageIDs);
+
+			if(StringUtils.isNotEmpty(guid)){
+				synchronized(guids){
+					guids.put(guid, new MessageGuidInfo(id, Instant.now()));
+				}
+			}
+
 			for(ActivityPubObject att:attachObjects){
 				if(att instanceof LocalImage li){
 					for(Map.Entry<Integer, Long> mid:allMessageIDs.entrySet()){
@@ -392,4 +419,13 @@ public class MailController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public void removeExpiredGuids(){
+		synchronized(guids){
+			Instant hourAgo=Instant.now().minus(1, ChronoUnit.HOURS);
+			guids.entrySet().removeIf(e->e.getValue().time.isBefore(hourAgo));
+		}
+	}
+
+	private record MessageGuidInfo(long msgID, Instant time){}
 }

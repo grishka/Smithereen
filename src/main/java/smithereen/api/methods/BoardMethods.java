@@ -14,7 +14,6 @@ import smithereen.api.model.ApiPaginatedList;
 import smithereen.api.model.ApiPaginatedListWithActors;
 import smithereen.api.model.ApiUser;
 import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.model.Account;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -27,8 +26,6 @@ import smithereen.model.comments.CommentableObjectType;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.XTEA;
-import spark.Request;
-import spark.Response;
 import spark.utils.StringUtils;
 
 public class BoardMethods{
@@ -73,10 +70,11 @@ public class BoardMethods{
 		}catch(ObjectNotFoundException x){
 			rawTopics=List.of();
 		}
+		boolean extended=actx.booleanParam("extended");
 
-		record TopicsResponse(List<ApiBoardTopic> topics, List<ApiUser> profiles){}
+		record TopicsResponse(List<ApiBoardTopic> items, List<ApiUser> profiles){}
 		if(rawTopics.isEmpty())
-			return new TopicsResponse(List.of(), List.of());
+			return extended ? new TopicsResponse(List.of(), List.of()) : List.of();
 
 		Set<Integer> needGroups=rawTopics.stream().map(t->t.groupID).collect(Collectors.toSet());
 		User self=actx.hasPermission(ClientAppPermission.GROUPS_READ) ? actx.self.user : null;
@@ -92,15 +90,16 @@ public class BoardMethods{
 		populateCommentPreviews(ctx, actx, rawTopics, topics);
 
 		List<ApiUser> users=null;
-		if(actx.booleanParam("extended")){
+		if(extended){
 			HashSet<Integer> needUsers=new HashSet<>();
 			for(BoardTopic t:rawTopics){
 				needUsers.add(t.authorID);
 				needUsers.add(t.lastCommentAuthorID);
 			}
 			users=ApiUtils.getUsers(needUsers, ctx, actx);
+			return new TopicsResponse(topics, users);
 		}
-		return new TopicsResponse(topics, users);
+		return topics;
 	}
 
 	private static void populateCommentPreviews(ApplicationContext ctx, ApiCallContext actx, List<BoardTopic> rawTopics, List<ApiBoardTopic> topics){
@@ -170,7 +169,7 @@ public class BoardMethods{
 		String cw=actx.optParamString("content_warning");
 		FormattedTextFormat textFormat=ApiUtils.getTextFormat(actx);
 
-		ApiUtils.InputAttachments attachments=ApiUtils.parseAttachments(ctx, actx, true);
+		ApiUtils.InputAttachments attachments=ApiUtils.parseAttachments(ctx, actx, true, false);
 		if(StringUtils.isEmpty(message) && attachments.ids().isEmpty())
 			throw actx.paramError("both message and attachments are undefined");
 		String guid=actx.optParamString("guid");

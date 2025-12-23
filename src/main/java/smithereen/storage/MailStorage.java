@@ -151,7 +151,7 @@ public class MailStorage{
 
 	public static void actuallyDeleteMessages(Collection<Long> ids, URI activityPubID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			Set<Long> realIDs=ids.stream().map(id->id).collect(Collectors.toSet());
+			Set<Long> realIDs=new HashSet<>(ids);
 			new SQLQueryBuilder(conn)
 					.deleteFrom("mail_messages")
 					.whereIn("id", realIDs)
@@ -230,6 +230,20 @@ public class MailStorage{
 			return null;
 		postprocessMessages(Set.of(msg));
 		return msg;
+	}
+
+	public static Map<Long, MailMessage> getMessagesByIDs(int ownerID, Collection<Long> ids, boolean wantDeleted) throws SQLException{
+		String where="owner_id=?";
+		if(!wantDeleted)
+			where+=" AND deleted_at IS NULL";
+		Map<Long, MailMessage> msgs=new SQLQueryBuilder()
+				.selectFrom("mail_messages")
+				.whereIn("id", ids)
+				.andWhere(where, ownerID)
+				.executeAsStream(MailMessage::fromResultSet)
+				.collect(Collectors.toMap(m->m.id, Function.identity()));
+		postprocessMessages(msgs.values());
+		return msgs;
 	}
 
 	public static void addMessageReadReceipt(int ownerID, Collection<Long> messageIDs, int readByUserID) throws SQLException{

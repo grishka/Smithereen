@@ -1257,6 +1257,7 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(()->context.getAppsController().deleteExpiredCodesAndTokens(), 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(()->context.getWallController().removeExpiredGuids(), 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(()->context.getCommentsController().removeExpiredGuids(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getMailController().removeExpiredGuids(), 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(ApiUtils::removeOldUploadUrlIDs, 10, TimeUnit.MINUTES);
 		context.getUsersController().loadPresenceFromDatabase();
 

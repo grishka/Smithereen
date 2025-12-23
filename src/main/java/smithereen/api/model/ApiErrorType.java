@@ -21,6 +21,7 @@ public enum ApiErrorType{
 	//STANDALONE_APPS_ONLY(20, "Permission to perform this action is denied for non-standalone applications"),
 	//CONFIRMATION_NEEDED(24, "Confirmation required"),
 	PARAM_INVALID(100, "One of the parameters specified was missing or invalid"),
+	ACTION_NOT_APPLICABLE(101, "This action is not applicable to this object", 422),
 	NOT_FOUND(104, "Not found", 404),
 
 	TOO_MANY_FRIEND_LISTS(173, "Too many friend lists"),

@@ -13,6 +13,7 @@ import smithereen.api.methods.ExecuteMethods;
 import smithereen.api.methods.FriendsMethods;
 import smithereen.api.methods.GroupsMethods;
 import smithereen.api.methods.LikesMethods;
+import smithereen.api.methods.MessagesMethods;
 import smithereen.api.methods.NewsfeedMethods;
 import smithereen.api.methods.PhotosMethods;
 import smithereen.api.methods.ServerMethods;
@@ -21,6 +22,7 @@ import smithereen.api.methods.UsersMethods;
 import smithereen.api.methods.UtilsMethods;
 import smithereen.api.methods.WallMethods;
 import smithereen.api.model.ApiErrorType;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserContentUnavailableException;
@@ -149,6 +151,14 @@ public class ApiDispatcher{
 		registerMethod("account.getBannedDomains", AccountMethods::getBannedDomains, ClientAppPermission.ACCOUNT_WRITE);
 		registerMethod("account.banDomain", AccountMethods::banDomain, ClientAppPermission.ACCOUNT_WRITE);
 		registerMethod("account.unbanDomain", AccountMethods::unbanDomain, ClientAppPermission.ACCOUNT_WRITE);
+
+		registerMethod("messages.get", MessagesMethods::get, ClientAppPermission.MESSAGES_READ);
+		registerMethod("messages.getById", MessagesMethods::getById, ClientAppPermission.MESSAGES_READ);
+		registerMethod("messages.getHistory", MessagesMethods::getHistory, ClientAppPermission.MESSAGES_READ);
+		registerMethod("messages.send", MessagesMethods::send, ClientAppPermission.MESSAGES_WRITE);
+		registerMethod("messages.delete", MessagesMethods::delete, ClientAppPermission.MESSAGES_WRITE);
+		registerMethod("messages.restore", MessagesMethods::restore, ClientAppPermission.MESSAGES_WRITE);
+		registerMethod("messages.markAsRead", MessagesMethods::markAsRead, ClientAppPermission.MESSAGES_WRITE);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

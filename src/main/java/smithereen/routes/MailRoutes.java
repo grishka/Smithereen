@@ -175,7 +175,7 @@ public class MailRoutes{
 			attachments=Collections.emptyList();
 			attachmentAltTexts=Map.of();
 		}
-		long id=ctx.getMailController().sendMessage(self.user, self.id, toUsers, req.queryParamOrDefault("text", ""), subject, attachments, attachmentAltTexts, inReplyTo);
+		long id=ctx.getMailController().sendMessage(self.user, toUsers, req.queryParamOrDefault("text", ""), self.prefs.textFormat, subject, attachments, attachmentAltTexts, inReplyTo, null);
 		MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 		req.session().attribute("recentMessage", msg);
 		if(isAjax(req)){
