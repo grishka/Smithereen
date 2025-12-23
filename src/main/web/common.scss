@@ -975,3 +975,14 @@ h2+.textByItself{
 	}
 }
 
+.flexContainer{
+	display: flex;
+	align-items: center;
+	>.flexStretch{
+		flex-grow: 1;
+	}
+	>.flexFixed{
+		flex: none;
+	}
+}
+
