@@ -746,8 +746,9 @@ public class PostRoutes{
 		int offset=offset(req);
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, owner, ownOnly ? WallController.WallMode.OWNER : WallController.WallMode.ALL, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 
@@ -759,6 +760,7 @@ public class PostRoutes{
 				.with("ownOnly", ownOnly)
 				.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, u, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", ownOnly ? "own" : "all")
+				.with("commentViewType", viewType)
 				.headerBack(owner);
 
 		List<PostViewModel> pinnedPosts=null;
@@ -767,7 +769,7 @@ public class PostRoutes{
 			if(offset==0){
 				pinnedPosts=rawPinnedPosts.stream().map(PostViewModel::new).toList();
 				if(req.attribute("mobile")==null){
-					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, pinnedPosts, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, pinnedPosts, viewType);
 				}
 				model.with("pinnedPosts", pinnedPosts);
 			}
@@ -819,8 +821,9 @@ public class PostRoutes{
 		int offset=offset(req);
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallToWallPosts(self!=null ? self.user : null, user, otherUser, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 
@@ -831,6 +834,7 @@ public class PostRoutes{
 				.with("otherUser", otherUser)
 				.with("canSeeOthersPosts", ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, user, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", "wall2wall")
+				.with("commentViewType", viewType)
 				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())))
 				.headerBack(user);
 		preparePostList(ctx, wall.list, model, self);
@@ -1076,8 +1080,9 @@ public class PostRoutes{
 		int offset=offset(req);
 		PaginatedList<PostViewModel> reposts=PostViewModel.wrap(ctx.getWallController().getPostReposts(post, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, reposts.list, 2);
+		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList(), self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList(), viewType);
 		}
 		UserInteractions interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null).get(post.getIDForInteractions());
 		RenderedTemplateResponse model;
@@ -1097,7 +1102,8 @@ public class PostRoutes{
 				.with("tab", "reposts")
 				.with("url", "/posts/"+post.id)
 				.with("elementID", "Post"+post.id)
-				.with("maxRepostDepth", 0);
+				.with("maxRepostDepth", 0)
+				.with("commentViewType", viewType);
 		preparePostList(ctx, reposts.list, model, self);
 		if(isMobile(req))
 			return model.pageTitle(lang(req).get("likes_title"));

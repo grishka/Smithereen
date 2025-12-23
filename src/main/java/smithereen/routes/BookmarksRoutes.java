@@ -167,7 +167,7 @@ public class BookmarksRoutes{
 			ctx.getWallController().populateCommentPreviews(self.user, posts.list, self.prefs.commentViewType);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(posts.list, self.user);
-		model.with("postInteractions", interactions);
+		model.with("postInteractions", interactions).with("commentViewType", self.prefs.commentViewType);
 
 		PostRoutes.preparePostList(ctx, posts.list, model, self);
 
