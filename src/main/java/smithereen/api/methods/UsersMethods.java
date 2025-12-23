@@ -1,7 +1,7 @@
 package smithereen.api.methods;
 
 import java.util.HashSet;
-import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -19,7 +19,7 @@ public class UsersMethods{
 	public static Object get(ApplicationContext ctx, ApiCallContext actx){
 		Set<String> userIDs;
 		if(actx.hasParam("user_id")){
-			userIDs=Set.of(actx.optParamString("user_id"));
+			userIDs=Set.of(Objects.requireNonNull(actx.optParamString("user_id")));
 		}else if(actx.hasParam("user_ids")){
 			userIDs=actx.optCommaSeparatedStringSet("user_ids");
 			if(userIDs.size()>1000)

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -31,7 +32,7 @@ public class GroupsMethods{
 	public static Object getById(ApplicationContext ctx, ApiCallContext actx){
 		Set<String> groupIDs;
 		if(actx.hasParam("group_id")){
-			groupIDs=Set.of(actx.optParamString("group_id"));
+			groupIDs=Set.of(Objects.requireNonNull(actx.optParamString("group_id")));
 		}else if(actx.hasParam("group_ids")){
 			groupIDs=actx.optCommaSeparatedStringSet("group_ids");
 			if(groupIDs.size()>1000)
@@ -184,7 +185,7 @@ public class GroupsMethods{
 			case "random" -> GroupsController.MemberSortOrder.RANDOM;
 			case "time_asc" -> GroupsController.MemberSortOrder.TIME_ASC;
 			case "time_desc" -> GroupsController.MemberSortOrder.TIME_DESC;
-			case null, default -> GroupsController.MemberSortOrder.ID_ASC;
+			default -> GroupsController.MemberSortOrder.ID_ASC;
 		};
 		if((sort==GroupsController.MemberSortOrder.TIME_ASC || sort==GroupsController.MemberSortOrder.TIME_DESC) && !canManage)
 			throw actx.error(ApiErrorType.ACCESS_DENIED, "this sorting requires a token with groups:read permission and is only available for group managers");

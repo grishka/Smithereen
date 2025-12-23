@@ -609,7 +609,7 @@ public class ApiUtils{
 		return new SourceResponse(source.text(), source.format().name().toLowerCase(), attachments);
 	}
 
-	public static InputAttachments parseAttachments(ApplicationContext ctx, ApiCallContext actx, boolean isReply, boolean allowPoll){
+	public static @NotNull InputAttachments parseAttachments(ApplicationContext ctx, ApiCallContext actx, boolean isReply, boolean allowPoll){
 		JsonArray attachments=actx.optParamJsonArray("attachments");
 		Poll poll=null;
 		List<String> attachmentIDs;

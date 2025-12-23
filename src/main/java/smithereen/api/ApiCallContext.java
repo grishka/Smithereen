@@ -228,6 +228,7 @@ public class ApiCallContext{
 		return count<=0 ? def : Math.min(max, count);
 	}
 
+	@Contract(pure=true)
 	public boolean hasParam(@NotNull String key){
 		return params.containsKey(key);
 	}
