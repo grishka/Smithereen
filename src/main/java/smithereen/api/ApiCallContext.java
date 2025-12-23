@@ -5,6 +5,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -54,35 +58,36 @@ public class ApiCallContext{
 		this.params=params;
 	}
 
-	public ApiErrorException error(ApiErrorType type){
+	public @NotNull ApiErrorException error(@NotNull ApiErrorType type){
 		return new ApiErrorException(new ApiError(type, null, params));
 	}
 
-	public ApiErrorException error(ApiErrorType type, String msg){
+	public @NotNull ApiErrorException error(@NotNull ApiErrorType type, @Nullable String msg){
 		return new ApiErrorException(new ApiError(type, msg, params));
 	}
 
-	public ApiErrorException paramError(String msg){
+	public @NotNull ApiErrorException paramError(@NotNull String msg){
 		return error(ApiErrorType.PARAM_INVALID, msg);
 	}
 
-	public String optParamString(String key){
+	public @Nullable String optParamString(@NotNull String key){
 		return params.get(key);
 	}
 
-	public String optParamString(String key, String def){
+	@Contract("_, !null -> !null")
+	public @Nullable String optParamString(@NotNull String key, @Nullable String def){
 		String v=params.get(key);
 		return StringUtils.isEmpty(v) ? def : v;
 	}
 
-	public String requireParamString(String key){
+	public @NotNull String requireParamString(@NotNull String key){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value))
 			throw paramError(key+" is undefined");
 		return value;
 	}
 
-	private List<String> commaSeparatedStringList(String key, boolean require){
+	private @NotNull List<String> commaSeparatedStringList(@NotNull String key, boolean require){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value)){
 			if(require)
@@ -92,15 +97,15 @@ public class ApiCallContext{
 		return Arrays.stream(value.split(",")).map(String::trim).toList();
 	}
 
-	public List<String> optCommaSeparatedStringList(String key){
+	public @NotNull List<String> optCommaSeparatedStringList(@NotNull String key){
 		return commaSeparatedStringList(key, false);
 	}
 
-	public List<String> requireCommaSeparatedStringList(String key){
+	public @NotNull List<String> requireCommaSeparatedStringList(@NotNull String key){
 		return commaSeparatedStringList(key, true);
 	}
 
-	private Set<String> commaSeparatedStringSet(String key, boolean require){
+	private @NotNull Set<String> commaSeparatedStringSet(@NotNull String key, boolean require){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value)){
 			if(require)
@@ -110,15 +115,15 @@ public class ApiCallContext{
 		return Arrays.stream(value.split(",")).map(String::trim).collect(Collectors.toSet());
 	}
 
-	public Set<String> optCommaSeparatedStringSet(String key){
+	public @NotNull Set<String> optCommaSeparatedStringSet(@NotNull String key){
 		return commaSeparatedStringSet(key, false);
 	}
 
-	public Set<String> requireCommaSeparatedStringSet(String key){
+	public @NotNull Set<String> requireCommaSeparatedStringSet(@NotNull String key){
 		return commaSeparatedStringSet(key, true);
 	}
 
-	public int requireParamIntPositive(String key){
+	public int requireParamIntPositive(@NotNull String key){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value))
 			throw paramError(key+" is undefined");
@@ -128,7 +133,7 @@ public class ApiCallContext{
 		return v;
 	}
 
-	public int requireParamIntNonZero(String key){
+	public int requireParamIntNonZero(@NotNull String key){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value))
 			throw paramError(key+" is undefined");
@@ -138,23 +143,23 @@ public class ApiCallContext{
 		return v;
 	}
 
-	public int optParamIntPositive(String key){
+	public int optParamIntPositive(@NotNull String key){
 		return Math.max(0, Utils.safeParseInt(params.get(key)));
 	}
 
-	public int optParamIntPositive(String key, int def){
+	public int optParamIntPositive(@NotNull String key, int def){
 		if(!hasParam(key))
 			return def;
 		return Math.max(0, Utils.safeParseInt(params.get(key)));
 	}
 
-	public List<Integer> optCommaSeparatedIntListParam(String key){
+	public @NotNull List<Integer> optCommaSeparatedIntListParam(@NotNull String key){
 		if(hasParam(key))
 			return commaSeparatedIntListParam(key);
 		return List.of();
 	}
 
-	public List<Integer> commaSeparatedIntListParam(String key){
+	public @NotNull List<Integer> commaSeparatedIntListParam(@NotNull String key){
 		List<Integer> res=Arrays.stream(requireParamString(key).split(","))
 				.map(String::trim)
 				.map(Utils::safeParseInt)
@@ -166,12 +171,12 @@ public class ApiCallContext{
 		return res;
 	}
 
-	public boolean booleanParam(String key){
+	public boolean booleanParam(@NotNull String key){
 		String v=params.get(key);
 		return "true".equalsIgnoreCase(v) || "1".equals(v);
 	}
 
-	public JsonArray optParamJsonArray(String key){
+	public @Nullable JsonArray optParamJsonArray(@NotNull String key){
 		String v=optParamString(key);
 		if(StringUtils.isEmpty(v))
 			return null;
@@ -185,7 +190,7 @@ public class ApiCallContext{
 		}
 	}
 
-	public <T> T optParamJsonObject(String key, Class<T> objType){
+	public <T> @Nullable T optParamJsonObject(@NotNull String key, @NotNull Class<T> objType){
 		String v=optParamString(key);
 		if(StringUtils.isEmpty(v))
 			return null;
@@ -196,7 +201,7 @@ public class ApiCallContext{
 		}
 	}
 
-	public float requireParamFloat(String key){
+	public float requireParamFloat(@NotNull String key){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value))
 			throw paramError(key+" is undefined");
@@ -207,7 +212,7 @@ public class ApiCallContext{
 		}
 	}
 
-	public float requireParamFloatInRange(String key, float min, float max){
+	public float requireParamFloatInRange(@NotNull String key, float min, float max){
 		float v=requireParamFloat(key);
 		if(v>=min && v<=max)
 			return v;
@@ -223,20 +228,20 @@ public class ApiCallContext{
 		return count<=0 ? def : Math.min(max, count);
 	}
 
-	public boolean hasParam(String key){
+	public boolean hasParam(@NotNull String key){
 		return params.containsKey(key);
 	}
 
-	public boolean hasPermission(ClientAppPermission permission){
+	public boolean hasPermission(@NotNull ClientAppPermission permission){
 		return token!=null && token.permissions().contains(permission);
 	}
 
-	public void requirePermission(ClientAppPermission permission){
+	public void requirePermission(@NotNull ClientAppPermission permission){
 		if(!hasPermission(permission))
 			throw error(ApiErrorType.NO_PERMISSION, "this requires the "+permission.getScopeValue()+" permission");
 	}
 
-	public <E extends Enum<E>> E optParamEnum(String key, Map<String, E> mapping, E defValue){
+	public <E extends Enum<E>> @NotNull E optParamEnum(@NotNull String key, @NotNull Map<String, E> mapping, @NotNull E defValue){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value))
 			return defValue;
@@ -244,7 +249,7 @@ public class ApiCallContext{
 		return res==null ? defValue : res;
 	}
 
-	public <E extends Enum<E>> E requireParamEnum(String key, Map<String, E> mapping){
+	public <E extends Enum<E>> @NotNull E requireParamEnum(@NotNull String key, @NotNull Map<String, E> mapping){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value))
 			throw paramError(key+" is undefined");

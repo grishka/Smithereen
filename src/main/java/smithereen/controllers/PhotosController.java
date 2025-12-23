@@ -1,5 +1,6 @@
 package smithereen.controllers;
 
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -43,21 +44,21 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.apps.ClientApp;
-import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
-import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.RealtimeNotification;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.photos.AbsoluteImageRect;
 import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.ImageRect;
@@ -518,7 +519,7 @@ public class PhotosController{
 		}
 	}
 
-	public long createPhoto(User self, @NotNull PhotoAlbum album, long fileID, String descriptionSource, FormattedTextFormat descriptionFormat){
+	public long createPhoto(User self, @NotNull PhotoAlbum album, long fileID, @Nullable String descriptionSource, @Nullable FormattedTextFormat descriptionFormat){
 		self.ensureLocal();
 		Actor owner;
 		if(album.ownerID>0){
@@ -537,7 +538,7 @@ public class PhotosController{
 		return createPhotoInternal(self, owner, album, fileID, descriptionSource, descriptionFormat, null);
 	}
 
-	private long createPhotoInternal(User self, Actor owner, @NotNull PhotoAlbum album, long fileID, String descriptionSource, FormattedTextFormat descriptionFormat, PhotoMetadata metadata){
+	private long createPhotoInternal(User self, Actor owner, @NotNull PhotoAlbum album, long fileID, @Nullable String descriptionSource, @Nullable FormattedTextFormat descriptionFormat, @Nullable PhotoMetadata metadata){
 		String parsedDescription=descriptionSource==null ? "" : TextProcessor.preprocessPostText(descriptionSource, null, descriptionFormat);
 		try{
 			long id=PhotoStorage.getPhotoIdByFileId(fileID, owner.getOwnerID());
@@ -1345,7 +1346,8 @@ public class PhotosController{
 			setPhotoToAvatar(owner, photo);
 	}
 
-	public long createPhotoTag(User self, Photo photo, User user, String name, ImageRect rect){
+	@Contract("_, _, null, null, _ -> fail")
+	public long createPhotoTag(User self, @NotNull Photo photo, @Nullable User user, @Nullable String name, @NotNull ImageRect rect){
 		// maybe reconsider this in the future (VK allows one's friends to add tags to their photos)
 		enforcePhotoManagementPermission(self, photo);
 
@@ -1364,6 +1366,8 @@ public class PhotosController{
 						throw new UserErrorException("photo_err_user_already_tagged");
 				}
 				name=user.getFullName();
+			}else{
+				Objects.requireNonNull(name, "Either user or name must not be null");
 			}
 			AbsoluteImageRect absRect=rect.makeAbsolute(photo.getWidth(), photo.getHeight());
 			int minTagSize=40;

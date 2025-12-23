@@ -1,5 +1,8 @@
 package smithereen.api.methods;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -319,7 +322,8 @@ public class PhotosMethods{
 			return List.of();
 		Map<Integer, User> users=ctx.getUsersController().getUsers(tags.stream().map(PhotoTag::userID).filter(id->id>0).collect(Collectors.toSet()));
 
-		record ApiPhotoTag(Integer userId, long id, int placerId, String name, float x1, float y1, float x2, float y2, long date, Boolean confirmed){}
+		record ApiPhotoTag(@Nullable Integer userId, long id, int placerId, @NotNull String name, float x1, float y1, float x2, float y2, long date, @Nullable Boolean confirmed){
+		}
 		return tags.stream()
 				.map(pt->new ApiPhotoTag(pt.approved() ? pt.userID() : null, pt.id(), pt.placerID(),
 						pt.approved() ? (users.containsKey(pt.userID()) ? users.get(pt.userID()).getFullName() : "DELETED") : pt.name(),

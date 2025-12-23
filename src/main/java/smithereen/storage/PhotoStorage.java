@@ -1,5 +1,8 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -237,7 +240,7 @@ public class PhotoStorage{
 				.executeAndGetInt();
 	}
 
-	public static long createLocalPhoto(int ownerID, int authorID, long albumID, long fileID, String description, String descriptionSrc, FormattedTextFormat descriptionFormat, PhotoMetadata metadata) throws SQLException{
+	public static long createLocalPhoto(int ownerID, int authorID, long albumID, long fileID, String description, @Nullable String descriptionSrc, @Nullable FormattedTextFormat descriptionFormat, @Nullable PhotoMetadata metadata) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int displayOrder=new SQLQueryBuilder(conn)
 					.selectFrom("photos")
@@ -659,7 +662,7 @@ public class PhotoStorage{
 		}
 	}
 
-	public static long createPhotoTag(long photoID, int placerID, int userID, String name, boolean approved, ImageRect rect, URI apID) throws SQLException{
+	public static long createPhotoTag(long photoID, int placerID, int userID, @NotNull String name, boolean approved, @NotNull ImageRect rect, @Nullable URI apID) throws SQLException{
 		return new SQLQueryBuilder()
 				.insertInto("photo_tags")
 				.value("photo_id", photoID)
