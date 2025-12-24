@@ -42,8 +42,7 @@ public class MessagesMethods{
 			for(MailMessage msg:messages.list){
 				needUsers.add(msg.senderID);
 				needUsers.addAll(msg.to);
-				if(msg.cc!=null)
-					needUsers.addAll(msg.cc);
+				needUsers.addAll(msg.cc);
 			}
 			needUsers.remove(actx.self.user.id);
 			resp.profiles=ApiUtils.getUsers(needUsers, ctx, actx);
@@ -66,8 +65,7 @@ public class MessagesMethods{
 			for(MailMessage msg:rawMessagesMap.values()){
 				needUsers.add(msg.senderID);
 				needUsers.addAll(msg.to);
-				if(msg.cc!=null)
-					needUsers.addAll(msg.cc);
+				needUsers.addAll(msg.cc);
 			}
 			needUsers.remove(actx.self.user.id);
 

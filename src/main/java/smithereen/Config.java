@@ -1,5 +1,6 @@
 package smithereen;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +39,9 @@ import java.util.stream.Collectors;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.admin.UserRole;
-import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
+import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.util.CryptoUtils;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.TopLevelDomainList;
@@ -321,7 +322,7 @@ public class Config{
 		}
 	}
 
-	public static URI localURI(String path){
+	public static @NotNull URI localURI(String path){
 		return localURI.resolve(path);
 	}
 

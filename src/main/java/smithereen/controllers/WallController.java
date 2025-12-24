@@ -25,8 +25,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static smithereen.Utils.ensureUserNotBlocked;
-
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
@@ -44,8 +42,6 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
-import smithereen.model.apps.ClientApp;
-import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
@@ -60,7 +56,9 @@ import smithereen.model.UserInteractions;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.admin.UserRole;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.media.MediaFileUploadPurpose;
@@ -77,6 +75,8 @@ import smithereen.util.BackgroundTaskRunner;
 import smithereen.util.FloodControl;
 import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.ensureUserNotBlocked;
 
 public class WallController{
 	private static final Logger LOG=LoggerFactory.getLogger(WallController.class);
@@ -127,7 +127,7 @@ public class WallController{
 	 * @return The newly created post.
 	 */
 	public Post createWallPost(@NotNull User author, @NotNull Actor wallOwner, Post inReplyTo,
-							   @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
+							   @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
 							   @Nullable Poll poll, @Nullable Post repost, @NotNull Map<String, String> attachAltTexts, Post.@Nullable Action action, @Nullable ClientApp app, @Nullable String guid){
 		if(StringUtils.isNotEmpty(guid)){
 			PostGuidInfo guidInfo=guids.get(guid);
@@ -163,7 +163,7 @@ public class WallController{
 			if(inReplyTo!=null && poll!=null)
 				poll=null;
 
-			if(textSource.trim().isEmpty() && attachmentIDs.isEmpty() && poll==null && repost==null)
+			if(StringUtils.isBlank(textSource) && attachmentIDs.isEmpty() && poll==null && repost==null)
 				throw new BadRequestException("Empty post");
 
 			if(!wallOwner.hasWall() && inReplyTo==null)
@@ -478,7 +478,7 @@ public class WallController{
 	}
 
 	@NotNull
-	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning,
+	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning,
 						 @NotNull List<String> attachmentIDs, @Nullable Poll poll, @NotNull Map<String, String> attachAltTexts){
 		try{
 			Post post=getPostOrThrow(id);
@@ -487,7 +487,7 @@ public class WallController{
 			context.getPrivacyController().enforceObjectPrivacy(self, post);
 			if(post.getReplyLevel()>0)
 				poll=null;
-			if(textSource.isEmpty() && attachmentIDs.isEmpty() && poll==null && post.repostOf==0)
+			if(StringUtils.isEmpty(textSource) && attachmentIDs.isEmpty() && poll==null && post.repostOf==0)
 				throw new BadRequestException("Empty post");
 
 			HashSet<User> mentionedUsers=new HashSet<>();

@@ -90,7 +90,7 @@ public class CommentsController{
 	}
 
 	public Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
-								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts, String guid){
+								 @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts, String guid){
 		if(StringUtils.isNotEmpty(guid)){
 			CommentGuidInfo guidInfo=guids.get(guid);
 			if(guidInfo!=null && guidInfo.time.isAfter(Instant.now().minus(1, ChronoUnit.HOURS))){
@@ -109,7 +109,7 @@ public class CommentsController{
 	}
 
 	Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
-								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts,
+						  @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts,
 								 boolean skipFederation){
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(parent);
 		if(context.getPrivacyController().isUserBlocked(self, oaa.owner()))
@@ -120,7 +120,7 @@ public class CommentsController{
 
 		if(inReplyTo!=null && !inReplyTo.parentObjectID.equals(parentID))
 			inReplyTo=null;
-		if(textSource.trim().isEmpty() && attachmentIDs.isEmpty())
+		if(StringUtils.isBlank(textSource) && attachmentIDs.isEmpty())
 			throw new BadRequestException("Empty comment");
 
 		final HashSet<User> mentionedUsers=new HashSet<>();
@@ -369,10 +369,10 @@ public class CommentsController{
 	}
 
 	@NotNull
-	public Comment editComment(@NotNull User self, Comment comment, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
+	public Comment editComment(@NotNull User self, Comment comment, @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
 		try{
 			CommentableContentObject parent=getCommentParent(self, comment);
-			if(textSource.isEmpty() && attachmentIDs.isEmpty())
+			if(StringUtils.isEmpty(textSource) && attachmentIDs.isEmpty())
 				throw new BadRequestException("Empty post");
 
 			Comment replyTo=comment.replyKey.isEmpty() ? null : getCommentIgnoringPrivacy(comment.replyKey.getLast());

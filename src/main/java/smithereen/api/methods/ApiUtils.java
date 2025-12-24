@@ -5,6 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -606,7 +609,7 @@ public class ApiUtils{
 		return new SourceResponse(source.text(), source.format().name().toLowerCase(), attachments);
 	}
 
-	public static InputAttachments parseAttachments(ApplicationContext ctx, ApiCallContext actx, boolean isReply, boolean allowPoll){
+	public static @NotNull InputAttachments parseAttachments(ApplicationContext ctx, ApiCallContext actx, boolean isReply, boolean allowPoll){
 		JsonArray attachments=actx.optParamJsonArray("attachments");
 		Poll poll=null;
 		List<String> attachmentIDs;
@@ -687,7 +690,7 @@ public class ApiUtils{
 		}
 	}
 
-	public static FormattedTextFormat getTextFormat(ApiCallContext actx){
+	public static @NotNull FormattedTextFormat getTextFormat(@NotNull ApiCallContext actx){
 		return switch(actx.optParamString("text_format")){
 			case "markdown" -> FormattedTextFormat.MARKDOWN;
 			case "html" -> FormattedTextFormat.HTML;
@@ -697,5 +700,6 @@ public class ApiUtils{
 		};
 	}
 
-	public record InputAttachments(List<String> ids, Map<String, String> altTexts, Poll poll){}
+	public record InputAttachments(@NotNull List<String> ids, @NotNull Map<String, String> altTexts, @Nullable Poll poll){
+	}
 }
