@@ -143,6 +143,10 @@ public class ApiCallContext{
 		return v;
 	}
 
+	public long optParamLong(@NotNull String key){
+		return Utils.safeParseLong(params.get(key));
+	}
+
 	public int optParamIntPositive(@NotNull String key){
 		return Math.max(0, Utils.safeParseInt(params.get(key)));
 	}

@@ -1195,6 +1195,13 @@ public class WallController{
 
 	public void voteInPoll(User self, Poll poll, int[] optionIDs){
 		try{
+			int postID=PostStorage.getPostIdByPollId(poll.id);
+			if(postID==0)
+				throw new UserActionNotAllowedException();
+
+			Post post=getPostOrThrow(postID);
+			context.getPrivacyController().enforcePostPrivacy(self, post);
+
 			if(poll.isExpired())
 				throw new UserErrorException("err_poll_expired");
 
@@ -1236,13 +1243,8 @@ public class WallController{
 
 			context.getActivityPubWorker().sendPollVotes(self, poll, owner, options, voteIDs);
 
-			int postID=PostStorage.getPostIdByPollId(poll.id);
-			Post post;
-			if(postID>0){
-				post=getPostOrThrow(postID);
-				post.poll=poll; // So the last vote time is as it was before the vote
-				sendUpdateQuestionIfNeeded(post);
-			}
+			post.poll=poll; // So the last vote time is as it was before the vote
+			sendUpdateQuestionIfNeeded(post);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

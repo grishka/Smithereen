@@ -16,6 +16,7 @@ import smithereen.api.methods.LikesMethods;
 import smithereen.api.methods.MessagesMethods;
 import smithereen.api.methods.NewsfeedMethods;
 import smithereen.api.methods.PhotosMethods;
+import smithereen.api.methods.PollsMethods;
 import smithereen.api.methods.ServerMethods;
 import smithereen.api.methods.StatusMethods;
 import smithereen.api.methods.UsersMethods;
@@ -159,6 +160,11 @@ public class ApiDispatcher{
 		registerMethod("messages.delete", MessagesMethods::delete, ClientAppPermission.MESSAGES_WRITE);
 		registerMethod("messages.restore", MessagesMethods::restore, ClientAppPermission.MESSAGES_WRITE);
 		registerMethod("messages.markAsRead", MessagesMethods::markAsRead, ClientAppPermission.MESSAGES_WRITE);
+
+		registerMethod("polls.getById", PollsMethods::getById, false);
+		registerMethod("polls.addVote", PollsMethods::addVote, ClientAppPermission.WALL_WRITE);
+		registerMethod("polls.getVoters", PollsMethods::getVoters, false);
+		registerMethod("polls.create", PollsMethods::create, ClientAppPermission.WALL_WRITE);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){
