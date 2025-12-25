@@ -333,8 +333,10 @@ public class ActivityPub{
 	}
 
 	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry, EnumSet<Server.Feature> requiredServerFeatures, boolean throwFor403) throws IOException{
-		if(actor.privateKey==null)
+		if(actor.privateKey==null){
+			LOG.error("Tried to send an activity on behalf of foreign actor {} to {}: {}", actor.activityPubID, inboxUrl, activity.asRootActivityPubObject(ctx, inboxUrl.getAuthority()));
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
+		}
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
