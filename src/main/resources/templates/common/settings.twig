@@ -22,9 +22,9 @@
 <form action="/settings/updatePassword?csrf={{ csrf }}" method="post" data-ajax>
 	<h2>{{L('change_password')}}</h2>
 	{{ form.start("changePassword", passwordMessage) }}
-		{{ form.textInput("current", L('current_password'), "", {'type' : 'password'}) }}
-		{{ form.textInput("new", L('new_password'), "", {'type' : 'password', 'autocomplete': 'new-password'}) }}
-		{{ form.textInput("new2", L('new_password_confirm'), "", {'type' : 'password', 'autocomplete': 'new-password'}) }}
+		{{ form.textInput("current", L('current_password'), "", {'type' : 'password', 'required': true}) }}
+		{{ form.textInput("new", L('new_password'), "", {'type' : 'password', 'autocomplete': 'new-password', 'required': true}) }}
+		{{ form.textInput("new2", L('new_password_confirm'), "", {'type' : 'password', 'autocomplete': 'new-password', 'required': true}) }}
 		{{ form.footer(L('change_password')) }}
 	{{ form.end() }}
 </form>
