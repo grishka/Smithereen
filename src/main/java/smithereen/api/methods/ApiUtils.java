@@ -31,6 +31,7 @@ import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiComment;
 import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiGroup;
+import smithereen.api.model.ApiPhoto;
 import smithereen.api.model.ApiUser;
 import smithereen.api.model.ApiWallPost;
 import smithereen.controllers.FriendsController;
@@ -272,6 +273,14 @@ public class ApiUtils{
 			return ctx.getUsersController().getUserOrThrow(actx.requireParamIntPositive(paramName));
 		}catch(ObjectNotFoundException x){
 			throw actx.error(ApiErrorType.NOT_FOUND, "user with this ID does not exist");
+		}
+	}
+
+	public static Group getGroup(ApplicationContext ctx, ApiCallContext actx, String paramName){
+		try{
+			return ctx.getGroupsController().getGroupOrThrow(actx.requireParamIntPositive(paramName));
+		}catch(ObjectNotFoundException x){
+			throw actx.error(ApiErrorType.NOT_FOUND, "group with this ID does not exist");
 		}
 	}
 
@@ -698,6 +707,21 @@ public class ApiUtils{
 			case null -> actx.self.prefs.textFormat;
 			default -> throw actx.paramError("text_format must be one of markdown, html, plain");
 		};
+	}
+
+	public static List<ApiPhoto> getPhotos(ApplicationContext ctx, ApiCallContext actx, List<Photo> photos){
+		if(photos.isEmpty())
+			return List.of();
+		Map<Long, UserInteractions> interactions;
+		Map<Long, Integer> tagCounts;
+		if(actx.booleanParam("extended")){
+			interactions=ctx.getUserInteractionsController().getUserInteractions(photos, actx.self==null ? null : actx.self.user);
+			tagCounts=ctx.getPhotosController().getTagCountsForPhotos(photos.stream().map(p->p.id).collect(Collectors.toSet()));
+		}else{
+			interactions=null;
+			tagCounts=null;
+		}
+		return photos.stream().map(p->new ApiPhoto(p, actx, interactions, tagCounts)).toList();
 	}
 
 	public record InputAttachments(@NotNull List<String> ids, @NotNull Map<String, String> altTexts, @Nullable Poll poll){

@@ -10,6 +10,7 @@ import smithereen.ApplicationContext;
 import smithereen.api.methods.AccountMethods;
 import smithereen.api.methods.BoardMethods;
 import smithereen.api.methods.ExecuteMethods;
+import smithereen.api.methods.FaveMethods;
 import smithereen.api.methods.FriendsMethods;
 import smithereen.api.methods.GroupsMethods;
 import smithereen.api.methods.LikesMethods;
@@ -165,6 +166,15 @@ public class ApiDispatcher{
 		registerMethod("polls.addVote", PollsMethods::addVote, ClientAppPermission.WALL_WRITE);
 		registerMethod("polls.getVoters", PollsMethods::getVoters, false);
 		registerMethod("polls.create", PollsMethods::create, ClientAppPermission.WALL_WRITE);
+
+		registerMethod("fave.addUser", FaveMethods::addUser, ClientAppPermission.LIKES_WRITE);
+		registerMethod("fave.removeUser", FaveMethods::removeUser, ClientAppPermission.LIKES_WRITE);
+		registerMethod("fave.addGroup", FaveMethods::addGroup, ClientAppPermission.LIKES_WRITE);
+		registerMethod("fave.removeGroup", FaveMethods::removeGroup, ClientAppPermission.LIKES_WRITE);
+		registerMethod("fave.getUsers", FaveMethods::getUsers, ClientAppPermission.LIKES_READ);
+		registerMethod("fave.getGroups", FaveMethods::getGroups, ClientAppPermission.LIKES_READ);
+		registerMethod("fave.getPhotos", FaveMethods::getPhotos, ClientAppPermission.LIKES_READ);
+		registerMethod("fave.getPosts", FaveMethods::getPosts, ClientAppPermission.LIKES_READ);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

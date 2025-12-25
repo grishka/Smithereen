@@ -28,7 +28,6 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.User;
-import smithereen.model.UserInteractions;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableObjectType;
@@ -157,7 +156,7 @@ public class PhotosMethods{
 
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(actx.hasPermission(ClientAppPermission.PHOTOS_READ) ? actx.self.user : null,
 				album, actx.getOffset(), actx.getCount(50, 1000), actx.booleanParam("rev"));
-		return new ApiPaginatedList<>(photos.total, getPhotos(ctx, actx, photos.list));
+		return new ApiPaginatedList<>(photos.total, ApiUtils.getPhotos(ctx, actx, photos.list));
 	}
 	
 	public static Object getById(ApplicationContext ctx, ApiCallContext actx){
@@ -183,26 +182,26 @@ public class PhotosMethods{
 				.map(allPhotos::get)
 				.filter(p->p!=null && albums.containsKey(p.albumID))
 				.toList();
-		return getPhotos(ctx, actx, photos);
+		return ApiUtils.getPhotos(ctx, actx, photos);
 	}
 
 	public static Object getAll(ApplicationContext ctx, ApiCallContext actx){
 		Actor owner=ApiUtils.getOwnerOrSelf(ctx, actx, "owner_id");
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(owner, actx.hasPermission(ClientAppPermission.PHOTOS_READ) ? actx.self.user : null,
 				actx.getOffset(), actx.getCount(50, 1000));
-		return new ApiPaginatedList<>(photos.total, getPhotos(ctx, actx, photos.list));
+		return new ApiPaginatedList<>(photos.total, ApiUtils.getPhotos(ctx, actx, photos.list));
 	}
 
 	public static Object getUserPhotos(ApplicationContext ctx, ApiCallContext actx){
 		User user=ApiUtils.getUserOrSelf(ctx, actx, "user_id");
 		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(actx.hasPermission(ClientAppPermission.PHOTOS_READ) ? actx.self.user : null,
 				user, actx.getOffset(), actx.getCount(50, 1000), actx.booleanParam("rev"));
-		return new ApiPaginatedList<>(photos.total, getPhotos(ctx, actx, photos.list));
+		return new ApiPaginatedList<>(photos.total, ApiUtils.getPhotos(ctx, actx, photos.list));
 	}
 
 	public static Object getNewTags(ApplicationContext ctx, ApiCallContext actx){
 		PaginatedList<Photo> photos=ctx.getPhotosController().getUserUnapprovedTaggedPhotos(actx.self.user, actx.getOffset(), actx.getCount(50, 100));
-		List<ApiPhoto> apiPhotos=getPhotos(ctx, actx, photos.list);
+		List<ApiPhoto> apiPhotos=ApiUtils.getPhotos(ctx, actx, photos.list);
 		Map<Long, List<PhotoTag>> allTags=ctx.getPhotosController().getTagsForPhotos(photos.list.stream().map(p->p.id).collect(Collectors.toSet()));
 		int selfID=actx.self.user.id;
 		for(ApiPhoto p:apiPhotos){
@@ -374,21 +373,6 @@ public class PhotosMethods{
 		return true;
 	}
 
-	private static List<ApiPhoto> getPhotos(ApplicationContext ctx, ApiCallContext actx, List<Photo> photos){
-		if(photos.isEmpty())
-			return List.of();
-		Map<Long, UserInteractions> interactions;
-		Map<Long, Integer> tagCounts;
-		if(actx.booleanParam("extended")){
-			interactions=ctx.getUserInteractionsController().getUserInteractions(photos, actx.self==null ? null : actx.self.user);
-			tagCounts=ctx.getPhotosController().getTagCountsForPhotos(photos.stream().map(p->p.id).collect(Collectors.toSet()));
-		}else{
-			interactions=null;
-			tagCounts=null;
-		}
-		return photos.stream().map(p->new ApiPhoto(p, actx, interactions, tagCounts)).toList();
-	}
-
 	public static Object getComments(ApplicationContext ctx, ApiCallContext actx){
 		String photoID=actx.requireParamString("photo_id");
 		Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(XTEA.decodeObjectID(photoID, ObfuscatedObjectIDType.PHOTO));
@@ -455,7 +439,7 @@ public class PhotosMethods{
 
 		List<Long> photoIDs=feed.list.stream().map(e->e.objectID).toList();
 		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs);
-		return new ApiPaginatedList<>(feed.total, getPhotos(ctx, actx, photoIDs.stream().map(photos::get).toList()));
+		return new ApiPaginatedList<>(feed.total, ApiUtils.getPhotos(ctx, actx, photoIDs.stream().map(photos::get).toList()));
 	}
 
 	public static Object save(ApplicationContext ctx, ApiCallContext actx){
