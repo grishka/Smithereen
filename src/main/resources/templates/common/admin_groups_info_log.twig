@@ -1,8 +1,18 @@
 {% for action in items %}
 <div class="listItemWithDivider itemWithAvatar">
+	{% if action.adminID>0 %}
 	<div><a href="{{ profileURL(action.adminID) }}">{{ users[action.adminID] | pictureForAvatar('a') }}</a></div>
+	{% else %}
+	<div><span class="ava avaPlaceholder sizeA"></span></div>
+	{% endif %}
 	<div>
-		<div class="smallVMargin" style="margin-top: 0;"><a href="{{ profileURL(action.adminID) }}">{{ users[action.adminID] | name('complete') }}</a></div>
+		<div class="smallVMargin" style="margin-top: 0;">
+			{% if action.adminID>0 %}
+			<a href="{{ profileURL(action.adminID) }}">{{ users[action.adminID] | name('complete') }}</a>
+			{% else %}
+			{{ L('admin_group_remote_admin') }}
+			{% endif %}
+		</div>
 		<div class="smallVMargin">
 		{% if action.action=='CHANGE_NAME' %}
 		<div class="smallVMargin">{{ L('admin_group_name_changed') }}</div>

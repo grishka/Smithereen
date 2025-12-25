@@ -411,5 +411,6 @@
   "admin_database_maintenance": "Database maintenance",
   "admin_recount_relationship_metrics": "Recount friends/following/followers",
   "admin_recount_wall_comments": "Recount wall comments",
-  "admin_metrics_recounted": "Metrics recounted successfully"
+  "admin_metrics_recounted": "Metrics recounted successfully",
+  "admin_group_remote_admin": "Unknown remote manager"
 }
