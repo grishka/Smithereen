@@ -104,7 +104,8 @@ public class UserInteractionsRoutes{
 				.runScript("animateCounter(ge(\"likeCounter"+elementID+"\"), \""+NumberFormat.getIntegerInstance(lang(req).getLocale()).format(interactions.likeCount)+"\");");
 		if(info!=null && info.account!=null){
 			String urlParams="?csrf="+info.csrfToken;
-			urlParams+="&rid="+rid;
+			if(StringUtils.isNotEmpty(rid))
+				urlParams+="&rid="+rid;
 			b.setAttribute("likeButton"+elementID, "href", url+"/"+(interactions.isLiked ? "un" : "")+"like"+urlParams);
 		}
 		if(interactions.likeCount==0)
