@@ -411,5 +411,6 @@
   "admin_database_maintenance": "Обслуживание базы данных",
   "admin_recount_relationship_metrics": "Пересчитать друзей/подписки/подписчиков",
   "admin_recount_wall_comments": "Пересчитать комментарии на стене",
-  "admin_metrics_recounted": "Показатели успешно пересчитаны"
+  "admin_metrics_recounted": "Показатели успешно пересчитаны",
+  "admin_group_remote_admin": "Неизвестный руководитель на другом сервере"
 }
