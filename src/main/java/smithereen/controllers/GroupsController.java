@@ -45,28 +45,28 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
 import smithereen.model.OwnedContentObject;
+import smithereen.model.PaginatedList;
+import smithereen.model.User;
+import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FriendshipStatus;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupBanInfo;
 import smithereen.model.groups.GroupBanStatus;
+import smithereen.model.groups.GroupFeatureState;
+import smithereen.model.groups.GroupInvitation;
 import smithereen.model.groups.GroupLink;
 import smithereen.model.groups.GroupLinkParseResult;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.EventReminder;
-import smithereen.model.ForeignGroup;
-import smithereen.model.ForeignUser;
-import smithereen.model.friends.FriendshipStatus;
-import smithereen.model.Group;
-import smithereen.model.groups.GroupAdmin;
-import smithereen.model.groups.GroupInvitation;
-import smithereen.model.PaginatedList;
-import smithereen.model.User;
-import smithereen.model.notifications.UserNotifications;
-import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.feed.NewsfeedEntry;
-import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.notifications.RealtimeNotification;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.FederationStorage;
 import smithereen.storage.GroupStorage;
@@ -145,6 +145,7 @@ public class GroupsController{
 		}
 	}
 
+	@NotNull
 	public Group getGroupOrThrow(int id){
 		try{
 			if(id<=0)

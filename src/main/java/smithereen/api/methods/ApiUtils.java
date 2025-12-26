@@ -253,14 +253,10 @@ public class ApiUtils{
 		}
 	}
 
+	@NotNull
 	public static Actor getOwnerOrSelf(ApplicationContext ctx, ApiCallContext actx, String paramName){
 		if(actx.hasParam(paramName)){
-			int oid=actx.requireParamIntNonZero(paramName);
-			try{
-				return oid>0 ? ctx.getUsersController().getUserOrThrow(oid) : ctx.getGroupsController().getGroupOrThrow(-oid);
-			}catch(ObjectNotFoundException x){
-				throw actx.error(ApiErrorType.NOT_FOUND, (oid>0 ? "user" : "group")+" with this ID does not exist");
-			}
+			return getOwner(ctx, actx, paramName);
 		}else if(actx.self!=null){
 			return actx.self.user;
 		}else{

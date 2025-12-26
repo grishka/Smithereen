@@ -971,6 +971,7 @@ public class WallController{
 		}
 	}
 
+	@NotNull
 	public OwnerAndAuthor getContentAuthorAndOwner(OwnedContentObject post){
 		int ownerID=post.getOwnerID();
 		int authorID=post.getAuthorID();
@@ -1258,7 +1259,7 @@ public class WallController{
 		}
 	}
 
-	public int createPoll(User self, Actor owner, String question, List<String> options, boolean anonymous, boolean multipleChoice, Instant endTime){
+	public int createPoll(User self, @NotNull Actor owner, @NotNull String question, @NotNull List<String> options, boolean anonymous, boolean multipleChoice, @Nullable Instant endTime){
 		try{
 			ensureUserNotBlocked(self, owner);
 			if(owner instanceof User user){

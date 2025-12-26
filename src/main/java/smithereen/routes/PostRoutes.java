@@ -49,9 +49,9 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.WebDeltaResponse;
 import smithereen.model.admin.UserRole;
 import smithereen.model.admin.ViolationReport;
-import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.groups.GroupFeatureState;
@@ -335,7 +335,7 @@ public class PostRoutes{
 						&& post.poll.anonymous==anonymous && post.poll.multipleChoice==multiChoice && Objects.equals(pollEndTime, post.poll.endTime)){
 					poll=post.poll;
 				}else{
-					int pollID=ctx.getWallController().createPoll(info.account.user, oaa.owner(), pollQuestion, pollOptions, anonymous, multiChoice, pollEndTime);
+					int pollID=ctx.getWallController().createPoll(info.account.user, Objects.requireNonNull(oaa.owner()), pollQuestion, pollOptions, anonymous, multiChoice, pollEndTime);
 					poll=ctx.getWallController().getPollByID(pollID);
 				}
 			}else{
