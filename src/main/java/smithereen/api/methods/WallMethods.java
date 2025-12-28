@@ -39,8 +39,7 @@ import spark.utils.StringUtils;
 
 public class WallMethods{
 	public static Object get(ApplicationContext ctx, ApiCallContext actx){
-		int ownerID=actx.requireParamIntNonZero("owner_id");
-		Actor owner=ownerID>0 ? ctx.getUsersController().getUserOrThrow(ownerID) : ctx.getGroupsController().getGroupOrThrow(-ownerID);
+		Actor owner=ApiUtils.getOwnerOrSelf(ctx, actx, "owner_id");
 		User self=actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
 		boolean canSeeAllPosts;
 		if(owner instanceof User u){
@@ -208,14 +207,7 @@ public class WallMethods{
 	}
 
 	public static Object post(ApplicationContext ctx, ApiCallContext actx){
-		int ownerID=actx.requireParamIntNonZero("owner_id");
-		Actor owner;
-		if(ownerID>0)
-			owner=ctx.getUsersController().getUserOrThrow(ownerID);
-		else
-			owner=ctx.getGroupsController().getGroupOrThrow(-ownerID);
-
-		return createOrUpdatePost(ctx, actx, owner, null, null, null);
+		return createOrUpdatePost(ctx, actx, ApiUtils.getOwnerOrSelf(ctx, actx, "owner_id"), null, null, null);
 	}
 
 	public static Object repost(ApplicationContext ctx, ApiCallContext actx){
