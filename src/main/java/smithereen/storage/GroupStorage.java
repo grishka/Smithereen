@@ -1130,12 +1130,24 @@ public class GroupStorage{
 				.executeNoResult();
 	}
 
-	public static List<User> getBlockedUsers(int selfID) throws SQLException{
-		return UserStorage.getByIdAsList(new SQLQueryBuilder()
-				.selectFrom("blocks_group_user")
-				.columns("user_id")
-				.where("owner_id=?", selfID)
-				.executeAndGetIntList());
+	public static PaginatedList<User> getBlockedUsers(int selfID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("blocks_group_user")
+					.count()
+					.where("owner_id=?", selfID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<User> users=UserStorage.getByIdAsList(new SQLQueryBuilder(conn)
+					.selectFrom("blocks_group_user")
+					.columns("user_id")
+					.where("owner_id=?", selfID)
+					.limit(count, offset)
+					.executeAndGetIntList());
+			return new PaginatedList<>(users, total, offset, count);
+		}
 	}
 
 	public static boolean isDomainBlocked(int selfID, String domain) throws SQLException{

@@ -50,6 +50,16 @@ public class ApiDispatcher{
 		registerMethod("groups.search", GroupsMethods::search, true);
 		registerMethod("groups.isMember", GroupsMethods::isMember, false);
 		registerMethod("groups.getMembers", GroupsMethods::getMembers, false);
+		registerMethod("groups.banUser", GroupsMethods::banUser, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.unbanUser", GroupsMethods::unbanUser, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.getBannedUsers", GroupsMethods::getBannedUsers, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.banDomain", GroupsMethods::banDomain, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.unbanDomain", GroupsMethods::unbanDomain, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.getBannedDomains", GroupsMethods::getBannedDomains, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.getInvitedUsers", GroupsMethods::getInvitedUsers, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.getRequests", GroupsMethods::getRequests, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.acceptUser", GroupsMethods::acceptUser, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.removeUser", GroupsMethods::removeUser, ClientAppPermission.GROUPS_WRITE);
 
 		registerMethod("friends.get", FriendsMethods::get, false);
 		registerMethod("friends.getOnline", FriendsMethods::getOnline, false);

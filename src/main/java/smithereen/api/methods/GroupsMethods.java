@@ -237,4 +237,84 @@ public class GroupsMethods{
 		else
 			return new ApiPaginatedList<>(memberIDs);
 	}
+
+	public static Object banUser(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.MODERATOR);
+		ctx.getGroupsController().blockUser(group, user);
+		return true;
+	}
+
+	public static Object unbanUser(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.MODERATOR);
+		ctx.getGroupsController().unblockUser(group, user);
+		return true;
+	}
+
+	public static Object getBannedUsers(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.MODERATOR);
+		PaginatedList<User> users=ctx.getGroupsController().getBlockedUsers(group, actx.getOffset(), actx.getCount(100, 1000));
+		return new ApiPaginatedList<>(users.total, ApiUtils.getUsers(users.list, ctx, actx));
+	}
+
+	public static Object getBannedDomains(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.MODERATOR);
+		List<String> domains=ctx.getGroupsController().getBlockedDomains(group);
+		int offset=actx.getOffset();
+		int count=actx.getCount(100, 1000);
+		if(offset>=domains.size())
+			return new ApiPaginatedList<>(0, List.of());
+		return new ApiPaginatedList<>(domains.size(), domains.subList(offset, Math.min(offset+count, domains.size())));
+	}
+
+	public static Object banDomain(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.MODERATOR);
+		String domain=actx.requireParamString("domain");
+		if(!domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$"))
+			throw actx.paramError("invalid domain");
+		ctx.getGroupsController().blockDomain(group, domain);
+		return true;
+	}
+
+	public static Object unbanDomain(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.MODERATOR);
+		ctx.getGroupsController().unblockDomain(group, actx.requireParamString("domain"));
+		return true;
+	}
+
+	public static Object getInvitedUsers(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		PaginatedList<User> users=ctx.getGroupsController().getGroupInvites(actx.self.user, group, actx.getOffset(), actx.getCount(100, 1000));
+		return new ApiPaginatedList<>(users.total, ApiUtils.getUsers(users.list, ctx, actx));
+	}
+
+	public static Object getRequests(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		PaginatedList<User> users=ctx.getGroupsController().getJoinRequests(actx.self.user, group, actx.getOffset(), actx.getCount(100, 1000));
+		return new ApiPaginatedList<>(users.total, ApiUtils.getUsers(users.list, ctx, actx));
+	}
+
+	public static Object acceptUser(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().acceptJoinRequest(actx.self.user, group, ApiUtils.getUser(ctx, actx, "user_id"));
+		return true;
+	}
+	
+	public static Object removeUser(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		if(ctx.getGroupsController().getUserMembershipState(group, user)==Group.MembershipState.INVITED){
+			ctx.getGroupsController().cancelInvitation(actx.self.user, group, user);
+		}else{
+			ctx.getGroupsController().removeUser(actx.self.user, group, user);
+		}
+		return true;
+	}
 }

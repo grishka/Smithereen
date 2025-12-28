@@ -768,9 +768,9 @@ public class GroupsController{
 		}
 	}
 
-	public List<User> getBlockedUsers(Group group){
+	public PaginatedList<User> getBlockedUsers(Group group, int offset, int count){
 		try{
-			return GroupStorage.getBlockedUsers(group.id);
+			return GroupStorage.getBlockedUsers(group.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
