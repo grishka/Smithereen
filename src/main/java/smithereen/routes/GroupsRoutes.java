@@ -667,7 +667,7 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_blocking", req).with("title", lang(req).get("settings_blocking"));
-		model.with("blockedUsers", ctx.getGroupsController().getBlockedUsers(group, 0, 1000));
+		model.with("blockedUsers", ctx.getGroupsController().getBlockedUsers(group, 0, 1000).list);
 		model.with("blockedDomains", ctx.getGroupsController().getBlockedDomains(group));
 		model.with("group", group);
 		model.with("adminLevel", level);
