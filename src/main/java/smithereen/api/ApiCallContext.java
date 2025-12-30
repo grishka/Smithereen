@@ -56,6 +56,8 @@ public class ApiCallContext{
 		versionMinor=toWrap.versionMinor;
 		permissions=toWrap.permissions;
 		this.params=params;
+		imageFormat=toWrap.imageFormat;
+		lang=toWrap.lang;
 	}
 
 	public @NotNull ApiErrorException error(@NotNull ApiErrorType type){
