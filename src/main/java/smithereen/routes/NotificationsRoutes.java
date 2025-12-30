@@ -76,6 +76,7 @@ public class NotificationsRoutes{
 		for(Comment c:rawComments.values()){
 			switch(c.parentObjectID.type()){
 				case PHOTO -> needPhotos.add(c.parentObjectID.id());
+				case BOARD_TOPIC -> needTopics.add(c.parentObjectID.id());
 			}
 			if(c.getReplyLevel()>0 && !rawComments.containsKey(c.replyKey.getLast()))
 				needExtraComments.add(c.replyKey.getLast());

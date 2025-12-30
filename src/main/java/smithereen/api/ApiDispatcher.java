@@ -16,6 +16,7 @@ import smithereen.api.methods.GroupsMethods;
 import smithereen.api.methods.LikesMethods;
 import smithereen.api.methods.MessagesMethods;
 import smithereen.api.methods.NewsfeedMethods;
+import smithereen.api.methods.NotificationsMethods;
 import smithereen.api.methods.PhotosMethods;
 import smithereen.api.methods.PollsMethods;
 import smithereen.api.methods.ServerMethods;
@@ -185,6 +186,9 @@ public class ApiDispatcher{
 		registerMethod("fave.getGroups", FaveMethods::getGroups, ClientAppPermission.LIKES_READ);
 		registerMethod("fave.getPhotos", FaveMethods::getPhotos, ClientAppPermission.LIKES_READ);
 		registerMethod("fave.getPosts", FaveMethods::getPosts, ClientAppPermission.LIKES_READ);
+
+		registerMethod("notifications.get", NotificationsMethods::get, ClientAppPermission.NOTIFICATIONS);
+		registerMethod("notifications.markAsViewed", NotificationsMethods::markAsViewed, ClientAppPermission.NOTIFICATIONS);
 	}
 
 	private static void registerMethod(String name, ApiMethod impl, boolean requireUser){

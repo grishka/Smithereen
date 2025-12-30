@@ -54,22 +54,31 @@ public final class Notification implements NotificationWrapper{
 	public enum Type{
 		/**
 		 * %username% replied to you
+		 * object is the comment
+		 * relatedObject is the top-level post or comment parent
 		 */
 		REPLY,
 		/**
 		 * %username% liked your %object%
+		 * object is what was liked
+		 * relatedObject is the top-level post or comment parent, if comment was liked
 		 */
 		LIKE,
 		/**
 		 * %username% mentioned you in their %object%
+		 * object is post/comment mentioning the user
+		 * relatedObject is the top-level post or comment parent, if mention is in a comment
 		 */
 		MENTION,
 		/**
 		 * %username% reposted (Mastodon style) your post
+		 * object is wall post/comment that was reposted
+		 * relatedObject is the top-level post if object is a comment
 		 */
 		RETOOT,
 		/**
 		 * %username% posted on your wall
+		 * object is the wall post
 		 */
 		POST_OWN_WALL,
 		/**
@@ -86,6 +95,8 @@ public final class Notification implements NotificationWrapper{
 		FRIEND_REQ_ACCEPT,
 		/**
 		 * %username% reposted (quoted) your %object%
+		 * object is wall post/comment that was reposted
+		 * relatedObject is the top-level post if object is a comment
 		 */
 		REPOST;
 
