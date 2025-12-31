@@ -1696,6 +1696,27 @@ public class UserStorage{
 				.collect(Collectors.toSet());
 	}
 
+	public static PaginatedList<User> getAllMutedUsers(int selfID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.count()
+					.where("follower_id=? AND muted=1", selfID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<User> users=getByIdAsList(new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.columns("followee_id")
+					.where("follower_id=? AND muted=1", selfID)
+					.limit(count, offset)
+					.orderBy("added_at DESC")
+					.executeAndGetIntList());
+			return new PaginatedList<>(users, total, offset, count);
+		}
+	}
+
 	public static Map<Integer, UserPresence> getUserPresences(Collection<Integer> ids) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("users")

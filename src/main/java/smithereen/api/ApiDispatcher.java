@@ -133,6 +133,13 @@ public class ApiDispatcher{
 		registerMethod("newsfeed.get", NewsfeedMethods::get, ClientAppPermission.NEWSFEED);
 		registerMethod("newsfeed.getGroups", NewsfeedMethods::getGroups, ClientAppPermission.NEWSFEED);
 		registerMethod("newsfeed.getComments", NewsfeedMethods::getComments, ClientAppPermission.NEWSFEED);
+		registerMethod("newsfeed.getBanned", NewsfeedMethods::getBanned, ClientAppPermission.NEWSFEED);
+		registerMethod("newsfeed.addBan", NewsfeedMethods::addBan, ClientAppPermission.NEWSFEED);
+		registerMethod("newsfeed.deleteBan", NewsfeedMethods::deleteBan, ClientAppPermission.NEWSFEED);
+		registerMethod("newsfeed.getFilters", NewsfeedMethods::getFilters, ClientAppPermission.NEWSFEED);
+		registerMethod("newsfeed.addFilter", NewsfeedMethods::addFilter, ClientAppPermission.NEWSFEED);
+		registerMethod("newsfeed.editFilter", NewsfeedMethods::editFilter, ClientAppPermission.NEWSFEED);
+		registerMethod("newsfeed.deleteFilter", NewsfeedMethods::deleteFilter, ClientAppPermission.NEWSFEED);
 
 		registerMethod("execute", ExecuteMethods::execute, true);
 

@@ -1,5 +1,10 @@
 package smithereen.api.methods;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -17,6 +22,7 @@ import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiBoardTopic;
 import smithereen.api.model.ApiComment;
 import smithereen.api.model.ApiGroup;
+import smithereen.api.model.ApiPaginatedList;
 import smithereen.api.model.ApiPhoto;
 import smithereen.api.model.ApiUser;
 import smithereen.api.model.ApiWallPost;
@@ -32,6 +38,7 @@ import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.filtering.FilterContext;
+import smithereen.model.filtering.WordFilter;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
@@ -372,6 +379,139 @@ public class NewsfeedMethods{
 		}
 
 		return new CommentsFeed(feed.total, items, ApiUtils.getUsers(needUsers, ctx, actx), ApiUtils.getGroups(needGroups, ctx, actx));
+	}
+	
+	public static Object getBanned(ApplicationContext ctx, ApiCallContext actx){
+		PaginatedList<User> users=ctx.getFriendsController().getAllMutedUsers(actx.self.user, actx.getOffset(), actx.getCount(100, 1000));
+		return new ApiPaginatedList<>(users.total, ApiUtils.getUsers(users.list, ctx, actx));
+	}
+
+	public static Object addBan(ApplicationContext ctx, ApiCallContext actx){
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		ctx.getFriendsController().setUserMuted(actx.self.user, user, true);
+		return true;
+	}
+
+	public static Object deleteBan(ApplicationContext ctx, ApiCallContext actx){
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		ctx.getFriendsController().setUserMuted(actx.self.user, user, false);
+		return true;
+	}
+
+	public static Object getFilters(ApplicationContext ctx, ApiCallContext actx){
+		List<WordFilter> filters=ctx.getNewsfeedController().getWordFilters(actx.self.user, actx.booleanParam("include_expired"));
+		record ApiWordFilter(int id, String name, List<String> words, List<String> contexts, Long expiryDate){}
+		return filters.stream().map(f->new ApiWordFilter(f.id, f.name, f.words, f.contexts.stream().map(c->switch(c){
+			case FRIENDS_FEED -> "friends";
+			case GROUPS_FEED -> "groups";
+		}).toList(), f.expiresAt==null ? null : f.expiresAt.getEpochSecond())).toList();
+	}
+
+	public static Object addFilter(ApplicationContext ctx, ApiCallContext actx){
+		String name=actx.requireParamString("name");
+		JsonArray rawWords=actx.optParamJsonArray("words");
+		if(rawWords==null)
+			throw actx.paramError("words is undefined");
+		if(rawWords.isEmpty())
+			throw actx.paramError("words is empty");
+
+		ArrayList<String> words=new ArrayList<>();
+		int i=0;
+		for(JsonElement el:rawWords){
+			if(el instanceof JsonPrimitive jp && jp.isString()){
+				String word=jp.getAsString().strip();
+				if(word.isEmpty())
+					continue;
+				words.add(word);
+			}else{
+				throw actx.paramError("words["+i+"] is not a string");
+			}
+			i++;
+		}
+
+		if(words.isEmpty())
+			throw actx.paramError("words does not contain any non-empty strings");
+
+		EnumSet<FilterContext> contexts=EnumSet.noneOf(FilterContext.class);
+		for(String c:actx.requireCommaSeparatedStringSet("contexts")){
+			switch(c){
+				case "friends" -> contexts.add(FilterContext.FRIENDS_FEED);
+				case "groups" -> contexts.add(FilterContext.GROUPS_FEED);
+			}
+		}
+		if(contexts.isEmpty())
+			throw actx.paramError("contexts must contain at least one of: friends, groups");
+
+		Instant expiry=actx.hasParam("expiry_date") ? Instant.ofEpochSecond(actx.requireParamLongNonZero("expiry_date")) : null;
+
+		return ctx.getNewsfeedController().createWordFilter(actx.self.user, name, words, contexts, expiry);
+	}
+
+	public static Object editFilter(ApplicationContext ctx, ApiCallContext actx){
+		int id=actx.requireParamIntPositive("filter_id");
+		WordFilter filter=ctx.getNewsfeedController().getWordFilter(actx.self.user, id);
+		String name=actx.optParamString("name", filter.name);
+
+		List<String> words;
+		if(actx.hasParam("words")){
+			JsonArray rawWords=actx.optParamJsonArray("words");
+			if(rawWords==null)
+				throw actx.paramError("words is undefined");
+			if(rawWords.isEmpty())
+				throw actx.paramError("words is empty");
+
+			words=new ArrayList<>();
+			int i=0;
+			for(JsonElement el:rawWords){
+				if(el instanceof JsonPrimitive jp && jp.isString()){
+					String word=jp.getAsString().strip();
+					if(word.isEmpty())
+						continue;
+					words.add(word);
+				}else{
+					throw actx.paramError("words["+i+"] is not a string");
+				}
+				i++;
+			}
+
+			if(words.isEmpty())
+				throw actx.paramError("words does not contain any non-empty strings");
+		}else{
+			words=filter.words;
+		}
+
+		EnumSet<FilterContext> contexts;
+		if(actx.hasParam("contexts")){
+			contexts=EnumSet.noneOf(FilterContext.class);
+			for(String c:actx.requireCommaSeparatedStringSet("contexts")){
+				switch(c){
+					case "friends" -> contexts.add(FilterContext.FRIENDS_FEED);
+					case "groups" -> contexts.add(FilterContext.GROUPS_FEED);
+				}
+			}
+			if(contexts.isEmpty())
+				throw actx.paramError("contexts must contain at least one of: friends, groups");
+		}else{
+			contexts=filter.contexts;
+		}
+
+		Instant expiry;
+		if(actx.hasParam("expiry_date")){
+			long rawExpiry=actx.optParamLong("expiry_date");
+			expiry=rawExpiry>0 ? Instant.ofEpochSecond(rawExpiry) : null;
+		}else{
+			expiry=filter.expiresAt;
+		}
+
+		ctx.getNewsfeedController().updateWordFilter(actx.self.user, filter, name, words, contexts, expiry);
+		return true;
+	}
+
+	public static Object deleteFilter(ApplicationContext ctx, ApiCallContext actx){
+		int id=actx.requireParamIntPositive("filter_id");
+		WordFilter filter=ctx.getNewsfeedController().getWordFilter(actx.self.user, id);
+		ctx.getNewsfeedController().deleteWordFilter(actx.self.user, filter);
+		return true;
 	}
 
 	record PhotosInfo(int count, List<ApiPhoto> items, String listId){}

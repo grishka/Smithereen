@@ -423,6 +423,14 @@ public class FriendsController{
 		}
 	}
 
+	public PaginatedList<User> getAllMutedUsers(User self, int offset, int count){
+		try{
+			return UserStorage.getAllMutedUsers(self.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public void incrementHintsRank(User self, User friend, int amount){
 		if(self.id==friend.id)
 			return;

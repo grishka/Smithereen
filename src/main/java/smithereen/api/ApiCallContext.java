@@ -145,6 +145,16 @@ public class ApiCallContext{
 		return v;
 	}
 
+	public long requireParamLongNonZero(@NotNull String key){
+		String value=params.get(key);
+		if(StringUtils.isEmpty(value))
+			throw paramError(key+" is undefined");
+		long v=Utils.safeParseLong(value);
+		if(v==0)
+			throw paramError(key+" is not an integer");
+		return v;
+	}
+
 	public long optParamLong(@NotNull String key){
 		return Utils.safeParseLong(params.get(key));
 	}
