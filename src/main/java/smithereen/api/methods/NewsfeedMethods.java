@@ -31,6 +31,7 @@ import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.feed.GroupedNewsfeedEntry;
 import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.filtering.FilterContext;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
@@ -121,7 +122,12 @@ public class NewsfeedMethods{
 			}
 		}
 
-		List<PostViewModel> feedPostsList=ctx.getWallController().getPosts(needPosts).values().stream().map(PostViewModel::new).toList();
+		Map<Integer, PostViewModel> feedPostsMap=ctx.getWallController().getPosts(needPosts).values()
+				.stream()
+				.map(PostViewModel::new)
+				.collect(Collectors.toMap(p->p.post.id, Function.identity()));
+		List<PostViewModel> feedPostsList=new ArrayList<>(feedPostsMap.values());
+		ctx.getNewsfeedController().applyFiltersToPosts(actx.self.user, isGroups ? FilterContext.GROUPS_FEED : FilterContext.FRIENDS_FEED, feedPostsMap.values());
 		Map<Integer, ApiWallPost> feedPosts=ApiUtils.getPosts(feedPostsList, ctx, actx, true, true, false)
 				.stream()
 				.collect(Collectors.toMap(p->p.id, Function.identity()));
@@ -192,24 +198,31 @@ public class NewsfeedMethods{
 							List<Long> objectIDs=e instanceof GroupedNewsfeedEntry gne ? gne.childEntries.stream().map(ce->ce.objectID).toList() : List.of(e.objectID);
 							int entryID=e instanceof GroupedNewsfeedEntry gne ? gne.childEntries.getFirst().id : e.id;
 							return switch(type){
-								case POST -> new FeedItem("post", e.id, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, feedPosts.get((int) e.objectID), null, null, null, null, null);
+								case POST -> {
+									PostViewModel pvm=feedPostsMap.get((int)e.objectID);
+									WordFilterInfo filterInfo=null;
+									if(pvm.matchedFilter!=null){
+										filterInfo=new WordFilterInfo(pvm.matchedFilter.id, pvm.matchedFilter.name, pvm.matchedFilter.expiresAt==null ? null : pvm.matchedFilter.expiresAt.getEpochSecond());
+									}
+									yield new FeedItem("post", e.id, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, feedPosts.get((int) e.objectID), null, null, null, null, null, filterInfo);
+								}
 								case JOIN_GROUP, CREATE_GROUP, JOIN_EVENT, CREATE_EVENT -> new FeedItem(switch(type){
 									case JOIN_GROUP -> "group_join";
 									case JOIN_EVENT -> "event_join";
 									case CREATE_GROUP -> "group_create";
 									case CREATE_EVENT -> "event_create";
 									default -> throw new IllegalStateException("Unexpected value: "+type);
-								}, entryID, e.authorID, null, null, null, null, objectIDs, null, null);
-								case ADD_FRIEND -> new FeedItem("friend", entryID, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, null, null, objectIDs, null, null, null);
+								}, entryID, e.authorID, null, null, null, null, objectIDs, null, null, null);
+								case ADD_FRIEND -> new FeedItem("friend", entryID, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, null, null, objectIDs, null, null, null, null);
 								case ADD_PHOTO, PHOTO_TAG -> new FeedItem(type==NewsfeedEntry.Type.PHOTO_TAG ? "photo_tag" : "photo",
 										entryID, e.authorID, null, null,
 										new PhotosInfo(objectIDs.size(), objectIDs.stream().limit(10).map(feedPhotos::get).toList(), (isGroups ? "groups/" : "friends/")+entryID+"/"+type.ordinal()+"/"+e.authorID+"/"+e.time.getEpochSecond()),
-										null, null, null, null);
-								case BOARD_TOPIC -> new FeedItem("board", entryID, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, null, null, null, null, objectIDs.stream().map(feedTopics::get).toList(), null);
+										null, null, null, null, null);
+								case BOARD_TOPIC -> new FeedItem("board", entryID, e.authorID>0 ? e.authorID : null, e.authorID<0 ? -e.authorID : null, null, null, null, null, objectIDs.stream().map(feedTopics::get).toList(), null, null);
 								case RELATIONSHIP_STATUS -> {
 									User.RelationshipStatus status=User.RelationshipStatus.values()[(int) (e.objectID >> 56)];
 									int partnerID=(int) e.objectID;
-									yield new FeedItem("relation", e.id, e.authorID, null, null, null, null, null, null, new RelationInfo(ApiUser.mapRelationshipStatus(status), partnerID>0 ? partnerID : null));
+									yield new FeedItem("relation", e.id, e.authorID, null, null, null, null, null, null, new RelationInfo(ApiUser.mapRelationshipStatus(status), partnerID>0 ? partnerID : null), null);
 								}
 								default -> throw new IllegalStateException("Unexpected value: "+type);
 							};
@@ -363,7 +376,8 @@ public class NewsfeedMethods{
 
 	record PhotosInfo(int count, List<ApiPhoto> items, String listId){}
 	record RelationInfo(String status, Integer partner){}
-	record FeedItem(String type, int id, Integer userId, Integer groupId, ApiWallPost post, PhotosInfo photos, List<Long> friendIds, List<Long> groupIds, List<ApiBoardTopic> topics, RelationInfo relation){}
+	record WordFilterInfo(int id, String name, Long expiryDate){}
+	record FeedItem(String type, int id, Integer userId, Integer groupId, ApiWallPost post, PhotosInfo photos, List<Long> friendIds, List<Long> groupIds, List<ApiBoardTopic> topics, RelationInfo relation, WordFilterInfo matchedFilter){}
 	record Feed(List<FeedItem> items, List<ApiUser> profiles, List<ApiGroup> groups, String nextFrom){}
 	record CommentsFeedItem(String type, ApiWallPost post, ApiPhoto photo, ApiBoardTopic topic, List<?> comments){}
 	record CommentsFeed(int count, List<CommentsFeedItem> items, List<ApiUser> profiles, List<ApiGroup> groups){}
