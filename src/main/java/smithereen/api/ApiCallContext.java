@@ -206,6 +206,14 @@ public class ApiCallContext{
 		}
 	}
 
+	@NotNull
+	public JsonArray requireParamJsonArray(@NotNull String key){
+		JsonArray r=optParamJsonArray(key);
+		if(r==null)
+			throw paramError(key+" is undefined");
+		return r;
+	}
+
 	public <T> @Nullable T optParamJsonObject(@NotNull String key, @NotNull Class<T> objType){
 		String v=optParamString(key);
 		if(StringUtils.isEmpty(v))

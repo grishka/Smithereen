@@ -268,6 +268,15 @@ public class ApiUtils{
 		}
 	}
 
+	public static Actor getOwner(ApplicationContext ctx, ApiCallContext actx, String paramName){
+		int oid=actx.requireParamIntNonZero(paramName);
+		try{
+			return oid>0 ? ctx.getUsersController().getUserOrThrow(oid) : ctx.getGroupsController().getGroupOrThrow(-oid);
+		}catch(ObjectNotFoundException x){
+			throw actx.error(ApiErrorType.NOT_FOUND, (oid>0 ? "user" : "group")+" with this ID does not exist");
+		}
+	}
+
 	public static User getUser(ApplicationContext ctx, ApiCallContext actx, String paramName){
 		try{
 			return ctx.getUsersController().getUserOrThrow(actx.requireParamIntPositive(paramName));
