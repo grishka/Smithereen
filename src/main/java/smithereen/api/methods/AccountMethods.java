@@ -80,4 +80,9 @@ public class AccountMethods{
 		ctx.getPrivacyController().unblockDomain(actx.self.user, actx.requireParamString("domain"));
 		return true;
 	}
+
+	public static Object revokeToken(ApplicationContext ctx, ApiCallContext actx){
+		ctx.getAppsController().revokeAccessToken(actx.token.id());
+		return true;
+	}
 }
