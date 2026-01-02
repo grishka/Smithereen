@@ -381,7 +381,7 @@ class PostForm{
 	}
 
 	public send(onDone:{(success:boolean):void}=null):boolean{
-		if(!this.allowEmpty && this.input.value.length==0 && this.attachmentIDs.length==0){
+		if(!this.allowEmpty && this.input.value.trim().length==0 && this.attachmentIDs.length==0){
 			if(this.pollLayout!=null){
 				if(!this.pollQuestionField.reportValidity())
 					return false;
