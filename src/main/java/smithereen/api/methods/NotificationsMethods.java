@@ -1,5 +1,8 @@
 package smithereen.api.methods;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,13 +36,53 @@ public class NotificationsMethods{
 	public static Object get(ApplicationContext ctx, ApiCallContext actx){
 		PaginatedList<NotificationWrapper> notifications=ctx.getNotificationsController().getNotifications(actx.self, actx.getOffset(), actx.getCount(50, 100), actx.optParamIntPositive("max_id", Integer.MAX_VALUE));
 
-		record UserIDs(int count, List<Integer> items){}
-		record Feedback(String type, Integer wallPostId, Integer wallCommentId, String commentId){}
-		record NotificationObject(String type, Integer wallPostId, Integer wallCommentId, String commentId, String photoId){}
-		record Parent(String type, Integer wallPostId, String photoId, String boardTopicId){}
-		record ApiNotification(int id, String type, UserIDs userIds, Integer userId, long date, Feedback feedback, NotificationObject object, Parent parent){}
-		record NotificationsResponse(List<ApiNotification> items, List<ApiWallPost> wallPosts, List<ApiWallPost> wallComments, List<ApiComment> comments,
-									 List<ApiPhoto> photos, List<ApiBoardTopic> boardTopics, List<ApiUser> profiles, List<ApiGroup> groups, int lastViewed){}
+		record UserIDs(int count, @NotNull List<Integer> items){
+		}
+		record Feedback(
+				@NotNull String type,
+				@Nullable Integer wallPostId,
+				@Nullable Integer wallCommentId,
+				@Nullable String commentId
+		){
+		}
+		record NotificationObject(
+				@NotNull String type,
+				@Nullable Integer wallPostId,
+				@Nullable Integer wallCommentId,
+				@Nullable String commentId,
+				@Nullable String photoId
+		){
+		}
+		record Parent(
+				@NotNull String type,
+				@Nullable Integer wallPostId,
+				@Nullable String photoId,
+				@Nullable String boardTopicId
+		){
+		}
+		record ApiNotification(
+				int id,
+				@NotNull String type,
+				@Nullable UserIDs userIds,
+				@Nullable Integer userId,
+				long date,
+				@Nullable Feedback feedback,
+				@Nullable NotificationObject object,
+				@Nullable Parent parent
+		){
+		}
+		record NotificationsResponse(
+				@NotNull List<ApiNotification> items,
+				@NotNull List<ApiWallPost> wallPosts,
+				@NotNull List<ApiWallPost> wallComments,
+				@NotNull List<ApiComment> comments,
+				@NotNull List<ApiPhoto> photos,
+				@NotNull List<ApiBoardTopic> boardTopics,
+				@NotNull List<ApiUser> profiles,
+				@NotNull List<ApiGroup> groups,
+				int lastViewed
+		){
+		}
 
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>(), needPosts=new HashSet<>();
 		HashSet<Long> needPhotos=new HashSet<>(), needComments=new HashSet<>(), needTopics=new HashSet<>();
