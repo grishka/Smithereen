@@ -246,7 +246,7 @@ public class WallController{
 
 			int ownerUserID=wallOwner instanceof User u ? u.id : 0;
 			int ownerGroupID=wallOwner instanceof Group g ? g.id : 0;
-			boolean isTopLevelPostOwn=true;
+			boolean isTopLevelPostOwn;
 			List<Integer> replyKey;
 			if(inReplyTo!=null){
 				replyKey=inReplyTo.getReplyKeyForReplies();
@@ -290,6 +290,7 @@ public class WallController{
 					flags.add(Post.Flag.TOP_IS_WALL_TO_WALL);
 			}else{
 				replyKey=null;
+				isTopLevelPostOwn=wallOwner.getOwnerID()==author.id;
 			}
 
 			FloodControl.POSTS.incrementOrThrow(author);
@@ -327,7 +328,7 @@ public class WallController{
 
 			// Add{Note} is sent for any wall posts & comments on them, for local wall owners.
 			// Create{Note} is sent for anything else.
-			if(isTopLevelPostOwn || wallOwner instanceof ForeignActor){
+			if(isTopLevelPostOwn){
 				context.getActivityPubWorker().sendCreatePostActivity(post);
 			}else{
 				context.getActivityPubWorker().sendAddPostToWallActivity(post);

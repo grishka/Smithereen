@@ -113,8 +113,12 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 		if(post.inReplyTo==null){
 			checkNotBlocked(owner, actor, false);
 			if(owner instanceof User u && u.id!=actor.id){
+				if(owner instanceof ForeignUser)
+					throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Send Create{Note} to the wall owner only, which would then send Add{Note} to followers.");
 				context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_POSTING);
 				context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_OTHERS_POSTS);
+			}else if(owner instanceof ForeignGroup){
+				throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Send Create{Note} to the wall owner only, which would then send Add{Note} to followers.");
 			}
 		}
 
@@ -202,12 +206,11 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			if(parent!=null){
 				Post nativePost=post.asNativePost(context.appContext);
 				context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-//				post.setParent(parent);
-				Post topLevel=context.appContext.getWallController().getPostOrThrow(parent.getReplyLevel()>0 ? parent.replyKey.get(0) : parent.id);
+				Post topLevel=context.appContext.getWallController().getPostOrThrow(parent.getReplyLevel()>0 ? parent.replyKey.getFirst() : parent.id);
 				OwnerAndAuthor oaa=context.appContext.getWallController().getContentAuthorAndOwner(topLevel);
 				owner=oaa.owner();
-//				nativePost.replyKey=parent.getReplyKeyForReplies();
-//				nativePost.ownerID=topLevel.ownerID;
+				if(topLevel.ownerID!=topLevel.authorID && owner instanceof ForeignActor)
+					throw new BadRequestException("Create{Note} can't be used to notify about comments on foreign actors' wall-to-wall posts. Send Create{Note} to the wall owner only, which would then send Add{Note} to followers.");
 
 				checkNotBlocked(owner, actor, true);
 				if(owner instanceof User u)
@@ -299,11 +302,8 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 	}
 
 	private void checkNotBlocked(Actor owner, ForeignUser actor, boolean isReply) throws SQLException{
-		if(owner instanceof User user && !Objects.equals(owner.activityPubID, actor.activityPubID)){
+		if(owner instanceof User user && !Objects.equals(owner.activityPubID, actor.activityPubID))
 			Utils.ensureUserNotBlocked(actor, user);
-			if(owner instanceof ForeignActor && !isReply)
-				throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Wall owner must send an Add{Note} instead.");
-		}
 		if(owner instanceof Group group)
 			Utils.ensureUserNotBlocked(actor, group);
 	}
