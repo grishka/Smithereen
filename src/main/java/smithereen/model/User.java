@@ -921,6 +921,10 @@ public class User extends Actor{
 				case PHONE_NUMBER, EMAIL -> List.of();
 			};
 		}
+
+		public String getApiParamName(){
+			return name().toLowerCase();
+		}
 	}
 
 	public enum RelationshipStatus implements TranslatableEnum<RelationshipStatus>{

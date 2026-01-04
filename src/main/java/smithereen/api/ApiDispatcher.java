@@ -173,6 +173,11 @@ public class ApiDispatcher{
 		registerMethod("account.banDomain", AccountMethods::banDomain, ClientAppPermission.ACCOUNT_WRITE);
 		registerMethod("account.unbanDomain", AccountMethods::unbanDomain, ClientAppPermission.ACCOUNT_WRITE);
 		registerMethod("account.revokeToken", AccountMethods::revokeToken, true);
+		registerMethod("account.getProfileInfo", AccountMethods::getProfileInfo, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.saveProfileInfo", AccountMethods::saveProfileInfo, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.saveProfileContacts", AccountMethods::saveProfileContacts, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.saveProfileInterests", AccountMethods::saveProfileInterests, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.saveProfilePersonal", AccountMethods::saveProfilePersonal, ClientAppPermission.ACCOUNT_WRITE);
 
 		registerMethod("messages.get", MessagesMethods::get, ClientAppPermission.MESSAGES_READ);
 		registerMethod("messages.getById", MessagesMethods::getById, ClientAppPermission.MESSAGES_READ);

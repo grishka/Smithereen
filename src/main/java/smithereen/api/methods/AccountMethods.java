@@ -1,16 +1,26 @@
 package smithereen.api.methods;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import smithereen.ApplicationContext;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiPaginatedList;
+import smithereen.api.model.ApiUser;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserPresence;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.notifications.UserNotifications;
+import smithereen.text.TextProcessor;
+import spark.utils.StringUtils;
 
 public class AccountMethods{
 	public static Object getCounters(ApplicationContext ctx, ApiCallContext actx){
@@ -83,6 +93,250 @@ public class AccountMethods{
 
 	public static Object revokeToken(ApplicationContext ctx, ApiCallContext actx){
 		ctx.getAppsController().revokeAccessToken(actx.token.id());
+		return true;
+	}
+
+	public static Object getProfileInfo(ApplicationContext ctx, ApiCallContext actx){
+		record ProfileInfoResponse(String firstName, String nickname, String lastName, String maidenName, String sex, String bdate, String hometown, String relation, ApiUser relationPartner){}
+		User self=actx.self.user;
+		ApiUser partner=null;
+		if(self.relationship!=null && self.relationship.canHavePartner() && self.relationshipPartnerID!=0){
+			List<ApiUser> users=ApiUtils.getUsers(List.of(self.relationshipPartnerID), ctx, actx);
+			if(!users.isEmpty())
+				partner=users.getFirst();
+		}
+		return new ProfileInfoResponse(
+				nonNullStr(self.firstName),
+				nonNullStr(self.middleName),
+				nonNullStr(self.lastName),
+				nonNullStr(self.maidenName),
+				switch(self.gender){
+					case UNKNOWN -> "none";
+					case null -> "none";
+					case MALE -> "male";
+					case FEMALE -> "female";
+					case OTHER -> "other";
+				},
+				self.birthDate==null ? "" : String.format(Locale.US, "%02d.%02d.%04d", self.birthDate.getDayOfMonth(), self.birthDate.getMonthValue(), self.birthDate.getYear()),
+				nonNullStr(self.hometown),
+				self.relationship==null ? "none" : ApiUser.mapRelationshipStatus(self.relationship),
+				partner
+		);
+	}
+
+	private static String nonNullStr(String s){
+		return s==null ? "" : s;
+	}
+
+	private static String nullIfEmpty(ApiCallContext actx, String key){
+		String value=actx.optParamString(key, "").strip();
+		return StringUtils.isEmpty(value) ? null : value;
+	}
+
+	public static Object saveProfileInfo(ApplicationContext ctx, ApiCallContext actx){
+		User self=actx.self.user;
+		String firstName=self.firstName;
+		String lastName=self.lastName;
+		String middleName=self.middleName;
+		String maidenName=self.maidenName;
+		User.Gender gender=self.gender;
+		LocalDate bdate=self.birthDate;
+		String hometown=self.hometown;
+		User.RelationshipStatus relation=self.relationship;
+		User partner=null;
+		if(actx.hasParam("first_name")){
+			String fn=actx.optParamString("first_name", "").strip();
+			if(StringUtils.isNotEmpty(fn))
+				firstName=fn;
+		}
+		if(actx.hasParam("nickname")){
+			middleName=actx.optParamString("nickname", "").strip();
+		}
+		if(actx.hasParam("last_name")){
+			lastName=actx.optParamString("last_name", "").strip();
+		}
+		if(actx.hasParam("maiden_name")){
+			maidenName=actx.optParamString("maiden_name", "").strip();
+		}
+		if(actx.hasParam("gender")){
+			gender=actx.optParamEnum("gender", Map.of(
+					"none", User.Gender.UNKNOWN,
+					"male", User.Gender.MALE,
+					"female", User.Gender.FEMALE,
+					"other", User.Gender.OTHER
+			), User.Gender.UNKNOWN);
+		}
+		if(actx.hasParam("bdate")){
+			String rawBDate=actx.optParamString("bdate", "");
+			if(StringUtils.isNotEmpty(rawBDate)){
+				try{
+					bdate=LocalDate.parse(rawBDate, DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.US));
+				}catch(DateTimeParseException x){
+					bdate=null;
+				}
+			}else{
+				bdate=null;
+			}
+		}
+		if(actx.hasParam("relation")){
+			relation=actx.optParamEnum("relation", Map.of(
+					"single", User.RelationshipStatus.SINGLE,
+					"in_relationship", User.RelationshipStatus.IN_RELATIONSHIP,
+					"engaged", User.RelationshipStatus.ENGAGED,
+					"married", User.RelationshipStatus.MARRIED,
+					"in_love", User.RelationshipStatus.IN_LOVE,
+					"complicated", User.RelationshipStatus.COMPLICATED,
+					"actively_searching", User.RelationshipStatus.ACTIVELY_SEARCHING
+			));
+		}
+		if(relation!=null && relation.canHavePartner()){
+			try{
+				if(actx.hasParam("relation_partner_id")){
+					int partnerID=actx.optParamIntPositive("relation_partner_id", 0);
+					if(partnerID>0)
+						partner=ctx.getUsersController().getUserOrThrow(partnerID);
+				}else if(self.relationshipPartnerID>0){
+					partner=ctx.getUsersController().getUserOrThrow(self.relationshipPartnerID);
+				}
+			}catch(ObjectNotFoundException ignored){}
+		}
+		ctx.getUsersController().updateBasicProfileInfo(self, firstName, lastName, middleName, maidenName, gender, bdate, hometown, relation, partner);
+		actx.self.user=ctx.getUsersController().getUserOrThrow(self.id);
+		return true;
+	}
+
+	public static Object saveProfileContacts(ApplicationContext ctx, ApiCallContext actx){
+		User self=actx.self.user;
+		HashMap<User.ContactInfoKey, String> contactInfo=new HashMap<>(self.contacts);
+		String location=self.location;
+		String website=self.website;
+		if(actx.hasParam("city"))
+			location=nullIfEmpty(actx, "city");
+		if(actx.hasParam("site"))
+			website=nullIfEmpty(actx, "site");
+		for(User.ContactInfoKey key:User.ContactInfoKey.values()){
+			String param=key.getApiParamName();
+			if(actx.hasParam(param)){
+				String value=actx.optParamString(param, "");
+				if(StringUtils.isNotEmpty(value)){
+					String normalized=TextProcessor.normalizeContactInfoValue(key, value);
+					if(normalized==null)
+						throw actx.paramError(param+" is not in an expected format");
+					contactInfo.put(key, normalized);
+				}else{
+					contactInfo.remove(key);
+				}
+			}
+		}
+
+		ctx.getUsersController().updateProfileContacts(self, contactInfo, location, website);
+		actx.self.user=ctx.getUsersController().getUserOrThrow(self.id);
+
+		return true;
+	}
+
+	public static Object saveProfileInterests(ApplicationContext ctx, ApiCallContext actx){
+		User self=actx.self.user;
+		String activities=self.activities;
+		String interests=self.interests;
+		String music=self.favoriteMusic;
+		String movies=self.favoriteMovies;
+		String tv=self.favoriteTvShows;
+		String books=self.favoriteBooks;
+		String games=self.favoriteGames;
+		String quotes=self.favoriteQuotes;
+		String about=self.aboutSource;
+
+		if(actx.hasParam("activities"))
+			activities=nullIfEmpty(actx, "activities");
+		if(actx.hasParam("interests"))
+			interests=nullIfEmpty(actx, "interests");
+		if(actx.hasParam("music"))
+			music=nullIfEmpty(actx, "music");
+		if(actx.hasParam("movies"))
+			movies=nullIfEmpty(actx, "movies");
+		if(actx.hasParam("tv"))
+			tv=nullIfEmpty(actx, "tv");
+		if(actx.hasParam("books"))
+			books=nullIfEmpty(actx, "books");
+		if(actx.hasParam("games"))
+			games=nullIfEmpty(actx, "games");
+		if(actx.hasParam("quotes"))
+			quotes=nullIfEmpty(actx, "quotes");
+		if(actx.hasParam("about"))
+			about=nullIfEmpty(actx, "about");
+
+		ctx.getUsersController().updateProfileInterests(self, about, activities, interests, music, movies, tv, books, games, quotes);
+		actx.self.user=ctx.getUsersController().getUserOrThrow(self.id);
+
+		return true;
+	}
+
+	public static Object saveProfilePersonal(ApplicationContext ctx, ApiCallContext actx){
+		User self=actx.self.user;
+		User.PoliticalViews politicalViews=self.politicalViews;
+		String religion=self.religion;
+		String inspiredBy=self.inspiredBy;
+		User.PeoplePriority peoplePriority=self.peoplePriority;
+		User.PersonalPriority personalPriority=self.personalPriority;
+		User.HabitsViews smokingViews=self.smokingViews;
+		User.HabitsViews alcoholViews=self.alcoholViews;
+
+		if(actx.hasParam("political")){
+			politicalViews=actx.optParamEnum("political", Map.of(
+					"apathetic", User.PoliticalViews.APATHETIC,
+					"communist", User.PoliticalViews.COMMUNIST,
+					"socialist", User.PoliticalViews.SOCIALIST,
+					"moderate", User.PoliticalViews.MODERATE,
+					"liberal", User.PoliticalViews.LIBERAL,
+					"conservative", User.PoliticalViews.CONSERVATIVE,
+					"monarchist", User.PoliticalViews.MONARCHIST,
+					"ultraconservative", User.PoliticalViews.ULTRACONSERVATIVE,
+					"libertarian", User.PoliticalViews.LIBERTARIAN
+			));
+		}
+		if(actx.hasParam("religion"))
+			religion=nullIfEmpty(actx, "religion");
+		if(actx.hasParam("inspired_by"))
+			inspiredBy=nullIfEmpty(actx, "inspired_by");
+		if(actx.hasParam("people_main")){
+			peoplePriority=actx.optParamEnum("people_main", Map.of(
+					"intellect_creativity", User.PeoplePriority.INTELLECT_CREATIVITY,
+					"kindness_honesty", User.PeoplePriority.KINDNESS_HONESTY,
+					"health_beauty", User.PeoplePriority.HEALTH_BEAUTY,
+					"wealth_power", User.PeoplePriority.WEALTH_POWER,
+					"courage_persistence", User.PeoplePriority.COURAGE_PERSISTENCE,
+					"humor_life_love", User.PeoplePriority.HUMOR_LIFE_LOVE
+			));
+		}
+		if(actx.hasParam("life_main")){
+			personalPriority=actx.optParamEnum("life_main", Map.of(
+					"family_children", User.PersonalPriority.FAMILY_CHILDREN,
+					"career_money", User.PersonalPriority.CAREER_MONEY,
+					"entertainment_leisure", User.PersonalPriority.ENTERTAINMENT_LEISURE,
+					"science_research", User.PersonalPriority.SCIENCE_RESEARCH,
+					"improving_world", User.PersonalPriority.IMPROVING_WORLD,
+					"personal_development", User.PersonalPriority.PERSONAL_DEVELOPMENT,
+					"beauty_art", User.PersonalPriority.BEAUTY_ART,
+					"fame_influence", User.PersonalPriority.FAME_INFLUENCE
+			));
+		}
+
+		Map<String, User.HabitsViews> habitsViewsMapping=Map.of(
+				"very_negative", User.HabitsViews.VERY_NEGATIVE,
+				"negative", User.HabitsViews.NEGATIVE,
+				"tolerant", User.HabitsViews.TOLERANT,
+				"neutral", User.HabitsViews.NEUTRAL,
+				"positive", User.HabitsViews.POSITIVE
+		);
+		if(actx.hasParam("smoking"))
+			smokingViews=actx.optParamEnum("smoking", habitsViewsMapping);
+		if(actx.hasParam("alcohol"))
+			alcoholViews=actx.optParamEnum("alcohol", habitsViewsMapping);
+
+		ctx.getUsersController().updateProfilePersonal(self, politicalViews, religion, personalPriority, peoplePriority, smokingViews, alcoholViews, inspiredBy);
+		actx.self.user=ctx.getUsersController().getUserOrThrow(self.id);
+
 		return true;
 	}
 }

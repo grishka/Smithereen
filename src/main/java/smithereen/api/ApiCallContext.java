@@ -274,6 +274,14 @@ public class ApiCallContext{
 		return res==null ? defValue : res;
 	}
 
+	@Nullable
+	public <E extends Enum<E>> E optParamEnum(@NotNull String key, @NotNull Map<String, E> mapping){
+		String value=params.get(key);
+		if(StringUtils.isEmpty(value))
+			return null;
+		return mapping.get(value);
+	}
+
 	public <E extends Enum<E>> @NotNull E requireParamEnum(@NotNull String key, @NotNull Map<String, E> mapping){
 		String value=params.get(key);
 		if(StringUtils.isEmpty(value))
