@@ -1,5 +1,8 @@
 package smithereen.model;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,14 +16,26 @@ import smithereen.storage.DatabaseUtils;
 public class Poll implements OwnedContentObject{
 	public int id;
 	public int ownerID;
+
+	@Nullable
 	public String question;
+
 	public boolean multipleChoice;
 	public boolean anonymous;
-	public List<PollOption> options;
+
+	@NotNull
+	public List<PollOption> options=List.of();
+
+	@Nullable
 	public Instant endTime;
+
 	public int numVoters;
+
+	@Nullable
 	public URI activityPubID;
-	public Instant lastVoteTime;
+
+	@NotNull
+	public Instant lastVoteTime=Instant.EPOCH;
 
 	public static Poll fromResultSet(ResultSet res) throws SQLException{
 		Poll p=new Poll();
@@ -31,7 +46,7 @@ public class Poll implements OwnedContentObject{
 		p.anonymous=res.getBoolean("is_anonymous");
 		p.endTime=DatabaseUtils.getInstant(res, "end_time");
 		p.numVoters=res.getInt("num_voted_users");
-		p.lastVoteTime=DatabaseUtils.getInstant(res, "last_vote_time");
+		p.lastVoteTime=Objects.requireNonNull(DatabaseUtils.getInstant(res, "last_vote_time"));
 		p.options=new ArrayList<>();
 		String apID=res.getString("ap_id");
 		if(apID!=null)
@@ -55,10 +70,8 @@ public class Poll implements OwnedContentObject{
 		sb.append(multipleChoice);
 		sb.append(", anonymous=");
 		sb.append(anonymous);
-		if(options!=null){
-			sb.append(", options=");
-			sb.append(options);
-		}
+		sb.append(", options=");
+		sb.append(options);
 		if(endTime!=null){
 			sb.append(", endTime=");
 			sb.append(endTime);

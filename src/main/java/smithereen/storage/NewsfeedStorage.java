@@ -1,5 +1,8 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.EnumSet;
@@ -130,7 +133,7 @@ public class NewsfeedStorage{
 				.executeAndGetSingleObject(WordFilter::fromResultSet);
 	}
 
-	public static int createWordFilter(int userID, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt) throws SQLException{
+	public static int createWordFilter(int userID, @NotNull String name, @NotNull List<String> words, @NotNull EnumSet<FilterContext> contexts, @Nullable Instant expiresAt) throws SQLException{
 		return new SQLQueryBuilder()
 				.insertInto("word_filters")
 				.value("owner_id", userID)
@@ -142,7 +145,7 @@ public class NewsfeedStorage{
 				.executeAndGetID();
 	}
 
-	public static void updateWordFilter(int userID, int id, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt) throws SQLException{
+	public static void updateWordFilter(int userID, int id, @NotNull String name, @NotNull List<String> words, @NotNull EnumSet<FilterContext> contexts, @Nullable Instant expiresAt) throws SQLException{
 		new SQLQueryBuilder()
 				.update("word_filters")
 				.where("id=? AND owner_id=?", id, userID)

@@ -1,5 +1,6 @@
 package smithereen.controllers;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +39,6 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
-import smithereen.model.UserDataExport;
-import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.OtherSession;
@@ -49,10 +48,12 @@ import smithereen.model.SignupRequest;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
+import smithereen.model.UserDataExport;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPresence;
-import smithereen.model.admin.UserRole;
+import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.UserActionLogAction;
+import smithereen.model.admin.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.friends.FollowRelationship;
 import smithereen.model.viewmodel.UserContentMetrics;
@@ -87,6 +88,7 @@ public class UsersController{
 		MaintenanceScheduler.runPeriodically(this::doPendingPresenceUpdates, 1, TimeUnit.MINUTES);
 	}
 
+	@NotNull
 	public User getUserOrThrow(int id){
 		try{
 			if(id<=0)

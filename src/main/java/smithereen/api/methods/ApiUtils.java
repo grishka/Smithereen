@@ -7,6 +7,7 @@ import com.google.gson.JsonPrimitive;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -73,6 +74,8 @@ public class ApiUtils{
 	public static final HashMap<Integer, Long> uploadUrlIDs=new HashMap<>();
 	public static final AtomicInteger lastUploadUrlID=new AtomicInteger();
 
+	@NotNull
+	@Unmodifiable
 	public static List<ApiUser> getUsers(Collection<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
 		List<Integer> idList=switch(ids){
 			case List<Integer> l -> l;
@@ -253,14 +256,10 @@ public class ApiUtils{
 		}
 	}
 
+	@NotNull
 	public static Actor getOwnerOrSelf(ApplicationContext ctx, ApiCallContext actx, String paramName){
 		if(actx.hasParam(paramName)){
-			int oid=actx.requireParamIntNonZero(paramName);
-			try{
-				return oid>0 ? ctx.getUsersController().getUserOrThrow(oid) : ctx.getGroupsController().getGroupOrThrow(-oid);
-			}catch(ObjectNotFoundException x){
-				throw actx.error(ApiErrorType.NOT_FOUND, (oid>0 ? "user" : "group")+" with this ID does not exist");
-			}
+			return getOwner(ctx, actx, paramName);
 		}else if(actx.self!=null){
 			return actx.self.user;
 		}else{
@@ -293,6 +292,8 @@ public class ApiUtils{
 		}
 	}
 
+	@NotNull
+	@Unmodifiable
 	public static List<ApiGroup> getGroups(Collection<Integer> ids, ApplicationContext ctx, ApiCallContext actx){
 		List<Integer> idList=switch(ids){
 			case List<Integer> l -> l;
@@ -301,6 +302,8 @@ public class ApiUtils{
 		return getGroups(ctx.getGroupsController().getGroupsByIdAsList(idList).stream().filter(Objects::nonNull).toList(), ctx, actx);
 	}
 
+	@NotNull
+	@Unmodifiable
 	public static List<ApiGroup> getGroups(List<Group> groupList, ApplicationContext ctx, ApiCallContext actx){
 		EnumSet<ApiGroup.Field> fields=actx.optCommaSeparatedStringSet("fields")
 				.stream()
@@ -464,6 +467,8 @@ public class ApiUtils{
 		return result;
 	}
 
+	@NotNull
+	@Unmodifiable
 	public static List<ApiWallPost> getPosts(List<PostViewModel> posts, ApplicationContext ctx, ApiCallContext actx, boolean needLikes, boolean needReposts, boolean enforcePermission){
 		User self=(!enforcePermission && actx.self!=null) || actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
 		if(needReposts){
@@ -497,6 +502,8 @@ public class ApiUtils{
 		return posts.stream().map(p->new ApiWallPost(p, actx, interactions, pinnedIDs, photos)).toList();
 	}
 
+	@NotNull
+	@Unmodifiable
 	public static List<ApiComment> getComments(List<CommentViewModel> comments, ApplicationContext ctx, ApiCallContext actx, boolean needLikes){
 		User self=actx.self!=null ? actx.self.user : null;
 
@@ -718,6 +725,8 @@ public class ApiUtils{
 		};
 	}
 
+	@NotNull
+	@Unmodifiable
 	public static List<ApiPhoto> getPhotos(ApplicationContext ctx, ApiCallContext actx, List<Photo> photos){
 		if(photos.isEmpty())
 			return List.of();

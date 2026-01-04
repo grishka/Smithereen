@@ -314,6 +314,7 @@ public class GroupStorage{
 		}
 	}
 
+	@Nullable
 	public static Group getById(int id) throws SQLException{
 		Group g=cacheByID.get(id);
 		if(g!=null)

@@ -1,5 +1,6 @@
 package smithereen.controllers;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,7 +9,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -598,7 +598,8 @@ public class NewsfeedController{
 		}
 	}
 
-	public WordFilter getWordFilter(User self, int id){
+	@NotNull
+	public WordFilter getWordFilter(@NotNull User self, int id){
 		try{
 			WordFilter filter=NewsfeedStorage.getWordFilter(self.id, id);
 			if(filter==null)
@@ -609,7 +610,7 @@ public class NewsfeedController{
 		}
 	}
 
-	public int createWordFilter(User self, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt){
+	public int createWordFilter(@NotNull User self, @NotNull String name, @NotNull List<String> words, @NotNull EnumSet<FilterContext> contexts, @Nullable Instant expiresAt){
 		if(words.isEmpty() || contexts.isEmpty())
 			throw new IllegalArgumentException();
 		try{
@@ -621,7 +622,7 @@ public class NewsfeedController{
 		}
 	}
 
-	public void updateWordFilter(User self, WordFilter filter, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt){
+	public void updateWordFilter(@NotNull User self, @NotNull WordFilter filter, @NotNull String name, @NotNull List<String> words, @NotNull EnumSet<FilterContext> contexts, @Nullable Instant expiresAt){
 		if(words.isEmpty() || contexts.isEmpty())
 			throw new IllegalArgumentException();
 		try{
@@ -632,7 +633,7 @@ public class NewsfeedController{
 		}
 	}
 
-	public void deleteWordFilter(User self, WordFilter filter){
+	public void deleteWordFilter(@NotNull User self, @NotNull WordFilter filter){
 		try{
 			NewsfeedStorage.deleteWordFilter(self.id, filter.id);
 			userWordFilters.remove(self.id);

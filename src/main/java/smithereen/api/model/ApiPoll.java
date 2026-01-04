@@ -1,5 +1,8 @@
 package smithereen.api.model;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.List;
 import java.util.Map;
 
@@ -13,12 +16,21 @@ public class ApiPoll{
 	public int id;
 	public int ownerId;
 	public long created;
+
+	@Nullable
 	public String question;
+
 	public int votes;
+
+	@NotNull
 	public List<Answer> answers;
+
 	public boolean anonymous;
 	public boolean multiple;
+
+	@Nullable
 	public List<Integer> answerIds;
+
 	public long endDate;
 	public boolean closed;
 	public boolean canEdit;

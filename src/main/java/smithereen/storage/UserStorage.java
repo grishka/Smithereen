@@ -3,6 +3,7 @@ package smithereen.storage;
 import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,24 +38,24 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
-import smithereen.model.UserDataExport;
-import smithereen.model.notifications.BirthdayReminder;
 import smithereen.model.ForeignUser;
-import smithereen.model.friends.FriendRequest;
-import smithereen.model.friends.FriendshipStatus;
+import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SignupInvitation;
-import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserBanStatus;
-import smithereen.model.notifications.UserNotifications;
+import smithereen.model.UserDataExport;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.admin.UserRole;
 import smithereen.model.admin.UserActionLogAction;
+import smithereen.model.admin.UserRole;
 import smithereen.model.friends.FollowRelationship;
 import smithereen.model.friends.FriendList;
+import smithereen.model.friends.FriendRequest;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.media.MediaFileRecord;
+import smithereen.model.notifications.BirthdayReminder;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -74,10 +75,12 @@ public class UserStorage{
 	private static final LruCache<Integer, BirthdayReminder> birthdayReminderCache=new LruCache<>(500);
 	private static final NamedMutexCollection foreignUserUpdateLocks=new NamedMutexCollection();
 
+	@Nullable
 	public static User getById(int id) throws SQLException{
 		return getById(id, false);
 	}
 
+	@Nullable
 	public static User getById(int id, boolean wantDeleted) throws SQLException{
 		User user=cache.get(id);
 		if(user!=null)

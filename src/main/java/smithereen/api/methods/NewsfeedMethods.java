@@ -4,6 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -400,7 +403,8 @@ public class NewsfeedMethods{
 
 	public static Object getFilters(ApplicationContext ctx, ApiCallContext actx){
 		List<WordFilter> filters=ctx.getNewsfeedController().getWordFilters(actx.self.user, actx.booleanParam("include_expired"));
-		record ApiWordFilter(int id, String name, List<String> words, List<String> contexts, Long expiryDate){}
+		record ApiWordFilter(int id, String name, @NotNull List<String> words, @NotNull List<String> contexts, @Nullable Long expiryDate){
+		}
 		return filters.stream().map(f->new ApiWordFilter(f.id, f.name, f.words, f.contexts.stream().map(c->switch(c){
 			case FRIENDS_FEED -> "friends";
 			case GROUPS_FEED -> "groups";

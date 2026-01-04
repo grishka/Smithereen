@@ -2,6 +2,9 @@ package smithereen.model.filtering;
 
 import com.google.gson.reflect.TypeToken;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -16,13 +19,23 @@ import smithereen.text.TextProcessor;
 
 public class WordFilter{
 	public final int id;
+
+	@NotNull
 	public final String name;
+
+	@NotNull
 	public final List<String> words;
+
+	@NotNull
 	public final EnumSet<FilterContext> contexts;
+
+	@Nullable
 	public final Instant expiresAt;
+
+	@NotNull
 	public final Pattern regex;
 
-	public WordFilter(int id, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt){
+	public WordFilter(int id, @NotNull String name, @NotNull List<String> words, @NotNull EnumSet<FilterContext> contexts, @Nullable Instant expiresAt){
 		this.id=id;
 		this.name=name;
 		this.words=words;
