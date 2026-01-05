@@ -1,24 +1,40 @@
 package smithereen.api.methods;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiPaginatedList;
+import smithereen.api.model.ApiPrivacySetting;
 import smithereen.api.model.ApiUser;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.PaginatedList;
+import smithereen.model.PrivacySetting;
 import smithereen.model.User;
 import smithereen.model.UserPresence;
+import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.apps.ClientAppPermission;
+import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.notifications.UserNotifications;
+import smithereen.routes.ApiRoutes;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
@@ -336,6 +352,84 @@ public class AccountMethods{
 
 		ctx.getUsersController().updateProfilePersonal(self, politicalViews, religion, personalPriority, peoplePriority, smokingViews, alcoholViews, inspiredBy);
 		actx.self.user=ctx.getUsersController().getUserOrThrow(self.id);
+
+		return true;
+	}
+
+	public static Object getPrivacySettings(ApplicationContext ctx, ApiCallContext actx){
+		record PrivacySettingWrapper(String key, String description, ApiPrivacySetting setting, boolean onlyMe, boolean friendsOnly){}
+		record PrivacySettingsResponse(List<PrivacySettingWrapper> settings, List<String> feedTypes){}
+
+		List<PrivacySettingWrapper> settings=new ArrayList<>();
+		actx.self.user.privacySettings.forEach((key, value)->{
+			settings.add(new PrivacySettingWrapper(key.name().toLowerCase(), actx.lang.get(key.getDescriptionLangKey()), new ApiPrivacySetting(value), key.isOnlyMe(), key.isFriendsOnly()));
+		});
+		EnumSet<FriendsNewsfeedTypeFilter> feedTypes=actx.self.user.newsTypesToShow==null ? EnumSet.allOf(FriendsNewsfeedTypeFilter.class) : actx.self.user.newsTypesToShow;
+		List<String> feedTypesStr=feedTypes.stream().map(t->switch(t){
+			case POSTS -> null;
+			case PHOTOS -> "photo";
+			case PHOTO_TAGS -> "photo_tag";
+			case FRIENDS -> "friend";
+			case GROUPS -> "group";
+			case EVENTS -> "event";
+			case TOPICS -> "board";
+			case PERSONAL_INFO -> "relation";
+		}).filter(Objects::nonNull).toList();
+		return new PrivacySettingsResponse(settings, feedTypesStr);
+	}
+
+	public static Object savePrivacySettings(ApplicationContext ctx, ApiCallContext actx){
+		JsonArray rawSettings=actx.optParamJsonArray("settings");
+		HashMap<UserPrivacySettingKey, PrivacySetting> settings=new HashMap<>();
+		if(rawSettings!=null){
+			Map<String, UserPrivacySettingKey> keyMapping=Arrays.stream(UserPrivacySettingKey.values()).collect(Collectors.toMap(k->k.name().toLowerCase(), Function.identity()));
+			int i=0;
+			for(JsonElement el:rawSettings){
+				if(!(el instanceof JsonObject obj))
+					throw actx.paramError("settings["+i+"] is not an object");
+				if(!(obj.get("key") instanceof JsonPrimitive jkey) || !jkey.isString())
+					throw actx.paramError("settings["+i+"].key is not a string");
+				if(!(obj.get("setting") instanceof JsonObject jsetting))
+					throw actx.paramError("settings["+i+"].setting is not an object");
+				ApiPrivacySetting setting=ApiRoutes.gson.fromJson(jsetting, ApiPrivacySetting.class);
+
+				UserPrivacySettingKey key=keyMapping.get(jkey.getAsString());
+				if(key!=null)
+					settings.put(key, setting.toNativePrivacySetting());
+
+				i++;
+			}
+		}
+
+		EnumSet<FriendsNewsfeedTypeFilter> feedTypes=actx.self.user.newsTypesToShow;
+		if(actx.hasParam("feed_types")){
+			feedTypes=EnumSet.noneOf(FriendsNewsfeedTypeFilter.class);
+			for(String rawType:actx.optCommaSeparatedStringSet("feed_types")){
+				if("all".equals(rawType)){
+					feedTypes=null;
+					break;
+				}
+				if("none".equals(rawType)){
+					feedTypes.clear();
+					break;
+				}
+				FriendsNewsfeedTypeFilter type=switch(rawType){
+					case "photo" -> FriendsNewsfeedTypeFilter.PHOTOS;
+					case "photo_tag" -> FriendsNewsfeedTypeFilter.PHOTO_TAGS;
+					case "friend" -> FriendsNewsfeedTypeFilter.FRIENDS;
+					case "group" -> FriendsNewsfeedTypeFilter.GROUPS;
+					case "event" -> FriendsNewsfeedTypeFilter.EVENTS;
+					case "board" -> FriendsNewsfeedTypeFilter.TOPICS;
+					case "relation" -> FriendsNewsfeedTypeFilter.PERSONAL_INFO;
+					default -> null;
+				};
+				if(type!=null)
+					feedTypes.add(type);
+			}
+		}
+
+		ctx.getPrivacyController().updateUserPrivacySettings(actx.self.user, settings, feedTypes);
+		actx.self.user=ctx.getUsersController().getUserOrThrow(actx.self.user.id);
 
 		return true;
 	}

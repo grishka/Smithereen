@@ -33,17 +33,17 @@ public class PrivacySetting{
 	@SerializedName("r")
 	public Rule baseRule=Rule.EVERYONE;
 	@SerializedName("au")
-	public Set<Integer> allowUsers=Set.of();
+	public Set<Integer> allowUsers=new HashSet<>();
 	@SerializedName("xu")
-	public Set<Integer> exceptUsers=Set.of();
+	public Set<Integer> exceptUsers=new HashSet<>();
 	@SerializedName("al")
-	public Set<Integer> allowLists=Set.of();
+	public Set<Integer> allowLists=new HashSet<>();
 	@SerializedName("xl")
-	public Set<Integer> exceptLists=Set.of();
+	public Set<Integer> exceptLists=new HashSet<>();
 	@SerializedName("alu")
-	public Set<Integer> allowListUsers=Set.of();
+	public Set<Integer> allowListUsers=new HashSet<>();
 	@SerializedName("xlu")
-	public Set<Integer> exceptListUsers=Set.of();
+	public Set<Integer> exceptListUsers=new HashSet<>();
 
 	public PrivacySetting(){}
 

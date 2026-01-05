@@ -178,6 +178,8 @@ public class ApiDispatcher{
 		registerMethod("account.saveProfileContacts", AccountMethods::saveProfileContacts, ClientAppPermission.ACCOUNT_WRITE);
 		registerMethod("account.saveProfileInterests", AccountMethods::saveProfileInterests, ClientAppPermission.ACCOUNT_WRITE);
 		registerMethod("account.saveProfilePersonal", AccountMethods::saveProfilePersonal, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.getPrivacySettings", AccountMethods::getPrivacySettings, ClientAppPermission.ACCOUNT_WRITE);
+		registerMethod("account.savePrivacySettings", AccountMethods::savePrivacySettings, ClientAppPermission.ACCOUNT_WRITE);
 
 		registerMethod("messages.get", MessagesMethods::get, ClientAppPermission.MESSAGES_READ);
 		registerMethod("messages.getById", MessagesMethods::getById, ClientAppPermission.MESSAGES_READ);
