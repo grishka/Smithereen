@@ -2,6 +2,10 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.util.Base64;
 
@@ -18,13 +22,14 @@ import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.photos.AbsoluteImageRect;
 import smithereen.model.photos.AvatarCropRects;
-import smithereen.model.photos.ImageRect;
 import smithereen.storage.ImgProxy;
 import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.util.XTEA;
 
 public non-sealed class LocalImage extends Image implements SizedImage{
+	@NotNull
 	public Dimensions size=Dimensions.UNKNOWN;
+
 	public long fileID;
 	public MediaFileRecord fileRecord;
 	public long photoID;
@@ -121,7 +126,9 @@ public non-sealed class LocalImage extends Image implements SizedImage{
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
+	@Nullable
+	@Contract("_, _, _, true -> !null")
+	public URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback){
 		if(fileRecord==null){
 			LOG.warn("Tried to get a URL for a LocalImage with fileRecord not set (file ID {})", fileID);
 			if(useFallback)
@@ -188,6 +195,7 @@ public non-sealed class LocalImage extends Image implements SizedImage{
 	}
 
 	@Override
+	@NotNull
 	public Dimensions getOriginalDimensions(){
 		return rotation==Rotation._90 || rotation==Rotation._270 ? new Dimensions(height, width) : size;
 	}

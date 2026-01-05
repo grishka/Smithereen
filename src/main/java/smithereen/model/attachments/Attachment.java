@@ -1,9 +1,14 @@
 package smithereen.model.attachments;
 
+import org.jetbrains.annotations.Nullable;
+
 import smithereen.util.TranslatableEnum;
 
 public abstract sealed class Attachment permits AudioAttachment, PhotoAttachment, VideoAttachment{
+
+	@Nullable
 	public String description;
+
 	public abstract Type getType();
 
 	public enum Type implements TranslatableEnum<Type>{

@@ -2,8 +2,11 @@ package smithereen.model;
 
 import com.google.gson.annotations.SerializedName;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
-import java.text.Format;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -16,8 +19,14 @@ import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
 public sealed interface SizedImage permits LocalImage, RemoteImage{
-	URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback);
+
+	@Nullable
+	@Contract("_, _, _, true -> !null")
+	URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback);
+
+	@NotNull
 	Dimensions getOriginalDimensions();
+
 	URI getOriginalURI();
 	String getBlurHash();
 
@@ -46,6 +55,7 @@ public sealed interface SizedImage permits LocalImage, RemoteImage{
 		return getUriForSizeAndFormat(Type.fromSuffix(size), Format.fromFileExtension(format)).toString();
 	}
 
+	@NotNull
 	default URI getUriForSizeAndFormat(Type size, Format format){
 		return getUriForSizeAndFormat(size, format, false, true);
 	}
@@ -174,14 +184,14 @@ public sealed interface SizedImage permits LocalImage, RemoteImage{
 		private final int maxWidth, maxHeight;
 		private final ImgProxy.ResizingType resizingType;
 
-		Type(String suffix, int maxWidth, int maxHeight, ImgProxy.ResizingType resizingType){
+		Type(@NotNull String suffix, int maxWidth, int maxHeight, ImgProxy.ResizingType resizingType){
 			this.suffix=suffix;
 			this.maxWidth=maxWidth;
 			this.maxHeight=maxHeight;
 			this.resizingType=resizingType;
 		}
 
-		public String suffix(){
+		public @NotNull String suffix(){
 			return suffix;
 		}
 
