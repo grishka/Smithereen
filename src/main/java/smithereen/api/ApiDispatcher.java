@@ -60,6 +60,7 @@ public class ApiDispatcher{
 		registerMethod("groups.getRequests", GroupsMethods::getRequests, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("groups.approveRequest", GroupsMethods::approveRequest, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("groups.removeUser", GroupsMethods::removeUser, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.invite", GroupsMethods::invite, ClientAppPermission.GROUPS_WRITE);
 
 		registerMethod("friends.get", FriendsMethods::get, false);
 		registerMethod("friends.getOnline", FriendsMethods::getOnline, false);

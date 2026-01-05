@@ -29,6 +29,8 @@ public enum ApiErrorType{
 	CANT_ADD_FRIEND_BLOCKED(175, "Can't add this user as a friend because they blocked you", 403),
 	CANT_ADD_FRIEND_YOU_BLOCKED(176, "Can't add this user as a friend because you blocked them", 403),
 
+	CANT_INVITE_TO_GROUP(180, "Can't invite this user to this group", 403),
+
 	TOO_MANY_FRIENDS(242, "Too many friends"),
 
 	TOO_MANY_PHOTO_ALBUMS(302, "Too many photo albums"),

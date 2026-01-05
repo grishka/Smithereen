@@ -3,6 +3,7 @@ package smithereen.api.methods;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -18,6 +19,8 @@ import smithereen.api.model.ApiPaginatedList;
 import smithereen.api.model.ApiPaginatedListWithActors;
 import smithereen.api.model.ApiUser;
 import smithereen.controllers.GroupsController;
+import smithereen.exceptions.BadRequestException;
+import smithereen.lang.Lang;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
@@ -314,6 +317,17 @@ public class GroupsMethods{
 			ctx.getGroupsController().cancelInvitation(actx.self.user, group, user);
 		}else{
 			ctx.getGroupsController().removeUser(actx.self.user, group, user);
+		}
+		return true;
+	}
+
+	public static Object invite(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		try{
+			ctx.getGroupsController().inviteUserToGroup(actx.self.user, user, group);
+		}catch(BadRequestException x){
+			throw actx.error(ApiErrorType.CANT_INVITE_TO_GROUP, Lang.get(Locale.US).get(x.getMessage()));
 		}
 		return true;
 	}
