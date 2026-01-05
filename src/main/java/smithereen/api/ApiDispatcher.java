@@ -25,7 +25,6 @@ import smithereen.api.methods.UsersMethods;
 import smithereen.api.methods.UtilsMethods;
 import smithereen.api.methods.WallMethods;
 import smithereen.api.model.ApiErrorType;
-import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserContentUnavailableException;
@@ -59,7 +58,7 @@ public class ApiDispatcher{
 		registerMethod("groups.getBannedDomains", GroupsMethods::getBannedDomains, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("groups.getInvitedUsers", GroupsMethods::getInvitedUsers, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("groups.getRequests", GroupsMethods::getRequests, ClientAppPermission.GROUPS_WRITE);
-		registerMethod("groups.acceptUser", GroupsMethods::acceptUser, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.approveRequest", GroupsMethods::approveRequest, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("groups.removeUser", GroupsMethods::removeUser, ClientAppPermission.GROUPS_WRITE);
 
 		registerMethod("friends.get", FriendsMethods::get, false);

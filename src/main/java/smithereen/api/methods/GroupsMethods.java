@@ -301,7 +301,7 @@ public class GroupsMethods{
 		return new ApiPaginatedList<>(users.total, ApiUtils.getUsers(users.list, ctx, actx));
 	}
 
-	public static Object acceptUser(ApplicationContext ctx, ApiCallContext actx){
+	public static Object approveRequest(ApplicationContext ctx, ApiCallContext actx){
 		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
 		ctx.getGroupsController().acceptJoinRequest(actx.self.user, group, ApiUtils.getUser(ctx, actx, "user_id"));
 		return true;
