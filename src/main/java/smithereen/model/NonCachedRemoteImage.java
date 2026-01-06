@@ -1,5 +1,7 @@
 package smithereen.model;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.net.URI;
 
 import smithereen.Utils;
@@ -12,16 +14,19 @@ import smithereen.util.XTEA;
 public final class NonCachedRemoteImage extends RemoteImage{
 
 	private final Args args;
+
+	@NotNull
 	private final Dimensions origDimensions;
 
-	public NonCachedRemoteImage(Args args, Dimensions origDimensions, URI originalURL){
+	public NonCachedRemoteImage(Args args, @NotNull Dimensions origDimensions, URI originalURL){
 		super(originalURL);
 		this.args=args;
 		this.origDimensions=origDimensions;
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
+	@NotNull
+	public URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback){
 		UriBuilder builder=UriBuilder.local().path("system", "downloadExternalMedia");
 		args.addToUriBuilder(builder);
 		builder.queryParam("size", size.suffix()).queryParam("format", format.fileExtension());
@@ -33,6 +38,7 @@ public final class NonCachedRemoteImage extends RemoteImage{
 	}
 
 	@Override
+	@NotNull
 	public Dimensions getOriginalDimensions(){
 		return origDimensions;
 	}

@@ -1,9 +1,14 @@
 package smithereen.api.model;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import smithereen.api.ApiCallContext;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -23,34 +28,62 @@ public class ApiPhoto{
 			SizedImage.Type.PHOTO_ORIGINAL
 	);
 
+	@Nullable
 	public String id;
+
+	@Nullable
 	public String apId;
+
+	@Nullable
 	public String url;
+
+	@Nullable
 	public String albumId;
+
 	public int ownerId;
 	public int userId;
+
+	@NotNull
 	public String text;
+
 	public long date;
+
+	@Nullable
 	public String blurhash;
+
+	@NotNull
 	public List<Size> sizes;
+
 	public int width, height;
 
 	public transient long rawID;
 
 	// Extended fields
+	@Nullable
 	public Likes likes;
+
+	@Nullable
 	public Integer comments;
+
+	@Nullable
 	public Boolean canComment;
+
+	@Nullable
 	public Integer tags;
 
 	// photos.getNewTags fields
+	@Nullable
 	public Integer placerId;
+
+	@Nullable
 	public Long tagCreated, tagId;
 
-	public record Size(String type, String url, int width, int height){}
+	public record Size(@NotNull String type, @NotNull String url, int width, int height){
+	}
 	public record Likes(int count, boolean canLike, boolean userLikes){}
 
-	public ApiPhoto(Photo photo, ApiCallContext actx, Map<Long, UserInteractions> photosInteractions, Map<Long, Integer> tagCounts){
+	@Contract("_, _, !null, null -> fail")
+	public ApiPhoto(@NotNull Photo photo, @NotNull ApiCallContext actx, @Nullable Map<Long, UserInteractions> photosInteractions, @Nullable Map<Long, Integer> tagCounts){
 		id=photo.getIdString();
 		apId=photo.getActivityPubID().toString();
 		url=photo.getActivityPubURL().toString();
@@ -72,14 +105,14 @@ public class ApiPhoto{
 				comments=interactions.commentCount;
 				canComment=interactions.canComment;
 			}
-			tags=tagCounts.getOrDefault(photo.id, 0);
+			tags=Objects.requireNonNull(tagCounts).getOrDefault(photo.id, 0);
 		}
 	}
 
-	public ApiPhoto(PhotoAttachment att, int ownerId, int authorId, Instant parentCreatedAt, ApiCallContext actx){
+	public ApiPhoto(@NotNull PhotoAttachment att, int ownerId, int authorId, @NotNull Instant parentCreatedAt, @NotNull ApiCallContext actx){
 		this.ownerId=ownerId;
 		this.userId=authorId;
-		text=att.description;
+		text=att.description!=null ? att.description : "";
 		date=parentCreatedAt.getEpochSecond();
 		blurhash=att.blurHash;
 		populateSizes(att.image, actx);
@@ -87,7 +120,7 @@ public class ApiPhoto{
 		height=att.getHeight();
 	}
 
-	private void populateSizes(SizedImage image, ApiCallContext actx){
+	private void populateSizes(@NotNull SizedImage image, @NotNull ApiCallContext actx){
 		sizes=new ArrayList<>();
 		for(SizedImage.Type sz:SIZES){
 			SizedImage.Dimensions dimensions=image.getDimensionsForSize(sz);

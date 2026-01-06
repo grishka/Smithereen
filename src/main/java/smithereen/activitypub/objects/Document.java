@@ -2,14 +2,18 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
-import smithereen.activitypub.SerializerContext;
+import org.jetbrains.annotations.Nullable;
+
 import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.SerializerContext;
 import smithereen.jsonld.JLD;
 import spark.utils.StringUtils;
 
 public class Document extends ActivityPubObject{
 
+	@Nullable
 	public String blurHash;
+
 	public int width;
 	public int height;
 
