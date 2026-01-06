@@ -26,7 +26,6 @@ import smithereen.api.model.ApiUser;
 import smithereen.controllers.GroupsController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.RemoteObjectFetchException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.ForeignUser;
@@ -42,7 +41,6 @@ import smithereen.model.groups.GroupLink;
 import smithereen.model.groups.GroupLinkParseResult;
 import spark.utils.StringUtils;
 
-import static smithereen.Utils.*;
 import static smithereen.Utils.isWithinDatabaseLimits;
 
 public class GroupsMethods{
@@ -113,7 +111,7 @@ public class GroupsMethods{
 		for(int i=0;i<apiGroups.size();i++){
 			apiGroups.get(i).invitedBy=invites.list.get(i).inviter.id;
 		}
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			ApiPaginatedListWithActors<ApiGroup> res=new ApiPaginatedListWithActors<>(invites.total, apiGroups);
 			Set<Integer> seenUsers=new HashSet<>();
 			ArrayList<User> users=new ArrayList<>();
@@ -132,7 +130,7 @@ public class GroupsMethods{
 
 	public static Object join(ApplicationContext ctx, ApiCallContext actx){
 		Group group=ctx.getGroupsController().getGroupOrThrow(actx.requireParamIntPositive("group_id"));
-		ctx.getGroupsController().joinGroup(group, actx.self.user, actx.booleanParam("not_sure"), false, true);
+		ctx.getGroupsController().joinGroup(group, actx.self.user, actx.optParamBoolean("not_sure"), false, true);
 		return true;
 	}
 
@@ -158,7 +156,7 @@ public class GroupsMethods{
 		Group group=ctx.getGroupsController().getGroupOrThrow(actx.requireParamIntPositive("group_id"));
 		User self=actx.hasPermission(ClientAppPermission.GROUPS_READ) ? actx.self.user : null;
 		ctx.getPrivacyController().enforceUserAccessToGroupProfile(self, group);
-		boolean extended=actx.booleanParam("extended");
+		boolean extended=actx.optParamBoolean("extended");
 		if(actx.hasParam("user_id") && !extended){
 			Group.MembershipState state=ctx.getGroupsController().getUserMembershipState(group, ApiUtils.getUser(ctx, actx, "user_id"));
 			return state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER;

@@ -12,7 +12,6 @@ import smithereen.api.model.ApiPaginatedListWithActors;
 import smithereen.api.model.ApiWallPost;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
-import smithereen.model.Post;
 import smithereen.model.User;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.PostViewModel;
@@ -62,7 +61,7 @@ public class FaveMethods{
 	public static Object getPosts(ApplicationContext ctx, ApiCallContext actx){
 		PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getUserInteractionsController().getLikedPosts(actx.self.user, true, actx.getOffset(), actx.getCount(50, 100)));
 		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true, true));
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(posts.list, needUsers, needGroups);
 			res.profiles=ApiUtils.getUsers(needUsers, ctx, actx);

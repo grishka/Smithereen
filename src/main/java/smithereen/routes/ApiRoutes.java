@@ -3,9 +3,11 @@ package smithereen.routes;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +46,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.http.HttpContentType;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -369,7 +372,24 @@ public class ApiRoutes{
 			addCorsHeaders(resp);
 		}
 		String method=req.params(":method");
-		String token=req.queryParams("access_token");
+		TreeMap<String, Object> params=new TreeMap<>();
+		params.put("method", method);
+		Map<String, String[]> rawQueryParams=req.queryMap().toMap();
+		rawQueryParams.forEach((key, value)->params.put(key, value[0]));
+		if(req.requestMethod().equals("POST") && StringUtils.isNotEmpty(req.contentType()) && HttpContentType.from(req.contentType()).matches("application/json")){
+			try{
+				JsonElement je=JsonParser.parseString(req.body());
+				if(!(je instanceof JsonObject obj))
+					throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "request body must be a JSON object when Content-Type: application/json is used", params));
+				params.putAll(obj.asMap());
+			}catch(JsonSyntaxException x){
+				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "request body contains invalid JSON", params));
+			}
+		}
+		Object _token=params.get("access_token");
+		String token=null;
+		if(_token!=null)
+			token=_token.toString();
 		if(StringUtils.isEmpty(token)){
 			String authHeader=req.headers("authorization");
 			if(StringUtils.isNotEmpty(authHeader)){
@@ -378,18 +398,15 @@ public class ApiRoutes{
 					token=parts[1];
 			}
 		}
-		TreeMap<String, String> params=new TreeMap<>();
-		params.put("method", method);
-		Map<String, String[]> rawQueryParams=req.queryMap().toMap();
-		rawQueryParams.forEach((key, value)->params.put(key, value[0]));
 		params.remove("access_token");
 		Account self=null;
 		AppAccessToken accessToken=null;
 		int versionMajor, versionMinor;
 		try{
-			String version=params.get("v");
-			if(StringUtils.isEmpty(version))
+			Object _version=params.get("v");
+			if(_version==null)
 				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "version parameter \"v\" is missing", params));
+			String version=_version.toString();
 			Matcher matcher=VERSION_PATTERN.matcher(version);
 			if(!matcher.find())
 				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "version parameter \"v\" must have format major.minor, e.g. 1.0", params));

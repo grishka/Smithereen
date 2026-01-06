@@ -46,7 +46,7 @@ public class BoardMethods{
 
 		populateCommentPreviews(ctx, actx, rawTopics.list, topics);
 
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>();
 			for(BoardTopic t:rawTopics.list){
 				needUsers.add(t.authorID);
@@ -70,7 +70,7 @@ public class BoardMethods{
 		}catch(ObjectNotFoundException x){
 			rawTopics=List.of();
 		}
-		boolean extended=actx.booleanParam("extended");
+		boolean extended=actx.optParamBoolean("extended");
 
 		record TopicsResponse(List<ApiBoardTopic> items, List<ApiUser> profiles){}
 		if(rawTopics.isEmpty())

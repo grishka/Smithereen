@@ -4,14 +4,17 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,14 +34,14 @@ import spark.utils.StringUtils;
 public class ApiCallContext{
 	public AppAccessToken token;
 	public Account self;
-	public Map<String, String> params;
+	public Map<String, Object> params;
 	public Request httpRequest;
 	public SizedImage.Format imageFormat;
 	public Lang lang;
 	public int versionMajor, versionMinor;
 	public UserPermissions permissions;
 
-	public ApiCallContext(AppAccessToken token, Account self, Map<String, String> params, Request httpRequest, int versionMajor, int versionMinor, UserPermissions permissions){
+	public ApiCallContext(AppAccessToken token, Account self, Map<String, Object> params, Request httpRequest, int versionMajor, int versionMinor, UserPermissions permissions){
 		this.token=token;
 		this.self=self;
 		this.params=params;
@@ -48,7 +51,7 @@ public class ApiCallContext{
 		this.permissions=permissions;
 	}
 
-	public ApiCallContext(ApiCallContext toWrap, Map<String, String> params){
+	public ApiCallContext(ApiCallContext toWrap, Map<String, Object> params){
 		token=toWrap.token;
 		self=toWrap.self;
 		httpRequest=toWrap.httpRequest;
@@ -73,30 +76,27 @@ public class ApiCallContext{
 	}
 
 	public @Nullable String optParamString(@NotNull String key){
-		return params.get(key);
+		return getString(key);
 	}
 
 	@Contract("_, !null -> !null")
 	public @Nullable String optParamString(@NotNull String key, @Nullable String def){
-		String v=params.get(key);
+		String v=getString(key);
 		return StringUtils.isEmpty(v) ? def : v;
 	}
 
 	public @NotNull String requireParamString(@NotNull String key){
-		String value=params.get(key);
+		String value=getString(key);
 		if(StringUtils.isEmpty(value))
 			throw paramError(key+" is undefined");
 		return value;
 	}
 
 	private @NotNull List<String> commaSeparatedStringList(@NotNull String key, boolean require){
-		String value=params.get(key);
-		if(StringUtils.isEmpty(value)){
-			if(require)
-				throw paramError(key+" is undefined");
-			return List.of();
-		}
-		return Arrays.stream(value.split(",")).map(String::trim).toList();
+		List<String> value=getCommaSeparatedValues(key);
+		if(require && value==null)
+			throw paramError(key+" is undefined");
+		return value==null ? List.of() : value;
 	}
 
 	public @NotNull List<String> optCommaSeparatedStringList(@NotNull String key){
@@ -108,13 +108,7 @@ public class ApiCallContext{
 	}
 
 	private @NotNull Set<String> commaSeparatedStringSet(@NotNull String key, boolean require){
-		String value=params.get(key);
-		if(StringUtils.isEmpty(value)){
-			if(require)
-				throw paramError(key+" is undefined");
-			return Set.of();
-		}
-		return Arrays.stream(value.split(",")).map(String::trim).collect(Collectors.toSet());
+		return new HashSet<>(commaSeparatedStringList(key, require));
 	}
 
 	public @NotNull Set<String> optCommaSeparatedStringSet(@NotNull String key){
@@ -126,60 +120,83 @@ public class ApiCallContext{
 	}
 
 	public int requireParamIntPositive(@NotNull String key){
-		String value=params.get(key);
-		if(StringUtils.isEmpty(value))
+		if(!params.containsKey(key))
 			throw paramError(key+" is undefined");
-		int v=Utils.safeParseInt(value);
-		if(v<=0)
-			throw paramError(key+" must be a positive integer");
-		return v;
+		try{
+			int v=getInt(key);
+			if(v<=0)
+				throw paramError(key+" is not positive");
+			return v;
+		}catch(NumberFormatException x){
+			throw paramError(key+" is not an integer");
+		}
 	}
 
 	public int requireParamIntNonZero(@NotNull String key){
-		String value=params.get(key);
-		if(StringUtils.isEmpty(value))
+		if(!params.containsKey(key))
 			throw paramError(key+" is undefined");
-		int v=Utils.safeParseInt(value);
-		if(v==0)
+		try{
+			int v=getInt(key);
+			if(v==0)
+				throw paramError(key+" must not be 0");
+			return v;
+		}catch(NumberFormatException x){
 			throw paramError(key+" is not an integer");
-		return v;
+		}
 	}
 
 	public long requireParamLongNonZero(@NotNull String key){
-		String value=params.get(key);
-		if(StringUtils.isEmpty(value))
+		if(!params.containsKey(key))
 			throw paramError(key+" is undefined");
-		long v=Utils.safeParseLong(value);
-		if(v==0)
+		try{
+			long v=getLong(key);
+			if(v==0)
+				throw paramError(key+" must not be 0");
+			return v;
+		}catch(NumberFormatException x){
 			throw paramError(key+" is not an integer");
-		return v;
+		}
 	}
 
 	public int optParamInt(@NotNull String key){
-		return Utils.safeParseInt(params.get(key));
+		try{
+			return getInt(key);
+		}catch(NumberFormatException x){
+			return 0;
+		}
 	}
 
 	public long optParamLong(@NotNull String key){
-		return Utils.safeParseLong(params.get(key));
+		try{
+			return getLong(key);
+		}catch(NumberFormatException x){
+			return 0;
+		}
 	}
 
 	public int optParamIntPositive(@NotNull String key){
-		return Math.max(0, Utils.safeParseInt(params.get(key)));
+		try{
+			return Math.max(0, getInt(key));
+		}catch(NumberFormatException x){
+			return 0;
+		}
 	}
 
 	public int optParamIntPositive(@NotNull String key, int def){
-		if(!hasParam(key))
+		try{
+			return Math.max(0, getInt(key));
+		}catch(NumberFormatException x){
 			return def;
-		return Math.max(0, Utils.safeParseInt(params.get(key)));
+		}
 	}
 
-	public @NotNull List<Integer> optCommaSeparatedIntListParam(@NotNull String key){
+	public @NotNull List<Integer> optParamCommaSeparatedIntList(@NotNull String key){
 		if(hasParam(key))
-			return commaSeparatedIntListParam(key);
+			return requireParamCommaSeparatedIntList(key);
 		return List.of();
 	}
 
-	public @NotNull List<Integer> commaSeparatedIntListParam(@NotNull String key){
+	public @NotNull List<Integer> requireParamCommaSeparatedIntList(@NotNull String key){
 		List<Integer> res=Arrays.stream(requireParamString(key).split(","))
 				.map(String::trim)
 				.map(Utils::safeParseInt)
@@ -191,23 +208,27 @@ public class ApiCallContext{
 		return res;
 	}
 
-	public boolean booleanParam(@NotNull String key){
-		String v=params.get(key);
-		return "true".equalsIgnoreCase(v) || "1".equals(v);
+	public boolean optParamBoolean(@NotNull String key){
+		return getBoolean(key);
 	}
 
 	public @Nullable JsonArray optParamJsonArray(@NotNull String key){
-		String v=optParamString(key);
-		if(StringUtils.isEmpty(v))
-			return null;
-		try{
-			JsonElement el=JsonParser.parseString(v);
-			if(!(el instanceof JsonArray ar))
-				throw paramError(key+" is not a JSON array");
-			return ar;
-		}catch(JsonParseException x){
-			throw paramError(key+" contains invalid JSON");
-		}
+		return switch(params.get(key)){
+			case JsonArray ja -> ja;
+			case String s -> {
+				if(StringUtils.isEmpty(s))
+					yield null;
+				try{
+					JsonElement el=JsonParser.parseString(s);
+					if(!(el instanceof JsonArray ar))
+						throw paramError(key+" is not a JSON array");
+					yield ar;
+				}catch(JsonParseException x){
+					throw paramError(key+" contains invalid JSON");
+				}
+			}
+			case null, default -> null;
+		};
 	}
 
 	@NotNull
@@ -230,11 +251,10 @@ public class ApiCallContext{
 	}
 
 	public float requireParamFloat(@NotNull String key){
-		String value=params.get(key);
-		if(StringUtils.isEmpty(value))
+		if(!params.containsKey(key))
 			throw paramError(key+" is undefined");
 		try{
-			return Float.parseFloat(value);
+			return getFloat(key);
 		}catch(NumberFormatException x){
 			throw paramError(key+" is not a number");
 		}
@@ -248,11 +268,11 @@ public class ApiCallContext{
 	}
 
 	public int getOffset(){
-		return Math.max(0, Utils.safeParseInt(params.get("offset")));
+		return optParamIntPositive("offset");
 	}
 
 	public int getCount(int def, int max){
-		int count=Utils.safeParseInt(params.get("count"));
+		int count=optParamIntPositive("count", def);
 		return count<=0 ? def : Math.min(max, count);
 	}
 
@@ -271,7 +291,7 @@ public class ApiCallContext{
 	}
 
 	public <E extends Enum<E>> @NotNull E optParamEnum(@NotNull String key, @NotNull Map<String, E> mapping, @NotNull E defValue){
-		String value=params.get(key);
+		String value=getString(key);
 		if(StringUtils.isEmpty(value))
 			return defValue;
 		E res=mapping.get(value);
@@ -280,19 +300,92 @@ public class ApiCallContext{
 
 	@Nullable
 	public <E extends Enum<E>> E optParamEnum(@NotNull String key, @NotNull Map<String, E> mapping){
-		String value=params.get(key);
+		String value=getString(key);
 		if(StringUtils.isEmpty(value))
 			return null;
 		return mapping.get(value);
 	}
 
 	public <E extends Enum<E>> @NotNull E requireParamEnum(@NotNull String key, @NotNull Map<String, E> mapping){
-		String value=params.get(key);
+		String value=getString(key);
 		if(StringUtils.isEmpty(value))
 			throw paramError(key+" is undefined");
 		E res=mapping.get(value);
 		if(res==null)
 			throw paramError(key+" must be one of "+String.join(", ", mapping.keySet()));
 		return res;
+	}
+
+	// Type conversion helpers
+
+	@Nullable
+	private String getString(String key){
+		Object value=params.get(key);
+		return switch(value){
+			case String s -> s;
+			case JsonPrimitive jp -> jp.getAsString();
+			case null -> null;
+			default -> value.toString();
+		};
+	}
+
+	private float getFloat(String key){
+		Object value=params.get(key);
+		return switch(value){
+			case Number n -> n.floatValue();
+			case String s -> Float.parseFloat(s);
+			case JsonPrimitive jp -> jp.getAsFloat();
+			case null, default -> throw new NumberFormatException();
+		};
+	}
+
+	private int getInt(String key){
+		Object value=params.get(key);
+		return switch(value){
+			case Number n -> n.intValue();
+			case String s -> Integer.parseInt(s);
+			case JsonPrimitive jp -> jp.getAsInt();
+			case null, default -> throw new NumberFormatException();
+		};
+	}
+
+	private long getLong(String key){
+		Object value=params.get(key);
+		return switch(value){
+			case Number n -> n.longValue();
+			case String s -> Long.parseLong(s);
+			case JsonPrimitive jp -> jp.getAsLong();
+			case null, default -> throw new NumberFormatException();
+		};
+	}
+
+	private boolean getBoolean(String key){
+		Object value=params.get(key);
+		return switch(value){
+			case Boolean b -> b;
+			case String s -> "true".equals(s) || "1".equals(s);
+			case JsonPrimitive jp when jp.isBoolean() -> jp.getAsBoolean();
+			case Number n -> n.intValue()!=0;
+			case null, default -> false;
+		};
+	}
+
+	private List<String> getCommaSeparatedValues(String key){
+		Object value=params.get(key);
+		return switch(value){
+			case String s -> Arrays.stream(s.split(",")).map(String::trim).toList();
+			case JsonArray ja -> {
+				try{
+					yield ja.asList().stream().map(JsonElement::getAsString).toList();
+				}catch(IllegalStateException|UnsupportedOperationException x){
+					yield null;
+				}
+			}
+			case JsonPrimitive jp -> List.of(jp.toString());
+			case Number n -> List.of(n.toString());
+			case Boolean b -> List.of(b.toString());
+			case List<?> list -> list.stream().filter(Objects::nonNull).map(Object::toString).toList();
+			case null, default -> null;
+		};
 	}
 }

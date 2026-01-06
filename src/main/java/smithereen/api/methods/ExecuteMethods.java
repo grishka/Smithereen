@@ -55,7 +55,7 @@ public class ExecuteMethods{
 			if(methodCalls[0]>MAX_METHOD_CALLS){
 				throw actx.error(ApiErrorType.EXECUTE_RUNTIME_ERROR, "Too many API calls");
 			}
-			HashMap<String, String> convertedParams=new HashMap<>();
+			HashMap<String, Object> convertedParams=new HashMap<>();
 			params.forEach((k, v)->{
 				if(v!=null){
 					convertedParams.put(k, convertScriptValueToParam(v));
@@ -85,13 +85,14 @@ public class ExecuteMethods{
 
 	private record ScriptCacheKey(long appID, byte[] hash){}
 
-	private static String convertScriptValueToParam(ScriptValue v){
+	private static Object convertScriptValueToParam(ScriptValue v){
 		return switch(v){
 			case ScriptValue.Str(String str) -> str;
-			case ScriptValue.Num(double num) -> num%1==0 ? String.valueOf((long)num) : String.valueOf(num);
-			case ScriptValue.Bool(boolean bool) -> bool ? "1" : "0";
-			case ScriptValue.Arr(List<ScriptValue> arr) -> arr.stream().map(ExecuteMethods::convertScriptValueToParam).collect(Collectors.joining(","));
-			case ScriptValue.Obj(Map<String, ScriptValue> obj) -> obj.values().stream().map(ExecuteMethods::convertScriptValueToParam).collect(Collectors.joining(","));
+			case ScriptValue.Num(double num) when num%1==0 -> (long)num;
+			case ScriptValue.Num(double num) -> num;
+			case ScriptValue.Bool(boolean bool) -> bool;
+			case ScriptValue.Arr(List<ScriptValue> arr) -> ApiRoutes.gson.toJsonTree(arr);
+			case ScriptValue.Obj(Map<String, ScriptValue> obj) -> ApiRoutes.gson.toJsonTree(obj);
 		};
 	}
 

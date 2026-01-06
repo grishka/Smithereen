@@ -93,10 +93,10 @@ public class FriendsMethods{
 	}
 
 	public static Object areFriends(ApplicationContext ctx, ApiCallContext actx){
-		List<Integer> ids=actx.commaSeparatedIntListParam("user_ids");
+		List<Integer> ids=actx.requireParamCommaSeparatedIntList("user_ids");
 		if(ids.size()>1000)
 			ids=ids.subList(0, 1000);
-		boolean extended=actx.booleanParam("extended");
+		boolean extended=actx.optParamBoolean("extended");
 		Map<Integer, FriendshipStatus> statuses;
 		if(extended)
 			statuses=ctx.getFriendsController().getFriendshipStatuses(actx.self.user, ids);
@@ -191,7 +191,7 @@ public class FriendsMethods{
 
 	public static Object addList(ApplicationContext ctx, ApiCallContext actx){
 		String name=actx.requireParamString("name");
-		List<Integer> userIDs=actx.optCommaSeparatedIntListParam("user_ids");
+		List<Integer> userIDs=actx.optParamCommaSeparatedIntList("user_ids");
 		Set<Integer> ids=ctx.getFriendsController().getFriendLists(actx.self.user).stream().map(FriendList::id).collect(Collectors.toSet());
 		boolean foundID=false;
 		for(int i=1;i<FriendList.FIRST_PUBLIC_LIST_ID;i++){
@@ -216,7 +216,7 @@ public class FriendsMethods{
 
 	public static Object edit(ApplicationContext ctx, ApiCallContext actx){
 		User user=ApiUtils.getUser(ctx, actx, "user_id");
-		List<Integer> listIDs=actx.optCommaSeparatedIntListParam("list_ids");
+		List<Integer> listIDs=actx.optParamCommaSeparatedIntList("list_ids");
 		Set<Integer> validIDs=ctx.getFriendsController().getFriendLists(actx.self.user).stream().map(FriendList::id).collect(Collectors.toSet());
 
 		BitSet lists=new BitSet(64);
@@ -253,11 +253,11 @@ public class FriendsMethods{
 
 		Set<Integer> friendIDs;
 		if(actx.hasParam("user_ids")){
-			friendIDs=new HashSet<>(actx.optCommaSeparatedIntListParam("user_ids"));
+			friendIDs=new HashSet<>(actx.optParamCommaSeparatedIntList("user_ids"));
 		}else{
 			friendIDs=new HashSet<>(ctx.getFriendsController().getFriendListMemberIDs(actx.self.user, listID));
-			friendIDs.addAll(actx.optCommaSeparatedIntListParam("add_user_ids"));
-			actx.optCommaSeparatedIntListParam("delete_user_ids").forEach(friendIDs::remove);
+			friendIDs.addAll(actx.optParamCommaSeparatedIntList("add_user_ids"));
+			actx.optParamCommaSeparatedIntList("delete_user_ids").forEach(friendIDs::remove);
 		}
 
 		ctx.getFriendsController().updateFriendList(actx.self.user, listID, actx.optParamString("name", list.name()), friendIDs);
@@ -266,8 +266,8 @@ public class FriendsMethods{
 	}
 
 	public static Object getRequests(ApplicationContext ctx, ApiCallContext actx){
-		boolean extended=actx.booleanParam("extended");
-		boolean needMutual=actx.booleanParam("need_mutual");
+		boolean extended=actx.optParamBoolean("extended");
+		boolean needMutual=actx.optParamBoolean("need_mutual");
 		PaginatedList<FriendRequest> requests=ctx.getFriendsController().getIncomingFriendRequests(actx.self.user, actx.getOffset(), actx.getCount(20, 100), needMutual ? 10 : 0);
 		if(requests.list.isEmpty())
 			return new ApiPaginatedList<>(requests);

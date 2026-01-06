@@ -171,7 +171,7 @@ public class ServerMethods{
 			}
 		}
 
-		ctx.getModerationController().createViolationReport(actx.self.user, target, content, reason, rules, actx.optParamString("comment", ""), actx.booleanParam("forward"));
+		ctx.getModerationController().createViolationReport(actx.self.user, target, content, reason, rules, actx.optParamString("comment", ""), actx.optParamBoolean("forward"));
 		return true;
 	}
 

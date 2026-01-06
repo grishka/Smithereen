@@ -12,13 +12,13 @@ public class ApiError{
 	public List<RequestParameter> requestParams;
 	public String method;
 
-	public ApiError(ApiErrorType type, String message, Map<String, String> params){
+	public ApiError(ApiErrorType type, String message, Map<String, Object> params){
 		errorType=type;
 		errorCode=type.code;
 		errorMsg=type.message;
 		if(StringUtils.isNotEmpty(message))
 			errorMsg+=": "+message;
-		requestParams=params.entrySet().stream().map(e->new RequestParameter(e.getKey(), e.getValue())).toList();
+		requestParams=params.entrySet().stream().map(e->new RequestParameter(e.getKey(), e.getValue().toString())).toList();
 	}
 
 	public record RequestParameter(String key, String value){}

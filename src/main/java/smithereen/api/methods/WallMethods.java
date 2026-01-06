@@ -17,6 +17,7 @@ import smithereen.api.model.ApiPaginatedListWithActors;
 import smithereen.api.model.ApiUser;
 import smithereen.api.model.ApiWallPost;
 import smithereen.controllers.WallController;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.CommentViewType;
@@ -68,7 +69,7 @@ public class WallMethods{
 		int count=actx.getCount(20, 100);
 		PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getWallController().getWallPosts(self, owner, mode, offset, count));
 		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true, true));
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(posts.list, needUsers, needGroups);
 			res.profiles=ApiUtils.getUsers(needUsers, ctx, actx);
@@ -98,7 +99,7 @@ public class WallMethods{
 		ctx.getPrivacyController().filterPostViewModels(self, posts);
 
 		List<ApiWallPost> res=ApiUtils.getPosts(posts, ctx, actx, true, true, true);
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(posts, needUsers, needGroups);
 
@@ -123,7 +124,7 @@ public class WallMethods{
 		int secondaryCount=Math.min(100, actx.optParamIntPositive("secondary_count", 20));
 		int commentID=actx.optParamIntPositive("comment_id");
 		boolean reversed="desc".equals(actx.optParamString("sort"));
-		boolean needLikes=actx.booleanParam("need_likes");
+		boolean needLikes=actx.optParamBoolean("need_likes");
 
 		User self=actx.self!=null && actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
 
@@ -145,7 +146,7 @@ public class WallMethods{
 		record CommentsResponse(int count, List<ApiWallPost> items, String viewType, List<ApiUser> profiles, List<ApiGroup> groups){}
 
 		List<ApiWallPost> apiComments=ApiUtils.getPosts(comments.list, ctx, actx, needLikes, false, true);
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(comments.list, needUsers, needGroups);
 			return new CommentsResponse(comments.total, apiComments, viewType.name().toLowerCase(), ApiUtils.getUsers(needUsers, ctx, actx), ApiUtils.getGroups(needGroups, ctx, actx));
@@ -161,7 +162,7 @@ public class WallMethods{
 
 		PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getWallController().getPostReposts(post, actx.getOffset(), actx.getCount(20, 100)));
 		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true, true));
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			PostViewModel.collectActorIDs(posts.list, needUsers, needGroups);
 			res.profiles=ApiUtils.getUsers(needUsers, ctx, actx);
@@ -239,16 +240,22 @@ public class WallMethods{
 
 		ApiUtils.InputAttachments attachments=ApiUtils.parseAttachments(ctx, actx, isReply, !isReply);
 
-		if(edit!=null){
-			ctx.getWallController().editPost(actx.self.user, actx.permissions, edit.id, message, textFormat, cw, attachments.ids(), attachments.poll(), attachments.altTexts());
-			return edit.id;
-		}
+		try{
+			if(edit!=null){
+				ctx.getWallController().editPost(actx.self.user, actx.permissions, edit.id, message, textFormat, cw, attachments.ids(), attachments.poll(), attachments.altTexts());
+				return edit.id;
+			}
 
-		String guid=actx.optParamString("guid");
-		if(StringUtils.isNotEmpty(guid)){
-			guid=actx.token.getEncodedID()+"|"+guid;
+			String guid=actx.optParamString("guid");
+			if(StringUtils.isNotEmpty(guid)){
+				guid=actx.token.getEncodedID()+"|"+guid;
+			}
+			return ctx.getWallController().createWallPost(actx.self.user, owner, replyTo, message, textFormat, cw, attachments.ids(), attachments.poll(), repost, attachments.altTexts(), null, ctx.getAppsController().getAppByID(actx.token.appID()), guid).id;
+		}catch(BadRequestException x){
+			if("Empty post".equals(x.getMessage()))
+				throw actx.paramError("the post is empty");
+			throw actx.error(ApiErrorType.OTHER_ERROR, x.getMessage());
 		}
-		return ctx.getWallController().createWallPost(actx.self.user, owner, replyTo, message, textFormat, cw, attachments.ids(), attachments.poll(), repost, attachments.altTexts(), null, ctx.getAppsController().getAppByID(actx.token.appID()), guid).id;
 	}
 
 	public static Object getEditSource(ApplicationContext ctx, ApiCallContext actx){

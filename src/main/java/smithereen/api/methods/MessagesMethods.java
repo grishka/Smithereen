@@ -31,13 +31,13 @@ public class MessagesMethods{
 		PaginatedList<MailMessage> messages;
 		int offset=actx.getOffset();
 		int count=actx.getCount(20, 200);
-		if(actx.booleanParam("out"))
+		if(actx.optParamBoolean("out"))
 			messages=ctx.getMailController().getOutbox(actx.self.user, offset, count);
 		else
 			messages=ctx.getMailController().getInbox(actx.self.user, offset, count);
 
 		ApiPaginatedListWithActors<ApiMessage> resp=new ApiPaginatedListWithActors<>(messages.total, getMessages(messages.list, ctx, actx));
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>();
 			for(MailMessage msg:messages.list){
 				needUsers.add(msg.senderID);
@@ -60,7 +60,7 @@ public class MessagesMethods{
 		Map<Long, MailMessage> rawMessagesMap=ctx.getMailController().getMessagesByIDs(actx.self.user, msgIDs, false);
 		List<ApiMessage> messages=getMessages(msgIDs.stream().map(rawMessagesMap::get).filter(Objects::nonNull).toList(), ctx, actx);
 
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>();
 			for(MailMessage msg:rawMessagesMap.values()){
 				needUsers.add(msg.senderID);
@@ -143,7 +143,7 @@ public class MessagesMethods{
 
 	public static Object delete(ApplicationContext ctx, ApiCallContext actx){
 		long id=XTEA.decodeObjectID(actx.requireParamString("message_id"), ObfuscatedObjectIDType.MAIL_MESSAGE);
-		boolean revoke=actx.booleanParam("revoke");
+		boolean revoke=actx.optParamBoolean("revoke");
 		MailMessage msg=ctx.getMailController().getMessage(actx.self.user, id, revoke);
 		if(revoke)
 			ctx.getMailController().actuallyDeleteMessage(actx.self.user, msg, true);

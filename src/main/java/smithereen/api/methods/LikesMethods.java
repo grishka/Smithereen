@@ -50,8 +50,8 @@ public class LikesMethods{
 	public static Object getList(ApplicationContext ctx, ApiCallContext actx){
 		LikeableContentObject obj=getObject(ctx, actx);
 		ctx.getPrivacyController().enforceObjectPrivacy(actx.self==null || !actx.hasPermission(ClientAppPermission.LIKES_READ) ? null : actx.self.user, obj);
-		boolean friendsOnly=actx.booleanParam("friends_only") && actx.self!=null;
-		boolean skipOwn=actx.booleanParam("skip_own");
+		boolean friendsOnly=actx.optParamBoolean("friends_only") && actx.self!=null;
+		boolean skipOwn=actx.optParamBoolean("skip_own");
 		int offset=actx.getOffset();
 		int count=actx.getCount(100, 1000);
 		PaginatedList<Integer> userIDs=ctx.getUserInteractionsController().getLikesForObject(obj, actx.self==null ? null : actx.self.user, offset, count, skipOwn, friendsOnly);

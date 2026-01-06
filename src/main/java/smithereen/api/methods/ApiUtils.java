@@ -540,7 +540,7 @@ public class ApiUtils{
 		int count=actx.getCount(20, 100);
 		int secondaryCount=Math.min(100, actx.optParamIntPositive("secondary_count", 20));
 		String commentID=actx.optParamString("comment_id");
-		boolean needLikes=actx.booleanParam("need_likes");
+		boolean needLikes=actx.optParamBoolean("need_likes");
 
 		List<Long> replyKey;
 		if(commentID!=null){
@@ -559,7 +559,7 @@ public class ApiUtils{
 		record CommentsResponse(int count, List<ApiComment> items, String viewType, List<ApiUser> profiles, List<ApiGroup> groups){}
 
 		List<ApiComment> apiComments=getComments(comments.list, ctx, actx, needLikes);
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 			CommentViewModel.collectUserIDs(comments.list, needUsers);
 			return new CommentsResponse(comments.total, apiComments, viewType.name().toLowerCase(), ApiUtils.getUsers(needUsers, ctx, actx), ApiUtils.getGroups(needGroups, ctx, actx));
@@ -735,7 +735,7 @@ public class ApiUtils{
 			return List.of();
 		Map<Long, UserInteractions> interactions;
 		Map<Long, Integer> tagCounts;
-		if(actx.booleanParam("extended")){
+		if(actx.optParamBoolean("extended")){
 			interactions=ctx.getUserInteractionsController().getUserInteractions(photos, actx.self==null ? null : actx.self.user);
 			tagCounts=ctx.getPhotosController().getTagCountsForPhotos(photos.stream().map(p->p.id).collect(Collectors.toSet()));
 		}else{

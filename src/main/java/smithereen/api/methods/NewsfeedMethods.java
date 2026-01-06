@@ -66,7 +66,7 @@ public class NewsfeedMethods{
 		}
 		if(filters.isEmpty())
 			filters=EnumSet.allOf(FriendsNewsfeedTypeFilter.class);
-		boolean returnBanned=actx.booleanParam("return_banned");
+		boolean returnBanned=actx.optParamBoolean("return_banned");
 		StartFrom sf=getStartFrom(actx);
 
 		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(actx.self, filters, actx.self.prefs.timeZone, sf.id, sf.offset, actx.getCount(25, 100), returnBanned);
@@ -402,7 +402,7 @@ public class NewsfeedMethods{
 	}
 
 	public static Object getFilters(ApplicationContext ctx, ApiCallContext actx){
-		List<WordFilter> filters=ctx.getNewsfeedController().getWordFilters(actx.self.user, actx.booleanParam("include_expired"));
+		List<WordFilter> filters=ctx.getNewsfeedController().getWordFilters(actx.self.user, actx.optParamBoolean("include_expired"));
 		record ApiWordFilter(int id, String name, @NotNull List<String> words, @NotNull List<String> contexts, @Nullable Long expiryDate){
 		}
 		return filters.stream().map(f->new ApiWordFilter(f.id, f.name, f.words, f.contexts.stream().map(c->switch(c){

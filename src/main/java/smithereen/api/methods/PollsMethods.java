@@ -107,6 +107,6 @@ public class PollsMethods{
 		Instant endTime=null;
 		if(rawEndTime>System.currentTimeMillis()*1000L+60_000L)
 			endTime=Instant.ofEpochSecond(rawEndTime);
-		return ctx.getWallController().createPoll(actx.self.user, owner, question, opts, actx.booleanParam("anonymous"), actx.booleanParam("multiple"), endTime);
+		return ctx.getWallController().createPoll(actx.self.user, owner, question, opts, actx.optParamBoolean("anonymous"), actx.optParamBoolean("multiple"), endTime);
 	}
 }

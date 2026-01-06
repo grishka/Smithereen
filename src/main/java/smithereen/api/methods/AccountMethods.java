@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -52,7 +51,7 @@ public class AccountMethods{
 	}
 
 	public static Object setOnline(ApplicationContext ctx, ApiCallContext actx){
-		ctx.getUsersController().setOnline(actx.self.user, actx.booleanParam("mobile") ? UserPresence.PresenceType.MOBILE_API : UserPresence.PresenceType.API,
+		ctx.getUsersController().setOnline(actx.self.user, actx.optParamBoolean("mobile") ? UserPresence.PresenceType.MOBILE_API : UserPresence.PresenceType.API,
 				Arrays.hashCode(actx.token.id()), actx.token.appID());
 		return true;
 	}

@@ -84,7 +84,7 @@ public class PhotosMethods{
 		}
 
 		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbums(owner, actx.hasPermission(ClientAppPermission.PHOTOS_READ)
-				? actx.self.user : null, actx.booleanParam("need_system"), false);
+				? actx.self.user : null, actx.optParamBoolean("need_system"), false);
 		int total=albums.size();
 		int offset=actx.getOffset();
 		int count=actx.getCount(albums.size()-offset, albums.size()-offset);
@@ -95,7 +95,7 @@ public class PhotosMethods{
 		}
 
 		Map<Long, Photo> coverPhotos;
-		if(actx.booleanParam("need_covers")){
+		if(actx.optParamBoolean("need_covers")){
 			coverPhotos=ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.stream().map(a->a.coverID).filter(id->id!=0).toList());
 		}else{
 			coverPhotos=null;
@@ -128,7 +128,7 @@ public class PhotosMethods{
 		}
 
 		Map<Long, Photo> coverPhotos;
-		if(actx.booleanParam("need_covers")){
+		if(actx.optParamBoolean("need_covers")){
 			coverPhotos=ctx.getPhotosController().getPhotosIgnoringPrivacy(albums.values().stream().map(a->a.coverID).filter(id->id!=0).toList());
 		}else{
 			coverPhotos=null;
@@ -155,7 +155,7 @@ public class PhotosMethods{
 		};
 
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(actx.hasPermission(ClientAppPermission.PHOTOS_READ) ? actx.self.user : null,
-				album, actx.getOffset(), actx.getCount(50, 1000), actx.booleanParam("rev"));
+				album, actx.getOffset(), actx.getCount(50, 1000), actx.optParamBoolean("rev"));
 		return new ApiPaginatedList<>(photos.total, ApiUtils.getPhotos(ctx, actx, photos.list));
 	}
 	
@@ -195,7 +195,7 @@ public class PhotosMethods{
 	public static Object getUserPhotos(ApplicationContext ctx, ApiCallContext actx){
 		User user=ApiUtils.getUserOrSelf(ctx, actx, "user_id");
 		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(actx.hasPermission(ClientAppPermission.PHOTOS_READ) ? actx.self.user : null,
-				user, actx.getOffset(), actx.getCount(50, 1000), actx.booleanParam("rev"));
+				user, actx.getOffset(), actx.getCount(50, 1000), actx.optParamBoolean("rev"));
 		return new ApiPaginatedList<>(photos.total, ApiUtils.getPhotos(ctx, actx, photos.list));
 	}
 
@@ -230,7 +230,7 @@ public class PhotosMethods{
 			Actor owner;
 			if(actx.hasParam("group_id")){
 				Group group=ctx.getGroupsController().getGroupOrThrow(actx.requireParamIntPositive("group_id"));
-				albumID=ctx.getPhotosController().createAlbum(actx.self.user, group, title, description, actx.booleanParam("comments_disabled"), actx.booleanParam("upload_by_admins_only"));
+				albumID=ctx.getPhotosController().createAlbum(actx.self.user, group, title, description, actx.optParamBoolean("comments_disabled"), actx.optParamBoolean("upload_by_admins_only"));
 				owner=group;
 			}else{
 				ApiPrivacySetting viewPrivacy=actx.optParamJsonObject("privacy_view", ApiPrivacySetting.class);
@@ -261,8 +261,8 @@ public class PhotosMethods{
 			PrivacySetting commentPrivacy=actx.hasParam("privacy_comment") ? actx.optParamJsonObject("privacy_comment", ApiPrivacySetting.class).toNativePrivacySetting() : album.commentPrivacy;
 			ctx.getPhotosController().updateUserAlbum(actx.self.user, album, title, description, viewPrivacy, commentPrivacy);
 		}else{
-			boolean disableCommenting=actx.hasParam("comments_disabled") ? actx.booleanParam("comments_disabled") : album.flags.contains(PhotoAlbum.Flag.GROUP_DISABLE_COMMENTING);
-			boolean restrictUploads=actx.hasParam("upload_by_admin_only") ? actx.booleanParam("upload_by_admin_only") : album.flags.contains(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS);
+			boolean disableCommenting=actx.hasParam("comments_disabled") ? actx.optParamBoolean("comments_disabled") : album.flags.contains(PhotoAlbum.Flag.GROUP_DISABLE_COMMENTING);
+			boolean restrictUploads=actx.hasParam("upload_by_admin_only") ? actx.optParamBoolean("upload_by_admin_only") : album.flags.contains(PhotoAlbum.Flag.GROUP_RESTRICT_UPLOADS);
 			ctx.getPhotosController().updateGroupAlbum(actx.self.user, album, title, description, disableCommenting, restrictUploads);
 		}
 		return true;
