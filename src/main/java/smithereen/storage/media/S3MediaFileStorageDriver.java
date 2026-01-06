@@ -80,7 +80,7 @@ public class S3MediaFileStorageDriver extends MediaFileStorageDriver{
 		}
 		LOG.trace("Loaded configuration: {}", config.toString().replace(config.secretKey(), "***"));
 
-		httpClient=ExtendedHttpClient.newHttpClient();
+		httpClient=ExtendedHttpClient.newBuilder().allowLocalNetworks(true).build();
 	}
 
 	@Override
