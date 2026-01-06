@@ -1,5 +1,10 @@
 package smithereen.api.methods;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpTimeoutException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -20,14 +25,25 @@ import smithereen.api.model.ApiPaginatedListWithActors;
 import smithereen.api.model.ApiUser;
 import smithereen.controllers.GroupsController;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.RemoteObjectFetchException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
+import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.groups.GroupAdmin;
+import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.groups.GroupInvitation;
+import smithereen.model.groups.GroupLink;
+import smithereen.model.groups.GroupLinkParseResult;
+import spark.utils.StringUtils;
+
+import static smithereen.Utils.*;
+import static smithereen.Utils.isWithinDatabaseLimits;
 
 public class GroupsMethods{
 	private static final Pattern ID_PATTERN=Pattern.compile("^\\d+$");
@@ -330,5 +346,274 @@ public class GroupsMethods{
 			throw actx.error(ApiErrorType.CANT_INVITE_TO_GROUP, Lang.get(Locale.US).get(x.getMessage()));
 		}
 		return true;
+	}
+
+	public static Object getSettings(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+
+		record GroupSettings(String name, String description, String screenName, String site, String accessType, Long startDate, Long finishDate, String place, String wall, String photos, String board){}
+		return new GroupSettings(group.name, group.summary, group.username, group.website, group.accessType.name().toLowerCase(),
+				group.isEvent() && group.eventStartTime!=null ? group.eventStartTime.getEpochSecond() : null, group.isEvent() && group.eventEndTime!=null ? group.eventEndTime.getEpochSecond() : null,
+				group.isEvent() ? group.location : null, group.wallState.asApiValue(), group.photosState.asApiValue(), group.boardState.asApiValue());
+	}
+
+	public static Object edit(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+
+		String name=actx.optParamString("name", group.name);
+		String about=group.aboutSource;
+		if(actx.hasParam("description"))
+			about=actx.optParamString("description", "");
+		if(StringUtils.isEmpty(about))
+			about=null;
+
+		Instant eventStart=null, eventEnd=null;
+		if(group.isEvent()){
+			eventStart=group.eventStartTime;
+			if(actx.hasParam("start_date")){
+				eventStart=Instant.ofEpochSecond(actx.requireParamLongNonZero("start_date"));
+			}
+			eventEnd=group.eventEndTime;
+			if(actx.hasParam("finish_date")){
+				long endDate=actx.optParamLong("finish_date");
+				eventEnd=endDate>0 ? Instant.ofEpochSecond(endDate) : null;
+			}
+			if(eventEnd!=null && eventStart.isAfter(eventEnd))
+				throw actx.paramError("finish_date is before start_date");
+			if(!eventStart.equals(group.eventStartTime)){
+				if(eventStart.isBefore(Instant.now()))
+					throw actx.paramError("start_date is in the past");
+				if(!isWithinDatabaseLimits(eventStart))
+					throw actx.paramError("start_date is too far in the future");
+			}
+			if(eventEnd!=null && !isWithinDatabaseLimits(eventEnd))
+				throw actx.paramError("finish_date is too far in the future");
+		}
+
+		String username=group.username;
+		if(actx.hasParam("username"))
+			username=actx.requireParamString("username");
+
+		Group.AccessType accessType=group.accessType;
+		if(actx.hasParam("access_type")){
+			accessType=actx.requireParamEnum("access_type", Map.of(
+					"open", Group.AccessType.OPEN,
+					"closed", Group.AccessType.CLOSED,
+					"private", Group.AccessType.PRIVATE
+			));
+			if(group.isEvent() && accessType==Group.AccessType.CLOSED)
+				throw actx.paramError("access_type can only be open or private for events");
+		}
+
+		GroupFeatureState wallState=group.wallState;
+		if(actx.hasParam("wall")){
+			wallState=actx.requireParamEnum("wall", Map.of(
+					"open", GroupFeatureState.ENABLED_OPEN,
+					"restricted", GroupFeatureState.ENABLED_RESTRICTED,
+					"closed", GroupFeatureState.ENABLED_CLOSED,
+					"disabled", GroupFeatureState.DISABLED
+			));
+		}
+
+		GroupFeatureState photosState=group.photosState;
+		if(actx.hasParam("photos")){
+			photosState=actx.requireParamEnum("photos", Map.of(
+					"restricted", GroupFeatureState.ENABLED_RESTRICTED,
+					"disabled", GroupFeatureState.DISABLED
+			));
+		}
+
+		GroupFeatureState boardState=group.wallState;
+		if(actx.hasParam("board")){
+			boardState=actx.requireParamEnum("board", Map.of(
+					"open", GroupFeatureState.ENABLED_OPEN,
+					"restricted", GroupFeatureState.ENABLED_RESTRICTED,
+					"disabled", GroupFeatureState.DISABLED
+			));
+		}
+
+		String website=group.website;
+		if(actx.hasParam("site"))
+			website=actx.optParamString("site");
+
+		String eventLocation=group.location;
+		if(group.isEvent() && actx.hasParam("place"))
+			eventLocation=actx.optParamString("place");
+
+		ctx.getGroupsController().updateGroupInfo(group, actx.self.user, name, about, eventStart, eventEnd, username, accessType, wallState, photosState, boardState, website, eventLocation);
+
+		return true;
+	}
+
+	public static Object addManager(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		Group.MembershipState state=ctx.getGroupsController().getUserMembershipState(group, user);
+		if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER)
+			throw actx.error(ApiErrorType.CANT_PROMOTE_GROUP_MEMBER, "this user is not a member of this group");
+		if(ctx.getGroupsController().getMemberAdminLevel(group, user)!=Group.AdminLevel.REGULAR)
+			throw actx.error(ApiErrorType.CANT_PROMOTE_GROUP_MEMBER, "this user is already a manager in this group");
+		if(user instanceof ForeignUser)
+			throw actx.error(ApiErrorType.CANT_PROMOTE_GROUP_MEMBER, "groups currently cannot be managed by users from other servers");
+
+		ctx.getGroupsController().addOrUpdateAdmin(group, actx.self.user, user, actx.optParamString("title", ""), actx.requireParamEnum("level", Map.of("moderator", Group.AdminLevel.MODERATOR, "admin", Group.AdminLevel.ADMIN)));
+
+		return true;
+	}
+
+	public static Object editManager(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, user);
+		if(level==Group.AdminLevel.REGULAR)
+			throw actx.error(ApiErrorType.CANT_PROMOTE_GROUP_MEMBER, "this user is not a manager in this group");
+
+		ctx.getGroupsController().addOrUpdateAdmin(group, actx.self.user, user, actx.hasParam("title") ? actx.optParamString("title", "") : ctx.getGroupsController().getAdmin(group, user.id).title,
+				actx.optParamEnum("level", Map.of("moderator", Group.AdminLevel.MODERATOR, "admin", Group.AdminLevel.ADMIN), level));
+
+		return true;
+	}
+
+	public static Object deleteManager(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, user);
+		if(level==Group.AdminLevel.REGULAR)
+			throw actx.error(ApiErrorType.CANT_DEMOTE_GROUP_MEMBER, "this user is not a manager in this group");
+		if(level==Group.AdminLevel.OWNER)
+			throw actx.error(ApiErrorType.CANT_DEMOTE_GROUP_MEMBER, "this user is the creator of this group and can not be removed");
+
+		ctx.getGroupsController().removeAdmin(group, actx.self.user, user);
+
+		return true;
+	}
+
+	public static Object reorderManager(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+		User user=ApiUtils.getUser(ctx, actx, "user_id");
+		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, user);
+		if(level==Group.AdminLevel.REGULAR)
+			throw actx.error(ApiErrorType.CANT_PROMOTE_GROUP_MEMBER, "this user is not a manager in this group");
+
+		int position=0;
+		if(!actx.hasParam("after_user_id"))
+			throw actx.paramError("after_user_id is undefined");
+		int afterID=actx.optParamInt("after_user_id");
+		if(afterID>0){
+			List<GroupAdmin> admins=ctx.getGroupsController().getAdmins(group);
+			int i=0;
+			for(GroupAdmin a:admins){
+				if(a.userID==afterID){
+					position=i+1;
+					break;
+				}
+				if(a.userID!=user.id)
+					i++;
+			}
+		}
+
+		ctx.getGroupsController().setAdminOrder(group, user, position);
+
+		return true;
+	}
+
+	public static Object addLink(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+		URI uri;
+		try{
+			uri=new URI(actx.requireParamString("link"));
+		}catch(URISyntaxException x){
+			throw actx.paramError("link is not a valid URL");
+		}
+		GroupLinkParseResult parseResult;
+		try{
+			parseResult=ctx.getGroupsController().parseLink(uri, actx.self.user, group);
+		}catch(UserErrorException x){
+			switch(x.getCause()){
+				case ObjectNotFoundException onfe -> {
+					switch(onfe.getCause()){
+						case HttpTimeoutException cause -> throw actx.error(ApiErrorType.REMOTE_FETCH_TIMEOUT);
+						case IOException cause -> throw actx.error(ApiErrorType.REMOTE_FETCH_NETWORK_ERROR);
+						case null, default -> throw actx.error(ApiErrorType.REMOTE_FETCH_NOT_FOUND);
+					}
+				}
+				case null, default -> throw actx.error(ApiErrorType.REMOTE_FETCH_UNSUPPORTED_TYPE);
+			}
+		}
+
+		long id=ctx.getGroupsController().addLink(actx.self.user, group, uri, parseResult, actx.optParamString("text", parseResult.title()));
+		return ApiUtils.getGroupLink(ctx, actx, ctx.getGroupsController().getLink(group, id));
+	}
+
+	public static Object editLink(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+		GroupLink link=ctx.getGroupsController().getLink(group, actx.requireParamLongNonZero("link_id"));
+		ctx.getGroupsController().updateLinkTitle(group, link, actx.optParamString("text"));
+		return true;
+	}
+
+	public static Object reorderLink(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+		GroupLink link=ctx.getGroupsController().getLink(group, actx.requireParamLongNonZero("link_id"));
+
+		int position=0;
+		if(!actx.hasParam("after_link_id"))
+			throw actx.paramError("after_link_id is undefined");
+		int afterID=actx.optParamInt("after_link_id");
+		if(afterID>0){
+			List<GroupLink> links=ctx.getGroupsController().getLinks(group);
+			int i=0;
+			for(GroupLink l:links){
+				if(l.id==afterID){
+					position=i+1;
+					break;
+				}
+				if(l.id!=link.id)
+					i++;
+			}
+		}
+
+		ctx.getGroupsController().setLinkOrder(group, link, position);
+
+		return true;
+	}
+
+	public static Object deleteLink(ApplicationContext ctx, ApiCallContext actx){
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
+		GroupLink link=ctx.getGroupsController().getLink(group, actx.requireParamLongNonZero("link_id"));
+		ctx.getGroupsController().deleteLink(group, link);
+		return true;
+	}
+
+	public static Object create(ApplicationContext ctx, ApiCallContext actx){
+		String name=actx.requireParamString("name").strip();
+		if(name.isEmpty())
+			throw actx.paramError("name is empty");
+		String description=actx.optParamString("description");
+		String type=actx.requireParamString("type");
+		int id;
+		if("group".equals(type)){
+			id=ctx.getGroupsController().createGroup(actx.self.user, name, description).id;
+		}else if("event".equals(type)){
+			Instant eventStart=Instant.ofEpochSecond(actx.requireParamLongNonZero("start_date"));
+			if(eventStart.isBefore(Instant.now()))
+				throw actx.paramError("start_date is in the past");
+			if(!isWithinDatabaseLimits(eventStart))
+				throw actx.paramError("start_date is too far in the future");
+			id=ctx.getGroupsController().createEvent(actx.self.user, name, description, eventStart, null).id;
+		}else{
+			throw actx.paramError("type must be one of group, event");
+		}
+		return id;
 	}
 }

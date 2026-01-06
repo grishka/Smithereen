@@ -155,6 +155,10 @@ public class ApiCallContext{
 		return v;
 	}
 
+	public int optParamInt(@NotNull String key){
+		return Utils.safeParseInt(params.get(key));
+	}
+
 	public long optParamLong(@NotNull String key){
 		return Utils.safeParseLong(params.get(key));
 	}

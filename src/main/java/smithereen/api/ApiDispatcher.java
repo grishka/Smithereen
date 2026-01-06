@@ -61,6 +61,17 @@ public class ApiDispatcher{
 		registerMethod("groups.approveRequest", GroupsMethods::approveRequest, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("groups.removeUser", GroupsMethods::removeUser, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("groups.invite", GroupsMethods::invite, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.getSettings", GroupsMethods::getSettings, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.edit", GroupsMethods::edit, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.addManager", GroupsMethods::addManager, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.editManager", GroupsMethods::editManager, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.deleteManager", GroupsMethods::deleteManager, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.reorderManager", GroupsMethods::reorderManager, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.addLink", GroupsMethods::addLink, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.editLink", GroupsMethods::editLink, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.reorderLink", GroupsMethods::reorderLink, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.deleteLink", GroupsMethods::deleteLink, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("groups.create", GroupsMethods::create, ClientAppPermission.GROUPS_WRITE);
 
 		registerMethod("friends.get", FriendsMethods::get, false);
 		registerMethod("friends.getOnline", FriendsMethods::getOnline, false);

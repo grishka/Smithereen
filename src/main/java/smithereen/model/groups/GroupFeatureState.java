@@ -24,4 +24,13 @@ public enum GroupFeatureState{
 			case null, default -> def;
 		};
 	}
+
+	public String asApiValue(){
+		return switch(this){
+			case ENABLED_OPEN -> "open";
+			case ENABLED_RESTRICTED -> "restricted";
+			case ENABLED_CLOSED -> "closed";
+			case DISABLED -> "disabled";
+		};
+	}
 }

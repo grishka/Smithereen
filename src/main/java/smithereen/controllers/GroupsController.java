@@ -111,7 +111,7 @@ public class GroupsController{
 				throw new BadRequestException("name is empty");
 			if(isEvent && startTime==null)
 				throw new BadRequestException("start time is required for event");
-			int id=GroupStorage.createGroup(name, TextProcessor.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
+			int id=GroupStorage.createGroup(name, description==null ? null : TextProcessor.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
 			context.getActivityPubWorker().sendAddToGroupsCollectionActivity(admin, group, false);
 			context.getNewsfeedController().putFriendsFeedEntry(admin, group.id, isEvent ? NewsfeedEntry.Type.CREATE_EVENT : NewsfeedEntry.Type.CREATE_GROUP);
@@ -957,7 +957,7 @@ public class GroupsController{
 				}
 				return new GroupLinkParseResult(null, title, imageURL, image);
 			}else{
-				throw new UserErrorException("group_link_error");
+				throw new UserErrorException("group_link_error", x);
 			}
 		}catch(Exception x){
 			if(url.getHost()!=null && Config.isLocal(url)){ // Explicitly allow any local links

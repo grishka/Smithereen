@@ -30,6 +30,8 @@ public enum ApiErrorType{
 	CANT_ADD_FRIEND_YOU_BLOCKED(176, "Can't add this user as a friend because you blocked them", 403),
 
 	CANT_INVITE_TO_GROUP(180, "Can't invite this user to this group", 403),
+	CANT_PROMOTE_GROUP_MEMBER(181, "Can't add or update this group manager"),
+	CANT_DEMOTE_GROUP_MEMBER(182, "Can't remove this group manager"),
 
 	TOO_MANY_FRIENDS(242, "Too many friends"),
 
