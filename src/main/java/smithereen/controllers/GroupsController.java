@@ -78,6 +78,7 @@ import smithereen.storage.utils.IntPair;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
 import spark.utils.StringUtils;
 
@@ -111,6 +112,7 @@ public class GroupsController{
 				throw new BadRequestException("name is empty");
 			if(isEvent && startTime==null)
 				throw new BadRequestException("start time is required for event");
+			FloodControl.GROUP_CREATE.incrementOrThrow(admin);
 			int id=GroupStorage.createGroup(name, description==null ? null : TextProcessor.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
 			context.getActivityPubWorker().sendAddToGroupsCollectionActivity(admin, group, false);
