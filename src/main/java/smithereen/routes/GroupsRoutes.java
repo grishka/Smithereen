@@ -492,7 +492,7 @@ public class GroupsRoutes{
 			message=lang(req).get(group.isEvent() ? "event_info_updated" : "group_info_updated");
 		}catch(BadRequestException x){
 			LOG.debug("Bad request when saving group info", x);
-			message=x.getMessage();
+			message=lang(req).get(x.getMessage());
 		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_groupEdit").setContent("formMessage_groupEdit", message);
