@@ -3,19 +3,15 @@ package smithereen.model;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
@@ -25,7 +21,6 @@ import smithereen.activitypub.objects.Event;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.ObjectLinkResolver;
-import smithereen.exceptions.BadRequestException;
 import smithereen.http.HttpContentType;
 import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupBanInfo;
@@ -126,9 +121,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 				accessType=AccessType.valueOf(access.toUpperCase());
 			}catch(IllegalArgumentException ignore){}
 		}
-		if(accessType==null){
-			accessType=optBoolean(obj, "manuallyApprovesFollowers") ? AccessType.CLOSED : AccessType.OPEN;
-		}
+		accessType=optBoolean(obj, "manuallyApprovesFollowers") ? AccessType.CLOSED : AccessType.OPEN;
 		JsonObject endpoints=obj.getAsJsonObject("endpoints");
 		actorTokenEndpoint=tryParseURL(optString(endpoints, "actorToken"));
 		ensureHostMatchesID(actorTokenEndpoint, "endpoints.actorToken");

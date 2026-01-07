@@ -4,6 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -37,17 +40,36 @@ public class Group extends Actor{
 
 	public int id;
 	public int memberCount, tentativeMemberCount;
+
+	@NotNull
 	public Type type=Type.GROUP;
+
+	@Nullable
 	public Instant eventStartTime, eventEndTime;
-	public AccessType accessType;
+
+	@NotNull
+	public AccessType accessType=AccessType.OPEN;
+
+	@NotNull
 	public GroupFeatureState wallState=GroupFeatureState.ENABLED_OPEN;
+
+	@NotNull
 	public GroupFeatureState photosState=GroupFeatureState.ENABLED_RESTRICTED;
+
+	@NotNull
 	public GroupFeatureState boardState=GroupFeatureState.ENABLED_RESTRICTED;
+
+	@Nullable
 	public String website, location;
+
+	@NotNull
 	public GroupBanStatus banStatus=GroupBanStatus.NONE;
+
+	@Nullable
 	public GroupBanInfo banInfo;
 
-	public List<GroupAdmin> adminsForActivityPub;
+	@NotNull
+	public List<GroupAdmin> adminsForActivityPub=List.of();
 
 	public static Group fromResultSet(ResultSet res) throws SQLException{
 		Group g;

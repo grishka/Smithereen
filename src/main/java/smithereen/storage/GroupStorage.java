@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -933,6 +934,8 @@ public class GroupStorage{
 		}
 	}
 
+	@NotNull
+	@Unmodifiable
 	public static List<GroupAdmin> getGroupAdmins(int groupID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("group_admins")

@@ -1,5 +1,8 @@
 package smithereen.api.methods;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -350,8 +353,21 @@ public class GroupsMethods{
 		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
 		ctx.getGroupsController().enforceUserAdminLevel(group, actx.self.user, Group.AdminLevel.ADMIN);
 
-		record GroupSettings(String name, String description, String screenName, String site, String accessType, Long startDate, Long finishDate, String place, String wall, String photos, String board){}
-		return new GroupSettings(group.name, group.summary, group.username, group.website, group.accessType.name().toLowerCase(),
+		record GroupSettings(
+				@NotNull String name,
+				@Nullable String description,
+				@NotNull String screenName,
+				@Nullable String site,
+				@NotNull String accessType,
+				@Nullable Long startDate,
+				@Nullable Long finishDate,
+				@Nullable String place,
+				@NotNull String wall,
+				@NotNull String photos,
+				@NotNull String board
+		){
+		}
+		return new GroupSettings(Objects.requireNonNull(group.name), group.summary, Objects.requireNonNull(group.username), group.website, group.accessType.name().toLowerCase(),
 				group.isEvent() && group.eventStartTime!=null ? group.eventStartTime.getEpochSecond() : null, group.isEvent() && group.eventEndTime!=null ? group.eventEndTime.getEpochSecond() : null,
 				group.isEvent() ? group.location : null, group.wallState.asApiValue(), group.photosState.asApiValue(), group.boardState.asApiValue());
 	}
@@ -369,6 +385,7 @@ public class GroupsMethods{
 
 		Instant eventStart=null, eventEnd=null;
 		if(group.isEvent()){
+			Objects.requireNonNull(group.eventStartTime, "Event start time cannot be null");
 			eventStart=group.eventStartTime;
 			if(actx.hasParam("start_date")){
 				eventStart=Instant.ofEpochSecond(actx.requireParamLongNonZero("start_date"));

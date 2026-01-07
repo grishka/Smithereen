@@ -5,6 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -112,7 +115,18 @@ public class AccountMethods{
 	}
 
 	public static Object getProfileInfo(ApplicationContext ctx, ApiCallContext actx){
-		record ProfileInfoResponse(String firstName, String nickname, String lastName, String maidenName, String sex, String bdate, String hometown, String relation, ApiUser relationPartner){}
+		record ProfileInfoResponse(
+				@NotNull String firstName,
+				@NotNull String nickname,
+				@NotNull String lastName,
+				@NotNull String maidenName,
+				@NotNull String sex,
+				@NotNull String bdate,
+				@NotNull String hometown,
+				@NotNull String relation,
+				@Nullable ApiUser relationPartner
+		){
+		}
 		User self=actx.self.user;
 		ApiUser partner=null;
 		if(self.relationship!=null && self.relationship.canHavePartner() && self.relationshipPartnerID!=0){
