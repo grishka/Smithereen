@@ -62,6 +62,12 @@
 	}
 }
 
+@svg-load groupLinkPlaceholderIcon url('img/lnkouter.svg') {
+	fill: $groupLinkPlaceholderIconArrowColor;
+	*[fill=red] {
+		fill: $groupLinkPlaceholderIconBackgroundColor;
+	}
+}
 
 @mixin layer-shadow{
 	box-shadow:
@@ -987,6 +993,6 @@ h2+.textByItself{
 }
 
 .groupLinkPlaceholder {
-	background-image: url("/res/lnkouter.svg");
+	background-image: svg-inline(groupLinkPlaceholderIcon);
 	background-size: var(--ava-width) var(--ava-height);
 }
