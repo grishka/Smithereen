@@ -22,7 +22,7 @@
 		{% elseif image is not null %}
 		<span class="ava avaHasImage sizeA" style="--ava-width: 32px; --ava-height: 32px;">{{ image | pictureForPhoto(size='a', addClasses=['avaImage']) }}</span>
 		{% else %}
-		<span class="ava avaHasImage sizeA" style="--ava-width: 32px; --ava-height: 32px;"><img src="/res/lnkouter.svg" width="32" height="32" class="avaImage"/></span>
+		<span class="ava avaHasImage sizeA avaImage groupLinkPlaceholder" style="--ava-width: 32px; --ava-height: 32px;"></span>
 		{% endif %}
 	</a>
 	<div class="nameAndInfo">

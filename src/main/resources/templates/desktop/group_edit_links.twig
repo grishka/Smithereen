@@ -36,7 +36,7 @@
 				{% elseif image is not null %}
 				<span class="ava avaHasImage sizeA">{{ image | pictureForPhoto(size='a', addClasses=['avaImage']) }}</span>
 				{% else %}
-				<span class="ava avaHasImage sizeA"><img src="/res/lnkouter.svg" width="50" height="50" class="avaImage"/></span>
+				<span class="ava avaHasImage sizeA avaImage groupLinkPlaceholder"></span>
 				{% endif %}
 				<div class="linkContent">
 					<a href="{{ actor is null ? link.url : profileURL(actor.ownerID) }}"{% if link.object is null %} target="_blank"{% endif %}>
