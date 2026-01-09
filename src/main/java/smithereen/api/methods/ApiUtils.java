@@ -489,7 +489,9 @@ public class ApiUtils{
 		Set<Long> needPhotos=new HashSet<>();
 		for(PostViewModel p:posts){
 			PostViewModel post=p;
+			HashSet<Integer> seenPosts=new HashSet<>();
 			do{
+				seenPosts.add(post.post.id);
 				if(post.post.ownerID>0 && !pinnedIDs.containsKey(post.post.ownerID))
 					pinnedIDs.put(post.post.ownerID, ctx.getWallController().getPinnedPostIDs(post.post.ownerID));
 				List<Attachment> attachments=post.post.getProcessedAttachments();
@@ -499,6 +501,8 @@ public class ApiUtils{
 					}
 				}
 				post=post.repost==null ? null : post.repost.post();
+				if(post!=null && seenPosts.contains(post.post.id))
+					break;
 			}while(post!=null);
 		}
 		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);

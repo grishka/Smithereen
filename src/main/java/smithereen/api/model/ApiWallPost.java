@@ -1,8 +1,10 @@
 package smithereen.api.model;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import smithereen.api.ApiCallContext;
 import smithereen.model.Post;
@@ -100,7 +102,7 @@ public class ApiWallPost{
 			isMastodonStyleRepost=p.isMastodonStyleRepost();
 			if(post.repost!=null && fillReposts){
 				repostHistory=new ArrayList<>();
-				fillReposts(post.repost, actx, interactions, pinnedIDs, photos);
+				fillReposts(post.repost, actx, interactions, pinnedIDs, photos, new HashSet<>());
 			}
 			canPin=actx.self!=null && actx.self.user.id==p.ownerID;
 			if(p.ownerID>0){
@@ -120,9 +122,10 @@ public class ApiWallPost{
 	}
 
 	private void fillReposts(PostViewModel.Repost repost, ApiCallContext actx, Map<Integer, UserInteractions> interactions,
-							 Map<Integer, List<Integer>> pinnedIDs, Map<Long, Photo> photos){
+							 Map<Integer, List<Integer>> pinnedIDs, Map<Long, Photo> photos, Set<Integer> seenPostIDs){
 		repostHistory.add(new ApiWallPost(repost.post(), actx, interactions, pinnedIDs, photos, false));
-		if(repost.post().repost!=null)
-			fillReposts(repost.post().repost, actx, interactions, pinnedIDs, photos);
+		seenPostIDs.add(repost.post().post.id);
+		if(repost.post().repost!=null && !seenPostIDs.contains(repost.post().repost.post().post.id))
+			fillReposts(repost.post().repost, actx, interactions, pinnedIDs, photos, seenPostIDs);
 	}
 }
