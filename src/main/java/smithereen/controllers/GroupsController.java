@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
@@ -239,6 +240,8 @@ public class GroupsController{
 		}
 	}
 
+	@NotNull
+	@Unmodifiable
 	public List<GroupAdmin> getAdmins(@NotNull Group group){
 		try{
 			return GroupStorage.getGroupAdmins(group.id);

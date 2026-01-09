@@ -1,5 +1,8 @@
 package smithereen.model.groups;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 public enum GroupFeatureState{
 	ENABLED_OPEN,
 	ENABLED_RESTRICTED,
@@ -25,6 +28,8 @@ public enum GroupFeatureState{
 		};
 	}
 
+	@Contract(pure=true)
+	@NotNull
 	public String asApiValue(){
 		return switch(this){
 			case ENABLED_OPEN -> "open";
