@@ -881,7 +881,7 @@ public class PostRoutes{
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), comments.list).flatMap(List::stream).toList(), self!=null ? self.user : null);
 		model.with("postInteractions", interactions)
 					.with("preview", true)
-					.with("replyFormID", "wallPostForm_commentReplyPost"+postID+ridSuffix)
+					.with("replyFormID", (viewType==CommentViewType.FLAT ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+postID+ridSuffix)
 					.with("commentViewType", viewType);
 		model.with("topLevel", topLevel);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
