@@ -252,6 +252,15 @@ input[type=text], input[type=password], input[type=email], input[type=date], inp
 		padding: 3px 0;
 		cursor: text;
 		flex: none;
+		max-width: 50%;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		direction: rtl;
+		text-align: left;
+		span{
+			unicode-bidi: plaintext;
+		}
 	}
 }
 

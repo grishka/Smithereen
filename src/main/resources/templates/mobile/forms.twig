@@ -29,7 +29,7 @@
 		</div>
 		{% if options.prefix is not empty %}
 		<div class="prefixedInput control">
-			<label class="prefix" for="{{ name }}">{{ options.prefix }}</label>
+			<label class="prefix" for="{{ name }}"><span>{{ options.prefix }}</span></label>
 		{% endif %}
 		<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}"
 		{%- if options.maxlength is not null %} maxlength="{{options.maxlength}}"{%endif%}
