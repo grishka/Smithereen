@@ -3159,7 +3159,7 @@ label.pretendLink{
 		height: 16px;
 		line-height: 16px;
 		padding: 0 18px 0 3px;
-		background: $wallPostSeparator;
+		background: $tokenBackgroundColor;
 		margin: 2px 0 0 2px;
 		position: relative;
 		max-width: calc(100% - 4px);
@@ -3170,7 +3170,7 @@ label.pretendLink{
 			display: block;
 			width: 16px;
 			height: 16px;
-			background: svg-load('img/tag_remove.svg') no-repeat center;
+			background: svg-load('img/tag_remove.svg', fill: $tagRemoveIconColor) no-repeat center;
 			position: absolute;
 			right: 2px;
 			top: 0;
@@ -4441,7 +4441,7 @@ label.largeAccented{
 	height: 12px;
 	margin-left: 2px;
 	vertical-align: middle;
-	background: svg-load('img/tag_remove.svg') center no-repeat;
+	background: svg-load('img/tag_remove.svg', fill: $tagRemoveIconColor) center no-repeat;
 }
 
 .pvConfirmTag{
