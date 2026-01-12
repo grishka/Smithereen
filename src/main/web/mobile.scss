@@ -1730,7 +1730,7 @@ input.searchField{
 		height: 16px;
 		line-height: 16px;
 		padding: 0 18px 0 3px;
-		background: $wallPostSeparator;
+		background: $tokenBackgroundColor;
 		margin: 8px 0 0 8px;
 		position: relative;
 		max-width: calc(100% - 16px);
@@ -1741,7 +1741,7 @@ input.searchField{
 			display: block;
 			width: 16px;
 			height: 16px;
-			background: svg-load('img/tag_remove.svg') no-repeat center;
+			background: svg-load('img/tag_remove.svg', fill: $tagRemoveIconColor) no-repeat center;
 			position: absolute;
 			right: 2px;
 			top: 0;
@@ -2754,7 +2754,7 @@ input.searchField{
 	height: 1em;
 	margin-left: 2px;
 	vertical-align: middle;
-	background: svg-load('img/tag_remove.svg') center no-repeat;
+	background: svg-load('img/tag_remove.svg', fill: $tagRemoveIconColor) center no-repeat;
 }
 
 .oneLineForm{
