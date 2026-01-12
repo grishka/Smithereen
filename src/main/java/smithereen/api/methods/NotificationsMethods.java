@@ -22,6 +22,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.notifications.GroupedNotification;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.NotificationWrapper;
@@ -75,7 +76,8 @@ public class NotificationsMethods{
 				@NotNull List<ApiNotification> items,
 				@NotNull List<ApiWallPost> wallPosts,
 				@NotNull List<ApiWallPost> wallComments,
-				@NotNull List<ApiComment> comments,
+				@NotNull List<ApiComment> photoComments,
+				@NotNull List<ApiComment> boardComments,
 				@NotNull List<ApiPhoto> photos,
 				@NotNull List<ApiBoardTopic> boardTopics,
 				@NotNull List<ApiUser> profiles,
@@ -226,7 +228,10 @@ public class NotificationsMethods{
 							case PHOTO -> new Parent("photo", null, XTEA.encodeObjectID(comment.parentObjectID.id(), ObfuscatedObjectIDType.PHOTO), null);
 							case BOARD_TOPIC -> new Parent("board_topic", null, null, XTEA.encodeObjectID(comment.parentObjectID.id(), ObfuscatedObjectIDType.BOARD_TOPIC));
 						};
-						obj=new NotificationObject("comment", null, null, XTEA.encodeObjectID(comment.replyKey.getLast(), ObfuscatedObjectIDType.COMMENT), null);
+						obj=new NotificationObject(switch(comment.parentObjectID.type()){
+							case PHOTO -> "photo_comment";
+							case BOARD_TOPIC -> "board_comment";
+						}, null, null, XTEA.encodeObjectID(comment.replyKey.getLast(), ObfuscatedObjectIDType.COMMENT), null);
 					}else{
 						parent=null;
 						obj=switch(comment.parentObjectID.type()){
@@ -264,7 +269,10 @@ public class NotificationsMethods{
 							case PHOTO -> new Parent("photo", null, XTEA.encodeObjectID(comment.parentObjectID.id(), ObfuscatedObjectIDType.PHOTO), null);
 							case BOARD_TOPIC -> new Parent("board_topic", null, null, XTEA.encodeObjectID(comment.parentObjectID.id(), ObfuscatedObjectIDType.BOARD_TOPIC));
 						};
-						yield new NotificationObject("comment", null, null, XTEA.encodeObjectID(comment.id, ObfuscatedObjectIDType.COMMENT), null);
+						yield new NotificationObject(switch(comment.parentObjectID.type()){
+							case PHOTO -> "photo_comment";
+							case BOARD_TOPIC -> "board_comment";
+						}, null, null, XTEA.encodeObjectID(comment.id, ObfuscatedObjectIDType.COMMENT), null);
 					}
 					case PHOTO -> {
 						parent=null;
@@ -282,11 +290,15 @@ public class NotificationsMethods{
 		List<PostViewModel> topLevelPosts=posts.values().stream().filter(p->p.getReplyLevel()==0).map(PostViewModel::new).toList();
 		List<PostViewModel> wallComments=posts.values().stream().filter(p->p.getReplyLevel()>0).map(PostViewModel::new).toList();
 
+		List<CommentViewModel> photoComments=comments.values().stream().filter(c->c.parentObjectID.type()==CommentableObjectType.PHOTO).map(CommentViewModel::new).toList();
+		List<CommentViewModel> boardComments=comments.values().stream().filter(c->c.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC).map(CommentViewModel::new).toList();
+
 		return new NotificationsResponse(
 				apiNotifications,
 				ApiUtils.getPosts(topLevelPosts, ctx, actx, false, false, false),
 				ApiUtils.getPosts(wallComments, ctx, actx, false, false, false),
-				ApiUtils.getComments(comments.values().stream().map(CommentViewModel::new).toList(), ctx, actx, false),
+				ApiUtils.getComments(photoComments, ctx, actx, false),
+				ApiUtils.getComments(boardComments, ctx, actx, false),
 				ApiUtils.getPhotos(ctx, actx, new ArrayList<>(photos.values())),
 				topics.values().stream().map(ApiBoardTopic::new).toList(),
 				ApiUtils.getUsers(needUsers, ctx, actx),
