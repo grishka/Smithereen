@@ -1,1 +1,26 @@
-{}
+{
+  "report": "Denunciar",
+  "report_title_post": "Denunciar um post",
+  "report_title_comment": "Denunciar um comentário",
+  "report_title_user": "Reportar um perfil",
+  "report_title_group": "Denunciar um grupo",
+  "report_title_event": "Denunciar um evento",
+  "report_text_post": "O que há de errado com este post?",
+  "report_text_comment": "O que há de errado com este comentário?",
+  "report_text_user": "O que há de errado com este perfil?",
+  "report_text_group": "O que há de errado com este grupo?",
+  "report_text_event": "O que há de errado com este evento?",
+  "report_sent": "Denúncia enviada",
+  "report_forward_to_domain": "Encaminhar anonimamente para <b>{domain}</b>",
+  "report_submitted": "Sua denúncia foi enviada à equipe do servidor.",
+  "report_title_message": "Denunciar uma mensagem",
+  "report_text_message": "O que há de errado com essa mensagem?",
+  "report_title_photo": "Denunciar uma foto",
+  "report_text_photo": "O que há de errado com esta foto?",
+  "report_reason_spam": "É spam",
+  "report_reason_rules": "Viola as regras do servidor",
+  "report_reason_illegal": "É ilegal",
+  "report_reason_other": "Outra coisa",
+  "report_comment_placeholder": "Comentário (opcional)",
+  "report_select_rules": "Quais regras estão sendo violadas?"
+}

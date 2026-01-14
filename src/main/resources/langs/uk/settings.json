@@ -1,1 +1,23 @@
-{}
+{
+  "log_in": "Увійти",
+  "log_out": "Вийти",
+  "email_or_username": "Email або ім'я користувача",
+  "password": "Пароль",
+  "first_name": "Ім'я",
+  "last_name": "Прізвище",
+  "register": "Реєстрація",
+  "email": "E-mail",
+  "username": "Ім'я користувача",
+  "language": "Мова",
+  "remove_profile_picture": "Видалити фотографію",
+  "settings_blocking": "Чорний список",
+  "unblock": "Розблокувати",
+  "block": "Заблокувати",
+  "block_user_X": "Заблокувати {name, inflect, accusative}",
+  "unblock_user_X": "Розблокувати {name, inflect, accusative}",
+  "block_a_domain": "Заблокувати домен",
+  "forgot_password": "Забули пароль?",
+  "signup_title": "Реєстрація",
+  "settings_feedback": "Відповіді",
+  "settings_transfer_out_password": "Ваш пароль:"
+}

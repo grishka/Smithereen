@@ -1,1 +1,26 @@
-{}
+{
+  "add_friend": "Додати в друзі",
+  "remove_friend": "Видалити з друзів",
+  "friends": "Друзі",
+  "friend_requests": "Заявки в друзі",
+  "following": "Підписки",
+  "followers": "Підписники",
+  "unfollow": "Відписатися",
+  "X_friends": "{count, plural, =0 {Немає друзів} one {# друг} few {# друга} other {# друзів}}",
+  "X_friends_bold": "{count, plural, one {<b>#</b> друг} few {<b>#</b> друга} other {<b>#</b> друзів}}",
+  "mutual_friends": "Спільні друзі",
+  "X_mutual_friends": "{count, plural, one {# спільний друг} few {# спільних друга} other {# спільних друзів}}",
+  "X_mutual_friends_short": "{count, plural, one {# спільний} few {# спільних} other {# спільних}}",
+  "X_mutual_friends_short_bold": "{count, plural, one {<b>#</b> спільний} few {<b>#</b> спільних} other {<b>#</b> спільних}}",
+  "user_friends": "Друзі {name, inflect, genitive}",
+  "summary_own_X_friends": "У ваc {numFriends, plural, =0 {немає друзів} one {# друг} few {# друга} other {# друзів}}",
+  "summary_user_X_friends": "У {name, inflect, genitive} {numFriends, plural, =0 {немає друзів} one {# друг} few {# друга} other {# друзів}}",
+  "birthday": "День народження",
+  "friend_req_accepted": "Заявку прийнято.",
+  "select_friends_title": "Виберіть друзів",
+  "X_followers": "{count, plural, =0 {Немає підписників} one {# підписник} few {# підписника} other {# підписників}}",
+  "X_following": "{count, plural, =0 {Немає підписок} one {# підписка} few {# підписки} other {# підписок}}",
+  "X_followers_bold": "{count, plural, one {<b>#</b> підписник} few {<b>#</b> підписника} other {<b>#</b> підписників}}",
+  "friends_online": "Друзі онлайн",
+  "all_friends": "Всі друзі"
+}
