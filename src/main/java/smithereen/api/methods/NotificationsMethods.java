@@ -43,7 +43,8 @@ public class NotificationsMethods{
 				@NotNull String type,
 				@Nullable Integer wallPostId,
 				@Nullable Integer wallCommentId,
-				@Nullable String commentId
+				@Nullable String photoCommentId,
+				@Nullable String boardCommentId
 		){
 		}
 		record NotificationObject(
@@ -207,10 +208,13 @@ public class NotificationsMethods{
 			Feedback feedback;
 			if(latest.type==Notification.Type.REPLY || latest.type==Notification.Type.MENTION || latest.type==Notification.Type.POST_OWN_WALL){
 				if(latest.objectType==Notification.ObjectType.COMMENT){
-					feedback=new Feedback("comment", null, null, XTEA.encodeObjectID(latest.objectID, ObfuscatedObjectIDType.COMMENT));
+					feedback=switch(comments.get(latest.objectID).parentObjectID.type()){
+						case PHOTO -> new Feedback("photo_comment", null, null, XTEA.encodeObjectID(latest.objectID, ObfuscatedObjectIDType.COMMENT), null);
+						case BOARD_TOPIC -> new Feedback("board_comment", null, null, null, XTEA.encodeObjectID(latest.objectID, ObfuscatedObjectIDType.COMMENT));
+					};
 				}else if(latest.objectType==Notification.ObjectType.POST){
 					Post post=posts.get((int)latest.objectID);
-					feedback=new Feedback(post.getReplyLevel()>0 ? "wall_comment" : "wall_post", post.getReplyLevel()>0 ? null : post.id, post.getReplyLevel()>0 ? post.id : null, null);
+					feedback=new Feedback(post.getReplyLevel()>0 ? "wall_comment" : "wall_post", post.getReplyLevel()>0 ? null : post.id, post.getReplyLevel()>0 ? post.id : null, null, null);
 				}else{
 					throw new IllegalStateException();
 				}
