@@ -11,7 +11,7 @@
 			{{ form.textArea('about', L(group.event ? 'about_event' : 'about_group'), group.aboutSource) }}
 			{{ form.textInput('website', L('group_website'), group.website) }}
 			{% if group.event %}
-			{{ form.dateTimeInput('event_start', L('event_start_time'), group.eventStartTime) }}
+			{{ form.dateTimeInput('event_start', L('event_start_time'), group.eventStartTime, {'required': true}) }}
 			{{ form.dateTimeInput('event_end', L('event_end_time'), group.eventEndTime) }}
 			{{ form.textInput('location', L('event_location'), group.location, {'placeholder': L('event_location_hint')}) }}
 			{% endif %}

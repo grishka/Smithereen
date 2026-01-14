@@ -26,7 +26,7 @@
 		{%for post in items%}
 			<div class="wallRow">{%include "wall_post" with {'post': post}%}</div>
 		{% else %}
-			<div id="wallEmptyState">{{ L('wall_empty') }}</div>
+			{% if pinnedPosts is empty %}<div id="wallEmptyState">{{ L('wall_empty') }}</div>{% endif %}
 		{%endfor%}
 		{% include "pagination_endless" with {'paginationLinkText': L('load_older_posts')} %}
 	</div>

@@ -42,7 +42,7 @@ cur.feedTypesMenu=new MultipleChoicePopupMenu(ge("feedTypesMenuW"), {
 		    {id: "{{ type }}", title: "{{ L(type.langKey) | forceEscape }}"},
 		{% endfor %}
 	],
-	selectedOptions: {{ json(currentUser.newsTypesToShow | default([])) }},
+	selectedOptions: {{ json(currentUser.newsTypesToShow | default([])) | raw }},
 	allCheckboxID: "allFeedTypes"
 });
 

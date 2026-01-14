@@ -68,6 +68,7 @@ public class MediaCache{
 
 	private MediaCache(){
 		asyncUpdater=Executors.newSingleThreadScheduledExecutor();
+		asyncUpdater.submit(()->Thread.currentThread().setName("MediaCacheAccessUpdater"));
 		try{
 			updateTotalSize();
 		}catch(SQLException x){
@@ -289,7 +290,7 @@ public class MediaCache{
 			cacheSize+=result.totalSize;
 			if(cacheSize>Config.mediaCacheMaxSize){
 				synchronized(lastAccessQueueLock){
-					// Perform pending access time updates right now, if any, to accidentally deleting recently accessed files
+					// Perform pending access time updates right now, if any, to avoid accidentally deleting recently accessed files
 					if(pendingLastAccessUpdateAction!=null){
 						pendingLastAccessUpdateAction.cancel(false);
 						pendingLastAccessUpdateAction=null;

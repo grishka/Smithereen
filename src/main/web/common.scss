@@ -62,6 +62,12 @@
 	}
 }
 
+@svg-load groupLinkPlaceholderIcon url('img/lnkouter.svg') {
+	fill: $groupLinkPlaceholderIconArrowColor;
+	*[fill=red] {
+		fill: $groupLinkPlaceholderIconBackgroundColor;
+	}
+}
 
 @mixin layer-shadow{
 	box-shadow:
@@ -246,6 +252,15 @@ input[type=text], input[type=password], input[type=email], input[type=date], inp
 		padding: 3px 0;
 		cursor: text;
 		flex: none;
+		max-width: 50%;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		direction: rtl;
+		text-align: left;
+		span{
+			unicode-bidi: plaintext;
+		}
 	}
 }
 
@@ -577,7 +592,7 @@ ul.actualList{
 	padding-left: 15px;
 	li{
 		margin-bottom: 5px;
-		span{
+		>span{
 			color: $text;
 		}
 	}
@@ -786,6 +801,9 @@ small{
 	padding: 2px 4px;
 	line-height: 175%;
 	white-space: nowrap;
+	text-overflow: ellipsis;
+	max-width: 100%;
+	overflow: hidden;
 	&.l0{
 		background-color: #F5E9E2;
 		color: #8B4C23;
@@ -972,3 +990,18 @@ h2+.textByItself{
 	}
 }
 
+.flexContainer{
+	display: flex;
+	align-items: center;
+	>.flexStretch{
+		flex-grow: 1;
+	}
+	>.flexFixed{
+		flex: none;
+	}
+}
+
+.groupLinkPlaceholder {
+	background-image: svg-inline(groupLinkPlaceholderIcon);
+	background-size: var(--ava-width) var(--ava-height);
+}

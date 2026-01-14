@@ -70,6 +70,7 @@ function initEndlessPaginations(root:HTMLElement=null){
 function initDynamicControls(root:HTMLElement=null){
 	updatePostForms(root);
 	initEndlessPaginations(root);
+	renderBlurhashes(root);
 }
 
 initDynamicControls();

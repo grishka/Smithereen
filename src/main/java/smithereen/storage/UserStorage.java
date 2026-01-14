@@ -3,6 +3,7 @@ package smithereen.storage;
 import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,24 +38,24 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
-import smithereen.model.UserDataExport;
-import smithereen.model.notifications.BirthdayReminder;
 import smithereen.model.ForeignUser;
-import smithereen.model.friends.FriendRequest;
-import smithereen.model.friends.FriendshipStatus;
+import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SignupInvitation;
-import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.UserBanStatus;
-import smithereen.model.notifications.UserNotifications;
+import smithereen.model.UserDataExport;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.admin.UserRole;
 import smithereen.model.admin.UserActionLogAction;
+import smithereen.model.admin.UserRole;
 import smithereen.model.friends.FollowRelationship;
 import smithereen.model.friends.FriendList;
+import smithereen.model.friends.FriendRequest;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.media.MediaFileRecord;
+import smithereen.model.notifications.BirthdayReminder;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -74,10 +75,12 @@ public class UserStorage{
 	private static final LruCache<Integer, BirthdayReminder> birthdayReminderCache=new LruCache<>(500);
 	private static final NamedMutexCollection foreignUserUpdateLocks=new NamedMutexCollection();
 
+	@Nullable
 	public static User getById(int id) throws SQLException{
 		return getById(id, false);
 	}
 
+	@Nullable
 	public static User getById(int id, boolean wantDeleted) throws SQLException{
 		User user=cache.get(id);
 		if(user!=null)
@@ -173,6 +176,60 @@ public class UserStorage{
 		}
 	}
 
+	public static Map<String, Integer> getIdsByUsernames(Collection<String> usernames) throws SQLException{
+		if(usernames.isEmpty())
+			return Map.of();
+		HashSet<String> remainingUsernames=new HashSet<>();
+		Map<String, Integer> ids=new HashMap<>();
+		for(String u:usernames){
+			Integer id=cacheByUsername.get(u.toLowerCase());
+			if(id!=null){
+				ids.put(u, id);
+				continue;
+			}
+			remainingUsernames.add(u);
+		}
+		if(!remainingUsernames.isEmpty()){
+			StringBuilder where=new StringBuilder("(username, domain) IN (");
+			ArrayList<String> whereArgs=new ArrayList<>();
+			boolean first=true;
+			for(String u:remainingUsernames){
+				String realUsername;
+				String domain="";
+				if(u.contains("@")){
+					String[] parts=u.split("@");
+					realUsername=parts[0];
+					domain=parts[1];
+				}else{
+					realUsername=u;
+				}
+				if(first){
+					first=false;
+				}else{
+					where.append(',');
+				}
+				where.append("(?,?)");
+				whereArgs.add(realUsername);
+				whereArgs.add(domain);
+			}
+			where.append(')');
+			new SQLQueryBuilder()
+					.selectFrom("users")
+					.columns("id", "username", "domain")
+					.where(where.toString(), whereArgs.toArray())
+					.executeAsStream(r->{
+						String username=r.getString("username");
+						String domain=r.getString("domain");
+						return new Pair<>(username+(domain.isEmpty() ? "" : ("@"+domain)), r.getInt("id"));
+					})
+					.forEach(p->{
+						cacheByUsername.put(p.first().toLowerCase(), p.second());
+						ids.put(p.first(), p.second());
+					});
+		}
+		return ids;
+	}
+
 	public static User getByUsername(@NotNull String username) throws SQLException{
 		username=username.toLowerCase();
 		Integer id=cacheByUsername.get(username);
@@ -204,6 +261,10 @@ public class UserStorage{
 	}
 
 	public static int getIdByUsername(@NotNull String username) throws SQLException{
+		username=username.toLowerCase();
+		Integer id=cacheByUsername.get(username);
+		if(id!=null)
+			return id;
 		String realUsername;
 		String domain="";
 		if(username.contains("@")){
@@ -294,6 +355,63 @@ public class UserStorage{
 		}
 	}
 
+	public static Map<Integer, FriendshipStatus> getFriendshipStatuses(int selfUserID, Collection<Integer> targetUserIDs, boolean checkRequests) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			Set<Integer> remainingIDs=new HashSet<>(targetUserIDs);
+			HashMap<Integer, FriendshipStatus> statuses=new HashMap<>();
+			try(ResultSet res=new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.columns("followee_id", "mutual", "accepted")
+					.whereIn("followee_id", targetUserIDs)
+					.andWhere("follower_id=?", selfUserID)
+					.execute()){
+				while(res.next()){
+					int id=res.getInt("followee_id");
+					boolean mutual=res.getBoolean("mutual");
+					boolean accepted=res.getBoolean("accepted");
+					remainingIDs.remove(id);
+					statuses.put(id, mutual ? FriendshipStatus.FRIENDS : (accepted ? FriendshipStatus.FOLLOWING : FriendshipStatus.FOLLOW_REQUESTED));
+				}
+			}
+
+			if(!remainingIDs.isEmpty()){
+				new SQLQueryBuilder(conn)
+						.selectFrom("followings")
+						.columns("follower_id")
+						.whereIn("follower_id", remainingIDs)
+						.andWhere("followee_id=?", selfUserID)
+						.executeAndGetIntStream()
+						.forEach(id->{
+							statuses.put(id, FriendshipStatus.FOLLOWED_BY);
+							remainingIDs.remove(id);
+						});
+			}
+
+			for(int id:remainingIDs){
+				statuses.put(id, FriendshipStatus.NONE);
+			}
+
+			if(checkRequests){
+				Set<Integer> followerIDs=statuses.entrySet()
+						.stream()
+						.filter(e->e.getValue()==FriendshipStatus.FOLLOWED_BY)
+						.map(Map.Entry::getKey)
+						.collect(Collectors.toSet());
+				if(!followerIDs.isEmpty()){
+					new SQLQueryBuilder(conn)
+							.selectFrom("friend_requests")
+							.columns("from_user_id")
+							.whereIn("from_user_id", followerIDs)
+							.andWhere("to_user_id=?", selfUserID)
+							.executeAndGetIntStream()
+							.forEach(id->statuses.put(id, FriendshipStatus.REQUEST_RECVD));
+				}
+			}
+
+			return statuses;
+		}
+	}
+
 	public static Set<Integer> intersectWithFriendIDs(int selfUserID, Collection<Integer> userIDs) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("followings")
@@ -331,6 +449,11 @@ public class UserStorage{
 							.update("users")
 							.valueExpr("num_followers", "num_followers+1")
 							.where("id=?", targetUserID)
+							.executeNoResult();
+					new SQLQueryBuilder(conn)
+							.update("users")
+							.valueExpr("num_following", "num_following+1")
+							.where("id=?", selfUserID)
 							.executeNoResult();
 					cache.remove(targetUserID);
 				}
@@ -476,7 +599,7 @@ public class UserStorage{
 		return new PaginatedList<>(getByIdAsList(getMutualFriendIDsForUser(userID, otherUserID, offset, count, useHints)), getMutualFriendsCount(userID, otherUserID), offset, count);
 	}
 
-	public static PaginatedList<User> getNonMutualFollowers(int userID, boolean followers, boolean accepted, int offset, int count, boolean orderByFollowers) throws SQLException{
+	public static PaginatedList<Integer> getNonMutualFollowers(int userID, boolean followers, boolean accepted, int offset, int count, boolean orderByFollowers) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String fld1=followers ? "follower_id" : "followee_id";
 			String fld2=followers ? "followee_id" : "follower_id";
@@ -499,11 +622,11 @@ public class UserStorage{
 			}
 			List<Integer> ids=b.limit(count, offset)
 					.executeAndGetIntList();
-			return new PaginatedList<>(getByIdAsList(ids), total, offset, count);
+			return new PaginatedList<>(ids, total, offset, count);
 		}
 	}
 
-	public static PaginatedList<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<FriendRequest> getIncomingFriendRequestsForUser(int userID, int offset, int count, int mutualCount) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("friend_requests")
@@ -522,13 +645,15 @@ public class UserStorage{
 					.limit(count, offset)
 					.executeAsStream(FriendRequest::fromResultSet)
 					.peek(req->{
-						try{
-							req.mutualFriendsCount=getMutualFriendsCount(userID, req.from.id);
-							if(req.mutualFriendsCount>0){
-								mutualFriendIDs.put(req.from.id, getMutualFriendIDsForUser(userID, req.from.id, 0, 4, true));
+						if(mutualCount>0){
+							try{
+								req.mutualFriendsCount=getMutualFriendsCount(userID, req.from.id);
+								if(req.mutualFriendsCount>0){
+									mutualFriendIDs.put(req.from.id, getMutualFriendIDsForUser(userID, req.from.id, 0, mutualCount, true));
+								}
+							}catch(SQLException x){
+								LOG.warn("Exception while getting mutual friends for {} and {}", userID, req.from.id, x);
 							}
-						}catch(SQLException x){
-							LOG.warn("Exception while getting mutual friends for {} and {}", userID, req.from.id, x);
 						}
 					}).toList();
 			if(mutualFriendIDs.isEmpty())
@@ -1165,12 +1290,24 @@ public class UserStorage{
 				.executeNoResult();
 	}
 
-	public static List<User> getBlockedUsers(int selfID) throws SQLException{
-		return getByIdAsList(new SQLQueryBuilder()
-				.selectFrom("blocks_user_user")
-				.columns("user_id")
-				.where("owner_id=?", selfID)
-				.executeAndGetIntList());
+	public static PaginatedList<User> getBlockedUsers(int selfID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("blocks_user_user")
+					.count()
+					.where("owner_id=?", selfID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<User> users=getByIdAsList(new SQLQueryBuilder(conn)
+					.selectFrom("blocks_user_user")
+					.columns("user_id")
+					.where("owner_id=?", selfID)
+					.limit(count, offset)
+					.executeAndGetIntList());
+			return new PaginatedList<>(users, total, offset, count);
+		}
 	}
 
 	public static List<User> getBlockingUsers(int selfID) throws SQLException{
@@ -1179,6 +1316,28 @@ public class UserStorage{
 				.columns("owner_id")
 				.where("user_id=?", selfID)
 				.executeAndGetIntList());
+	}
+
+	public static Set<Integer> getBlockedUsers(int selfID, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_user_user")
+				.columns("user_id")
+				.whereIn("user_id", ids)
+				.andWhere("owner_id=?", selfID)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
+	public static Set<Integer> getBlockingUsers(int selfID, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_user_user")
+				.columns("owner_id")
+				.whereIn("owner_id", ids)
+				.andWhere("user_id=?", selfID)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
 	}
 
 	public static boolean isDomainBlocked(int selfID, String domain) throws SQLException{
@@ -1407,6 +1566,24 @@ public class UserStorage{
 	public static void deleteForeignUser(ForeignUser user) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_following", "num_following-1")
+					.where("id IN (SELECT follower_id FROM followings WHERE followee_id=?)", user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_followers", "num_followers-1")
+					.where("id IN (SELECT followee_id FROM followings WHERE follower_id=?)", user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_friends", "num_friends-1")
+					.where("id IN (SELECT followee_id FROM followings WHERE follower_id=? AND mutual=1)", user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
 					.deleteFrom("users")
 					.where("id=?", user.id)
 					.executeNoResult();
@@ -1429,6 +1606,24 @@ public class UserStorage{
 			new SQLQueryBuilder(conn)
 					.deleteFrom("media_file_refs")
 					.where("owner_user_id=?", account.user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_following", "num_following-1")
+					.where("id IN (SELECT follower_id FROM followings WHERE followee_id=?)", account.user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_followers", "num_followers-1")
+					.where("id IN (SELECT followee_id FROM followings WHERE follower_id=?)", account.user.id)
+					.executeNoResult();
+
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.valueExpr("num_friends", "num_friends-1")
+					.where("id IN (SELECT followee_id FROM followings WHERE follower_id=? AND mutual=1)", account.user.id)
 					.executeNoResult();
 
 			new SQLQueryBuilder(conn)
@@ -1491,6 +1686,38 @@ public class UserStorage{
 				.value("muted", muted)
 				.where("follower_id=? AND followee_id=?", self, id)
 				.executeNoResult();
+	}
+
+	public static Set<Integer> getMutedUserIDs(int self, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("followings")
+				.columns("followee_id")
+				.whereIn("followee_id", ids)
+				.andWhere("follower_id=? AND muted=1", self)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
+	public static PaginatedList<User> getAllMutedUsers(int selfID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.count()
+					.where("follower_id=? AND muted=1", selfID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<User> users=getByIdAsList(new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.columns("followee_id")
+					.where("follower_id=? AND muted=1", selfID)
+					.limit(count, offset)
+					.orderBy("added_at DESC")
+					.executeAndGetIntList());
+			return new PaginatedList<>(users, total, offset, count);
+		}
 	}
 
 	public static Map<Integer, UserPresence> getUserPresences(Collection<Integer> ids) throws SQLException{
@@ -1733,5 +1960,16 @@ public class UserStorage{
 				.selectFrom("user_data_exports")
 				.where("id=?", id)
 				.executeAndGetSingleObject(UserDataExport::fromResultSet);
+	}
+
+	public static void recountFriends(User user) throws SQLException{
+		new SQLQueryBuilder()
+				.update("users")
+				.where("id=?", user.id)
+				.valueExpr("num_followers", "(SELECT COUNT(*) FROM followings WHERE followee_id=?)", user.id)
+				.valueExpr("num_following", "(SELECT COUNT(*) FROM followings WHERE follower_id=?)", user.id)
+				.valueExpr("num_friends", "(SELECT COUNT(*) FROM followings WHERE followee_id=? AND mutual=1)", user.id)
+				.executeNoResult();
+		removeFromCache(user);
 	}
 }

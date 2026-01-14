@@ -30,6 +30,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class CryptoUtils{
 	public static final SecureRandom RANDOM=new SecureRandom();
+	public static final int SHA256_LENGTH=32;
 
 	public static PublicKey decodeEcPublicKey(byte[] encoded){
 		if(encoded.length<32)
@@ -116,6 +117,12 @@ public class CryptoUtils{
 			   | InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException x){
 			throw new RuntimeException(x);
 		}
+	}
+
+	public static byte[] randomBytes(int count){
+		byte[] b=new byte[count];
+		RANDOM.nextBytes(b);
+		return b;
 	}
 
 	private static class SimpleASN1InputStream extends FilterInputStream{

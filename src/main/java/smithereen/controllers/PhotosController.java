@@ -1,5 +1,6 @@
 package smithereen.controllers;
 
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -43,20 +44,21 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.PrivacySetting;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
-import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.RealtimeNotification;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.photos.AbsoluteImageRect;
 import smithereen.model.photos.AvatarCropRects;
 import smithereen.model.photos.ImageRect;
@@ -115,7 +117,7 @@ public class PhotosController{
 			if(needTagged && owner instanceof User user){
 				try{
 					PhotoAlbum album=getUserTaggedPhotosPseudoAlbum(self, user);
-					if(album!=null)
+					if(album.numPhotos>0)
 						albums.addFirst(album);
 				}catch(UserActionNotAllowedException ignore){}
 			}
@@ -136,18 +138,15 @@ public class PhotosController{
 	}
 
 	public PhotoAlbum getUserTaggedPhotosPseudoAlbum(User self, User user){
-		PaginatedList<Photo> taggedPhotos=getUserTaggedPhotos(self, user, 0, 1);
-		if(taggedPhotos.total>0){
-			PhotoAlbum pseudoAlbum=new TaggedPhotosPseudoAlbum();
-			pseudoAlbum.ownerID=user.id;
-			pseudoAlbum.systemType=PhotoAlbum.SystemAlbumType.TAGGED;
-			pseudoAlbum.coverID=taggedPhotos.list.getFirst().id;
-			pseudoAlbum.numPhotos=taggedPhotos.total;
-			pseudoAlbum.title="Tagged photos";
-			pseudoAlbum.viewPrivacy=PrivacySetting.DEFAULT;
-			return pseudoAlbum;
-		}
-		return null;
+		PaginatedList<Photo> taggedPhotos=getUserTaggedPhotos(self, user, 0, 1, false);
+		PhotoAlbum pseudoAlbum=new TaggedPhotosPseudoAlbum();
+		pseudoAlbum.ownerID=user.id;
+		pseudoAlbum.systemType=PhotoAlbum.SystemAlbumType.TAGGED;
+		pseudoAlbum.coverID=taggedPhotos.list.isEmpty() ? 0 : taggedPhotos.list.getFirst().id;
+		pseudoAlbum.numPhotos=taggedPhotos.total;
+		pseudoAlbum.title="Tagged photos";
+		pseudoAlbum.viewPrivacy=PrivacySetting.DEFAULT;
+		return pseudoAlbum;
 	}
 
 	public List<PhotoAlbum> getAllAlbumsIgnoringPrivacy(Actor owner){
@@ -460,13 +459,14 @@ public class PhotosController{
 					}
 				}
 			}
+			PrivacySetting prevViewPrivacy=album.viewPrivacy;
 			album.title=title;
 			album.description=description;
 			album.viewPrivacy=viewPrivacy;
 			album.commentPrivacy=commentPrivacy;
 			albumCache.put(album.id, album);
 			context.getNewsfeedController().clearFriendsFeedCache();
-			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album, prevViewPrivacy);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -513,13 +513,13 @@ public class PhotosController{
 			album.flags=newFlags;
 			albumCache.put(album.id, album);
 			context.getNewsfeedController().clearGroupsFeedCache();
-			context.getActivityPubWorker().sendUpdatePhotoAlbum(context.getGroupsController().getGroupOrThrow(-album.ownerID), album);
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(context.getGroupsController().getGroupOrThrow(-album.ownerID), album, null);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public long createPhoto(User self, @NotNull PhotoAlbum album, long fileID, String descriptionSource, FormattedTextFormat descriptionFormat){
+	public long createPhoto(User self, @NotNull PhotoAlbum album, long fileID, @Nullable String descriptionSource, @Nullable FormattedTextFormat descriptionFormat){
 		self.ensureLocal();
 		Actor owner;
 		if(album.ownerID>0){
@@ -538,10 +538,12 @@ public class PhotosController{
 		return createPhotoInternal(self, owner, album, fileID, descriptionSource, descriptionFormat, null);
 	}
 
-	private long createPhotoInternal(User self, Actor owner, @NotNull PhotoAlbum album, long fileID, String descriptionSource, FormattedTextFormat descriptionFormat, PhotoMetadata metadata){
+	private long createPhotoInternal(User self, Actor owner, @NotNull PhotoAlbum album, long fileID, @Nullable String descriptionSource, @Nullable FormattedTextFormat descriptionFormat, @Nullable PhotoMetadata metadata){
 		String parsedDescription=descriptionSource==null ? "" : TextProcessor.preprocessPostText(descriptionSource, null, descriptionFormat);
 		try{
-			long id;
+			long id=PhotoStorage.getPhotoIdByFileId(fileID, owner.getOwnerID());
+			if(id!=-1)
+				return id;
 			boolean needUpdateCover=!album.flags.contains(PhotoAlbum.Flag.COVER_SET_EXPLICITLY);
 			synchronized(photoCreationLock){
 				if(PhotoStorage.getAlbumSize(album.id)>=MAX_PHOTOS_PER_ALBUM)
@@ -584,7 +586,7 @@ public class PhotosController{
 
 			if(needUpdateCover){
 				album.coverID=id;
-				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
+				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album, null);
 			}
 			if(numPhotos!=0)
 				album.numPhotos=numPhotos;
@@ -857,6 +859,11 @@ public class PhotosController{
 				ActivityPubPhoto origObj=p.second();
 
 				boolean isNew=photo.id==0;
+				if(!isNew){
+					Photo existing=getPhotoIgnoringPrivacy(photo.id);
+					if(photo.ownerID!=existing.ownerID)
+						throw new UserActionNotAllowedException();
+				}
 				if(photo.ownerID<0){
 					User self=context.getUsersController().getUserOrThrow(photo.authorID);
 					Group group=context.getGroupsController().getGroupOrThrow(-photo.ownerID);
@@ -1135,7 +1142,7 @@ public class PhotosController{
 			albumCache.put(album.id, album);
 			Photo newPhoto=getPhotoIgnoringPrivacy(id);
 			context.getActivityPubWorker().sendAddPhotoToAlbum(self, newPhoto, album);
-			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album);
+			context.getActivityPubWorker().sendUpdatePhotoAlbum(self, album, null);
 			return newPhoto;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -1151,6 +1158,20 @@ public class PhotosController{
 			return PaginatedList.emptyList(count);
 		try{
 			return PhotoStorage.getAllPhotosInAlbums(albumIDs, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getAllPhotosCount(Actor owner, @Nullable User self){
+		List<Long> albumIDs=getAllAlbums(owner, self, true, false).stream()
+				.filter(a->a.systemType!=PhotoAlbum.SystemAlbumType.SAVED)
+				.map(a->a.id)
+				.toList();
+		if(albumIDs.isEmpty())
+			return 0;
+		try{
+			return PhotoStorage.getCountOfPhotosInAlbums(albumIDs);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -1205,7 +1226,7 @@ public class PhotosController{
 		}
 	}
 
-	public void updateAvatar(Account self, @Nullable Group group, LocalImage img, AvatarCropRects crop){
+	public long updateAvatar(Account self, @Nullable Group group, LocalImage img, AvatarCropRects crop, ClientApp app){
 		if(group!=null)
 			context.getGroupsController().enforceUserAdminLevel(group, self.user, Group.AdminLevel.ADMIN);
 
@@ -1246,7 +1267,7 @@ public class PhotosController{
 		setPhotoToAvatar(owner, photo);
 
 		if(group==null){
-			Post post=context.getWallController().createWallPost(self.user, self.id, self.user, null, "", self.prefs.textFormat, null, List.of("photo:"+photo.getIdString()), null, null, Map.of(), Post.Action.AVATAR_UPDATE);
+			Post post=context.getWallController().createWallPost(self.user, self.user, null, "", self.prefs.textFormat, null, List.of("photo:"+photo.getIdString()), null, null, Map.of(), Post.Action.AVATAR_UPDATE, app, null);
 			photo.metadata.correspondingPostID=post.id;
 			try{
 				PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);
@@ -1254,6 +1275,7 @@ public class PhotosController{
 				throw new InternalServerErrorException(x);
 			}
 		}
+		return id;
 	}
 
 	public void setPhotoToAvatar(Actor owner, Photo photo){
@@ -1324,7 +1346,8 @@ public class PhotosController{
 			setPhotoToAvatar(owner, photo);
 	}
 
-	public long createPhotoTag(User self, Photo photo, User user, String name, ImageRect rect){
+	@Contract("_, _, null, null, _ -> fail")
+	public long createPhotoTag(User self, @NotNull Photo photo, @Nullable User user, @Nullable String name, @NotNull ImageRect rect){
 		// maybe reconsider this in the future (VK allows one's friends to add tags to their photos)
 		enforcePhotoManagementPermission(self, photo);
 
@@ -1343,7 +1366,35 @@ public class PhotosController{
 						throw new UserErrorException("photo_err_user_already_tagged");
 				}
 				name=user.getFullName();
+			}else{
+				Objects.requireNonNull(name, "Either user or name must not be null");
 			}
+			AbsoluteImageRect absRect=rect.makeAbsolute(photo.getWidth(), photo.getHeight());
+			int minTagSize=40;
+			if(absRect.getWidth()<minTagSize){
+				int centerX=absRect.getCenterX();
+				absRect=absRect.withX(centerX-minTagSize/2, centerX+minTagSize/2);
+			}
+			if(absRect.getHeight()<minTagSize){
+				int centerY=absRect.getCenterY();
+				absRect=absRect.withY(centerY-minTagSize/2, centerY+minTagSize/2);
+			}
+			if(!absRect.fitsInsideFullSize()){
+				if(absRect.x1()<0)
+					absRect=absRect.offset(-absRect.x1(), 0);
+				if(absRect.y1()<0)
+					absRect=absRect.offset(0, -absRect.y1());
+				if(absRect.x2()>=absRect.fullWidth())
+					absRect=absRect.offset(absRect.fullWidth()-absRect.x2(), 0);
+				if(absRect.y2()>=absRect.fullHeight())
+					absRect=absRect.offset(0, absRect.fullHeight()-absRect.y2());
+				if(!absRect.fitsInsideFullSize()){
+					// Still doesn't fit? Let's truncate it then
+					absRect=new AbsoluteImageRect(Math.max(0, absRect.x1()), Math.max(0, absRect.y1()),
+							Math.min(absRect.fullWidth()-1, absRect.x2()), Math.min(absRect.fullHeight()-1, absRect.y2()), absRect.fullWidth(), absRect.fullHeight());
+				}
+			}
+			rect=absRect.makeRelative();
 			long id=PhotoStorage.createPhotoTag(photo.id, self.id, user!=null ? user.id : 0, name, user!=null && user.id==self.id, rect, null);
 			if(user!=null && !(user instanceof ForeignUser) && user.id!=self.id){
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(user.id);
@@ -1372,6 +1423,14 @@ public class PhotosController{
 	public Map<Long, List<PhotoTag>> getTagsForPhotos(Collection<Long> ids){
 		try{
 			return PhotoStorage.getPhotoTags(ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Long, Integer> getTagCountsForPhotos(Collection<Long> ids){
+		try{
+			return PhotoStorage.getPhotoTagCounts(ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -1414,14 +1473,14 @@ public class PhotosController{
 		}
 	}
 
-	public PaginatedList<Photo> getUserTaggedPhotos(User self, User user, int offset, int count){
+	public PaginatedList<Photo> getUserTaggedPhotos(User self, User user, int offset, int count, boolean reverseOrder){
 		context.getPrivacyController().enforceUserPrivacy(self, user, UserPrivacySettingKey.PHOTO_TAG_LIST);
-		return getUserTaggedPhotosIgnoringPrivacy(user, offset, count);
+		return getUserTaggedPhotosIgnoringPrivacy(user, offset, count, reverseOrder);
 	}
 
-	public PaginatedList<Photo> getUserTaggedPhotosIgnoringPrivacy(User user, int offset, int count){
+	public PaginatedList<Photo> getUserTaggedPhotosIgnoringPrivacy(User user, int offset, int count, boolean reverseOrder){
 		try{
-			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(user.id, offset, count, true);
+			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(user.id, offset, count, true, reverseOrder);
 			Map<Long, Photo> photos=getPhotosIgnoringPrivacy(ids.list);
 			return new PaginatedList<>(ids, ids.list.stream().map(photos::get).toList());
 		}catch(SQLException x){
@@ -1457,7 +1516,7 @@ public class PhotosController{
 
 	public PaginatedList<Photo> getUserUnapprovedTaggedPhotos(User self, int offset, int count){
 		try{
-			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(self.id, offset, count, false);
+			PaginatedList<Long> ids=PhotoStorage.getUserTaggedPhotos(self.id, offset, count, false, false);
 			Map<Long, Photo> photos=getPhotosIgnoringPrivacy(ids.list);
 			return new PaginatedList<>(ids, ids.list.stream().map(photos::get).toList());
 		}catch(SQLException x){
@@ -1529,6 +1588,25 @@ public class PhotosController{
 			return Map.of();
 
 		return getPhotosIgnoringPrivacy(needPhotos).values().stream().collect(Collectors.toMap(ph->ph.ownerID, Function.identity()));
+	}
+
+	public Map<Integer, Photo> getGroupProfilePhotos(Collection<Group> groups){
+		Set<Long> needPhotos=groups.stream()
+				.map(g->g.getAvatarImage() instanceof LocalImage li && li.photoID!=0 ? li.photoID : null)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toSet());
+		Set<URI> needForeignPhotos=groups.stream()
+				.map(g->g.getAvatarImage() instanceof Image img && !(img instanceof LocalImage) && img.photoApID!=null ? img.photoApID : null)
+				.filter(Objects::nonNull)
+				.collect(Collectors.toSet());
+		if(!needForeignPhotos.isEmpty()){
+			needPhotos=new HashSet<>(needPhotos);
+			needPhotos.addAll(getPhotoIdsByActivityPubIds(needForeignPhotos).values());
+		}
+		if(needPhotos.isEmpty())
+			return Map.of();
+
+		return getPhotosIgnoringPrivacy(needPhotos).values().stream().collect(Collectors.toMap(ph->-ph.ownerID, Function.identity()));
 	}
 
 	public PaginatedList<Photo> getAllPhotosByAuthor(User author, int offset, int count){

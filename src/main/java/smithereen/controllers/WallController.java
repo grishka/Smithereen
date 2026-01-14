@@ -25,10 +25,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static smithereen.Utils.ensureUserNotBlocked;
-
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.LruCache;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
@@ -40,9 +39,9 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
-import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.OwnerAndAuthor;
@@ -57,9 +56,12 @@ import smithereen.model.UserInteractions;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.admin.UserRole;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.notifications.Notification;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.MediaStorage;
@@ -70,11 +72,18 @@ import smithereen.storage.UserStorage;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.FloodControl;
+import smithereen.util.JsonObjectBuilder;
 import spark.utils.StringUtils;
+
+import static smithereen.Utils.ensureUserNotBlocked;
 
 public class WallController{
 	private static final Logger LOG=LoggerFactory.getLogger(WallController.class);
 	public static final int MAX_PINNED_POSTS=5;
+
+	private final LruCache<Integer, List<Integer>> pinnedPostIDsCache=new LruCache<>(1000);
+	private final HashMap<String, PostGuidInfo> guids=new HashMap<>();
 
 	private final ApplicationContext context;
 
@@ -92,7 +101,7 @@ public class WallController{
 						User mentionedUser=context.getObjectLinkResolver().resolve(uri, User.class, true, true, false);
 						mentionedUsers.put(mentionedUser.id, mentionedUser);
 					}catch(Exception x){
-						LOG.warn("Error resolving mention for URI {}", uri, x);
+						LOG.debug("Error resolving mention for URI {}", uri, x);
 					}
 				}
 			}
@@ -113,11 +122,21 @@ public class WallController{
 	 * @param attachmentIDs  IDs (hashes) of previously uploaded photo attachments.
 	 * @param poll           Poll to attach.
 	 * @param action
+	 * @param app
+	 * @param guid
 	 * @return The newly created post.
 	 */
-	public Post createWallPost(@NotNull User author, int authorAccountID, @NotNull Actor wallOwner, Post inReplyTo,
-							   @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
-							   @Nullable Poll poll, @Nullable Post repost, @NotNull Map<String, String> attachAltTexts, Post.@Nullable Action action){
+	public Post createWallPost(@NotNull User author, @NotNull Actor wallOwner, Post inReplyTo,
+							   @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs,
+							   @Nullable Poll poll, @Nullable Post repost, @NotNull Map<String, String> attachAltTexts, Post.@Nullable Action action, @Nullable ClientApp app, @Nullable String guid){
+		if(StringUtils.isNotEmpty(guid)){
+			PostGuidInfo guidInfo=guids.get(guid);
+			if(guidInfo!=null && guidInfo.time.isAfter(Instant.now().minus(1, ChronoUnit.HOURS))){
+				try{
+					return getPostOrThrow(guidInfo.postID);
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
 		try{
 			if(wallOwner instanceof Group group){
 				context.getPrivacyController().enforceUserAccessToGroupContent(author, group);
@@ -141,8 +160,10 @@ public class WallController{
 				LOG.warn("Invalid poll object passed to createWallPost: {}", poll);
 				poll=null;
 			}
+			if(inReplyTo!=null && poll!=null)
+				poll=null;
 
-			if(textSource.trim().isEmpty() && attachmentIDs.isEmpty() && poll==null && repost==null)
+			if(StringUtils.isBlank(textSource) && attachmentIDs.isEmpty() && poll==null && repost==null)
 				throw new BadRequestException("Empty post");
 
 			if(!wallOwner.hasWall() && inReplyTo==null)
@@ -157,6 +178,7 @@ public class WallController{
 			if(inReplyTo!=null || wallOwner.getLocalID()!=author.id)
 				repost=null;
 
+			User repostAuthor=null;
 			if(repost!=null){
 				// If we're reposting a repost, use the original post if it's an Announce or there's no comment
 				if(repost.isMastodonStyleRepost() || (repost.repostOf!=0 && TextProcessor.stripHTML(repost.text, false).trim().isEmpty() && (repost.attachments==null || repost.attachments.isEmpty()) && repost.poll==null)){
@@ -174,7 +196,7 @@ public class WallController{
 				// Reposted post must be public
 				context.getPrivacyController().enforcePostPrivacy(null, repost);
 				// Author must not be blocked by reposted post author or OP
-				User repostAuthor=context.getUsersController().getUserOrThrow(repost.authorID);
+				repostAuthor=context.getUsersController().getUserOrThrow(repost.authorID);
 				ensureUserNotBlocked(author, repostAuthor);
 				if(repost.authorID!=repost.ownerID)
 					ensureUserNotBlocked(author, context.getUsersController().getUserOrThrow(repost.ownerID));
@@ -185,21 +207,18 @@ public class WallController{
 			String text=preparePostText(textSource, mentionedUsers, inReplyTo!=null && inReplyTo.getReplyLevel()>0 ? inReplyTo.authorID : 0, sourceFormat);
 			int userID=author.id;
 			int postID;
-			int pollID=0;
 
 			if(poll!=null){
-				List<String> opts=poll.options.stream().map(o->o.text).collect(Collectors.toList());
-				if(opts.size()>=2){
-					pollID=PostStorage.createPoll(wallOwner.getOwnerID(), poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
-				}
+				if(poll.ownerID!=wallOwner.getOwnerID() || PostStorage.getPostIdByPollId(poll.id)>0)
+					poll=null;
 			}
 
 			int maxAttachments=inReplyTo!=null ? 2 : 10;
-			int attachmentCount=pollID!=0 ? 1 : 0;
+			int attachmentCount=poll!=null ? 1 : 0;
 			String attachments=null;
 			if(!attachmentIDs.isEmpty()){
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-				MediaStorageUtils.fillAttachmentObjects(context, author, attachObjects, attachmentIDs, attachAltTexts, attachmentCount, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, author, attachObjects, attachmentIDs, attachAltTexts, attachmentCount, maxAttachments, inReplyTo==null);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
@@ -220,14 +239,14 @@ public class WallController{
 			}
 
 
-			if(text.isEmpty() && StringUtils.isEmpty(attachments) && pollID==0 && repost==null)
+			if(text.isEmpty() && StringUtils.isEmpty(attachments) && poll==null && repost==null)
 				throw new BadRequestException("Empty post");
 
 			EnumSet<Post.Flag> flags=EnumSet.noneOf(Post.Flag.class);
 
 			int ownerUserID=wallOwner instanceof User u ? u.id : 0;
 			int ownerGroupID=wallOwner instanceof Group g ? g.id : 0;
-			boolean isTopLevelPostOwn=true;
+			boolean isTopLevelPostOwn;
 			List<Integer> replyKey;
 			if(inReplyTo!=null){
 				replyKey=inReplyTo.getReplyKeyForReplies();
@@ -271,8 +290,19 @@ public class WallController{
 					flags.add(Post.Flag.TOP_IS_WALL_TO_WALL);
 			}else{
 				replyKey=null;
+				isTopLevelPostOwn=wallOwner.getOwnerID()==author.id;
 			}
-			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, pollID, repost!=null ? repost.id : 0, action, flags);
+
+			FloodControl.POSTS.incrementOrThrow(author);
+
+			String extra=null;
+			if(app!=null){
+				extra=new JsonObjectBuilder()
+						.add("app", app.id)
+						.build()
+						.toString();
+			}
+			postID=PostStorage.createWallPost(userID, ownerUserID, ownerGroupID, text, textSource, sourceFormat, replyKey, mentionedUsers, attachments, contentWarning, poll==null ? 0 : poll.id, repost!=null ? repost.id : 0, action, flags, extra);
 			if(ownerUserID==userID && replyKey==null){
 				context.getNewsfeedController().putFriendsFeedEntry(author, postID, NewsfeedEntry.Type.POST);
 			}else if(wallOwner instanceof Group g && replyKey==null){
@@ -298,16 +328,39 @@ public class WallController{
 
 			// Add{Note} is sent for any wall posts & comments on them, for local wall owners.
 			// Create{Note} is sent for anything else.
-			if(post.ownerID!=post.authorID && (post.getReplyLevel()==0 || (post.getReplyLevel()>0 && !isTopLevelPostOwn)) && !(wallOwner instanceof ForeignActor)){
-				context.getActivityPubWorker().sendAddPostToWallActivity(post);
-			}else{
+			if(isTopLevelPostOwn || wallOwner instanceof ForeignActor){
 				context.getActivityPubWorker().sendCreatePostActivity(post);
+			}else{
+				context.getActivityPubWorker().sendAddPostToWallActivity(post);
 			}
 			context.getNotificationsController().createNotificationsForObject(post);
+
+			if(repost!=null && repostAuthor instanceof ForeignUser foreignRepostAuthor && repost.flags.contains(Post.Flag.HAS_QUOTE_POLICY)){
+				boolean needSendQuoteRequest=true;
+				if(repost.flags.contains(Post.Flag.HAS_FOLLOWERS_QUOTE_POLICY)){
+					FriendshipStatus fs=context.getFriendsController().getSimpleFriendshipStatus(author, repostAuthor);
+					needSendQuoteRequest=fs==FriendshipStatus.FOLLOWING || fs==FriendshipStatus.FRIENDS;
+				}
+				if(needSendQuoteRequest)
+					context.getActivityPubWorker().sendQuoteRequest(author, post, repost, foreignRepostAuthor);
+			}
+
+			if(StringUtils.isNotEmpty(guid)){
+				synchronized(guids){
+					guids.put(guid, new PostGuidInfo(postID, Instant.now()));
+				}
+			}
 
 			return post;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void removeExpiredGuids(){
+		synchronized(guids){
+			Instant hourAgo=Instant.now().minus(1, ChronoUnit.HOURS);
+			guids.entrySet().removeIf(e->e.getValue().time.isBefore(hourAgo));
 		}
 	}
 
@@ -426,79 +479,74 @@ public class WallController{
 	}
 
 	@NotNull
-	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning,
+	public Post editPost(@NotNull User self, @NotNull UserPermissions permissions, int id, @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning,
 						 @NotNull List<String> attachmentIDs, @Nullable Poll poll, @NotNull Map<String, String> attachAltTexts){
 		try{
 			Post post=getPostOrThrow(id);
 			if(!permissions.canEditPost(post))
 				throw new UserActionNotAllowedException();
 			context.getPrivacyController().enforceObjectPrivacy(self, post);
-			if(textSource.isEmpty() && attachmentIDs.isEmpty() && poll==null && post.repostOf==0)
+			if(post.getReplyLevel()>0)
+				poll=null;
+			if(StringUtils.isEmpty(textSource) && attachmentIDs.isEmpty() && poll==null && post.repostOf==0)
 				throw new BadRequestException("Empty post");
 
 			HashSet<User> mentionedUsers=new HashSet<>();
 			Post parent=post.getReplyLevel()>0 ? getPostOrThrow(post.getReplyChainElement(post.getReplyLevel()-1)) : null;
 			String text=preparePostText(textSource, mentionedUsers, parent!=null && parent.getReplyLevel()>1 ? parent.authorID : 0, sourceFormat);
 
-			int pollID=0;
-			if(poll!=null && !Objects.equals(post.poll, poll)){
-				List<String> opts=poll.options.stream().map(o->o.text).collect(Collectors.toList());
-				if(opts.size()>=2){
-					pollID=PostStorage.createPoll(post.ownerID, poll.question, opts, poll.anonymous, poll.multipleChoice, poll.endTime);
-				}
-			}else if(post.poll!=null){
-				pollID=post.poll.id;
+			if(poll!=null && (post.poll==null || poll.id!=post.poll.id)){
+				if(poll.ownerID!=post.ownerID || PostStorage.getPostIdByPollId(poll.id)>0)
+					poll=null;
 			}
-			if(post.poll!=null && pollID==0){
+			if(post.poll!=null && (poll==null || poll.id!=post.poll.id)){
 				PostStorage.deletePoll(post.poll.id);
 			}
 
 			int maxAttachments=parent!=null ? 2 : 10;
-			int attachmentCount=pollID!=0 ? 1 : 0;
+			int attachmentCount=poll!=null ? 1 : 0;
 			String attachments=null;
-			if(!attachmentIDs.isEmpty()){
-				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
+			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 
-				ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
-				if(post.attachments!=null){
-					for(ActivityPubObject att:post.attachments){
-						if(att instanceof LocalImage li){
-							String localID=li.getLocalID();
-							if(!newlyAddedAttachments.remove(localID)){
-								LOG.debug("Deleting attachment: {}", localID);
-								MediaStorage.deleteMediaFileReference(post.id, MediaFileReferenceType.WALL_ATTACHMENT, li.fileID);
-							}else{
-								li.name=attachAltTexts.get(li.getLocalID());
-								attachObjects.add(li);
-							}
+			ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
+			if(post.attachments!=null){
+				for(ActivityPubObject att:post.attachments){
+					if(att instanceof LocalImage li){
+						String localID=li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.id);
+						if(!newlyAddedAttachments.remove(localID)){
+							LOG.debug("Deleting attachment: {}", localID);
+							MediaStorage.deleteMediaFileReference(post.id, MediaFileReferenceType.WALL_ATTACHMENT, li.fileID);
 						}else{
-							attachObjects.add(att);
+							li.name=attachAltTexts.get(localID);
+							attachObjects.add(li);
 						}
-					}
-				}
-
-				if(!newlyAddedAttachments.isEmpty()){
-					MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
-					for(ActivityPubObject att:attachObjects){
-						if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
-							MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
-						}
-					}
-				}
-				if(!attachObjects.isEmpty()){
-					if(attachObjects.size()==1){
-						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 					}else{
-						JsonArray ar=new JsonArray();
-						for(ActivityPubObject o:attachObjects){
-							ar.add(MediaStorageUtils.serializeAttachment(o));
-						}
-						attachments=ar.toString();
+						attachObjects.add(att);
 					}
 				}
 			}
 
-			PostStorage.updateWallPost(id, text, textSource, sourceFormat, mentionedUsers, attachments, contentWarning, pollID);
+			if(!newlyAddedAttachments.isEmpty()){
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments, post.getReplyLevel()==0);
+				for(ActivityPubObject att:attachObjects){
+					if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.id))){
+						MediaStorage.createMediaFileReference(li.fileID, post.id, MediaFileReferenceType.WALL_ATTACHMENT, post.ownerID);
+					}
+				}
+			}
+			if(!attachObjects.isEmpty()){
+				if(attachObjects.size()==1){
+					attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
+				}else{
+					JsonArray ar=new JsonArray();
+					for(ActivityPubObject o:attachObjects){
+						ar.add(MediaStorageUtils.serializeAttachment(o));
+					}
+					attachments=ar.toString();
+				}
+			}
+
+			PostStorage.updateWallPost(id, text, textSource, sourceFormat, mentionedUsers, attachments, contentWarning, poll==null ? 0 : poll.id);
 			if(post.ownerID>0 && post.ownerID==post.authorID){
 				context.getNewsfeedController().clearFriendsFeedCache();
 			}
@@ -514,12 +562,12 @@ public class WallController{
 	/**
 	 * Get posts from a wall.
 	 * @param owner Wall owner, either a user or a group
-	 * @param ownOnly Whether to return only user's own posts or include other's posts
+	 * @param mode Whether to return only user's own posts or include other's posts
 	 * @param offset Pagination offset
 	 * @param count Maximum number of posts to return
 	 * @return A reverse-chronologically sorted paginated list of wall posts
 	 */
-	public PaginatedList<Post> getWallPosts(@Nullable User self, @NotNull Actor owner, boolean ownOnly, int offset, int count){
+	public PaginatedList<Post> getWallPosts(@Nullable User self, @NotNull Actor owner, WallMode mode, int offset, int count){
 		try{
 			int[] postCount={0};
 			Set<Post.Privacy> allowedPrivacy;
@@ -537,7 +585,7 @@ public class WallController{
 			}else{
 				allowedPrivacy=EnumSet.of(Post.Privacy.PUBLIC);
 			}
-			List<Post> wall=PostStorage.getWallPosts(owner.getLocalID(), owner instanceof Group, 0, 0, offset, count, postCount, ownOnly, allowedPrivacy);
+			List<Post> wall=PostStorage.getWallPosts(owner.getLocalID(), owner instanceof Group, 0, 0, offset, count, postCount, mode, allowedPrivacy);
 			return new PaginatedList<>(wall, postCount[0], offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -569,9 +617,19 @@ public class WallController{
 	 * @param posts List of posts to add comments to
 	 */
 	public void populateCommentPreviews(@Nullable User self, @NotNull List<PostViewModel> posts, CommentViewType viewType){
+		populateCommentPreviews(self, posts, viewType, 3);
+	}
+
+	/**
+	 * Add top-level comments to each post.
+	 *
+	 * @param posts List of posts to add comments to
+	 * @param count
+	 */
+	public void populateCommentPreviews(@Nullable User self, @NotNull List<PostViewModel> posts, CommentViewType viewType, int count){
 		try{
 			Set<List<Integer>> postIDs=posts.stream().map(PostViewModel::getReplyKeyForInteractions).collect(Collectors.toSet());
-			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs, viewType==CommentViewType.FLAT);
+			Map<Integer, PaginatedList<Post>> allComments=PostStorage.getRepliesForFeed(postIDs, viewType==CommentViewType.FLAT, count);
 			List<PostViewModel> commentsThatNeedAuthors=null;
 			if(viewType==CommentViewType.FLAT){
 				commentsThatNeedAuthors=new ArrayList<>();
@@ -605,7 +663,13 @@ public class WallController{
 	 */
 	public Map<Integer, UserInteractions> getUserInteractions(@NotNull List<PostViewModel> posts, @Nullable User self){
 		try{
-			Set<Integer> postIDs=posts.stream().map(p->p.post.getIDForInteractions()).collect(Collectors.toSet());
+			HashSet<Integer> postIDs=new HashSet<>();
+			for(PostViewModel p:posts){
+				postIDs.add(p.post.getIDForInteractions());
+				if(p.repost!=null && !p.post.isMastodonStyleRepost()){
+					p.collectRepostIDs(postIDs);
+				}
+			}
 			Set<Integer> ownerUserIDs=new HashSet<>(), ownerGroupIDs=new HashSet<>();
 			for(PostViewModel p:posts){
 				p.getAllReplyIDs(postIDs);
@@ -624,6 +688,14 @@ public class WallController{
 					.entrySet()
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e->context.getPrivacyController().checkUserPrivacy(self, e.getValue(), UserPrivacySettingKey.WALL_COMMENTING)));
+
+			Set<Integer> blockingUsers, blockingGroups;
+			if(self!=null){
+				blockingUsers=context.getUsersController().getBlockingUsers(self, ownerUserIDs);
+				blockingGroups=context.getGroupsController().getBlockingGroups(self, ownerGroupIDs);
+			}else{
+				blockingGroups=blockingUsers=Set.of();
+			}
 
 			if(!ownerGroupIDs.isEmpty()){
 				canComment=new HashMap<>(canComment);
@@ -655,6 +727,7 @@ public class WallController{
 				}else{
 					ownerID=post.post.ownerID;
 				}
+
 				// Can't comment on posts or in threads that don't exist
 				if(post.post.isMastodonStyleRepost() && post.repost!=null && (post.repost.post()==null || (post.repost.post().post.getReplyLevel()>0 && post.repost.topLevel()==null)))
 					ui.canComment=false;
@@ -671,6 +744,14 @@ public class WallController{
 						ui.canRepost=false; // Comment on a wall-to-wall post
 					}
 				}
+
+				if(self==null)
+					continue;
+
+				if(post.post.ownerID>0)
+					ui.canLike=!blockingUsers.contains(post.post.ownerID);
+				else
+					ui.canLike=!blockingGroups.contains(-post.post.ownerID);
 			}
 			return interactions;
 		}catch(SQLException x){
@@ -891,6 +972,7 @@ public class WallController{
 		}
 	}
 
+	@NotNull
 	public OwnerAndAuthor getContentAuthorAndOwner(OwnedContentObject post){
 		int ownerID=post.getOwnerID();
 		int authorID=post.getAuthorID();
@@ -996,26 +1078,59 @@ public class WallController{
 		}
 	}
 
-	// region Pinned posts
-
-	public List<Post> getPinnedPosts(User self, User owner){
+	public void setPostQuoteAuthorization(Post post, URI quoteAuth){
 		try{
-			List<Post> posts=PostStorage.getPinnedPosts(owner.id);
-			boolean hasPrivate=false;
-			for(Post p:posts){
-				if(p.privacy!=Post.Privacy.PUBLIC){
-					hasPrivate=true;
-					break;
-				}
-			}
-			if(hasPrivate){
-				posts=new ArrayList<>(posts);
-				context.getPrivacyController().filterPosts(self, posts);
-			}
-			return posts;
+			post.mastodonQuoteAuth=quoteAuth;
+			PostStorage.updateWallPostExtraFields(post.id, post.serializeExtraFields());
+			context.getActivityPubWorker().sendUpdatePostActivity(post);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+	}
+
+	public int getLocalPostCount(boolean comments){
+		try{
+			return PostStorage.getLocalPostCount(comments);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// region Pinned posts
+
+	public List<Integer> getPinnedPostIDs(User owner){
+		return getPinnedPostIDs(owner.id);
+	}
+
+	public List<Integer> getPinnedPostIDs(int ownerID){
+		List<Integer> ids=pinnedPostIDsCache.get(ownerID);
+		if(ids!=null)
+			return ids;
+		try{
+			ids=PostStorage.getPinnedPostIDs(ownerID);
+			pinnedPostIDsCache.put(ownerID, ids);
+			return ids;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<Post> getPinnedPosts(User self, User owner){
+		List<Integer> ids=getPinnedPostIDs(owner);
+		Map<Integer, Post> postsByID=getPosts(ids);
+		List<Post> posts=ids.stream().map(postsByID::get).filter(Objects::nonNull).toList();
+		boolean hasPrivate=false;
+		for(Post p:posts){
+			if(p.privacy!=Post.Privacy.PUBLIC){
+				hasPrivate=true;
+				break;
+			}
+		}
+		if(hasPrivate){
+			posts=new ArrayList<>(posts);
+			context.getPrivacyController().filterPosts(self, posts);
+		}
+		return posts;
 	}
 
 	public boolean isPostPinned(Post post){
@@ -1030,12 +1145,13 @@ public class WallController{
 		try{
 			User author=context.getUsersController().getUserOrThrow(post.authorID);
 			if(!keepPrevious && !(author instanceof ForeignUser)){
-				List<Post> currentPosts=PostStorage.getPinnedPosts(post.authorID);
+				List<Post> currentPosts=getPinnedPosts(author, author);
 				for(Post oldPost:currentPosts){
 					context.getActivityPubWorker().sendUnpinPostActivity(author, oldPost);
 				}
 			}
 			PostStorage.pinPost(post.authorID, post.id, keepPrevious);
+			pinnedPostIDsCache.remove(author.id);
 			if(!(author instanceof ForeignUser)){
 				context.getActivityPubWorker().sendPinPostActivity(author, post);
 			}
@@ -1048,6 +1164,7 @@ public class WallController{
 		try{
 			PostStorage.unpinPost(post.authorID, post.id);
 			User author=context.getUsersController().getUserOrThrow(post.authorID);
+			pinnedPostIDsCache.remove(author.id);
 			if(!(author instanceof ForeignUser)){
 				context.getActivityPubWorker().sendUnpinPostActivity(author, post);
 			}
@@ -1065,4 +1182,109 @@ public class WallController{
 	}
 
 	// endregion
+	// region Polls
+
+	public Poll getPollByID(int id){
+		try{
+			Poll poll=PostStorage.getPoll(id, null);
+			if(poll==null)
+				throw new ObjectNotFoundException();
+			return poll;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void voteInPoll(User self, Poll poll, int[] optionIDs){
+		try{
+			int postID=PostStorage.getPostIdByPollId(poll.id);
+			if(postID==0)
+				throw new UserActionNotAllowedException();
+
+			Post post=getPostOrThrow(postID);
+			context.getPrivacyController().enforcePostPrivacy(self, post);
+
+			if(poll.isExpired())
+				throw new UserErrorException("err_poll_expired");
+
+			Actor owner;
+			if(poll.ownerID>0){
+				User _owner=UserStorage.getById(poll.ownerID);
+				ensureUserNotBlocked(self, _owner);
+				owner=_owner;
+			}else{
+				Group _owner=context.getGroupsController().getGroupOrThrow(-poll.ownerID);
+				ensureUserNotBlocked(self, _owner);
+				context.getPrivacyController().enforceUserAccessToGroupContent(self, _owner);
+				owner=_owner;
+			}
+
+			List<PollOption> options=new ArrayList<>(optionIDs.length);
+			for(int optID:optionIDs){
+				PollOption option=null;
+				for(PollOption opt:poll.options){
+					if(opt.id==optID){
+						option=opt;
+						break;
+					}
+				}
+				if(option==null)
+					throw new BadRequestException("option with id "+optID+" does not exist in this poll");
+				if(options.contains(option))
+					throw new BadRequestException("option with id "+optID+" specified more than once");
+				options.add(option);
+			}
+
+			int[] voteIDs=PostStorage.voteInPoll(self.id, poll.id, optionIDs);
+			if(voteIDs==null)
+				throw new UserErrorException("err_poll_already_voted");
+
+			poll.numVoters++;
+			for(PollOption opt:options)
+				opt.numVotes++;
+
+			context.getActivityPubWorker().sendPollVotes(self, poll, owner, options, voteIDs);
+
+			post.poll=poll; // So the last vote time is as it was before the vote
+			sendUpdateQuestionIfNeeded(post);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getPostIDForPoll(Poll poll){
+		try{
+			return PostStorage.getPostIdByPollId(poll.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int createPoll(User self, @NotNull Actor owner, @NotNull String question, @NotNull List<String> options, boolean anonymous, boolean multipleChoice, @Nullable Instant endTime){
+		try{
+			ensureUserNotBlocked(self, owner);
+			if(owner instanceof User user){
+				context.getPrivacyController().enforceUserPrivacy(self, user, UserPrivacySettingKey.WALL_POSTING);
+			}else if(owner instanceof Group group){
+				context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
+				if(group.wallState==GroupFeatureState.DISABLED)
+					throw new UserActionNotAllowedException();
+				if(group.wallState==GroupFeatureState.ENABLED_CLOSED)
+					context.getGroupsController().enforceUserAdminLevel(group, self, Group.AdminLevel.MODERATOR);
+			}
+			return PostStorage.createPoll(owner.getOwnerID(), question, options, anonymous, multipleChoice, endTime);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	// endregion
+
+	public enum WallMode{
+		ALL,
+		OWNER,
+		OTHERS
+	}
+
+	private record PostGuidInfo(int postID, Instant time){}
 }

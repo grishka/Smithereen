@@ -1,5 +1,6 @@
 package smithereen.controllers;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +39,6 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
-import smithereen.model.UserDataExport;
-import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.OtherSession;
@@ -49,10 +48,12 @@ import smithereen.model.SignupRequest;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
+import smithereen.model.UserDataExport;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPresence;
-import smithereen.model.admin.UserRole;
+import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.UserActionLogAction;
+import smithereen.model.admin.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.friends.FollowRelationship;
 import smithereen.model.viewmodel.UserContentMetrics;
@@ -87,6 +88,7 @@ public class UsersController{
 		MaintenanceScheduler.runPeriodically(this::doPendingPresenceUpdates, 1, TimeUnit.MINUTES);
 	}
 
+	@NotNull
 	public User getUserOrThrow(int id){
 		try{
 			if(id<=0)
@@ -110,6 +112,14 @@ public class UsersController{
 	public int tryGetUserIdByUsername(String username){
 		try{
 			return UserStorage.getIdByUsername(username);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<String, Integer> getUserIDsByUsernames(Collection<String> usernames){
+		try{
+			return UserStorage.getIdsByUsernames(usernames);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -327,6 +337,27 @@ public class UsersController{
 		}
 	}
 
+	public Set<Integer> getBlockedUsers(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Set.of();
+		try{
+			return UserStorage.getBlockedUsers(self.id, ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Set<Integer> getBlockingUsers(User self, Collection<Integer> ids){
+		// TODO cache
+		if(ids.isEmpty())
+			return Set.of();
+		try{
+			return UserStorage.getBlockingUsers(self.id, ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public Map<Integer, User> getUsers(Collection<Integer> ids){
 		return getUsers(ids, false);
 	}
@@ -336,6 +367,14 @@ public class UsersController{
 			return Map.of();
 		try{
 			return UserStorage.getById(ids, wantDeleted);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<User> getUsersAsList(List<Integer> ids){
+		try{
+			return UserStorage.getByIdAsList(ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -413,9 +452,9 @@ public class UsersController{
 		}
 	}
 
-	public List<OtherSession> getAccountSessions(Account acc){
+	public List<OtherSession> getAccountSessions(Account acc, int offset, int count){
 		try{
-			return SessionStorage.getAccountSessions(acc.id);
+			return SessionStorage.getAccountSessions(acc.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -423,7 +462,8 @@ public class UsersController{
 
 	public OtherSession getAccountMostRecentSession(Account acc){
 		try{
-			return SessionStorage.getAccountMostRecentSession(acc.id);
+			List<OtherSession> s=SessionStorage.getAccountSessions(acc.id, 0, 1);
+			return s.isEmpty() ? null : s.getFirst();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -460,6 +500,7 @@ public class UsersController{
 		try{
 			byte[] sid=Base64.getDecoder().decode(psid);
 			SessionStorage.deleteSessionsExcept(self.id, sid);
+			context.getAppsController().revokeUserAccessTokensExcept(self, sid);
 			SmithereenApplication.invalidateAllSessionsForAccount(self.id);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -670,9 +711,9 @@ public class UsersController{
 		}
 	}
 
-	public void setOnline(User user, UserPresence.PresenceType type, long sessionID){
+	public void setOnline(User user, UserPresence.PresenceType type, long sessionID, long appID){
 		user.ensureLocal();
-		UserPresence presence=new UserPresence(true, Instant.now(), type);
+		UserPresence presence=new UserPresence(true, Instant.now(), type, appID);
 		LOG.trace("Setting user {} presence to online, type {}", user.id, type);
 		String mutexName=String.valueOf(user.id);
 
@@ -701,7 +742,7 @@ public class UsersController{
 		if(prevPresence!=null && prevPresence.sessionID==sessionID){
 			onlineLocalUsers.remove(prevPresence);
 			onlineLocalUsersByID.remove(userID);
-			pendingUserPresenceUpdates.put(userID, new UserPresence(false, prevPresence.presence.lastUpdated(), prevPresence.presence.type()));
+			pendingUserPresenceUpdates.put(userID, new UserPresence(false, prevPresence.presence.lastUpdated(), prevPresence.presence.type(), prevPresence.presence.appID()));
 		}
 		onlineMutexes.release(mutexName);
 	}
@@ -1027,6 +1068,31 @@ public class UsersController{
 	public Instant getLastSuccessfulUserDataExportTime(User user){
 		try{
 			return UserStorage.getLastSuccessfulUserDataExportTime(user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getLocalUserCount(){
+		try{
+			return UserStorage.getLocalUserCount();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getActiveLocalUserCount(int time, TimeUnit unit){
+		try{
+			long ms=unit.toMillis(time);
+			return UserStorage.getActiveLocalUserCount(ms);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public UserPermissions getUserPermissions(Account account){
+		try{
+			return SessionStorage.getUserPermissions(account);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

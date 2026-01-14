@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,15 +40,12 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
-import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
-import smithereen.model.UserBanStatus;
 import smithereen.model.admin.GroupActionLogAction;
 import smithereen.model.groups.GroupAdmin;
-import smithereen.model.groups.GroupBanInfo;
 import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.groups.GroupInvitation;
 import smithereen.model.groups.GroupLink;
@@ -317,6 +315,7 @@ public class GroupStorage{
 		}
 	}
 
+	@Nullable
 	public static Group getById(int id) throws SQLException{
 		Group g=cacheByID.get(id);
 		if(g!=null)
@@ -381,6 +380,60 @@ public class GroupStorage{
 				.columns("id")
 				.where("username=? AND domain=?", username, domain)
 				.executeAndGetInt();
+	}
+
+	public static Map<String, Integer> getIdsByUsernames(Collection<String> usernames) throws SQLException{
+		if(usernames.isEmpty())
+			return Map.of();
+		HashSet<String> remainingUsernames=new HashSet<>();
+		Map<String, Integer> ids=new HashMap<>();
+		for(String u:usernames){
+			Group g=cacheByUsername.get(u.toLowerCase());
+			if(g!=null){
+				ids.put(u, g.id);
+				continue;
+			}
+			remainingUsernames.add(u);
+		}
+		if(!remainingUsernames.isEmpty()){
+			StringBuilder where=new StringBuilder("(username, domain) IN (");
+			ArrayList<String> whereArgs=new ArrayList<>();
+			boolean first=true;
+			for(String u:remainingUsernames){
+				String realUsername;
+				String domain="";
+				if(u.contains("@")){
+					String[] parts=u.split("@");
+					realUsername=parts[0];
+					domain=parts[1];
+				}else{
+					realUsername=u;
+				}
+				if(first){
+					first=false;
+				}else{
+					where.append(',');
+				}
+				where.append("(?,?)");
+				whereArgs.add(realUsername);
+				whereArgs.add(domain);
+			}
+			where.append(')');
+			new SQLQueryBuilder()
+					.selectFrom("groups")
+					.columns("id", "username", "domain")
+					.where(where.toString(), whereArgs.toArray())
+					.executeAsStream(r->{
+						String username=r.getString("username");
+						String domain=r.getString("domain");
+						return new Pair<>(username+(domain.isEmpty() ? "" : ("@"+domain)), r.getInt("id"));
+					})
+					.forEach(p->{
+						// TODO improve caching
+						ids.put(p.first(), p.second());
+					});
+		}
+		return ids;
 	}
 
 	public static ForeignGroup getForeignGroupByActivityPubID(URI id) throws SQLException{
@@ -464,18 +517,17 @@ public class GroupStorage{
 		return result;
 	}
 
-	public static List<User> getRandomMembersForProfile(int groupID, boolean tentative) throws SQLException{
-		return UserStorage.getByIdAsList(
-				new SQLQueryBuilder()
+	public static List<Integer> getRandomMembers(int groupID, Boolean tentative, int count) throws SQLException{
+		return new SQLQueryBuilder()
 						.selectFrom("group_memberships")
-						.where("group_id=? AND tentative=? AND accepted=1", groupID, tentative)
+						.columns("user_id")
+						.where("group_id=? AND accepted=1"+(tentative==null ? "" : " AND tentative=?"), groupID, tentative)
 						.orderBy("RAND()")
-						.limit(6, 0)
-						.executeAndGetIntList()
-		);
+						.limit(count, 0)
+						.executeAndGetIntList();
 	}
 
-	public static PaginatedList<Integer> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative) throws SQLException{
+	public static PaginatedList<Integer> getMembers(int groupID, int offset, int count, @Nullable Boolean tentative, GroupsController.MemberSortOrder order) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
 			int total=new SQLQueryBuilder(conn)
@@ -487,7 +539,56 @@ public class GroupStorage{
 				return PaginatedList.emptyList(count);
 			List<Integer> ids=new SQLQueryBuilder(conn)
 					.selectFrom("group_memberships")
+					.columns("user_id")
 					.where("group_id=? AND accepted=1"+_tentative, groupID)
+					.orderBy(switch(order){
+						case ID_ASC -> "user_id ASC";
+						case ID_DESC -> "user_id DESC";
+						case TIME_ASC -> "time ASC";
+						case TIME_DESC -> "time DESC";
+						case RANDOM -> throw new IllegalArgumentException();
+					})
+					.limit(count, offset)
+					.executeAndGetIntList();
+			return new PaginatedList<>(ids, total, offset, count);
+		}
+	}
+
+	public static List<Integer> getRandomFriendsMembers(int groupID, Boolean tentative, int count, int userID) throws SQLException{
+		String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
+		return new SQLQueryBuilder()
+				.selectFrom("group_memberships")
+				.columns("user_id")
+				.join("RIGHT JOIN followings ON user_id=followee_id")
+				.where("group_id=? AND group_memberships.accepted=1 AND followings.accepted=1 AND mutual=1 AND follower_id=?"+_tentative, groupID, userID)
+				.orderBy("RAND()")
+				.limit(count, 0)
+				.executeAndGetIntList();
+	}
+
+	public static PaginatedList<Integer> getFriendsMembers(int groupID, int offset, int count, @Nullable Boolean tentative, GroupsController.MemberSortOrder order, int userID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String _tentative=tentative==null ? "" : (" AND tentative="+(tentative ? '1' : '0'));
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.count()
+					.join("RIGHT JOIN followings ON user_id=followee_id")
+					.where("group_id=? AND group_memberships.accepted=1 AND followings.accepted=1 AND mutual=1 AND follower_id=?"+_tentative, groupID, userID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> ids=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("user_id")
+					.join("RIGHT JOIN followings ON user_id=followee_id")
+					.where("group_id=? AND group_memberships.accepted=1 AND followings.accepted=1 AND mutual=1 AND follower_id=?"+_tentative, groupID, userID)
+					.orderBy(switch(order){
+						case ID_ASC -> "user_id ASC";
+						case ID_DESC -> "user_id DESC";
+						case TIME_ASC -> "time ASC";
+						case TIME_DESC -> "time DESC";
+						case RANDOM -> throw new IllegalArgumentException();
+					})
 					.limit(count, offset)
 					.executeAndGetIntList();
 			return new PaginatedList<>(ids, total, offset, count);
@@ -504,6 +605,82 @@ public class GroupStorage{
 					return Group.MembershipState.REQUESTED;
 				return res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER;
 			}
+		}
+	}
+
+	public static Map<Integer, Group.MembershipState> getUserMembershipStates(Collection<Integer> groupIDs, int userID) throws SQLException{
+		if(groupIDs.size()==1){
+			int id=groupIDs.iterator().next();
+			return Map.of(id, getUserMembershipState(id, userID));
+		}
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			HashMap<Integer, Group.MembershipState> states=new HashMap<>();
+			for(int id:groupIDs)
+				states.put(id, Group.MembershipState.NONE);
+			Set<Integer> remainingIDs=new HashSet<>(groupIDs);
+
+			try(ResultSet res=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("group_id", "accepted", "tentative")
+					.whereIn("group_id", groupIDs)
+					.andWhere("user_id=?", userID)
+					.execute()){
+				while(res.next()){
+					int id=res.getInt("group_id");
+					states.put(id, res.getBoolean("accepted") ? (res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER) : Group.MembershipState.REQUESTED);
+					remainingIDs.remove(id);
+				}
+			}
+
+			if(!remainingIDs.isEmpty()){
+				new SQLQueryBuilder(conn)
+						.selectFrom("group_invites")
+						.columns("group_id")
+						.whereIn("group_id", remainingIDs)
+						.andWhere("invitee_id=?", userID)
+						.executeAndGetIntStream()
+						.forEach(id->states.put(id, Group.MembershipState.INVITED));
+			}
+
+			return states;
+		}
+	}
+
+	public static Map<Integer, Group.MembershipState> getMembershipStates(int groupID, Collection<Integer> userIDs, boolean needInvites) throws SQLException{
+		if(userIDs.size()==1){
+			int id=userIDs.iterator().next();
+			return Map.of(id, getUserMembershipState(groupID, id));
+		}
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			HashMap<Integer, Group.MembershipState> states=new HashMap<>();
+			for(int id:userIDs)
+				states.put(id, Group.MembershipState.NONE);
+			Set<Integer> remainingIDs=new HashSet<>(userIDs);
+
+			try(ResultSet res=new SQLQueryBuilder(conn)
+					.selectFrom("group_memberships")
+					.columns("user_id", "accepted", "tentative")
+					.whereIn("user_id", userIDs)
+					.andWhere("group_id=?", groupID)
+					.execute()){
+				while(res.next()){
+					int id=res.getInt("user_id");
+					states.put(id, res.getBoolean("accepted") ? (res.getBoolean("tentative") ? Group.MembershipState.TENTATIVE_MEMBER : Group.MembershipState.MEMBER) : Group.MembershipState.REQUESTED);
+					remainingIDs.remove(id);
+				}
+			}
+
+			if(!remainingIDs.isEmpty() && needInvites){
+				new SQLQueryBuilder(conn)
+						.selectFrom("group_invites")
+						.columns("invitee_id")
+						.whereIn("invitee_id", remainingIDs)
+						.andWhere("group_id=?", groupID)
+						.executeAndGetIntStream()
+						.forEach(id->states.put(id, Group.MembershipState.INVITED));
+			}
+
+			return states;
 		}
 	}
 
@@ -642,18 +819,23 @@ public class GroupStorage{
 		}
 	}
 
-	public static PaginatedList<Group> getUserManagedGroups(int userID, int offset, int count) throws SQLException{
+	public static PaginatedList<Group> getUserManagedGroups(int userID, Group.AdminLevel minLevel, boolean events, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("group_admins")
 					.count()
-					.where("user_id=?", userID)
+					.join("JOIN `groups` ON group_id=`groups`.id")
+					.where("user_id=? AND level>? AND `groups`.type=?", userID, minLevel, events ? Group.Type.EVENT : Group.Type.GROUP)
 					.executeAndGetInt();
 			if(total==0)
 				return PaginatedList.emptyList(count);
-			try(ResultSet res=new SQLQueryBuilder(conn).selectFrom("group_admins").columns("group_id").where("user_id=?", userID).execute()){
-				return new PaginatedList<>(getByIdAsList(DatabaseUtils.intResultSetToList(res)), total, offset, count);
-			}
+			List<Integer> ids=new SQLQueryBuilder(conn)
+					.selectFrom("group_admins")
+					.columns("group_id")
+					.join("JOIN `groups` ON group_id=`groups`.id")
+					.where("user_id=? AND level>? AND `groups`.type=?", userID, minLevel, events ? Group.Type.EVENT : Group.Type.GROUP)
+					.executeAndGetIntList();
+			return new PaginatedList<>(getByIdAsList(ids), total, offset, count);
 		}
 	}
 
@@ -706,6 +888,24 @@ public class GroupStorage{
 		return level==-1 ? Group.AdminLevel.REGULAR : Group.AdminLevel.values()[level];
 	}
 
+	public static Map<Integer, Group.AdminLevel> getGroupMemberAdminLevels(Collection<Integer> groupIDs, int userID) throws SQLException{
+		if(groupIDs.size()==1){
+			int id=groupIDs.iterator().next();
+			return Map.of(id, getGroupMemberAdminLevel(id, userID));
+		}
+		HashMap<Integer, Group.AdminLevel> levels=new HashMap<>();
+		for(int id:groupIDs)
+			levels.put(id, Group.AdminLevel.REGULAR);
+		new SQLQueryBuilder()
+				.selectFrom("group_admins")
+				.columns("group_id", "level")
+				.whereIn("group_id", groupIDs)
+				.andWhere("user_id=?", userID)
+				.executeAsStream(r->new Pair<>(r.getInt(1), r.getInt(2)))
+				.forEach(ids->levels.put(ids.first(), Group.AdminLevel.values()[ids.second()]));
+		return levels;
+	}
+
 	public static void setMemberAccepted(Group group, int userID, boolean accepted) throws SQLException{
 		int groupID=group.id;
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
@@ -734,6 +934,8 @@ public class GroupStorage{
 		}
 	}
 
+	@NotNull
+	@Unmodifiable
 	public static List<GroupAdmin> getGroupAdmins(int groupID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("group_admins")
@@ -900,6 +1102,17 @@ public class GroupStorage{
 				.executeAndGetInt()==1;
 	}
 
+	public static Set<Integer> getBlockingGroups(int selfID, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_group_user")
+				.columns("owner_id")
+				.whereIn("owner_id", ids)
+				.andWhere("user_id=?", selfID)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
 	public static void blockUser(int selfID, int targetID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			new SQLQueryBuilder(conn)
@@ -921,12 +1134,24 @@ public class GroupStorage{
 				.executeNoResult();
 	}
 
-	public static List<User> getBlockedUsers(int selfID) throws SQLException{
-		return UserStorage.getByIdAsList(new SQLQueryBuilder()
-				.selectFrom("blocks_group_user")
-				.columns("user_id")
-				.where("owner_id=?", selfID)
-				.executeAndGetIntList());
+	public static PaginatedList<User> getBlockedUsers(int selfID, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("blocks_group_user")
+					.count()
+					.where("owner_id=?", selfID)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<User> users=UserStorage.getByIdAsList(new SQLQueryBuilder(conn)
+					.selectFrom("blocks_group_user")
+					.columns("user_id")
+					.where("owner_id=?", selfID)
+					.limit(count, offset)
+					.executeAndGetIntList());
+			return new PaginatedList<>(users, total, offset, count);
+		}
 	}
 
 	public static boolean isDomainBlocked(int selfID, String domain) throws SQLException{

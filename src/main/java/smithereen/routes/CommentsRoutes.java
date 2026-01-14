@@ -38,6 +38,7 @@ import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
@@ -94,7 +95,7 @@ public class CommentsRoutes{
 		}
 
 		Comment inReplyTo=replyTo!=0 ? ctx.getCommentsController().getCommentIgnoringPrivacy(replyTo) : null;
-		Comment comment=ctx.getCommentsController().createComment(self.user, parent, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts);
+		Comment comment=ctx.getCommentsController().createComment(self.user, parent, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts, null);
 
 		if(isAjax(req)){
 			String rid=req.queryParams("rid");
@@ -309,12 +310,12 @@ public class CommentsRoutes{
 		if(comment.attachments!=null && !comment.attachments.isEmpty()){
 			model.with("draftAttachments", comment.attachments);
 			model.with("attachAltTexts", comment.attachments.stream()
-					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.fileRecord.id().getIDForClient(), li.name) : null)
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), li.name) : null)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toMap(Pair::first, Pair::second))
 			);
 			Map<String, PhotoViewerInlineData> pvData=comment.attachments.stream()
-					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(), li.getURLsForPhotoViewer())) : null)
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), li.getURLsForPhotoViewer())) : null)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toMap(Pair::first, Pair::second, (a, b)->b));
 			model.with("attachPvData", pvData);

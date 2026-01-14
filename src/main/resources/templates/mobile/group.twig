@@ -190,6 +190,7 @@
 		{% endif %}
 	</div>
 	{% endif %}
+	{% if admins is not empty %}
 	<div class="card profileFields">
 		<div class="sectionHeader"><h4>{{ L(group.event ? 'event_organizers' : 'group_admins') }}</h4></div>
 		<div class="userList noPadding" style="padding-bottom: 16px;">
@@ -206,6 +207,7 @@
 		{% endfor %}
 		</div>
 	</div>
+	{% endif %}
 </div>
 
 </div>

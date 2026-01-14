@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=86;
+	public static final int SCHEMA_VERSION=90;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -55,6 +55,7 @@ public class DatabaseSchemaUpdater{
 				createApIdIndexTriggersForPhotos(conn);
 				createApIdIndexTriggersForComments(conn);
 				createApIdIndexTriggersForBoardTopics(conn);
+				createApIdIndexTriggersForApps(conn);
 				insertDefaultRoles(conn);
 			}
 		}else{
@@ -1097,6 +1098,161 @@ public class DatabaseSchemaUpdater{
 			case 86 -> {
 				conn.createStatement().execute("ALTER TABLE notifications ADD KEY `object_type` (`object_type`,`object_id`), ADD KEY `type` (`type`), ADD KEY `related_object_type` (`related_object_type`,`related_object_id`), ADD KEY `actor_id` (`actor_id`)");
 			}
+			case 87 -> conn.createStatement().execute("ALTER TABLE `wall_posts` ADD `extra` json DEFAULT NULL");
+			case 88 ->{
+				conn.createStatement().execute("""
+						CREATE TABLE `api_applications` (
+						  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+						  `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
+						  `username` varchar(64) DEFAULT NULL,
+						  `domain` varchar(100) NOT NULL DEFAULT '',
+						  `public_key` blob,
+						  `private_key` blob,
+						  `type` tinyint unsigned NOT NULL,
+						  `name` varchar(50) NOT NULL,
+						  `description` text,
+						  `logo` json DEFAULT NULL,
+						  `developer_id` int DEFAULT NULL,
+						  `extra` json DEFAULT NULL,
+						  `ap_inbox` varchar(300) DEFAULT NULL,
+						  `ap_shared_inbox` varchar(300) DEFAULT NULL,
+						  `last_updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`id`),
+						  UNIQUE KEY `ap_id` (`ap_id`),
+						  UNIQUE KEY `username` (`username`,`domain`)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				conn.createStatement().execute("""
+						CREATE TABLE `api_codes` (
+						  `id` binary(64) NOT NULL,
+						  `account_id` int unsigned NOT NULL,
+						  `app_id` bigint unsigned NOT NULL,
+						  `permissions` bit(64) NOT NULL DEFAULT b'0',
+						  `expires_at` timestamp NOT NULL,
+						  `extra` json DEFAULT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `expires_at` (`expires_at`),
+						  KEY `account_id` (`account_id`),
+						  KEY `app_id` (`app_id`),
+						  CONSTRAINT `api_codes_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `api_codes_ibfk_2` FOREIGN KEY (`app_id`) REFERENCES `api_applications` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				conn.createStatement().execute("""
+						CREATE TABLE `api_grants` (
+						  `account_id` int unsigned NOT NULL,
+						  `app_id` bigint unsigned NOT NULL,
+						  `granted_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `permissions` bit(64) NOT NULL DEFAULT b'0',
+						  PRIMARY KEY (`account_id`,`app_id`),
+						  KEY `app_id` (`app_id`),
+						  CONSTRAINT `api_grants_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `api_grants_ibfk_2` FOREIGN KEY (`app_id`) REFERENCES `api_applications` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				conn.createStatement().execute("""
+						CREATE TABLE `api_tokens` (
+						  `id` binary(64) NOT NULL,
+						  `account_id` int unsigned NOT NULL,
+						  `app_id` bigint unsigned NOT NULL,
+						  `last_active` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `ip` binary(16) NOT NULL,
+						  `user_agent` bigint NOT NULL,
+						  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  `expires_at` timestamp NULL DEFAULT NULL,
+						  `permissions` bit(64) NOT NULL,
+						  PRIMARY KEY (`id`),
+						  KEY `account_id` (`account_id`),
+						  KEY `app_id` (`app_id`),
+						  KEY `expires_at` (`expires_at`),
+						  CONSTRAINT `api_tokens_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `api_tokens_ibfk_2` FOREIGN KEY (`app_id`) REFERENCES `api_applications` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+				createApIdIndexTriggersForApps(conn);
+			}
+			case 89 -> {
+				conn.createStatement().execute("ALTER TABLE wall_posts ADD immediate_reply_count INTEGER UNSIGNED NOT NULL DEFAULT 0 AFTER reply_count");
+				int offset=0;
+				while(true){
+					LOG.info("Counting wall comments: offset {}", offset);
+					try(ResultSet res=new SQLQueryBuilder(conn)
+							.selectFrom("wall_posts")
+							.columns("id", "reply_key")
+							.where("reply_count>0")
+							.orderBy("id ASC")
+							.limit(10_000, offset)
+							.execute()){
+						if(!res.next())
+							break;
+						do{
+							int id=res.getInt("id");
+							ArrayList<Integer> replyKey=new ArrayList<>(Utils.deserializeIntList(res.getBytes("reply_key")));
+							replyKey.add(id);
+
+							int count=new SQLQueryBuilder(conn)
+									.selectFrom("wall_posts")
+									.count()
+									.where("reply_key=?", (Object) Utils.serializeIntList(replyKey))
+									.executeAndGetInt();
+
+							if(count>0){
+								new SQLQueryBuilder(conn)
+										.update("wall_posts")
+										.where("id=?", id)
+										.value("immediate_reply_count", count)
+										.executeNoResult();
+							}
+							offset++;
+						}while(res.next());
+					}
+				}
+
+				conn.createStatement().execute("ALTER TABLE comments ADD immediate_reply_count INTEGER UNSIGNED NOT NULL DEFAULT 0 AFTER reply_count");
+				offset=0;
+				while(true){
+					LOG.info("Counting comments: offset {}", offset);
+					try(ResultSet res=new SQLQueryBuilder(conn)
+							.selectFrom("comments")
+							.columns("id", "reply_key")
+							.where("reply_count>0")
+							.orderBy("id ASC")
+							.limit(10_000, offset)
+							.execute()){
+						if(!res.next())
+							break;
+						do{
+							long id=res.getLong("id");
+							ArrayList<Long> replyKey=new ArrayList<>();
+							Utils.deserializeLongCollection(res.getBytes("reply_key"), replyKey);
+							replyKey.add(id);
+
+							int count=new SQLQueryBuilder(conn)
+									.selectFrom("comments")
+									.count()
+									.where("reply_key=?", (Object) Utils.serializeLongCollection(replyKey))
+									.executeAndGetInt();
+
+							if(count>0){
+								new SQLQueryBuilder(conn)
+										.update("comments")
+										.where("id=?", id)
+										.value("immediate_reply_count", count)
+										.executeNoResult();
+							}
+							offset++;
+						}while(res.next());
+					}
+				}
+			}
+			case 90 -> {
+				conn.createStatement().execute("""
+						CREATE TABLE `api_app_installs` (
+						  `user_id` int unsigned NOT NULL,
+						  `app_id` bigint unsigned NOT NULL,
+						  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						  PRIMARY KEY (`user_id`,`app_id`),
+						  KEY `app_id` (`app_id`),
+						  CONSTRAINT `api_app_installs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+						  CONSTRAINT `api_app_installs_ibfk_2` FOREIGN KEY (`app_id`) REFERENCES `api_applications` (`id`) ON DELETE CASCADE
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
 		}
 	}
 
@@ -1201,6 +1357,13 @@ public class DatabaseSchemaUpdater{
 		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_updated_foreign_topics_to_ap_ids AFTER UPDATE ON board_topics FOR EACH ROW BEGIN " +
 				"IF NEW.ap_id IS NOT NULL AND OLD.ap_id IS NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.BOARD_TOPIC.id).execute();
 		conn.createStatement().execute("CREATE TRIGGER delete_foreign_topics_from_ap_ids AFTER DELETE ON board_topics FOR EACH ROW BEGIN " +
+				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
+	}
+
+	private static void createApIdIndexTriggersForApps(DatabaseConnection conn) throws SQLException{
+		SQLQueryBuilder.prepareStatement(conn, "CREATE TRIGGER add_foreign_apps_to_ap_ids AFTER INSERT ON api_applications FOR EACH ROW BEGIN " +
+				"IF NEW.ap_id IS NOT NULL THEN INSERT IGNORE INTO ap_id_index (ap_id, object_type, object_id) VALUES (NEW.ap_id, ?, NEW.id); END IF; END;", ObjectLinkResolver.ObjectType.API_APPLICATION.id).execute();
+		conn.createStatement().execute("CREATE TRIGGER delete_foreign_apps_from_ap_ids AFTER DELETE ON api_applications FOR EACH ROW BEGIN " +
 				"IF OLD.ap_id IS NOT NULL THEN DELETE FROM ap_id_index WHERE ap_id=OLD.ap_id; END IF; END;");
 	}
 

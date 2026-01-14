@@ -181,7 +181,10 @@ public class AdminUsersRoutes{
 					model.with("inviter", ctx.getUsersController().getAccountOrThrow(account.inviterAccountID).user);
 				}catch(ObjectNotFoundException ignore){}
 			}
-			model.with("sessions", ctx.getUsersController().getAccountSessions(account));
+			List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(account, 0, 10000);
+			Set<Long> needApps=sessions.stream().map(OtherSession::appID).filter(id->id!=0).collect(Collectors.toSet());
+			model.with("sessions", sessions)
+					.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 		}else{
 			account=null;
 		}
@@ -232,7 +235,7 @@ public class AdminUsersRoutes{
 	public static Object endUserSession(Request req, Response resp, Account self, ApplicationContext ctx){
 		Account target=ctx.getUsersController().getAccountOrThrow(safeParseInt(req.queryParams("accountID")));
 		int sessionID=safeParseInt(req.queryParams("sessionID"));
-		List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(target);
+		List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(target, 0, 10000);
 		OtherSession sessionToRevoke=null;
 		for(OtherSession session:sessions){
 			if(session.id()==sessionID){
@@ -538,5 +541,25 @@ public class AdminUsersRoutes{
 		Lang l=lang(req);
 		String newUsername="id"+target.id;
 		return wrapConfirmation(req, resp, l.get("admin_reset_username_title"), l.get("admin_reset_username_confirm", Map.of("newUsername", newUsername)), "/users/"+target.id+"/adminChangeUsername?username="+newUsername);
+	}
+
+	public static Object recountFriends(Request req, Response resp, Account self, ApplicationContext ctx){
+		User target=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		Lang l=lang(req);
+		ctx.getModerationController().recountUserFriends(target);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).showSnackbar(l.get("admin_metrics_recounted"));
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object recountWall(Request req, Response resp, Account self, ApplicationContext ctx){
+		User target=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		Lang l=lang(req);
+		ctx.getModerationController().recountActorWallComments(target);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).showSnackbar(l.get("admin_metrics_recounted"));
+		resp.redirect(back(req));
+		return "";
 	}
 }

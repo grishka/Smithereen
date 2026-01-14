@@ -31,16 +31,14 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.controllers.WallController;
 import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorWithDescription;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
-import smithereen.model.UserBanInfo;
-import smithereen.model.UserBanStatus;
 import smithereen.model.groups.GroupAdmin;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -124,7 +122,7 @@ public class GroupsRoutes{
 	public static Object myManagedGroups(Request req, Response resp, Account self, ApplicationContext ctx){
 		jsLangKey(req, "cancel", "create");
 		RenderedTemplateResponse model=new RenderedTemplateResponse("groups", req).with("tab", "managed").with("title", lang(req).get("groups"));
-		model.paginate(ctx.getGroupsController().getUserManagedGroups(self.user, offset(req), 100)).with("owner", self.user);
+		model.paginate(ctx.getGroupsController().getUserManagedGroups(self.user, Group.AdminLevel.MODERATOR, false, offset(req), 100)).with("owner", self.user);
 		return model;
 	}
 
@@ -246,6 +244,7 @@ public class GroupsRoutes{
 			adminLevel=null;
 		}
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		HashSet<Long> needApps=new HashSet<>();
 
 		if(group.banInfo!=null && group.banInfo.message()!=null && adminLevel!=null && adminLevel.isAtLeast(Group.AdminLevel.MODERATOR)){
 			try{
@@ -265,10 +264,10 @@ public class GroupsRoutes{
 		}
 
 		// Public info: still visible for non-members in public groups
-		List<User> members=ctx.getGroupsController().getRandomMembersForProfile(group, false);
+		List<User> members=ctx.getUsersController().getUsersAsList(ctx.getGroupsController().getMembers(group, 0, 6, false, GroupsController.MemberSortOrder.RANDOM).list);
 		model.with("group", group).with("members", members);
 		if(group.isEvent())
-			model.with("tentativeMembers", ctx.getGroupsController().getRandomMembersForProfile(group, true));
+			model.with("tentativeMembers", ctx.getUsersController().getUsersAsList(ctx.getGroupsController().getMembers(group, 0, 6, true, GroupsController.MemberSortOrder.RANDOM).list));
 		model.with("title", group.name);
 		List<GroupAdmin> admins=ctx.getGroupsController().getAdmins(group);
 		model.with("canAccessContent", canAccessContent);
@@ -281,7 +280,7 @@ public class GroupsRoutes{
 			// Wall posts
 			if(group.wallState!=GroupFeatureState.DISABLED){
 				int offset=offset(req);
-				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, false, offset, 20));
+				PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, group, WallController.WallMode.ALL, offset, 20));
 				wallPostsCount=wall.total;
 				ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
 				CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
@@ -299,6 +298,7 @@ public class GroupsRoutes{
 						.with("canSeeOthersPosts", true);
 				model.with("postInteractions", interactions);
 				PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
+				PostViewModel.collectAppIDs(wall.list, needApps);
 				model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 			}
 
@@ -339,7 +339,8 @@ public class GroupsRoutes{
 
 		Map<Integer, User> users=ctx.getUsersController().getUsers(needUsers);
 		model.with("users", users)
-				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups));
+				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 
 		model.with("admins", admins.stream().map(a->Map.of("user", users.get(a.userID), "title", a.title==null ? "" : a.title)).toList());
 
@@ -427,7 +428,7 @@ public class GroupsRoutes{
 
 	public static Object leave(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
-		ctx.getGroupsController().leaveGroup(group, self.user);
+		ctx.getGroupsController().leaveGroup(group, self.user, false);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
@@ -491,7 +492,7 @@ public class GroupsRoutes{
 			message=lang(req).get(group.isEvent() ? "event_info_updated" : "group_info_updated");
 		}catch(BadRequestException x){
 			LOG.debug("Bad request when saving group info", x);
-			message=x.getMessage();
+			message=lang(req).get(x.getMessage());
 		}
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).show("formMessage_groupEdit").setContent("formMessage_groupEdit", message);
@@ -517,12 +518,14 @@ public class GroupsRoutes{
 		SessionInfo info=sessionInfo(req);
 		ctx.getPrivacyController().enforceUserAccessToGroupProfile(info!=null && info.account!=null ? info.account.user : null, group);
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "user_grid" : "content_wrap", req);
-		PaginatedList<Integer> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative);
+		PaginatedList<Integer> members=context(req).getGroupsController().getMembers(group, offset(req), 100, tentative, GroupsController.MemberSortOrder.ID_ASC);
 		model.paginate(members);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(members.list);
 		model.with("users", users);
 		model.with("summary", lang(req).get(tentative ? "summary_event_X_tentative_members" : (group.isEvent() ? "summary_event_X_members" : "summary_group_X_members"), Map.of("count", tentative ? group.tentativeMemberCount : group.memberCount)));
-		model.with("contentTemplate", "user_grid").with("title", group.name);
+		model.with("contentTemplate", "user_grid")
+				.with("title", group.name)
+				.with("emptyMessage", lang(req).get(group.isEvent() ? "event_no_members" : "group_no_members"));
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		if(!isMobile(req)){
@@ -545,7 +548,8 @@ public class GroupsRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("actor_list", req);
 		List<GroupAdmin> admins=ctx.getGroupsController().getAdmins(group);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(admins.stream().map(a->a.userID).toList());
-		model.with("actors", admins.stream().map(a->new ActorWithDescription(users.get(a.userID), a.title)).collect(Collectors.toList()));
+		model.with("actors", admins.stream().map(a->new ActorWithDescription(users.get(a.userID), a.title)).collect(Collectors.toList()))
+				.with("emptyMessage", lang(req).get(group.isEvent() ? "event_no_admins" : "group_no_admins"));
 		if(group instanceof ForeignGroup)
 			model.with("noindex", true);
 		if(isAjax(req)){
@@ -572,7 +576,7 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_members", req);
-		PaginatedList<Integer> ids=ctx.getGroupsController().getAllMembers(group, offset(req), 100);
+		PaginatedList<Integer> ids=ctx.getGroupsController().getAllMembers(group, offset(req), 100, GroupsController.MemberSortOrder.TIME_ASC);
 		Map<Integer, User> users=ctx.getUsersController().getUsers(ids.list);
 		model.paginate(new PaginatedList<User>(ids, ids.list.stream().map(users::get).toList()));
 		model.with("group", group).with("title", group.name);
@@ -663,7 +667,7 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.MODERATOR);
 		Group.AdminLevel level=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_blocking", req).with("title", lang(req).get("settings_blocking"));
-		model.with("blockedUsers", ctx.getGroupsController().getBlockedUsers(group));
+		model.with("blockedUsers", ctx.getGroupsController().getBlockedUsers(group, 0, 1000).list);
 		model.with("blockedDomains", ctx.getGroupsController().getBlockedDomains(group));
 		model.with("group", group);
 		model.with("adminLevel", level);

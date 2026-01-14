@@ -1,0 +1,18 @@
+{% extends "page" %}
+{% block content %}
+{% if not isMobile %}
+<div class="summaryWrap">
+	<div class="summary">{{ app.name }}</div>
+</div>
+{% endif %}
+<div class="singleColumn">
+	<div class="emptyState"><span>{{ L('apps_standalone_placeholder', {'appName': app.name}) }}</span></div>
+</div>
+{% if not app.local %}
+<div class="bottomSummaryWrap">
+	<div class="bottomSummary">
+		<a href="{{ app.apID }}" target="_blank">{{ L('open_on_server_X', {'domain': app.domain}) }}</a>
+	</div>
+</div>
+{% endif %}
+{% endblock %}

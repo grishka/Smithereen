@@ -37,6 +37,7 @@ import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
+import smithereen.model.PaginatedList;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.MessagesPrivacyGrant;
@@ -196,6 +197,9 @@ public class PrivacyController{
 	}
 
 	public boolean checkUserPrivacy(@Nullable User self, @NotNull User owner, @NotNull UserPrivacySettingKey key){
+		// Unconditionally deny any active actions to blocked users
+		if(!key.isForViewing() && self!=null && isUserBlocked(self, owner))
+			return false;
 		boolean r=checkUserPrivacy(self, owner, owner.getPrivacySetting(key));
 		if(key==UserPrivacySettingKey.PRIVATE_MESSAGES && !r && self!=null){
 			try{
@@ -250,6 +254,8 @@ public class PrivacyController{
 	}
 
 	public void enforceUserPrivacy(@Nullable User self, @NotNull User owner, @NotNull PrivacySetting setting, boolean forViewing){
+		if(!forViewing && self!=null && isUserBlocked(self, owner))
+			throw new UserActionNotAllowedException();
 		if(!checkUserPrivacy(self, owner, setting))
 			throw forViewing ? new UserContentUnavailableException() : new UserActionNotAllowedException();
 	}
@@ -352,8 +358,6 @@ public class PrivacyController{
 		}catch(Exception x){
 			throw new UserActionNotAllowedException("This object is in a "+group.accessType.toString().toLowerCase()+" group. Valid member HTTP signature is required.", x);
 		}
-		if(!(signer instanceof ForeignUser user))
-			throw new UserActionNotAllowedException("HTTP signature is valid but actor has wrong type: "+signer.getType());
 		if(group instanceof ForeignGroup foreignGroup){
 			String authHeader=req.headers("Authorization");
 			if(StringUtils.isEmpty(authHeader))
@@ -369,11 +373,11 @@ public class PrivacyController{
 			}catch(JsonParseException x){
 				throw new BadRequestException("Can't parse actor token: "+x.getMessage(), x);
 			}
-			ActivityPub.verifyActorToken(token, user, foreignGroup);
+			ActivityPub.verifyActorToken(token, signer, foreignGroup);
 		}else{
 			try{
-				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, user.domain))
-					throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+TextProcessor.escapeHTML(user.activityPubID.toString())+" is not its member");
+				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, signer.domain))
+					throw new UserActionNotAllowedException("HTTP signature is valid, but this object is in a "+group.accessType.toString().toLowerCase()+" group and "+TextProcessor.escapeHTML(signer.activityPubID.toString())+" is not its member");
 			}catch(SQLException x){
 				throw new InternalServerErrorException(x);
 			}
@@ -381,8 +385,26 @@ public class PrivacyController{
 		LOG.trace("Actor {} was allowed to access object {} in a {} group {}", signer.activityPubID, req.pathInfo(), group.accessType, group.activityPubID);
 	}
 
+	public void enforceGroupProfileAccess(@NotNull spark.Request req, @NotNull Group group){
+		try{
+			if(group.accessType==Group.AccessType.PRIVATE){
+				Actor requester;
+				try{
+					requester=ActivityPub.verifyHttpSignature(req, null);
+				}catch(Exception x){
+					throw new UserActionNotAllowedException("This is a private group. Valid HTTP signature of a group member or invitee is required.", x);
+				}
+				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, requester.domain) && !GroupStorage.areThereGroupInvitationsWithDomain(group.id, requester.domain))
+					throw new UserActionNotAllowedException("This is a private group and there are no "+requester.domain+" members or invitees in it.");
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public boolean isUserBlocked(User self, Actor target){
 		try{
+			// TODO cache
 			if(target instanceof User user){
 				if(self instanceof ForeignUser && UserStorage.isDomainBlocked(user.id, self.domain))
 					return true;
@@ -522,9 +544,11 @@ public class PrivacyController{
 			for(UserPrivacySettingKey key:affectedUserSettings){
 				settingsToBeUpdated.add(owner.privacySettings.get(key));
 			}
+			HashMap<Long, PrivacySetting> albumOldViewSettings=new HashMap<>();
 			for(PhotoAlbum album:affectedPhotoAlbums){
 				settingsToBeUpdated.add(album.viewPrivacy);
 				settingsToBeUpdated.add(album.commentPrivacy);
+				albumOldViewSettings.put(album.id, new PrivacySetting(album.viewPrivacy));
 			}
 			for(PrivacySetting ps:settingsToBeUpdated){
 				ps.allowListUsers=Set.of();
@@ -539,16 +563,16 @@ public class PrivacyController{
 			}
 			for(PhotoAlbum album:affectedPhotoAlbums){
 				PhotoStorage.updateUserAlbumPrivacy(album.id, album.viewPrivacy, album.commentPrivacy);
-				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album);
+				context.getActivityPubWorker().sendUpdatePhotoAlbum(owner, album, albumOldViewSettings.get(album.id));
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public List<User> getBlockedUsers(User self){
+	public PaginatedList<User> getBlockedUsers(User self, int offset, int count){
 		try{
-			return UserStorage.getBlockedUsers(self.id);
+			return UserStorage.getBlockedUsers(self.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -557,6 +581,27 @@ public class PrivacyController{
 	public List<String> getBlockedDomains(User self){
 		try{
 			return UserStorage.getBlockedDomains(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void blockDomain(User self, String domain){
+		try{
+			if(domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$")){
+				if(UserStorage.isDomainBlocked(self.id, domain))
+					throw new UserErrorException("err_domain_already_blocked");
+				UserStorage.blockDomain(self.id, domain);
+			}
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void unblockDomain(User self, String domain){
+		try{
+			if(StringUtils.isNotEmpty(domain))
+				UserStorage.unblockDomain(self.id, domain);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

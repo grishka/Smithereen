@@ -152,34 +152,39 @@ public class RenderAttachmentsFunction implements Function{
 			type=SizedImage.Type.PHOTO_SMALL;
 		}
 
-		String styleAttr=null;
+		List<String> imgAttrs=null;
+		ArrayList<String> attrs=new ArrayList<>();
 		if(StringUtils.isNotEmpty(photo.blurHash)){
-			styleAttr=String.format(Locale.US, "background-color: #%06X", BlurHash.decodeToSingleColor(photo.blurHash));
+			imgAttrs=List.of(
+					String.format(Locale.US, "style=\"background-color: #%06X\"", BlurHash.decodeToSingleColor(photo.blurHash)),
+					"data-blurhash=\""+photo.blurHash+"\""
+			);
 		}
 
 		if(photo instanceof GraffitiAttachment ga){
 			URI full=photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.PNG);
 			String href=overrideLinks!=null ? overrideLinks : full.toString();
-			String attrs;
 			if(overrideLinks!=null){
-				attrs="target=\"_blank\"";
+				attrs.add("target=\"_blank\"");
 			}else{
-				attrs="data-box-title=\""+TextProcessor.escapeHTML(ga.boxTitle)+"\" onclick=\"return showGraffitiBox(this)\"";
+				attrs.add("data-box-title=\""+TextProcessor.escapeHTML(ga.boxTitle)+"\"");
+				attrs.add("onclick=\"return showGraffitiBox(this)\"");
 			}
-			lines.add("<a class=\"graffiti\" href=\""+href+"\" "+attrs+"><img src=\""+full+"\" width=\""+GraffitiAttachment.WIDTH+"\" height=\""+GraffitiAttachment.HEIGHT+"\"/></a>");
+			lines.add("<a class=\"graffiti\" href=\""+href+"\" "+String.join(" ", attrs)+"><img src=\""+full+"\" width=\""+GraffitiAttachment.WIDTH+"\" height=\""+GraffitiAttachment.HEIGHT+"\"/></a>");
 		}else{
 			String href=overrideLinks!=null ? overrideLinks : Objects.toString(photo.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.JPEG));
-			String attrs;
 			if(overrideLinks!=null){
-				attrs="target=\"_blank\"";
+				attrs.add("target=\"_blank\"");
 			}else{
 				PhotoViewerInlineData data=new PhotoViewerInlineData(index, photoList, photo.image.getURLsForPhotoViewer());
-				attrs="onclick=\"return openPhotoViewer(this)\" data-pv=\""+TextProcessor.escapeHTML(Utils.gson.toJson(data))+"\" data-pv-ctx=\""+photoList+"\"";
+				attrs.add("onclick=\"return openPhotoViewer(this)\"");
+				attrs.add("data-pv=\""+TextProcessor.escapeHTML(Utils.gson.toJson(data))+"\"");
+				attrs.add("data-pv-ctx=\""+photoList+"\"");
 				if(listGetURL!=null){
-					attrs+=" data-pv-url=\""+listGetURL+"\"";
+					attrs.add("data-pv-url=\""+listGetURL+"\"");
 				}
 			}
-			lines.add("<a class=\"photo\" href=\""+href+"\" "+attrs+">"+photo.image.generateHTML(type, null, styleAttr, 0, 0, true, photo.description)+"</a>");
+			lines.add("<a class=\"photo\" href=\""+href+"\" "+String.join(" ", attrs)+">"+photo.image.generateHTML(type, null, imgAttrs, 0, 0, true, photo.description)+"</a>");
 		}
 	}
 

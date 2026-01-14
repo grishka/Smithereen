@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
@@ -25,13 +26,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
-import smithereen.SmithereenApplication;
 import smithereen.Utils;
 import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.LocalImage;
@@ -44,30 +46,28 @@ import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.model.Account;
 import smithereen.model.ActorStatus;
+import smithereen.model.ForeignGroup;
+import smithereen.model.ForeignUser;
+import smithereen.model.Group;
 import smithereen.model.OwnedContentObject;
-import smithereen.model.UserBanInfo;
-import smithereen.model.UserBanStatus;
+import smithereen.model.PaginatedList;
+import smithereen.model.User;
+import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.admin.AuditLogEntry;
 import smithereen.model.admin.GroupActionLogAction;
+import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FriendshipStatus;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupBanInfo;
 import smithereen.model.groups.GroupBanStatus;
+import smithereen.model.groups.GroupFeatureState;
+import smithereen.model.groups.GroupInvitation;
 import smithereen.model.groups.GroupLink;
 import smithereen.model.groups.GroupLinkParseResult;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.EventReminder;
-import smithereen.model.ForeignGroup;
-import smithereen.model.ForeignUser;
-import smithereen.model.friends.FriendshipStatus;
-import smithereen.model.Group;
-import smithereen.model.groups.GroupAdmin;
-import smithereen.model.groups.GroupInvitation;
-import smithereen.model.PaginatedList;
-import smithereen.model.User;
-import smithereen.model.notifications.UserNotifications;
-import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.feed.NewsfeedEntry;
-import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.notifications.RealtimeNotification;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.FederationStorage;
 import smithereen.storage.GroupStorage;
@@ -75,12 +75,11 @@ import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.NotificationsStorage;
-import smithereen.storage.SessionStorage;
-import smithereen.storage.UserStorage;
 import smithereen.storage.utils.IntPair;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
+import smithereen.util.FloodControl;
 import smithereen.util.MaintenanceScheduler;
 import spark.utils.StringUtils;
 
@@ -114,7 +113,12 @@ public class GroupsController{
 				throw new BadRequestException("name is empty");
 			if(isEvent && startTime==null)
 				throw new BadRequestException("start time is required for event");
-			int id=GroupStorage.createGroup(name, TextProcessor.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
+			FloodControl.GROUP_CREATE.incrementOrThrow(admin);
+			if(startTime!=null)
+				startTime=startTime.truncatedTo(ChronoUnit.MINUTES);
+			if(endTime!=null)
+				endTime=endTime.truncatedTo(ChronoUnit.MINUTES);
+			int id=GroupStorage.createGroup(name, description==null ? null : TextProcessor.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
 			Group group=Objects.requireNonNull(GroupStorage.getById(id));
 			context.getActivityPubWorker().sendAddToGroupsCollectionActivity(admin, group, false);
 			context.getNewsfeedController().putFriendsFeedEntry(admin, group.id, isEvent ? NewsfeedEntry.Type.CREATE_EVENT : NewsfeedEntry.Type.CREATE_GROUP);
@@ -132,9 +136,9 @@ public class GroupsController{
 		}
 	}
 
-	public PaginatedList<Group> getUserManagedGroups(@NotNull User user, int offset, int count){
+	public PaginatedList<Group> getUserManagedGroups(@NotNull User user, Group.AdminLevel minLevel, boolean events, int offset, int count){
 		try{
-			return GroupStorage.getUserManagedGroups(user.id, offset, count);
+			return GroupStorage.getUserManagedGroups(user.id, minLevel, events, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -148,6 +152,7 @@ public class GroupsController{
 		}
 	}
 
+	@NotNull
 	public Group getGroupOrThrow(int id){
 		try{
 			if(id<=0)
@@ -176,6 +181,16 @@ public class GroupsController{
 		}
 	}
 
+	public Map<String, Integer> getGroupIDsByUsernames(Collection<String> usernames){
+		if(usernames.isEmpty())
+			return Map.of();
+		try{
+			return GroupStorage.getIdsByUsernames(usernames);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public List<Group> getGroupsByIdAsList(Collection<Integer> ids){
 		if(ids.isEmpty())
 			return List.of();
@@ -196,22 +211,38 @@ public class GroupsController{
 		}
 	}
 
-	public PaginatedList<Integer> getMembers(@NotNull Group group, int offset, int count, boolean tentative){
+	public PaginatedList<Integer> getMembers(@NotNull Group group, int offset, int count, boolean tentative, MemberSortOrder order){
 		try{
-			return GroupStorage.getMembers(group.id, offset, count, tentative);
+			if(order==MemberSortOrder.RANDOM)
+				return new PaginatedList<>(GroupStorage.getRandomMembers(group.id, tentative, count), tentative ? group.tentativeMemberCount : group.memberCount, 0, count);
+			return GroupStorage.getMembers(group.id, offset, count, tentative, order);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public PaginatedList<Integer> getAllMembers(@NotNull Group group, int offset, int count){
+	public PaginatedList<Integer> getAllMembers(@NotNull Group group, int offset, int count, MemberSortOrder order){
 		try{
-			return GroupStorage.getMembers(group.id, offset, count, null);
+			if(order==MemberSortOrder.RANDOM)
+				return new PaginatedList<>(GroupStorage.getRandomMembers(group.id, null, count), group.tentativeMemberCount+group.memberCount, 0, count);
+			return GroupStorage.getMembers(group.id, offset, count, null, order);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
+	public PaginatedList<Integer> getFriendsMembers(@NotNull Group group, int offset, int count, boolean tentative, MemberSortOrder order, @NotNull User user){
+		try{
+			if(order==MemberSortOrder.RANDOM)
+				return new PaginatedList<>(GroupStorage.getRandomFriendsMembers(group.id, tentative, count, user.id), tentative ? group.tentativeMemberCount : group.memberCount, 0, count);
+			return GroupStorage.getFriendsMembers(group.id, offset, count, tentative, order, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	@NotNull
+	@Unmodifiable
 	public List<GroupAdmin> getAdmins(@NotNull Group group){
 		try{
 			return GroupStorage.getGroupAdmins(group.id);
@@ -228,14 +259,6 @@ public class GroupsController{
 		}
 	}
 
-	public List<User> getRandomMembersForProfile(@NotNull Group group, boolean tentative){
-		try{
-			return GroupStorage.getRandomMembersForProfile(group.id, tentative);
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
 	@NotNull
 	public Group.AdminLevel getMemberAdminLevel(@NotNull Group group, @NotNull User user){
 		try{
@@ -245,10 +268,40 @@ public class GroupsController{
 		}
 	}
 
+	public Map<Integer, Group.AdminLevel> getMemberAdminLevels(Collection<Group> groups, User user){
+		if(groups.isEmpty())
+			return Map.of();
+		try{
+			return GroupStorage.getGroupMemberAdminLevels(groups.stream().map(g->g.id).collect(Collectors.toSet()), user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	@NotNull
 	public Group.MembershipState getUserMembershipState(@NotNull Group group, @NotNull User user){
 		try{
 			return GroupStorage.getUserMembershipState(group.id, user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, Group.MembershipState> getUserMembershipStates(Collection<Group> groups, User user){
+		if(groups.isEmpty())
+			return Map.of();
+		try{
+			return GroupStorage.getUserMembershipStates(groups.stream().map(g->g.id).collect(Collectors.toSet()), user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, Group.MembershipState> getMembershipStates(Collection<Integer> userIDs, Group group, boolean needInvites){
+		if(userIDs.isEmpty())
+			return Map.of();
+		try{
+			return GroupStorage.getMembershipStates(group.id, userIDs, needInvites);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -327,10 +380,10 @@ public class GroupsController{
 	}
 
 	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative){
-		joinGroup(group, user, tentative, false);
+		joinGroup(group, user, tentative, false, false);
 	}
 
-	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative, boolean forceAccepted){
+	public void joinGroup(@NotNull Group group, @NotNull User user, boolean tentative, boolean forceAccepted, boolean ignoreIfMember){
 		try{
 			if(!forceAccepted)
 				Utils.ensureUserNotBlocked(user, group);
@@ -351,11 +404,15 @@ public class GroupsController{
 					if((state==Group.MembershipState.MEMBER && !tentative) || (state==Group.MembershipState.TENTATIVE_MEMBER && tentative) || state==Group.MembershipState.REQUESTED){
 						if(forceAccepted)
 							return;
+						if(ignoreIfMember)
+							return;
 						throw new UserErrorException("err_group_already_member");
 					}
 				}else{
 					if(state==Group.MembershipState.MEMBER || state==Group.MembershipState.TENTATIVE_MEMBER || state==Group.MembershipState.REQUESTED){
 						if(forceAccepted)
+							return;
+						if(ignoreIfMember)
 							return;
 						throw new UserErrorException("err_group_already_member");
 					}
@@ -400,12 +457,14 @@ public class GroupsController{
 		}
 	}
 
-	public void leaveGroup(@NotNull Group group, @NotNull User user){
+	public void leaveGroup(@NotNull Group group, @NotNull User user, boolean ignoreIfNonMember){
 		try{
 			Group.MembershipState state;
 			synchronized(groupMembershipLock){
 				state=GroupStorage.getUserMembershipState(group.id, user.id);
 				if(state!=Group.MembershipState.MEMBER && state!=Group.MembershipState.TENTATIVE_MEMBER && state!=Group.MembershipState.REQUESTED){
+					if(ignoreIfNonMember)
+						return;
 					throw new UserErrorException("err_group_not_member");
 				}
 				GroupStorage.leaveGroup(group, user.id, state==Group.MembershipState.TENTATIVE_MEMBER, state!=Group.MembershipState.REQUESTED);
@@ -691,8 +750,9 @@ public class GroupsController{
 		try{
 			Group.AdminLevel oldLevel=getMemberAdminLevel(group, user);
 			GroupStorage.addOrUpdateGroupAdmin(group.id, user.id, title, level);
-			if(oldLevel!=level)
+			if(level!=null && oldLevel!=level)
 				ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, self.id, Map.of("user", user.id, "old", oldLevel.toString(), "new", level.toString()));
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -703,6 +763,7 @@ public class GroupsController{
 			Group.AdminLevel oldLevel=getMemberAdminLevel(group, user);
 			GroupStorage.removeGroupAdmin(group.id, user.id);
 			ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, self.id, Map.of("user", user.id, "old", oldLevel.toString(), "new", Group.AdminLevel.REGULAR.toString()));
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -711,14 +772,15 @@ public class GroupsController{
 	public void setAdminOrder(Group group, User user, int order){
 		try{
 			GroupStorage.setGroupAdminOrder(group.id, user.id, order);
+			context.getActivityPubWorker().sendUpdateGroupActivity(group);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
 	}
 
-	public List<User> getBlockedUsers(Group group){
+	public PaginatedList<User> getBlockedUsers(Group group, int offset, int count){
 		try{
-			return GroupStorage.getBlockedUsers(group.id);
+			return GroupStorage.getBlockedUsers(group.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -770,6 +832,17 @@ public class GroupsController{
 			GroupStorage.unblockUser(group.id, user.id);
 			if(user instanceof ForeignUser fu)
 				context.getActivityPubWorker().sendUndoBlockActivity(group, fu);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Set<Integer> getBlockingGroups(User self, Set<Integer> groupIDs){
+		// TODO cache
+		if(groupIDs.isEmpty())
+			return Set.of();
+		try{
+			return GroupStorage.getBlockingGroups(self.id, groupIDs);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -860,7 +933,7 @@ public class GroupsController{
 	public GroupLinkParseResult parseLink(URI url, User self, Group group){
 		ObjectLinkResolver.ObjectTypeAndID apObject;
 		try{
-			Object apObj=context.getObjectLinkResolver().resolveNative(url, Object.class, true, true, false, (JsonObject) null, false, true);
+			Object apObj=context.getObjectLinkResolver().resolveNative(url, Object.class, true, true, false, (JsonObject) null, false, true, true);
 			switch(apObj){
 				case OwnedContentObject oco -> context.getPrivacyController().enforceObjectPrivacy(self, oco);
 				case Group g -> context.getPrivacyController().enforceUserAccessToGroupProfile(self, g);
@@ -893,7 +966,7 @@ public class GroupsController{
 				}
 				return new GroupLinkParseResult(null, title, imageURL, image);
 			}else{
-				throw new UserErrorException("group_link_error");
+				throw new UserErrorException("group_link_error", x);
 			}
 		}catch(Exception x){
 			if(url.getHost()!=null && Config.isLocal(url)){ // Explicitly allow any local links
@@ -1024,10 +1097,26 @@ public class GroupsController{
 		}
 	}
 
+	public int getLocalGroupCount(){
+		try{
+			return GroupStorage.getLocalGroupCount();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public enum EventsType{
 		FUTURE,
 		PAST,
 		ALL
+	}
+
+	public enum MemberSortOrder{
+		ID_ASC,
+		ID_DESC,
+		RANDOM,
+		TIME_ASC,
+		TIME_DESC
 	}
 
 	private record PendingHintsRankIncrement(int userID, int groupID, int amount){}

@@ -1,5 +1,7 @@
 package smithereen.model;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.net.URI;
 
 import smithereen.Config;
@@ -8,7 +10,9 @@ import smithereen.storage.MediaCache;
 
 public final class CachedRemoteImage extends RemoteImage{
 
-	private Dimensions dimensions;
+	@NotNull
+	private final Dimensions dimensions;
+
 	public final String cacheKey;
 	private float[] cropRegion;
 
@@ -30,7 +34,8 @@ public final class CachedRemoteImage extends RemoteImage{
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
+	@NotNull
+	public URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback){
 		ImgProxy.UrlBuilder builder=new ImgProxy.UrlBuilder("local://"+Config.imgproxyLocalMediaCache+"/"+cacheKey+".webp")
 				.resize(size.getMaxWidth(), size.getMaxHeight())
 				.format(format)
@@ -54,6 +59,7 @@ public final class CachedRemoteImage extends RemoteImage{
 	}
 
 	@Override
+	@NotNull
 	public Dimensions getOriginalDimensions(){
 		return dimensions;
 	}

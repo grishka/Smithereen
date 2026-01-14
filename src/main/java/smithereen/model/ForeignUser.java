@@ -5,6 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,7 +36,7 @@ import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
 
-	private URI wall, friends, groups, photoAlbums, taggedPhotos, wallComments, pinnedPosts;
+	private URI wall, friends, groups, photoAlbums, taggedPhotos, wallComments, pinnedPosts, apps;
 	public URI movedToURL;
 	public boolean isServiceActor;
 
@@ -71,6 +74,7 @@ public class ForeignUser extends User implements ForeignActor{
 		photoAlbums=tryParseURL(ep.photoAlbums);
 		taggedPhotos=tryParseURL(ep.taggedPhotos);
 		pinnedPosts=tryParseURL(ep.pinnedPosts);
+		apps=tryParseURL(ep.apps);
 	}
 
 	@Override
@@ -202,6 +206,11 @@ public class ForeignUser extends User implements ForeignActor{
 			}
 		}
 
+		if(optBoolean(obj, "indexable"))
+			flags|=FLAG_IDEXABLE;
+		if(optBoolean(obj, "discoverable"))
+			flags|=FLAG_DISCOVERABLE;
+
 		activities=optString(obj, "activities");
 		interests=optString(obj, "interests");
 		favoriteMusic=optString(obj, "favoriteMusic");
@@ -268,12 +277,17 @@ public class ForeignUser extends User implements ForeignActor{
 			contacts=new HashMap<>();
 			for(ActivityPubObject att:attachment){
 				if(att instanceof PropertyValue pv && pv.name!=null){
-					// Get rid of Mastodon :emojis: and non-ASCII characters
-					String normalizedName=pv.name.toLowerCase().replaceAll(":[a-z0-9_]{2,}:", "").replaceAll("[^a-z0-9 -]", "").trim();
+					// Get rid of Mastodon :emojis:
+					String nameWithoutEmojis=removeCustomEmojis(pv.name);
+					// and non-ASCII characters
+					String normalizedName=nameWithoutEmojis.replaceAll("[^a-z0-9 -]", "").trim();
 					// Match against popular strings people use for these things
 					if(WEBSITE_FIELD_KEYS.contains(normalizedName)){
 						website=TextProcessor.stripHTML(pv.value, false);
 						continue;
+					}
+					if(gender==Gender.UNKNOWN){
+						gender=tryParseGender(nameWithoutEmojis, pv.value);
 					}
 					ContactInfoKey contactKey=switch(normalizedName){
 						case "matrix" -> ContactInfoKey.MATRIX;
@@ -376,6 +390,22 @@ public class ForeignUser extends User implements ForeignActor{
 		return this;
 	}
 
+	@NotNull
+	private static String removeCustomEmojis(@NotNull String s){
+		return s.toLowerCase().replaceAll(":[a-z0-9_]{2,}:", "");
+	}
+
+	@NotNull
+	private static Gender tryParseGender(@NotNull String nameWithoutEmojis, @Nullable String value){
+		if(value==null) return Gender.UNKNOWN;
+		if(!GENDER_FIELD_KEYS.contains(nameWithoutEmojis.trim())) return Gender.UNKNOWN;
+		String normalizedValue=removeCustomEmojis(TextProcessor.stripHTML(value, false)).trim();
+		if(GENDER_FIELD_MALE_VALUES.contains(normalizedValue)) return Gender.MALE;
+		if(GENDER_FIELD_FEMALE_VALUES.contains(normalizedValue)) return Gender.FEMALE;
+		if(GENDER_FIELD_OTHER_VALUES.contains(normalizedValue)) return Gender.OTHER;
+		return Gender.UNKNOWN;
+	}
+
 	@Override
 	public String getFullUsername(){
 		return username+"@"+domain;
@@ -427,6 +457,11 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
+	public URI getAppsURL(){
+		return apps;
+	}
+
+	@Override
 	protected NonCachedRemoteImage.Args getAvatarArgs(){
 		return new NonCachedRemoteImage.UserProfilePictureArgs(id);
 	}
@@ -447,6 +482,8 @@ public class ForeignUser extends User implements ForeignActor{
 			ep.taggedPhotos=taggedPhotos.toString();
 		if(pinnedPosts!=null)
 			ep.pinnedPosts=pinnedPosts.toString();
+		if(apps!=null)
+			ep.apps=apps.toString();
 		return ep;
 	}
 

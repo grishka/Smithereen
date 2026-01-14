@@ -25,7 +25,9 @@ import java.util.regex.Pattern;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
+import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
+import smithereen.activitypub.objects.ActivityPubApplication;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.ActivityPubPhoto;
@@ -45,6 +47,7 @@ import smithereen.model.ActorStatus;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.groups.GroupAdmin;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -80,12 +83,14 @@ public class ObjectLinkResolver{
 	private static final Pattern PHOTOS=Pattern.compile("^/photos/([a-zA-Z0-9_-]+)$");
 	private static final Pattern COMMENTS=Pattern.compile("^/comments/([a-zA-Z0-9_-]+)$");
 	private static final Pattern TOPICS=Pattern.compile("^/topics/([a-zA-Z0-9_-]+)$");
+	private static final Pattern APPS=Pattern.compile("^/apps/(\\d+)$");
 	private static final Pattern LOCAL_USERNAME=Pattern.compile("^/([a-zA-Z][a-zA-Z0-9._-]+)$");
 
 	private static final Logger LOG=LoggerFactory.getLogger(ObjectLinkResolver.class);
 
 	private final HashMap<URI, ActorToken> actorTokensCache=new HashMap<>();
 	private final NamedMutexCollection actorTokenMutexes=new NamedMutexCollection();
+	private final NamedMutexCollection objectFetchMutexes=new NamedMutexCollection();
 	private final LruCache<URI, ForeignUser> serviceActorCache=new LruCache<>(200);
 
 	private final ApplicationContext context;
@@ -152,7 +157,7 @@ public class ObjectLinkResolver{
 	@NotNull
 	public <T extends ActivityPubObject> T resolve(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, Actor owner, boolean bypassCollectionCheck){
 		JsonObject actorToken=null;
-		if(!Config.isLocal(_link) && owner instanceof Group g && g.accessType!=Group.AccessType.OPEN){
+		if(!Config.isLocal(_link) && owner instanceof Group g && g.accessType!=Group.AccessType.OPEN && !Utils.uriHostMatches(_link, owner.activityPubID)){
 			actorToken=getActorToken(ServiceActor.getInstance(), g);
 		}
 		return resolve(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck);
@@ -169,11 +174,11 @@ public class ObjectLinkResolver{
 
 	@NotNull
 	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck){
-		return resolveNative(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck, false);
+		return resolveNative(_link, expectedType, allowFetching, allowStorage, forceRefetch, actorToken, bypassCollectionCheck, false, true);
 	}
 
 	@NotNull
-	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck, boolean acceptHTML){
+	public <T> T resolveNative(URI _link, Class<T> expectedType, boolean allowFetching, boolean allowStorage, boolean forceRefetch, JsonObject actorToken, boolean bypassCollectionCheck, boolean acceptHTML, boolean enforceContentType){
 		LOG.debug("Resolving ActivityPub link: {}, expected type: {}, allow storage {}, force refetch {}", _link, expectedType.getName(), allowStorage, forceRefetch);
 		URI link;
 		if("bear".equals(_link.getScheme())){
@@ -181,46 +186,55 @@ public class ObjectLinkResolver{
 		}else{
 			link=_link;
 		}
-		if(!forceRefetch || Config.isLocal(link)){
-			if(allowFetching){
-				try{
+		String mutexID=link.toString();
+		if(allowFetching && allowStorage && !forceRefetch)
+			objectFetchMutexes.acquire(mutexID);
+		try{
+			if(!forceRefetch || Config.isLocal(link)){
+				if(allowFetching){
+					try{
+						return resolveLocally(link, expectedType);
+					}catch(ObjectNotFoundException ignore){}
+				}else{
 					return resolveLocally(link, expectedType);
-				}catch(ObjectNotFoundException ignore){}
-			}else{
-				return resolveLocally(link, expectedType);
-			}
-		}
-		if(!Config.isLocal(link)){
-			if(allowFetching){
-				try{
-					ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context, acceptHTML);
-					if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
-						User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
-						if(author.banStatus==UserBanStatus.SUSPENDED)
-							throw new ObjectNotFoundException("Post author is suspended on this server");
-						return ensureTypeAndCast(obj, expectedType);
-					}
-					T o=convertToNativeObject(obj, expectedType);
-					if(!bypassCollectionCheck){ // TODO make this a generalized interface OwnedObject or something
-						if(o instanceof Post post && obj.inReplyTo==null && post.ownerID!=post.authorID){
-							Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
-							ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
-						}
-					}
-					if(o instanceof Post post){
-						User author=context.getUsersController().getUserOrThrow(post.authorID);
-						if(author.banStatus==UserBanStatus.SUSPENDED)
-							throw new ObjectNotFoundException("Post author is suspended on this server");
-					}
-					if(allowStorage)
-						storeOrUpdateRemoteObject(o, obj);
-					return o;
-				}catch(IOException x){
-					throw new ObjectNotFoundException("Can't resolve remote object: "+link, x);
 				}
 			}
-			throw new ObjectNotFoundException("Can't resolve remote object locally: "+link);
+			if(!Config.isLocal(link)){
+				if(allowFetching){
+					try{
+						ActivityPubObject obj=ActivityPub.fetchRemoteObject(_link, null, actorToken, context, acceptHTML, enforceContentType);
+						if(obj instanceof NoteOrQuestion noq && !allowStorage && expectedType.isAssignableFrom(NoteOrQuestion.class)){
+							User author=resolve(noq.attributedTo, User.class, allowFetching, true, false);
+							if(author.banStatus==UserBanStatus.SUSPENDED)
+								throw new ObjectNotFoundException("Post author is suspended on this server");
+							return ensureTypeAndCast(obj, expectedType);
+						}
+						T o=convertToNativeObject(obj, expectedType);
+						if(!bypassCollectionCheck){ // TODO make this a generalized interface OwnedObject or something
+							if(o instanceof Post post && obj.inReplyTo==null && post.ownerID!=post.authorID){
+								Actor owner=context.getWallController().getContentAuthorAndOwner(post).owner();
+								ensureObjectIsInCollection(owner, owner.getWallURL(), post.getActivityPubID());
+							}
+						}
+						if(o instanceof Post post){
+							User author=context.getUsersController().getUserOrThrow(post.authorID);
+							if(author.banStatus==UserBanStatus.SUSPENDED)
+								throw new ObjectNotFoundException("Post author is suspended on this server");
+						}
+						if(allowStorage)
+							storeOrUpdateRemoteObject(o, obj);
+						return o;
+					}catch(IOException x){
+						throw new ObjectNotFoundException("Can't resolve remote object: "+link, x);
+					}
+				}
+				throw new ObjectNotFoundException("Can't resolve remote object locally: "+link);
+			}
+		}finally{
+			if(allowFetching && allowStorage && !forceRefetch)
+				objectFetchMutexes.release(mutexID);
 		}
+
 
 		throw new ObjectNotFoundException("Invalid local URI");
 	}
@@ -294,7 +308,13 @@ public class ObjectLinkResolver{
 					return ensureTypeAndCast(switch(res.type){
 						case USER -> context.getUsersController().getUserOrThrow(res.localID);
 						case GROUP -> context.getGroupsController().getGroupOrThrow(res.localID);
+						case APPLICATION -> context.getAppsController().getAppByID(res.localID);
 					}, expectedType);
+				}
+
+				matcher=APPS.matcher(link.getPath());
+				if(matcher.find()){
+					return ensureTypeAndCast(context.getAppsController().getAppByID(safeParseLong(matcher.group(1))), expectedType);
 				}
 			}else{
 				ObjectTypeAndID tid=FederationStorage.getObjectTypeAndID(link);
@@ -350,6 +370,10 @@ public class ObjectLinkResolver{
 					if(tid.type==ObjectType.BOARD_TOPIC && expectedType.isAssignableFrom(BoardTopic.class)){
 						BoardTopic topic=context.getBoardController().getTopicIgnoringPrivacy(tid.id);
 						return ensureTypeAndCast(topic, expectedType);
+					}
+					if(tid.type==ObjectType.API_APPLICATION && expectedType.isAssignableFrom(ClientApp.class)){
+						ClientApp app=context.getAppsController().getAppByID(tid.id);
+						return ensureTypeAndCast(app, expectedType);
 					}
 				}else{
 					if(expectedType.isAssignableFrom(ForeignUser.class)){
@@ -468,6 +492,7 @@ public class ObjectLinkResolver{
 						context.getBoardController().putForeignTopic(t, firstComment);
 					}
 				}
+				case ClientApp app -> context.getAppsController().putOrUpdateForeignApp(app);
 				case null, default -> {}
 			}
 		}catch(SQLException|InterruptedException x){
@@ -526,6 +551,8 @@ public class ObjectLinkResolver{
 			return type.cast(p.asNativePhoto(context));
 		}else if(o instanceof ActivityPubBoardTopic t && type.isAssignableFrom(BoardTopic.class)){
 			return type.cast(t.asNativeTopic(context));
+		}else if(o instanceof ActivityPubApplication a && type.isAssignableFrom(ClientApp.class)){
+			return type.cast(a.asNativeApp(context));
 		}else if(type.isAssignableFrom(o.getClass())){
 			return type.cast(o);
 		}
@@ -585,6 +612,12 @@ public class ObjectLinkResolver{
 			int group=context.getGroupsController().tryGetGroupIdForUsername(username);
 			if(group>0)
 				return new UsernameResolutionResult(UsernameOwnerType.GROUP, group);
+		}
+
+		if(allowedTypes.contains(UsernameOwnerType.APPLICATION)){
+			long app=context.getAppsController().tryGetAppIdForUsername(username);
+			if(app>0)
+				return new UsernameResolutionResult(UsernameOwnerType.APPLICATION, (int)app);
 		}
 
 		if(allowFetching && domain!=null){
@@ -674,6 +707,11 @@ public class ObjectLinkResolver{
 			return new ObjectTypeAndID(ObjectType.BOARD_TOPIC, XTEA.deobfuscateObjectID(decodeLong(matcher.group(1)), ObfuscatedObjectIDType.BOARD_TOPIC));
 		}
 
+		matcher=APPS.matcher(path);
+		if(matcher.find()){
+			return new ObjectTypeAndID(ObjectType.API_APPLICATION, safeParseLong(matcher.group(1)));
+		}
+
 		return null;
 	}
 
@@ -689,6 +727,7 @@ public class ObjectLinkResolver{
 			case USER_STATUS -> null;
 			case GROUP_STATUS -> null;
 			case BOARD_TOPIC -> Config.localURI("/topics/"+XTEA.encodeObjectID(id.id, ObfuscatedObjectIDType.BOARD_TOPIC));
+			case API_APPLICATION -> Config.localURI("/apps/"+id.id);
 		};
 	}
 
@@ -714,7 +753,8 @@ public class ObjectLinkResolver{
 
 	public enum UsernameOwnerType{
 		USER,
-		GROUP
+		GROUP,
+		APPLICATION
 	}
 
 	public record UsernameResolutionResult(UsernameOwnerType type, int localID){}
@@ -731,7 +771,8 @@ public class ObjectLinkResolver{
 		COMMENT('C', 'M', 'N', 'T'),
 		USER_STATUS('U', 'S', 'T', 'A'),
 		GROUP_STATUS('G', 'S', 'T', 'A'),
-		BOARD_TOPIC('B', 'T', 'O', 'P');
+		BOARD_TOPIC('B', 'T', 'O', 'P'),
+		API_APPLICATION('A', 'P', 'P', 'L');
 
 		public final int id;
 

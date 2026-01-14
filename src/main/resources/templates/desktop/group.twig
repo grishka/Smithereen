@@ -164,7 +164,9 @@
 
 		<div class="profileColumnBorder">
 			<div class="rightColumnBorder"></div>
+			{% if group.memberCount>0 %}
 			{% include "profile_module_user_grid" with {'users': members, 'headerTitle': L('members'), 'headerHref': "/groups/#{group.id}/members", 'subheaderTitle': L('X_people', {'count': group.memberCount})} %}
+			{% endif %}
 			{% if group.event and group.tentativeMemberCount>0 %}
 			{% include "profile_module_user_grid" with {'users': tentativeMembers, 'headerTitle': L('tentative_members'), 'headerHref': "/groups/#{group.id}/tentativeMembers", 'subheaderTitle': L('X_people', {'count': group.tentativeMemberCount})} %}
 			{% endif %}
@@ -174,7 +176,9 @@
 			{% if group.photosState!='DISABLED' and (albums is not empty or canManageGroup) %}
 				{% include "profile_module_photo_albums" with {'albums': albums, 'headerTitle': L('photo_albums'), 'headerHref': "/groups/#{group.id}/albums", 'subheaderTitle': L('X_photo_albums', {'count': photoAlbumCount}), 'ownerID': -group.id} %}
 			{% endif %}
+			{% if admins is not empty %}
 			{% include "profile_module_user_list" with {'users': admins, 'headerTitle': L(group.event ? 'event_organizers' : 'group_admins'), 'headerHref': "/groups/#{group.id}/admins", 'headerAjaxBox': true, 'subheaderTitle': L(group.event ? 'event_X_organizers' : 'group_X_admins', {'count': admins.size})} %}
+			{% endif %}
 		</div>
 	</div>
 </div>

@@ -2,6 +2,8 @@ package smithereen.controllers;
 
 import com.google.gson.JsonArray;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,34 +27,34 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.model.ForeignUser;
-import smithereen.model.MailMessage;
-import smithereen.model.MessagesPrivacyGrant;
-import smithereen.model.ObfuscatedObjectIDType;
-import smithereen.model.PaginatedList;
-import smithereen.model.Post;
-import smithereen.model.User;
-import smithereen.model.notifications.UserNotifications;
-import smithereen.model.UserPrivacySettingKey;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.model.ForeignUser;
+import smithereen.model.MailMessage;
+import smithereen.model.MessagesPrivacyGrant;
+import smithereen.model.PaginatedList;
+import smithereen.model.Post;
+import smithereen.model.User;
+import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.media.MediaFileReferenceType;
 import smithereen.model.notifications.RealtimeNotification;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.storage.MailStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
+import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
-import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
 public class MailController{
 	private static final Logger LOG=LoggerFactory.getLogger(MailController.class);
 	private final ApplicationContext context;
 	private static final Pattern AP_ID_PATTERN=Pattern.compile("^/activitypub/objects/messages/([a-zA-Z0-9_-]+)$");
+	private final HashMap<String, MessageGuidInfo> guids=new HashMap<>();
 
 	public MailController(ApplicationContext context){
 		this.context=context;
@@ -85,7 +87,25 @@ public class MailController{
 		}
 	}
 
-	public long sendMessage(User self, int selfAccountID, Set<User> _to, String text, String subject, List<String> attachmentIDs, Map<String, String> attachAltTexts, MailMessage inReplyTo){
+	public Map<Long, MailMessage> getMessagesByIDs(User self, Collection<Long> ids, boolean wantDeleted){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return MailStorage.getMessagesByIDs(self.id, ids, wantDeleted);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public long sendMessage(User self, @NotNull Set<User> _to, @Nullable String text, @NotNull FormattedTextFormat textFormat, @Nullable String subject, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts, @Nullable MailMessage inReplyTo, @Nullable String guid){
+		if(StringUtils.isNotEmpty(guid)){
+			MessageGuidInfo guidInfo=guids.get(guid);
+			if(guidInfo!=null && guidInfo.time.isAfter(Instant.now().minus(1, ChronoUnit.HOURS))){
+				try{
+					return getMessage(self, guidInfo.msgID, false).id;
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
 		try{
 			if(StringUtils.isEmpty(text) && attachmentIDs.isEmpty())
 				throw new BadRequestException();
@@ -93,13 +113,13 @@ public class MailController{
 			if(to.isEmpty())
 				throw new UserActionNotAllowedException();
 			if(StringUtils.isNotEmpty(text)){
-				text=TextProcessor.preprocessPostHTML(text, null);
+				text=TextProcessor.preprocessPostText(text, null, textFormat);
 			}
 			int maxAttachments=10;
 			String attachments=null;
 			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 			if(!attachmentIDs.isEmpty()){
-				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, attachAltTexts, 0, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, attachAltTexts, 0, maxAttachments, false);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.get(0)).toString();
@@ -139,6 +159,13 @@ public class MailController{
 			}
 			HashMap<Integer, Long> allMessageIDs=new HashMap<>();
 			long id=MailStorage.createMessage(text, Objects.requireNonNullElse(subject, ""), attachments, self.id, to.stream().map(u->u.id).collect(Collectors.toSet()), null, localOwners, null, replyInfos, allMessageIDs);
+
+			if(StringUtils.isNotEmpty(guid)){
+				synchronized(guids){
+					guids.put(guid, new MessageGuidInfo(id, Instant.now()));
+				}
+			}
+
 			for(ActivityPubObject att:attachObjects){
 				if(att instanceof LocalImage li){
 					for(Map.Entry<Integer, Long> mid:allMessageIDs.entrySet()){
@@ -152,8 +179,8 @@ public class MailController{
 					MailStorage.consumePrivacyGrant(user.id, self.id);
 				}
 				if(!(user instanceof ForeignUser)){
-					MailMessage msg=MailStorage.getMessage(user.id, XTEA.obfuscateObjectID(allMessageIDs.get(user.id), ObfuscatedObjectIDType.MAIL_MESSAGE), false);
-					context.getNotificationsController().sendRealtimeNotifications(user, "msg"+msg.encodedID, RealtimeNotification.Type.MAIL_MESSAGE, msg, null, self);
+					MailMessage msg=MailStorage.getMessage(user.id, allMessageIDs.get(user.id), false);
+					context.getNotificationsController().sendRealtimeNotifications(user, "msg"+msg.getIdString(), RealtimeNotification.Type.MAIL_MESSAGE, msg, null, self);
 				}
 				context.getFriendsController().incrementHintsRank(self, user, 5);
 			}
@@ -213,7 +240,7 @@ public class MailController{
 	public void deleteMessage(User self, MailMessage message){
 		try{
 			MailStorage.deleteMessage(self.id, message.id);
-			if(message.isUnread()){
+			if(message.isUnread() && message.senderID!=self.id){
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
 				if(un!=null)
 					un.incUnreadMailCount(-1);
@@ -232,7 +259,7 @@ public class MailController{
 			Set<Long> idsToDelete=new HashSet<>();
 			idsToDelete.add(message.id);
 			if(message.attachments!=null && !message.attachments.isEmpty()){
-				MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(message.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);
+				MediaStorage.deleteMediaFileReferences(message.id, MediaFileReferenceType.MAIL_ATTACHMENT);
 			}
 			HashSet<Integer> affectedUsers=new HashSet<>();
 			if(message.ownerID!=self.id){
@@ -246,7 +273,7 @@ public class MailController{
 					if(msg.isUnread()){
 						idsToDelete.add(msg.id);
 						if(message.attachments!=null && !message.attachments.isEmpty()){
-							MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);
+							MediaStorage.deleteMediaFileReferences(msg.id, MediaFileReferenceType.MAIL_ATTACHMENT);
 						}
 						UserNotifications un=NotificationsStorage.getNotificationsFromCache(msg.ownerID);
 						if(un!=null)
@@ -272,7 +299,7 @@ public class MailController{
 	public void restoreMessage(User self, MailMessage message){
 		try{
 			MailStorage.restoreMessage(self.id, message.id);
-			if(message.isUnread()){
+			if(message.isUnread() && message.senderID!=self.id){
 				UserNotifications un=NotificationsStorage.getNotificationsFromCache(self.id);
 				if(un!=null)
 					un.incUnreadMailCount(1);
@@ -291,7 +318,7 @@ public class MailController{
 			MailStorage.actuallyDeleteMessages(messages);
 			for(MailMessage message:messages){
 				if(message.attachments!=null && !message.attachments.isEmpty()){
-					MediaStorage.deleteMediaFileReferences(XTEA.deobfuscateObjectID(message.id, ObfuscatedObjectIDType.MAIL_MESSAGE), MediaFileReferenceType.MAIL_ATTACHMENT);
+					MediaStorage.deleteMediaFileReferences(message.id, MediaFileReferenceType.MAIL_ATTACHMENT);
 				}
 			}
 		}catch(SQLException x){
@@ -355,7 +382,7 @@ public class MailController{
 			if(localOwners.isEmpty())
 				throw new UserActionNotAllowedException();
 			Map<Integer, Long> msgIDs=new HashMap<>();
-			MailStorage.createMessage(msg.text, msg.subject!=null ? msg.subject : "", msg.getSerializedAttachments(), msg.senderID, msg.to, msg.cc, localOwners, msg.activityPubID, replyInfos, msgIDs);
+			MailStorage.createMessage(msg.text, msg.subject, msg.getSerializedAttachments(), msg.senderID, msg.to, msg.cc, localOwners, msg.activityPubID, replyInfos, msgIDs);
 			for(int id:localOwners){
 				MessagesPrivacyGrant grant=MailStorage.getPrivacyGrant(id, msg.senderID);
 				if(grant!=null && grant.isValid())
@@ -369,8 +396,8 @@ public class MailController{
 				if(un!=null)
 					un.incUnreadMailCount(1);
 
-				MailMessage lmsg=MailStorage.getMessage(id, XTEA.obfuscateObjectID(msgIDs.get(id), ObfuscatedObjectIDType.MAIL_MESSAGE), false);
-				context.getNotificationsController().sendRealtimeNotifications(users.get(id), "msg"+lmsg.encodedID, RealtimeNotification.Type.MAIL_MESSAGE, lmsg, null, sender);
+				MailMessage lmsg=MailStorage.getMessage(id, msgIDs.get(id), false);
+				context.getNotificationsController().sendRealtimeNotifications(users.get(id), "msg"+lmsg.getIdString(), RealtimeNotification.Type.MAIL_MESSAGE, lmsg, null, sender);
 			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -394,4 +421,13 @@ public class MailController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	public void removeExpiredGuids(){
+		synchronized(guids){
+			Instant hourAgo=Instant.now().minus(1, ChronoUnit.HOURS);
+			guids.entrySet().removeIf(e->e.getValue().time.isBefore(hourAgo));
+		}
+	}
+
+	private record MessageGuidInfo(long msgID, Instant time){}
 }

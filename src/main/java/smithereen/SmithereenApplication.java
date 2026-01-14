@@ -32,6 +32,8 @@ import jakarta.servlet.http.HttpSessionListener;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.api.methods.ApiUtils;
+import smithereen.api.model.ApiSerializable;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.MailController;
 import smithereen.controllers.ModerationController;
@@ -59,8 +61,8 @@ import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPresence;
-import smithereen.model.admin.UserRole;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.UserRole;
 import smithereen.model.admin.ViolationReport;
 import smithereen.model.comments.Comment;
 import smithereen.model.fasp.FASPCapability;
@@ -68,14 +70,16 @@ import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.routes.ActivityPubRoutes;
+import smithereen.routes.ApiRoutes;
+import smithereen.routes.AppsRoutes;
 import smithereen.routes.BoardRoutes;
-import smithereen.routes.FaspApiRoutes;
-import smithereen.routes.MastodonApiRoutes;
 import smithereen.routes.BookmarksRoutes;
 import smithereen.routes.CommentsRoutes;
+import smithereen.routes.FaspApiRoutes;
 import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
+import smithereen.routes.MastodonApiRoutes;
 import smithereen.routes.NewsfeedRoutes;
 import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.NotifierWebSocket;
@@ -83,13 +87,13 @@ import smithereen.routes.PhotosRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
-import smithereen.routes.admin.AdminAnnouncementsRoutes;
-import smithereen.routes.admin.AdminFaspRoutes;
-import smithereen.routes.admin.AdminCustomCSSRoutes;
 import smithereen.routes.SettingsRoutes;
 import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
+import smithereen.routes.admin.AdminAnnouncementsRoutes;
+import smithereen.routes.admin.AdminCustomCSSRoutes;
 import smithereen.routes.admin.AdminEmailRulesRoutes;
+import smithereen.routes.admin.AdminFaspRoutes;
 import smithereen.routes.admin.AdminFederationRoutes;
 import smithereen.routes.admin.AdminGeneralRoutes;
 import smithereen.routes.admin.AdminGroupsRoutes;
@@ -116,7 +120,6 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.MaintenanceScheduler;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.TopLevelDomainList;
-import spark.Filter;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -321,7 +324,7 @@ public class SmithereenApplication{
 				getLoggedIn("/personal", SettingsRoutes::profileEditPersonal);
 				getLoggedIn("/contacts", SettingsRoutes::profileEditContacts);
 			});
-			getLoggedIn("/", SettingsRoutes::settings);
+			getLoggedIn("", SettingsRoutes::settings);
 			postWithCSRF("/createInvite", SettingsRoutes::createInvite);
 			postWithCSRF("/updatePassword", SettingsRoutes::updatePassword);
 			postWithCSRF("/updateProfileGeneral", SettingsRoutes::updateProfileGeneral);
@@ -394,6 +397,10 @@ public class SmithereenApplication{
 			getLoggedIn("/export", SettingsRoutes::dataExports);
 			getLoggedIn("/requestExport", SettingsRoutes::requestDataExportForm);
 			postWithCSRF("/requestExport", SettingsRoutes::requestDataExport);
+			path("/apps", ()->{
+				getLoggedIn("", SettingsRoutes::apps);
+				getWithCSRF("/:id/revoke", SettingsRoutes::appsRevokeAccess);
+			});
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminGeneralRoutes::serverInfo);
@@ -670,6 +677,8 @@ public class SmithereenApplication{
 			getRequiringPermission("/adminChangeUsernameForm", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::changeUserUsernameForm);
 			postRequiringPermissionWithCSRF("/adminChangeUsername", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::changeUserUsername);
 			getRequiringPermission("/adminConfirmResetUsername", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::confirmResetUserUsername);
+			getRequiringPermissionWithCSRF("/recountFriends", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::recountFriends);
+			getRequiringPermissionWithCSRF("/recountWall", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::recountWall);
 
 			get("/hoverCard", ProfileRoutes::mentionHoverCard);
 
@@ -702,8 +711,7 @@ public class SmithereenApplication{
 				}
 				return "";
 			});
-			get("", "application/activity+json", ActivityPubRoutes::groupActor);
-			get("", "application/ld+json", ActivityPubRoutes::groupActor);
+			getActivityPub("", ActivityPubRoutes::groupActor);
 
 			postWithCSRF("/createWallPost", PostRoutes::createGroupWallPost);
 
@@ -804,6 +812,18 @@ public class SmithereenApplication{
 			getActivityPubCollection("/pinnedTopics", 100, ActivityPubRoutes::groupPinnedTopics);
 
 			getRequiringPermission("/groupinfo", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupInfo);
+		});
+
+		path("/apps", ()->{
+			getLoggedIn("/create", AppsRoutes::createAppForm);
+			postWithCSRF("/create", AppsRoutes::createApp);
+			postWithCSRF("/uploadLogo", AppsRoutes::uploadAppLogo);
+			path("/:id", ()->{
+				get("", AppsRoutes::appPage);
+				getActivityPub("", ActivityPubRoutes::appActor);
+				getLoggedIn("/edit", AppsRoutes::editAppForm);
+				postWithCSRF("/edit", AppsRoutes::editApp);
+			});
 		});
 
 		path("/posts/:postID", ()->{
@@ -956,14 +976,6 @@ public class SmithereenApplication{
 				postWithCSRF("/send", MailRoutes::sendMessage);
 				getLoggedIn("/history", MailRoutes::history);
 				path("/messages/:id", ()->{
-					Filter idParserFilter=(req, resp)->{
-						long id=decodeLong(req.params(":id"));
-						if(id==0)
-							throw new ObjectNotFoundException();
-						req.attribute("id", id);
-					};
-					before("", idParserFilter);
-					before("/*", idParserFilter);
 					getLoggedIn("", MailRoutes::viewMessage);
 					getWithCSRF("/delete", MailRoutes::delete);
 					getWithCSRF("/deleteForEveryone", MailRoutes::deleteForEveryone);
@@ -992,6 +1004,20 @@ public class SmithereenApplication{
 				post("/registration", FaspApiRoutes::registration);
 				postFaspAPI("/debug/v0/callback/responses", FASPCapability.DEBUG, FaspApiRoutes::debugCallback);
 			});
+			get("/method/:method", ApiRoutes::apiCall);
+			post("/method/:method", ApiRoutes::apiCall);
+			options("/method/:method", ApiRoutes::apiCallPreflight);
+			post("/uploadAttachmentPhoto", ApiRoutes::uploadAttachmentPhoto);
+			post("/uploadAlbumPhoto", ApiRoutes::uploadAlbumPhoto);
+			post("/uploadAvatar", ApiRoutes::uploadAvatar);
+			options("/uploadAttachmentPhoto", ApiRoutes::apiCallPreflight);
+			options("/uploadAlbumPhoto", ApiRoutes::apiCallPreflight);
+			options("/uploadAvatar", ApiRoutes::apiCallPreflight);
+		});
+		path("/oauth", ()->{
+			get("/authorize", ApiRoutes::oauthAuthorize);
+			post("/token", ApiRoutes::oauthToken);
+			postLoggedIn("/doAuthorize", ApiRoutes::oauthDoAuthorize);
 		});
 
 		get("/healthz", (req, resp)->"");
@@ -999,9 +1025,7 @@ public class SmithereenApplication{
 		path("/:username", ()->{
 			get("", ProfileRoutes::profile);
 			// These also handle groups
-			getActivityPub("", ActivityPubRoutes::userActor);
-
-			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
+			getActivityPub("", ActivityPubRoutes::actorByUsername);
 		});
 
 
@@ -1081,7 +1105,7 @@ public class SmithereenApplication{
 
 					SessionInfo info=req.session().attribute("info");
 					if(info.account!=null){
-						context(req).getUsersController().setOnline(info.account.user, isMobile(req) ? UserPresence.PresenceType.MOBILE_WEB : UserPresence.PresenceType.WEB, req.cookie("psid").hashCode());
+						context(req).getUsersController().setOnline(info.account.user, isMobile(req) ? UserPresence.PresenceType.MOBILE_WEB : UserPresence.PresenceType.WEB, req.cookie("psid").hashCode(), 0);
 					}
 
 					if(req.requestMethod().equalsIgnoreCase("get") && req.attribute("noHistory")==null){
@@ -1188,6 +1212,15 @@ public class SmithereenApplication{
 			writer.flush();
 		});
 
+		responseTypeSerializer(ApiSerializable.class, (out, obj, req, resp)->{
+			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
+			if(req.attribute("serializeNulls")!=null)
+				ApiRoutes.gsonWithNulls.toJson(obj, writer);
+			else
+				ApiRoutes.gson.toJson(obj, writer);
+			writer.flush();
+		});
+
 		addServletEventListener(new HttpSessionListener(){
 			@Override
 			public void sessionDestroyed(HttpSessionEvent se){
@@ -1221,6 +1254,11 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(MediaStorageUtils::deleteAbandonedFiles, 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getAppsController().deleteExpiredCodesAndTokens(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getWallController().removeExpiredGuids(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getCommentsController().removeExpiredGuids(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getMailController().removeExpiredGuids(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(ApiUtils::removeOldUploadUrlIDs, 10, TimeUnit.MINUTES);
 		context.getUsersController().loadPresenceFromDatabase();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{

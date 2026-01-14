@@ -194,7 +194,9 @@ public abstract class Actor extends ActivityPubObject{
 		serializerContext.addAlias("sm", JLD.SMITHEREEN);
 		serializerContext.addAlias("toot", JLD.MASTODON);
 		serializerContext.addAlias("discoverable", "toot:discoverable");
+		serializerContext.addAlias("indexable", "toot:indexable");
 		obj.addProperty("discoverable", true);
+		obj.addProperty("indexable", true);
 
 		serializerContext.addSchema(JLD.W3_SECURITY);
 
@@ -209,53 +211,61 @@ public abstract class Actor extends ActivityPubObject{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
-		if(activityPubID==null)
+		boolean skipChecks=this instanceof ActivityPubApplication;
+
+		if(activityPubID==null && !skipChecks)
 			throw new IllegalArgumentException("id is required for actors");
 
 		username=optString(obj, "preferredUsername");
-		if(username==null){
-			username=Utils.getLastPathSegment(activityPubID);
+		if(!skipChecks){
+			if(username==null && activityPubID!=null){
+				username=Utils.getLastPathSegment(activityPubID);
+			}
+			if(StringUtils.isEmpty(username)){
+				throw new FederationException("Unable to determine actor username: preferredUsername not present and last path segment of ID is blank");
+			}
+			if(!Utils.isValidUsername(username)){
+				username="_"+username.replaceAll("[^a-zA-Z0-9\\u0080-\\uffff._-]", "_"); // First, replace all disallowed ASCII characters with '_'
+				username=TextProcessor.transliterate(username); // Then, transliterate non-ASCII characters, if any
+			}
+			if(username.length()>USERNAME_MAX_LENGTH)
+				username=username.substring(0, USERNAME_MAX_LENGTH);
 		}
-		if(StringUtils.isEmpty(username)){
-			throw new FederationException("Unable to determine actor username: preferredUsername not present and last path segment of ID is blank");
+		if(activityPubID!=null){
+			domain=activityPubID.getHost();
+			if(activityPubID.getPort()!=-1)
+				domain+=":"+activityPubID.getPort();
+			if(url==null)
+				url=activityPubID;
 		}
-		if(!Utils.isValidUsername(username)){
-			username="_"+username.replaceAll("[^a-zA-Z0-9\\u0080-\\uffff._-]", "_"); // First, replace all disallowed ASCII characters with '_'
-			username=TextProcessor.transliterate(username); // Then, transliterate non-ASCII characters, if any
-		}
-		if(username.length()>USERNAME_MAX_LENGTH)
-			username=username.substring(0, USERNAME_MAX_LENGTH);
-		domain=activityPubID.getHost();
-		if(activityPubID.getPort()!=-1)
-			domain+=":"+activityPubID.getPort();
-		if(url==null)
-			url=activityPubID;
 
 		JsonObject pkey=obj.getAsJsonObject("publicKey");
-		if(pkey==null)
+		if(pkey==null && !skipChecks)
 			throw new IllegalArgumentException("The actor is missing a public key (or @context in the actor object doesn't include the namespace \""+JLD.W3_SECURITY+"\")");
-		URI keyOwner=tryParseURL(optString(pkey, "owner"));
-		if(keyOwner!=null && !keyOwner.equals(activityPubID))
-			throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");
-		String pkeyEncoded=pkey.get("publicKeyPem").getAsString();
-		pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replaceAll("[^A-Za-z0-9+/=]", "").trim();
-		byte[] key=Base64.getDecoder().decode(pkeyEncoded);
-		try{
-			X509EncodedKeySpec spec=new X509EncodedKeySpec(key);
-			publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
-		}catch(InvalidKeySpecException x){
-			// a simpler RSA key format, used at least by Misskey
-			// FWIW, Misskey user objects also contain a key "isCat" which I ignore
+		if(pkey!=null){
+			URI keyOwner=tryParseURL(optString(pkey, "owner"));
+			if(keyOwner!=null && !keyOwner.equals(activityPubID))
+				throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");
+			String pkeyEncoded=pkey.get("publicKeyPem").getAsString();
+			pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replaceAll("[^A-Za-z0-9+/=]", "").trim();
+			byte[] key=Base64.getDecoder().decode(pkeyEncoded);
 			try{
-				RSAPublicKeySpec spec=decodeSimpleRSAKey(key);
+				X509EncodedKeySpec spec=new X509EncodedKeySpec(key);
 				publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
-			}catch(NoSuchAlgorithmException ignore){
-			}catch(InvalidKeySpecException|IOException xx){
-				throw new BadRequestException(xx);
-			}
-		}catch(NoSuchAlgorithmException ignore){}
+			}catch(InvalidKeySpecException x){
+				// a simpler RSA key format, used at least by Misskey
+				// FWIW, Misskey user objects also contain a key "isCat" which I ignore
+				try{
+					RSAPublicKeySpec spec=decodeSimpleRSAKey(key);
+					publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
+				}catch(NoSuchAlgorithmException ignore){
+				}catch(InvalidKeySpecException | IOException xx){
+					throw new BadRequestException(xx);
+				}
+			}catch(NoSuchAlgorithmException ignore){}
+		}
 
-		inbox=tryParseURL(obj.get("inbox").getAsString());
+		inbox=tryParseURL(optString(obj, "inbox"));
 		ensureHostMatchesID(inbox, "inbox");
 		outbox=tryParseURL(optString(obj, "outbox"));
 		ensureHostMatchesID(outbox, "outbox");
@@ -453,5 +463,7 @@ public abstract class Actor extends ActivityPubObject{
 		public String boardTopics;
 		@SerializedName("pp")
 		public String pinnedPosts;
+		@SerializedName("ap")
+		public String apps;
 	}
 }

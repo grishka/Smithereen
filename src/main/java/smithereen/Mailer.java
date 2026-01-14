@@ -37,20 +37,20 @@ import io.pebbletemplates.pebble.template.PebbleTemplate;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
-import smithereen.model.ServerRule;
-import smithereen.model.admin.ViolationReport;
-import smithereen.model.friends.FriendRequest;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.Post;
 import smithereen.model.PostLikeObject;
+import smithereen.model.ServerRule;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
+import smithereen.model.admin.ViolationReport;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.friends.FriendRequest;
 import smithereen.model.notifications.EmailNotificationType;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
@@ -368,7 +368,7 @@ public class Mailer{
 				plaintext+=l.get("email_mail_message_plaintext", Map.of(
 						"name", actor.getCompleteName(),
 						"gender", actor.gender,
-						"url", Config.localURI("/my/mail/messages/"+msg.encodedID).toString()
+						"url", Config.localURI("/my/mail/messages/"+msg.getIdString()).toString()
 				));
 			}
 			case PHOTO_TAG -> {

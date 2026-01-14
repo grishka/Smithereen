@@ -1,6 +1,8 @@
 package smithereen.controllers;
 
 import java.sql.SQLException;
+import java.util.Collection;
+import java.util.Set;
 
 import smithereen.ApplicationContext;
 import smithereen.exceptions.BadRequestException;
@@ -62,6 +64,16 @@ public class BookmarksController{
 		}
 	}
 
+	public Set<Integer> filterUserIDsByBookmarked(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Set.of();
+		try{
+			return BookmarksStorage.filterUserIDs(self.id, ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 
 
 	public PaginatedList<Integer> getBookmarkedGroups(User self, int offset, int count){
@@ -100,6 +112,16 @@ public class BookmarksController{
 	public void removeGroupBookmark(User self, Group group){
 		try{
 			BookmarksStorage.removeGroupBookmark(self.id, group.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Set<Integer> filterGroupIDsByBookmarked(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Set.of();
+		try{
+			return BookmarksStorage.filterGroupIDs(self.id, ids);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

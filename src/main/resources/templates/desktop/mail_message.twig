@@ -8,9 +8,9 @@
 			<h2>
 				{{- L('mail_message') }}
 				<div class="flR lower" id="msgActions">
-					<a href="/my/mail/messages/{{ message.encodedID }}/delete?csrf={{ csrf }}&fromView" data-ajax data-ajax-hide="msgActions" data-ajax-show="msgActionsLoader">{{ L('delete') }}</a>
+					<a href="/my/mail/messages/{{ message.idString }}/delete?csrf={{ csrf }}&fromView" data-ajax data-ajax-hide="msgActions" data-ajax-show="msgActionsLoader">{{ L('delete') }}</a>
 					{% if userPermissions.canReport(message) %} |
-					<a href="/system/reportForm?type=message&id={{ message.encodedID }}" data-ajax-box>{{ L('report') }}</a>
+					<a href="/system/reportForm?type=message&id={{ message.idString }}" data-ajax-box>{{ L('report') }}</a>
 					{% endif %}
 				</div>
 				<span class="flR loader" id="msgActionsLoader" style="display: none">&nbsp;</span>
@@ -53,7 +53,7 @@
 			{% endif %}
 			</div>
 			{% if message.senderID!=currentUser.id and canReply %}
-			<form action="/my/mail/send?inReplyTo={{ message.encodedID }}" method="post" id="wallPostFormForm_mailMessage">
+			<form action="/my/mail/send?inReplyTo={{ message.idString }}" method="post" id="wallPostFormForm_mailMessage">
 				{% if replySubject is not empty %}<input type="text" name="subject" value="{{ replySubject }}" placeholder="{{ L('mail_subject') }}" style="width: 100%" class="subject"/>{% endif %}
 				{% include "mail_message_form" with {"sendButtonLabel": "add_reply"} %}
 			</form>

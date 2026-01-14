@@ -76,7 +76,7 @@ public class BoardRoutes{
 			attachments=Collections.emptyList();
 			attachmentAltTexts=Map.of();
 		}
-		BoardTopic topic=ctx.getBoardController().createTopic(self.user, group, title, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts);
+		BoardTopic topic=ctx.getBoardController().createTopic(self.user, group, title, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts, null);
 		return ajaxAwareRedirect(req, resp, "/topics/"+XTEA.encodeObjectID(topic.id, ObfuscatedObjectIDType.BOARD_TOPIC));
 	}
 

@@ -67,10 +67,12 @@ public class TextProcessor{
 			.extensions(markdownExtensions)
 			.build();
 
+	@NotNull
 	public static String sanitizeHTML(String src){
 		return sanitizeHTML(src, null);
 	}
 
+	@NotNull
 	public static String sanitizeHTML(String src, URI documentLocation){
 		Cleaner cleaner=new Cleaner(HTML_SANITIZER);
 		Document doc=Parser.parseBodyFragment(src, Objects.toString(documentLocation, ""));
@@ -306,6 +308,10 @@ public class TextProcessor{
 			whitelist=HTML_SANITIZER_MARKDOWN;
 		}else{
 			whitelist=HTML_SANITIZER;
+		}
+
+		if(format==FormattedTextFormat.PLAIN){
+			text=text.replace("<", "&lt;").replace(">", "&gt;");
 		}
 
 		Document doc=Jsoup.parseBodyFragment(text);
@@ -600,7 +606,7 @@ public class TextProcessor{
 			case TWITTER -> normalizeUsernameOrLink(value, "twitter.com", "x.com");
 			case INSTAGRAM -> normalizeUsernameOrLink(value, "instagram.com", "www.instagram.com", "instagr.am");
 			case FACEBOOK -> normalizeUsernameOrLink(value, "facebook.com", "www.facebook.com", "m.facebook.com");
-			case VKONTAKTE -> normalizeUsernameOrLink(value, "vk.com", "m.vk.com");
+			case VKONTAKTE -> normalizeUsernameOrLink(value, "vk.com", "m.vk.com", "vkontakte.ru", "vk.ru");
 			case SNAPCHAT -> {
 				if(Utils.isURL(value)){
 					URI uri=URI.create(value);

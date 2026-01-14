@@ -141,6 +141,13 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 			throw new Error("already loading");
 		this.loading=true;
 		ajaxGet(this.listURL+"?list="+this.listID+"&offset="+offset, (_r)=>{
+			if(_r instanceof Array){
+				for(var cmd of _r)
+					applyServerCommand(cmd);
+				if(this.photosLoadedOffset==null)
+					this.dismiss();
+				return;
+			}
 			var r=_r as PhotoViewerInfoAjaxResponse;
 			this.total=r.total;
 			this.titleStr=r.title;
@@ -158,7 +165,7 @@ class MobilePhotoViewer extends BaseMediaViewerLayer{
 			this.maybeLoadMorePhotos();
 			this.maintainIllusionOfInfiniteScroll(false);
 		}, (msg)=>{
-			new MessageBox(lang("error"), msg, lang("close")).show();
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 			this.loading=false;
 		}, "json");
 	}

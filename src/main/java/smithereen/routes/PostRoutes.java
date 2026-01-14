@@ -29,6 +29,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.controllers.WallController;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
@@ -37,6 +38,7 @@ import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
+import smithereen.model.OwnerAndAuthor;
 import smithereen.model.PaginatedList;
 import smithereen.model.Poll;
 import smithereen.model.PollOption;
@@ -47,12 +49,13 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.WebDeltaResponse;
 import smithereen.model.admin.UserRole;
 import smithereen.model.admin.ViolationReport;
-import smithereen.model.WebDeltaResponse;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.groups.GroupFeatureState;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.reports.ReportableContentObject;
@@ -92,21 +95,15 @@ public class PostRoutes{
 		if(StringUtils.isNotEmpty(pollQuestion)){
 			List<String> pollOptions=Arrays.stream(req.queryParams("pollOption")!=null ? req.queryMap("pollOption").values() : new String[0]).map(String::trim).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
 			if(pollOptions.size()>=2){
-				poll=new Poll();
-				poll.question=pollQuestion;
-				poll.anonymous="on".equals(req.queryParams("pollAnonymous"));
-				poll.multipleChoice="on".equals(req.queryParams("pollMultiChoice"));
+				Instant pollEndTime=null;
 				boolean timeLimit="on".equals(req.queryParams("pollTimeLimit"));
 				if(timeLimit){
 					int seconds=parseIntOrDefault(req.queryParams("pollTimeLimitValue"), 0);
 					if(seconds>60)
-						poll.endTime=Instant.now().plusSeconds(seconds);
+						pollEndTime=Instant.now().plusSeconds(seconds);
 				}
-				poll.options=pollOptions.stream().map(o->{
-					PollOption opt=new PollOption();
-					opt.text=o;
-					return opt;
-				}).collect(Collectors.toList());
+				int pollID=ctx.getWallController().createPoll(self.user, owner, pollQuestion, pollOptions, "on".equals(req.queryParams("pollAnonymous")), "on".equals(req.queryParams("pollMultiChoice")), pollEndTime);
+				poll=ctx.getWallController().getPollByID(pollID);
 			}else{
 				poll=null;
 			}
@@ -141,9 +138,10 @@ public class PostRoutes{
 			inReplyTo=ctx.getWallController().getPostOrThrow(replyTo);
 			if(inReplyTo.isMastodonStyleRepost())
 				inReplyTo=ctx.getWallController().getPostOrThrow(inReplyTo.repostOf);
+			owner=ctx.getWallController().getContentAuthorAndOwner(inReplyTo).owner();
 		}
 
-		Post post=ctx.getWallController().createWallPost(self.user, self.id, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts, null);
+		Post post=ctx.getWallController().createWallPost(self.user, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts, null, null, null);
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
@@ -274,7 +272,9 @@ public class PostRoutes{
 
 		model.with("addClasses", "editing nonCollapsible").with("isEditing", true).with("id", "edit"+id+ridSuffix).with("editingPostID", id);
 		PostSource source=ctx.getWallController().getPostSource(post);
-		model.with("prefilledPostText", source.text()).with("sourceFormat", source.format());
+		model.with("prefilledPostText", source.text())
+				.with("sourceFormat", source.format())
+				.with("isComment", post.getReplyLevel()>0);
 		if(post.hasContentWarning())
 			model.with("contentWarning", post.contentWarning);
 		if(post.poll!=null)
@@ -282,12 +282,12 @@ public class PostRoutes{
 		if(post.attachments!=null && !post.attachments.isEmpty()){
 			model.with("draftAttachments", post.attachments);
 			model.with("attachAltTexts", post.attachments.stream()
-					.map(att->att instanceof LocalImage li && li.photoID==0 && li.name!=null ? new Pair<>(li.fileRecord.id().getIDForClient(), li.name) : null)
+					.map(att->att instanceof LocalImage li && li.photoID==0 && li.name!=null ? new Pair<>(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), li.name) : null)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toMap(Pair::first, Pair::second))
 			);
 			Map<String, PhotoViewerInlineData> pvData=post.attachments.stream()
-					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(), li.getURLsForPhotoViewer())) : null)
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), li.getURLsForPhotoViewer())) : null)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toMap(Pair::first, Pair::second, (a, b)->b));
 			model.with("attachPvData", pvData);
@@ -309,32 +309,35 @@ public class PostRoutes{
 		return model.pageTitle(lang(req).get(post.getReplyLevel()>0 ? "editing_comment" : "editing_post"));
 	}
 
-	public static Object editPost(Request req, Response resp, Account self, ApplicationContext ctx){
+	public static Object editPost(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
 		int id=parseIntOrDefault(req.params(":postID"), 0);
 		String text=req.queryParams("text");
 		Poll poll;
 		String pollQuestion=req.queryParams("pollQuestion");
 		if(StringUtils.isNotEmpty(pollQuestion)){
 			Post post=ctx.getWallController().getPostOrThrow(id);
+			OwnerAndAuthor oaa=ctx.getWallController().getContentAuthorAndOwner(post);
 			List<String> pollOptions=Arrays.stream(req.queryParams("pollOption")!=null ? req.queryMap("pollOption").values() : new String[0]).map(String::trim).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
+
 			if(pollOptions.size()>=2){
-				poll=new Poll();
-				poll.question=pollQuestion;
-				poll.anonymous="on".equals(req.queryParams("pollAnonymous"));
-				poll.multipleChoice="on".equals(req.queryParams("pollMultiChoice"));
+				Instant pollEndTime=null;
 				boolean timeLimit="on".equals(req.queryParams("pollTimeLimit"));
 				if(timeLimit){
 					int seconds=parseIntOrDefault(req.queryParams("pollTimeLimitValue"), 0);
 					if(seconds>60)
-						poll.endTime=Instant.now().plusSeconds(seconds);
+						pollEndTime=Instant.now().plusSeconds(seconds);
 					else if(seconds==-1 && post.poll!=null)
-						poll.endTime=post.poll.endTime;
+						pollEndTime=post.poll.endTime;
 				}
-				poll.options=pollOptions.stream().map(o->{
-					PollOption opt=new PollOption();
-					opt.text=o;
-					return opt;
-				}).collect(Collectors.toList());
+				boolean anonymous="on".equals(req.queryParams("pollAnonymous"));
+				boolean multiChoice="on".equals(req.queryParams("pollMultiChoice"));
+				if(post.poll!=null && post.poll.question.equals(pollQuestion) && post.poll.options.stream().map(o->o.text).toList().equals(pollOptions)
+						&& post.poll.anonymous==anonymous && post.poll.multipleChoice==multiChoice && Objects.equals(pollEndTime, post.poll.endTime)){
+					poll=post.poll;
+				}else{
+					int pollID=ctx.getWallController().createPoll(info.account.user, Objects.requireNonNull(oaa.owner()), pollQuestion, pollOptions, anonymous, multiChoice, pollEndTime);
+					poll=ctx.getWallController().getPollByID(pollID);
+				}
 			}else{
 				poll=null;
 			}
@@ -361,13 +364,13 @@ public class PostRoutes{
 			attachmentAltTexts=Map.of();
 		}
 
-		Post post=ctx.getWallController().editPost(self.user, sessionInfo(req).permissions, id, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, poll, attachmentAltTexts);
+		Post post=ctx.getWallController().editPost(info.account.user, info.permissions, id, text, enumValue(req.queryParams("format"), FormattedTextFormat.class), contentWarning, attachments, poll, attachmentAltTexts);
 		if(isAjax(req)){
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(post.getInternalURL().toString());
 
 			PostViewModel postVM=new PostViewModel(post);
-			ctx.getWallController().populateReposts(self.user, List.of(postVM), 2);
+			ctx.getWallController().populateReposts(info.account.user, List.of(postVM), 2);
 			String templateName;
 			boolean fromLayer;
 			if(req.queryParams("fromLayer")!=null && !isMobile(req)){
@@ -381,6 +384,9 @@ public class PostRoutes{
 			HashSet<Integer> needUsers=new HashSet<>();
 			PostViewModel.collectActorIDs(List.of(postVM), needUsers, null);
 			model.with("users", ctx.getUsersController().getUsers(needUsers));
+			HashSet<Long> needApps=new HashSet<>();
+			PostViewModel.collectAppIDs(List.of(postVM), needApps);
+			model.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 
 			String rid=req.queryParams("rid");
 			String ridSuffix="";
@@ -398,7 +404,7 @@ public class PostRoutes{
 					needInteractions.add(topLevel);
 				}catch(ObjectNotFoundException ignore){}
 			}
-			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, self.user);
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(needInteractions, info.account.user);
 			model.with("postInteractions", interactions);
 			return new WebDeltaResponse(resp).setContent("postInner"+post.id+ridSuffix, fromLayer ? model.renderToString() : model.renderBlock("postInner"))
 					.show("postInner"+post.id+ridSuffix)
@@ -522,8 +528,10 @@ public class PostRoutes{
 		model.with("postInteractions", interactions);
 
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		HashSet<Long> needApps=new HashSet<>();
 		PostViewModel.collectActorIDs(List.of(post), needUsers, needGroups);
 		PostViewModel.collectActorIDs(replies.list, needUsers, needGroups);
+		PostViewModel.collectAppIDs(List.of(post), needApps);
 
 		model.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, u, UserPrivacySettingKey.WALL_OTHERS_POSTS));
 
@@ -580,7 +588,7 @@ public class PostRoutes{
 		model.with("title", post.post.getShortTitle(50)+" | "+author.getFullName());
 		if(req.attribute("mobile")!=null){
 			model.with("toolbarTitle", lang(req).get("wall_post_title"));
-			List<Integer> likers=ctx.getUserInteractionsController().getLikesForObject(post.post, info!=null && info.account!=null ? info.account.user : null, 0, 10).list;
+			List<Integer> likers=ctx.getUserInteractionsController().getLikesForObject(post.post, info!=null && info.account!=null ? info.account.user : null, 0, 10, true, false).list;
 			model.with("likedBy", likers);
 			needUsers.addAll(likers);
 		}
@@ -593,6 +601,7 @@ public class PostRoutes{
 
 		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps))
 				.headerBack(owner);
 		return model;
 	}
@@ -719,8 +728,11 @@ public class PostRoutes{
 	public static void preparePostList(ApplicationContext ctx, List<PostViewModel> wall, RenderedTemplateResponse model, Account self){
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
 		PostViewModel.collectActorIDs(wall, needUsers, needGroups);
+		HashSet<Long> needApps=new HashSet<>();
+		PostViewModel.collectAppIDs(wall, needApps);
 		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
 				.with("groups", ctx.getGroupsController().getGroupsByIdAsMap(needGroups))
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps))
 				.with("maxReplyDepth", getMaxReplyDepth(self));
 	}
 
@@ -732,10 +744,11 @@ public class PostRoutes{
 			ctx.getPrivacyController().enforceUserAccessToGroupContent(self!=null ? self.user : null, group);
 
 		int offset=offset(req);
-		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, owner, ownOnly, offset, 20));
+		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, owner, ownOnly ? WallController.WallMode.OWNER : WallController.WallMode.ALL, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 
@@ -747,6 +760,7 @@ public class PostRoutes{
 				.with("ownOnly", ownOnly)
 				.with("canSeeOthersPosts", !(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, u, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", ownOnly ? "own" : "all")
+				.with("commentViewType", viewType)
 				.headerBack(owner);
 
 		List<PostViewModel> pinnedPosts=null;
@@ -755,7 +769,7 @@ public class PostRoutes{
 			if(offset==0){
 				pinnedPosts=rawPinnedPosts.stream().map(PostViewModel::new).toList();
 				if(req.attribute("mobile")==null){
-					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, pinnedPosts, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+					ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, pinnedPosts, viewType);
 				}
 				model.with("pinnedPosts", pinnedPosts);
 			}
@@ -807,8 +821,9 @@ public class PostRoutes{
 		int offset=offset(req);
 		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallToWallPosts(self!=null ? self.user : null, user, otherUser, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, wall.list, 2);
+		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, wall.list, viewType);
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(wall.list, self!=null ? self.user : null);
 
@@ -819,6 +834,7 @@ public class PostRoutes{
 				.with("otherUser", otherUser)
 				.with("canSeeOthersPosts", ctx.getPrivacyController().checkUserPrivacy(self==null ? null : self.user, user, UserPrivacySettingKey.WALL_OTHERS_POSTS))
 				.with("tab", "wall2wall")
+				.with("commentViewType", viewType)
 				.pageTitle(lang(req).get("wall_of_X", Map.of("name", user.getFirstAndGender())))
 				.headerBack(user);
 		preparePostList(ctx, wall.list, model, self);
@@ -865,7 +881,7 @@ public class PostRoutes{
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), comments.list).flatMap(List::stream).toList(), self!=null ? self.user : null);
 		model.with("postInteractions", interactions)
 					.with("preview", true)
-					.with("replyFormID", "wallPostForm_commentReplyPost"+postID+ridSuffix)
+					.with("replyFormID", (viewType==CommentViewType.FLAT ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+postID+ridSuffix)
 					.with("commentViewType", viewType);
 		model.with("topLevel", topLevel);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
@@ -1064,8 +1080,9 @@ public class PostRoutes{
 		int offset=offset(req);
 		PaginatedList<PostViewModel> reposts=PostViewModel.wrap(ctx.getWallController().getPostReposts(post, offset, 20));
 		ctx.getWallController().populateReposts(self!=null ? self.user : null, reposts.list, 2);
+		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
 		if(req.attribute("mobile")==null){
-			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList(), self!=null ? self.prefs.commentViewType : CommentViewType.THREADED);
+			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList(), viewType);
 		}
 		UserInteractions interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null).get(post.getIDForInteractions());
 		RenderedTemplateResponse model;
@@ -1085,7 +1102,8 @@ public class PostRoutes{
 				.with("tab", "reposts")
 				.with("url", "/posts/"+post.id)
 				.with("elementID", "Post"+post.id)
-				.with("maxRepostDepth", 0);
+				.with("maxRepostDepth", 0)
+				.with("commentViewType", viewType);
 		preparePostList(ctx, reposts.list, model, self);
 		if(isMobile(req))
 			return model.pageTitle(lang(req).get("likes_title"));
@@ -1141,7 +1159,7 @@ public class PostRoutes{
 		if(post.getReplyLevel()>0){
 			try{
 				Post topLevel=ctx.getWallController().getPostOrThrow(post.replyKey.getFirst());
-				if(topLevel.privacy!=Post.Privacy.PUBLIC || topLevel.ownerID!=post.authorID){
+				if(topLevel.privacy!=Post.Privacy.PUBLIC || topLevel.ownerID!=topLevel.authorID){
 					throw new UserActionNotAllowedException();
 				}
 				model.with("topLevelPost", topLevel);
@@ -1263,7 +1281,7 @@ public class PostRoutes{
 	public static Object pinPost(Request req, Response resp, Account self, ApplicationContext ctx){
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
 
-		if(post.authorID!=self.id || post.authorID!=post.ownerID || post.getReplyLevel()>0)
+		if(post.authorID!=self.user.id || post.authorID!=post.ownerID || post.getReplyLevel()>0)
 			throw new UserActionNotAllowedException();
 
 		ctx.getWallController().pinPost(post, false);
@@ -1284,7 +1302,7 @@ public class PostRoutes{
 	public static Object unpinPost(Request req, Response resp, Account self, ApplicationContext ctx){
 		Post post=ctx.getWallController().getPostOrThrow(safeParseInt(req.params(":postID")));
 
-		if(post.authorID!=self.id)
+		if(post.authorID!=self.user.id)
 			throw new UserActionNotAllowedException();
 
 		ctx.getWallController().unpinPost(post);

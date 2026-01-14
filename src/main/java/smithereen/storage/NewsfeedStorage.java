@@ -1,5 +1,8 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.EnumSet;
@@ -16,21 +19,22 @@ import smithereen.storage.sql.SQLQueryBuilder;
 
 public class NewsfeedStorage{
 
-	public static PaginatedList<NewsfeedEntry> getFriendsFeed(int userID, long startFromID, int offset, int count, EnumSet<NewsfeedEntry.Type> types) throws SQLException{
+	public static PaginatedList<NewsfeedEntry> getFriendsFeed(int userID, long startFromID, int offset, int count, EnumSet<NewsfeedEntry.Type> types, boolean includeMuted) throws SQLException{
 		if(types.isEmpty())
 			return PaginatedList.emptyList(count);
+		String mutedCondition=includeMuted ? "" : " AND muted=0";
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("newsfeed")
 					.count()
 					.whereIn("type", types)
-					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1 AND muted=0) OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY))", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
+					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1"+mutedCondition+") OR (type=0 AND author_id=?)) AND `id`<=? AND `time`>DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL 10 DAY))", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
 					.executeAndGetInt();
 			List<NewsfeedEntry> feed=new SQLQueryBuilder(conn)
 					.selectFrom("newsfeed")
 					.columns("type", "object_id", "author_id", "id", "time")
 					.whereIn("type", types)
-					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1 AND muted=0) OR (type=0 AND author_id=?)) AND `id`<=?)", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
+					.andWhere("((`author_id` IN (SELECT followee_id FROM followings WHERE follower_id=? AND accepted=1"+mutedCondition+") OR (type=0 AND author_id=?)) AND `id`<=?)", userID, userID, startFromID==0 ? Integer.MAX_VALUE : startFromID)
 					.orderBy("time DESC")
 					.limit(count, offset)
 					.executeAsStream(NewsfeedEntry::fromResultSet)
@@ -129,7 +133,7 @@ public class NewsfeedStorage{
 				.executeAndGetSingleObject(WordFilter::fromResultSet);
 	}
 
-	public static int createWordFilter(int userID, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt) throws SQLException{
+	public static int createWordFilter(int userID, @NotNull String name, @NotNull List<String> words, @NotNull EnumSet<FilterContext> contexts, @Nullable Instant expiresAt) throws SQLException{
 		return new SQLQueryBuilder()
 				.insertInto("word_filters")
 				.value("owner_id", userID)
@@ -141,7 +145,7 @@ public class NewsfeedStorage{
 				.executeAndGetID();
 	}
 
-	public static void updateWordFilter(int userID, int id, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt) throws SQLException{
+	public static void updateWordFilter(int userID, int id, @NotNull String name, @NotNull List<String> words, @NotNull EnumSet<FilterContext> contexts, @Nullable Instant expiresAt) throws SQLException{
 		new SQLQueryBuilder()
 				.update("word_filters")
 				.where("id=? AND owner_id=?", id, userID)
@@ -158,5 +162,47 @@ public class NewsfeedStorage{
 				.deleteFrom("word_filters")
 				.where("id=? AND owner_id=?", id, userID)
 				.executeNoResult();
+	}
+
+	public static PaginatedList<NewsfeedEntry> getFriendsGroupedEntries(int authorID, int startFromID, NewsfeedEntry.Type type, Instant minTime, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed")
+					.count()
+					.where("id<=? AND author_id=? AND type=? AND time>?", startFromID, authorID, type, minTime)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<NewsfeedEntry> entries=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed")
+					.where("id<=? AND author_id=? AND type=? AND time>?", startFromID, authorID, type, minTime)
+					.orderBy("time DESC")
+					.limit(count, offset)
+					.executeAsStream(NewsfeedEntry::fromResultSet)
+					.toList();
+			return new PaginatedList<>(entries, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<NewsfeedEntry> getGroupsGroupedEntries(int groupID, int startFromID, NewsfeedEntry.Type type, Instant minTime, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed_groups")
+					.count()
+					.where("id<=? AND group_id=? AND type=? AND time>?", startFromID, groupID, type, minTime)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<NewsfeedEntry> entries=new SQLQueryBuilder(conn)
+					.selectFrom("newsfeed_groups")
+					.where("id<=? AND group_id=? AND type=? AND time>?", startFromID, groupID, type, minTime)
+					.orderBy("time DESC")
+					.limit(count, offset)
+					.executeAsStream(NewsfeedEntry::fromGroupsResultSet)
+					.toList();
+			return new PaginatedList<>(entries, total, offset, count);
+		}
 	}
 }

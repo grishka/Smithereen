@@ -1,5 +1,6 @@
 package smithereen.controllers;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,6 +24,7 @@ import smithereen.ApplicationContext;
 import smithereen.LruCache;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.Account;
 import smithereen.model.Group;
 import smithereen.model.PaginatedList;
@@ -37,6 +38,7 @@ import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.filtering.FilterContext;
 import smithereen.model.filtering.WordFilter;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
@@ -61,9 +63,9 @@ public class NewsfeedController{
 	}
 
 	// region Friends feed
-	public PaginatedList<NewsfeedEntry> getFriendsFeed(Account self, EnumSet<FriendsNewsfeedTypeFilter> filter, ZoneId timeZone, int startFrom, int offset, int count){
+	public PaginatedList<NewsfeedEntry> getFriendsFeed(Account self, EnumSet<FriendsNewsfeedTypeFilter> filter, ZoneId timeZone, int startFrom, int offset, int count, boolean includeMuted){
 		try{
-			FriendsFeedCacheKey cacheKey=new FriendsFeedCacheKey(self.user.id, EnumSet.copyOf(filter));
+			FriendsFeedCacheKey cacheKey=new FriendsFeedCacheKey(self.user.id, EnumSet.copyOf(filter), includeMuted);
 			CachedFeed cache;
 			synchronized(this){
 				cache=friendsNewsFeedCache.get(cacheKey);
@@ -107,7 +109,7 @@ public class NewsfeedController{
 
 				while(startIndex==-1 || startIndex+offset+count>=cache.feed.size()){
 					LOG.debug("Getting new feed page from database: userID={}, startFrom={}, offset={}, realOffset={}, count={}, filter={}", self.user.id, startFrom, offset, cache.realOffset, count, actualFilter);
-					PaginatedList<NewsfeedEntry> page=NewsfeedStorage.getFriendsFeed(self.user.id, 0, cache.realOffset, 100, actualFilter);
+					PaginatedList<NewsfeedEntry> page=NewsfeedStorage.getFriendsFeed(self.user.id, 0, cache.realOffset, 100, actualFilter, includeMuted);
 					ArrayList<NewsfeedEntry> newPage=new ArrayList<>(page.list);
 					cache.total=page.total;
 					cache.realOffset+=newPage.size();
@@ -175,13 +177,15 @@ public class NewsfeedController{
 
 					int sizeBefore=cache.feed.size();
 					cache.add(newPage);
-					int i=0;
-					for(NewsfeedEntry e:newPage){
-						if(e.id>=startFrom){
-							startIndex=i+sizeBefore;
-							break;
+					if(startFrom>0){
+						int i=0;
+						for(NewsfeedEntry e: newPage){
+							if(e.id>=startFrom){
+								startIndex=i+sizeBefore;
+								break;
+							}
+							i++;
 						}
-						i++;
 					}
 				}
 			}
@@ -262,6 +266,38 @@ public class NewsfeedController{
 
 	public void clearFriendsFeedCache(int userID){
 		friendsNewsFeedCache.evictAll(); // TODO
+	}
+
+	public PaginatedList<NewsfeedEntry> getFriendsGroupedEntries(User self, NewsfeedEntry.Type type, User author, int startFrom, Instant timestamp, ZoneId timeZone, int offset, int count){
+		try{
+			FriendshipStatus friendStatus=context.getFriendsController().getSimpleFriendshipStatus(self, author);
+			if(friendStatus!=FriendshipStatus.FRIENDS && friendStatus!=FriendshipStatus.FOLLOWING)
+				throw new UserActionNotAllowedException();
+			Instant startOfDay=timestamp.atZone(timeZone).toLocalDate().atStartOfDay(timeZone).toInstant();
+			if(type==NewsfeedEntry.Type.ADD_PHOTO){
+				List<NewsfeedEntry> entries=NewsfeedStorage.getFriendsGroupedEntries(author.id, startFrom, type, startOfDay, 0, 1000).list;
+				Set<Long> needPhotos=entries.stream().map(e->e.objectID).collect(Collectors.toSet());
+				if(!needPhotos.isEmpty()){
+					Map<Long, Photo> photos=context.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
+					Set<Long> needAlbums=photos.values().stream().map(p->p.albumID).collect(Collectors.toSet());
+					Map<Long, PhotoAlbum> albums=context.getPhotosController().getAlbumsIgnoringPrivacy(needAlbums);
+					Map<Integer, User> owners=context.getUsersController().getUsers(albums.values().stream().map(a->a.ownerID).filter(id->id>0).collect(Collectors.toSet()));
+					Set<Long> inaccessibleAlbums=albums.values().stream()
+							.filter(a->!context.getPrivacyController().checkUserPrivacy(self, owners.get(a.ownerID), a.viewPrivacy))
+							.map(a->a.id)
+							.collect(Collectors.toSet());
+					entries=new ArrayList<>(entries);
+					entries.removeIf(e->!photos.containsKey(e.objectID) || inaccessibleAlbums.contains(photos.get(e.objectID).albumID));
+				}
+				int total=entries.size();
+				if(offset>=total)
+					return PaginatedList.emptyList(count);
+				return new PaginatedList<>(entries.subList(offset, Math.min(offset+count, total)), total, offset, count);
+			}
+			return NewsfeedStorage.getFriendsGroupedEntries(author.id, startFrom, type, startOfDay, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	// endregion
@@ -352,13 +388,15 @@ public class NewsfeedController{
 
 					int sizeBefore=cache.feed.size();
 					cache.add(newPage);
-					int i=0;
-					for(NewsfeedEntry e:newPage){
-						if(e.id>=startFrom){
-							startIndex=i+sizeBefore;
-							break;
+					if(startFrom>0){
+						int i=0;
+						for(NewsfeedEntry e: newPage){
+							if(e.id>=startFrom){
+								startIndex=i+sizeBefore;
+								break;
+							}
+							i++;
 						}
-						i++;
 					}
 				}
 			}
@@ -430,6 +468,16 @@ public class NewsfeedController{
 
 	public void clearGroupsFeedCache(){
 		groupsNewsFeedCache.evictAll();
+	}
+
+	public PaginatedList<NewsfeedEntry> getGroupsGroupedEntries(User self, NewsfeedEntry.Type type, Group group, int startFrom, Instant timestamp, ZoneId timeZone, int offset, int count){
+		try{
+			context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
+			Instant startOfDay=timestamp.atZone(timeZone).toLocalDate().atStartOfDay(timeZone).toInstant();
+			return NewsfeedStorage.getGroupsGroupedEntries(group.id, startFrom, type, startOfDay, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 
 	// endregion
@@ -550,7 +598,8 @@ public class NewsfeedController{
 		}
 	}
 
-	public WordFilter getWordFilter(User self, int id){
+	@NotNull
+	public WordFilter getWordFilter(@NotNull User self, int id){
 		try{
 			WordFilter filter=NewsfeedStorage.getWordFilter(self.id, id);
 			if(filter==null)
@@ -561,7 +610,7 @@ public class NewsfeedController{
 		}
 	}
 
-	public int createWordFilter(User self, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt){
+	public int createWordFilter(@NotNull User self, @NotNull String name, @NotNull List<String> words, @NotNull EnumSet<FilterContext> contexts, @Nullable Instant expiresAt){
 		if(words.isEmpty() || contexts.isEmpty())
 			throw new IllegalArgumentException();
 		try{
@@ -573,7 +622,7 @@ public class NewsfeedController{
 		}
 	}
 
-	public void updateWordFilter(User self, WordFilter filter, String name, List<String> words, EnumSet<FilterContext> contexts, Instant expiresAt){
+	public void updateWordFilter(@NotNull User self, @NotNull WordFilter filter, @NotNull String name, @NotNull List<String> words, @NotNull EnumSet<FilterContext> contexts, @Nullable Instant expiresAt){
 		if(words.isEmpty() || contexts.isEmpty())
 			throw new IllegalArgumentException();
 		try{
@@ -584,7 +633,7 @@ public class NewsfeedController{
 		}
 	}
 
-	public void deleteWordFilter(User self, WordFilter filter){
+	public void deleteWordFilter(@NotNull User self, @NotNull WordFilter filter){
 		try{
 			NewsfeedStorage.deleteWordFilter(self.id, filter.id);
 			userWordFilters.remove(self.id);
@@ -664,7 +713,7 @@ public class NewsfeedController{
 		}
 	}
 
-	private record FriendsFeedCacheKey(int userID, EnumSet<FriendsNewsfeedTypeFilter> filter){}
+	private record FriendsFeedCacheKey(int userID, EnumSet<FriendsNewsfeedTypeFilter> filter, boolean includeMuted){}
 	private record GroupsFeedCacheKey(int userID, EnumSet<GroupsNewsfeedTypeFilter> filter){}
 	private record GroupedEntriesKey(LocalDate day, NewsfeedEntry.Type type, int authorID){}
 }

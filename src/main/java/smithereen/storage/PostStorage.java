@@ -64,7 +64,7 @@ public class PostStorage{
 	private static final NamedMutexCollection pollVoteLocks=new NamedMutexCollection();
 
 	public static int createWallPost(int userID, int ownerUserID, int ownerGroupID, String text, String textSource, FormattedTextFormat sourceFormat, List<Integer> replyKey,
-									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action, EnumSet<Post.Flag> flags) throws SQLException{
+									 Set<User> mentionedUsers, String attachments, String contentWarning, int pollID, int repostOf, Post.Action action, EnumSet<Post.Flag> flags, String extra) throws SQLException{
 		if(ownerUserID<=0 && ownerGroupID<=0)
 			throw new IllegalArgumentException("Need either ownerUserID or ownerGroupID");
 
@@ -85,6 +85,7 @@ public class PostStorage{
 					.value("repost_of", repostOf!=0 ? repostOf : null)
 					.value("action", action)
 					.value("flags", Utils.serializeEnumSet(flags))
+					.value("extra", extra)
 					.executeAndGetID();
 
 			if(replyKey!=null && !replyKey.isEmpty()){
@@ -92,6 +93,11 @@ public class PostStorage{
 						.update("wall_posts")
 						.valueExpr("reply_count", "reply_count+1")
 						.whereIn("id", replyKey)
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("wall_posts")
+						.valueExpr("immediate_reply_count", "immediate_reply_count+1")
+						.where("id=?", replyKey.getLast())
 						.executeNoResult();
 
 				SQLQueryBuilder.prepareStatement(conn, "INSERT INTO newsfeed_comments (user_id, object_type, object_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE object_id=object_id", userID, 0, replyKey.getFirst()).execute();
@@ -120,6 +126,14 @@ public class PostStorage{
 		new SQLQueryBuilder()
 				.update("wall_posts")
 				.value("content_warning", contentWarning)
+				.where("id=?", id)
+				.executeNoResult();
+	}
+
+	public static void updateWallPostExtraFields(int id, String extra) throws SQLException{
+		new SQLQueryBuilder()
+				.update("wall_posts")
+				.value("extra", extra)
 				.where("id=?", id)
 				.executeNoResult();
 	}
@@ -188,6 +202,7 @@ public class PostStorage{
 							.value("repost_of", post.repostOf!=0 ? post.repostOf : null)
 							.value("flags", Utils.serializeEnumSet(post.flags))
 							.value("action", post.action)
+							.value("extra", post.serializeExtraFields())
 							.createStatement(Statement.RETURN_GENERATED_KEYS);
 				}else{
 					if(post.poll!=null && Objects.equals(post.poll, existing.poll)){ // poll is unchanged, update vote counts
@@ -251,6 +266,8 @@ public class PostStorage{
 							.value("content_warning", post.contentWarning)
 							.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
 							.value("poll_id", post.poll!=null ? post.poll.id : null)
+							.value("extra", post.serializeExtraFields())
+							.value("flags", Utils.serializeEnumSet(post.flags))
 							.createStatement();
 				}
 				if(existing==null){
@@ -270,6 +287,11 @@ public class PostStorage{
 								.valueExpr("reply_count", "reply_count+1")
 								.whereIn("id", post.replyKey)
 								.executeNoResult();
+						new SQLQueryBuilder(conn)
+								.update("wall_posts")
+								.valueExpr("immediate_reply_count", "immediate_reply_count+1")
+								.where("id=?", post.replyKey.getLast())
+								.executeNoResult();
 						BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.getFirst()));
 					}
 				}else{
@@ -282,10 +304,14 @@ public class PostStorage{
 		}
 	}
 
-	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int count, int[] total, boolean ownOnly, Set<Post.Privacy> allowedPrivacy) throws SQLException{
+	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int count, int[] total, WallController.WallMode mode, Set<Post.Privacy> allowedPrivacy) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			PreparedStatement stmt;
-			String condition=ownOnly ? " AND owner_user_id=author_id" : "";
+			String condition=switch(mode){
+				case OWNER -> " AND owner_user_id=author_id";
+				case ALL -> "";
+				case OTHERS -> " AND owner_user_id<>author_id";
+			};
 			String ownerField=isGroup ? "owner_group_id" : "owner_user_id";
 			if(allowedPrivacy.size()<Post.Privacy.values().length){
 				condition+=" AND privacy IN ("+allowedPrivacy.stream().map(p->String.valueOf(p.ordinal())).collect(Collectors.joining(", "))+")";
@@ -576,6 +602,11 @@ public class PostStorage{
 
 			if(post.getReplyLevel()>0){
 				conn.createStatement().execute("UPDATE wall_posts SET reply_count=GREATEST(1, reply_count)-1 WHERE id IN ("+post.replyKey.stream().map(String::valueOf).collect(Collectors.joining(","))+")");
+				new SQLQueryBuilder(conn)
+						.update("wall_posts")
+						.valueExpr("immediate_reply_count", "GREATEST(1, immediate_reply_count)-1")
+						.where("id=?", post.replyKey.getLast())
+						.executeNoResult();
 				BackgroundTaskRunner.getInstance().submit(new UpdateCommentBookmarksRunnable(post.replyKey.get(0)));
 			}else{
 				BackgroundTaskRunner.getInstance().submit(new DeleteCommentBookmarksRunnable(id));
@@ -583,11 +614,11 @@ public class PostStorage{
 		}
 	}
 
-	public static Map<Integer, PaginatedList<Post>> getRepliesForFeed(Set<List<Integer>> postReplyKeys, boolean flat) throws SQLException{
+	public static Map<Integer, PaginatedList<Post>> getRepliesForFeed(Set<List<Integer>> postReplyKeys, boolean flat, int count) throws SQLException{
 		if(postReplyKeys.isEmpty())
 			return Collections.emptyMap();
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postReplyKeys.size(), "(SELECT *, ? AS `parent_id` FROM wall_posts WHERE reply_key"+(flat ? " LIKE BINARY bin_prefix(?)" : "=?")+" ORDER BY created_at DESC LIMIT 3)")));
+			PreparedStatement stmt=conn.prepareStatement(String.join(" UNION ALL ", Collections.nCopies(postReplyKeys.size(), "(SELECT *, ? AS `parent_id` FROM wall_posts WHERE reply_key"+(flat ? " LIKE BINARY bin_prefix(?)" : "=?")+" ORDER BY created_at DESC LIMIT "+count+")")));
 			int i=0;
 			for(List<Integer> id:postReplyKeys){
 				stmt.setInt(i+1, id.getLast());
@@ -806,13 +837,20 @@ public class PostStorage{
 				}
 			}
 
-			new SQLQueryBuilder(conn)
+			String userRepostedColumn=userID==0 ? "" : (", MAX(owner_user_id="+userID+")");
+			try(ResultSet res=new SQLQueryBuilder(conn)
 					.selectFrom("wall_posts")
-					.selectExpr("repost_of, COUNT(*)")
+					.selectExpr("repost_of, COUNT(*)"+userRepostedColumn)
 					.whereIn("repost_of", postIDs)
 					.groupBy("repost_of")
-					.executeAsStream(res->new Pair<>(res.getInt(1), res.getInt(2)))
-					.forEach(count->result.get(count.first()).repostCount=count.second());
+					.execute()){
+				while(res.next()){
+					UserInteractions interactions=result.get(res.getInt(1));
+					interactions.repostCount=res.getInt(2);
+					if(userID>0)
+						interactions.isReposted=res.getBoolean(3);
+				}
+			}
 		}
 
 		return result;
@@ -1340,6 +1378,49 @@ public class PostStorage{
 				}));
 	}
 
+	public static void recountComments(int ownerID) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			LOG.trace("Started recounting wall comments for {}", ownerID);
+
+			int batchSize=1000;
+			int offset=0;
+			while(true){
+				try(ResultSet res=new SQLQueryBuilder(conn)
+						.selectFrom("wall_posts")
+						.columns("id", "reply_key", "reply_count")
+						.where(ownerID>0 ? "owner_user_id=?" : "owner_group_id=?", Math.abs(ownerID))
+						.orderBy("id ASC")
+						.limit(batchSize, offset)
+						.execute()){
+					if(!res.next())
+						break;
+
+					do{
+						int id=res.getInt("id");
+						ArrayList<Integer> replyKey=new ArrayList<>(Utils.deserializeIntList(res.getBytes("reply_key")));
+						replyKey.add(id);
+						int count=new SQLQueryBuilder(conn)
+								.selectFrom("wall_posts")
+								.count()
+								.where("reply_key LIKE BINARY bin_prefix(?)", (Object)Utils.serializeIntList(replyKey))
+								.executeAndGetInt();
+						if(count!=res.getInt("reply_count")){
+							new SQLQueryBuilder(conn)
+									.update("wall_posts")
+									.where("id=?", id)
+									.value("reply_count", count)
+									.executeNoResult();
+						}
+					}while(res.next());
+
+					offset+=batchSize;
+				}
+			}
+
+			LOG.trace("Done recounting wall comments for {}", ownerID);
+		}
+	}
+
 	// region Pinned posts
 
 	public static void pinPost(int ownerID, int postID, boolean keepPrevious) throws SQLException{
@@ -1398,17 +1479,15 @@ public class PostStorage{
 				.executeNoResult();
 	}
 
-	public static List<Post> getPinnedPosts(int ownerID) throws SQLException{
-		List<Post> posts=new SQLQueryBuilder()
+	public static List<Integer> getPinnedPostIDs(int ownerID) throws SQLException{
+		return new SQLQueryBuilder()
 				.selectFrom("wall_pinned_posts")
-				.selectExpr("wall_posts.*")
-				.join("JOIN wall_posts ON wall_pinned_posts.post_id=wall_posts.id")
-				.where("wall_pinned_posts.owner_user_id=?", ownerID)
-				.orderBy("wall_pinned_posts.display_order DESC")
-				.executeAsStream(Post::fromResultSet)
+				.columns("post_id")
+				.where("owner_user_id=?", ownerID)
+				.orderBy("display_order DESC")
+				.executeAndGetIntStream()
+				.boxed()
 				.toList();
-		postprocessPosts(posts);
-		return posts;
 	}
 
 	public static boolean isPostPinned(int id) throws SQLException{

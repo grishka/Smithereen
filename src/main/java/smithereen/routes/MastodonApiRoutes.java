@@ -1,18 +1,18 @@
 package smithereen.routes;
 
-import java.sql.SQLException;
-
+import smithereen.ApplicationContext;
 import smithereen.BuildInfo;
 import smithereen.Config;
-import smithereen.model.api.ApiInstance;
-import smithereen.storage.PostStorage;
-import smithereen.storage.UserStorage;
+import smithereen.model.api.MastodonApiInstance;
 import spark.Request;
 import spark.Response;
 
+import static smithereen.Utils.context;
+
 public class MastodonApiRoutes{
-	public static Object instance(Request req, Response resp) throws SQLException{
-		ApiInstance inst=new ApiInstance();
+	public static Object instance(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		MastodonApiInstance inst=new MastodonApiInstance();
 		inst.uri=Config.domain;
 		inst.title=Config.getServerDisplayName();
 		inst.shortDescription=Config.serverShortDescription;
@@ -22,13 +22,13 @@ public class MastodonApiRoutes{
 		inst.registrations=Config.signupMode==Config.SignupMode.OPEN;
 		inst.invitesEnabled=Config.signupMode==Config.SignupMode.INVITE_ONLY;
 		inst.approvalRequired=Config.signupMode==Config.SignupMode.MANUAL_APPROVAL;
-		inst.stats.statusCount=PostStorage.getLocalPostCount(false);
-		inst.stats.userCount=UserStorage.getLocalUserCount();
-		inst.stats.domainCount=UserStorage.getPeerDomainCount();
+		inst.stats.statusCount=ctx.getWallController().getLocalPostCount(false);
+		inst.stats.userCount=ctx.getUsersController().getLocalUserCount();
+		inst.stats.domainCount=ctx.getModerationController().getPeerDomainCount();
 		return inst;
 	}
 
-	public static Object instancePeers(Request req, Response resp) throws SQLException{
-		return UserStorage.getPeerDomains();
+	public static Object instancePeers(Request req, Response resp){
+		return context(req).getModerationController().getPeerDomains();
 	}
 }

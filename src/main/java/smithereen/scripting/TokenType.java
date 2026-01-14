@@ -1,0 +1,28 @@
+package smithereen.scripting;
+
+enum TokenType{
+	// Single-character tokens
+	LEFT_PAREN, RIGHT_PAREN,
+	LEFT_BRACE, RIGHT_BRACE,
+	LEFT_BRACKET, RIGHT_BRACKET,
+	MINUS, PLUS, SLASH, STAR, PERCENT,
+	COMMA, SEMICOLON, COLON, DOT, QUESTION,
+
+	// Single- or double-character tokens
+	EXCLAMATION, NOT_EQUAL,
+	EQUAL, DOUBLE_EQUAL,
+	GREATER, GREATER_EQUAL,
+	LESS, LESS_EQUAL,
+	AT_DOT,
+	OR, AND,
+
+	// Literals
+	IDENTIFIER, STRING, NUMBER,
+
+	// Keywords
+	VAR, IF, ELSE, FOR, WHILE,
+	RETURN, BREAK, CONTINUE, DELETE,
+	TRUE, FALSE, NULL,
+
+	EOF
+}

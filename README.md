@@ -20,6 +20,30 @@ If you have any questions or feedback, there's a [Telegram chat](https://t.me/Sm
 6. Configure your web server to proxy the requests to Smithereen and imgproxy and serve user-uploaded files. See example configs for [nginx](examples/nginx.conf) and [Caddy](examples/Caddyfile).
 7. Log into your admin account from your web browser, then configure the rest of the server settings from its UI
 
+#### Updating from an older version
+
+Download the release bundle for the new version, unpack it, and run `./update.sh`. Pass your installation directory as an argument to this script if it's not `/opt/smithereen`.
+
+<details>
+<summary>Alternatively, do the same thing manually</summary>
+
+Stop services:
+
+```bash
+service smithereen stop
+service smithereen_imgproxy stop
+```
+Copy `smithereen.jar`, `imgproxy`, `libvips` libraries and their symlinks, and the `lib` directory over your existing installation. **Important**: make sure that you **do not** merge the contents of the `lib` directories from your old and new installations, or the JVM class loader will get angry.
+
+Start the services back up:
+```bash
+service smithereen start
+service smithereen_imgproxy start
+```
+</details>
+
+The first startup after installing an update might take a while as the new Smithereen version performs database migrations.
+
 #### Install manually from sources
 
 1. Install JDK 21 or newer from your distribution's package manager, [here](https://adoptium.net/temurin/releases/), [here](https://www.azul.com/downloads/) or [here](https://aws.amazon.com/corretto/)
@@ -32,7 +56,7 @@ If you have any questions or feedback, there's a [Telegram chat](https://t.me/Sm
       ├╴ activation-1.1.jar
       └╴ ...other dependencies
    ```
-4. Set up the image processing native library ([libvips](https://github.com/libvips/libvips)): run `java LibVipsDownloader.java` to automatically download a prebuilt one from [here](https://github.com/lovell/sharp-libvips). If you already have libvips installed on your system, you may skip this step, but be aware that not all libvips builds include all the features Smithereen needs.
+4. Somehow cause [libvips](https://github.com/libvips/libvips) to exist on your system: use the one from a release bundle, download a prebuilt one from [here](https://github.com/lovell/sharp-libvips), or build it from sources, maybe using [the CI build script](ci/libvips/build.sh). If you already have libvips installed on your system, you may skip this step, but be aware that not all libvips builds include all the features Smithereen needs.
 5. Install and configure [imgproxy](https://docs.imgproxy.net/GETTING_STARTED)
 6. Fill in the config file, see a commented example [here](examples/config.properties)
 	- You can use either the local file system (default) or an S3-compatible object storage service for user-uploaded media files.

@@ -1,9 +1,9 @@
 package smithereen.activitypub;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -34,6 +34,7 @@ import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubActorStatus;
+import smithereen.activitypub.objects.ActivityPubApplication;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubPhoto;
@@ -72,9 +73,9 @@ import smithereen.activitypub.tasks.FetchAllWallRepliesTask;
 import smithereen.activitypub.tasks.FetchBoardTopicCommentsTask;
 import smithereen.activitypub.tasks.FetchCommentReplyThreadRunnable;
 import smithereen.activitypub.tasks.FetchPhotoAlbumPhotosTask;
+import smithereen.activitypub.tasks.FetchRepostChainTask;
 import smithereen.activitypub.tasks.FetchUserPinnedPostsTask;
 import smithereen.activitypub.tasks.FetchWallReplyThreadRunnable;
-import smithereen.activitypub.tasks.FetchRepostChainTask;
 import smithereen.activitypub.tasks.ForwardOneActivityRunnable;
 import smithereen.activitypub.tasks.RetryActivityRunnable;
 import smithereen.activitypub.tasks.SendActivitySequenceRunnable;
@@ -99,6 +100,7 @@ import smithereen.model.PrivacySetting;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
@@ -107,7 +109,6 @@ import smithereen.model.friends.FollowRelationship;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.photos.PhotoTag;
-import smithereen.storage.BoardStorage;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.PostStorage;
@@ -181,9 +182,9 @@ public class ActivityPubWorker{
 
 	public void getInboxesWithPrivacy(Set<URI> inboxes, User owner, PrivacySetting setting) throws SQLException{
 		switch(setting.baseRule){
-			case EVERYONE -> inboxes.addAll(UserStorage.getFollowerInboxes(owner.id, setting.exceptUsers));
-			case FRIENDS, FRIENDS_OF_FRIENDS -> inboxes.addAll(UserStorage.getFriendInboxes(owner.id, setting.exceptUsers));
-			case NONE -> context.getUsersController().getUsers(setting.allowUsers).values().stream().map(this::actorInbox).forEach(inboxes::add);
+			case EVERYONE -> inboxes.addAll(UserStorage.getFollowerInboxes(owner.id, setting.getAllExceptUsers()));
+			case FRIENDS, FRIENDS_OF_FRIENDS -> inboxes.addAll(UserStorage.getFriendInboxes(owner.id, setting.getAllExceptUsers()));
+			case NONE -> context.getUsersController().getUsers(setting.getAllAllowUsers()).values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).forEach(inboxes::add);
 		}
 	}
 
@@ -818,7 +819,7 @@ public class ActivityPubWorker{
 		submitActivity(flag, ServiceActor.getInstance(), targetActor.inbox);
 	}
 
-	public void sendDirectMessage(User self, MailMessage msg){
+	public void sendDirectMessage(User self, @NotNull MailMessage msg){
 		HashSet<Integer> needUsers=new HashSet<>();
 		needUsers.addAll(msg.to);
 		needUsers.addAll(msg.cc);
@@ -835,13 +836,12 @@ public class ActivityPubWorker{
 
 	public void sendDeleteMessageActivity(User self, MailMessage msg){
 		HashSet<Integer> needUsers=new HashSet<>(msg.to);
-		if(msg.cc!=null)
-			needUsers.addAll(msg.cc);
+		needUsers.addAll(msg.cc);
 		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
 
 		Delete delete=new Delete().withActorAndObjectLinks(self, msg);
 		delete.to=msg.to.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
-		if(msg.cc!=null && !msg.cc.isEmpty())
+		if(!msg.cc.isEmpty())
 			delete.cc=msg.cc.stream().map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
 		delete.activityPubID=new UriBuilder(msg.getActivityPubID()).fragment("delete").build();
 
@@ -852,17 +852,16 @@ public class ActivityPubWorker{
 	public void sendReadMessageActivity(User self, MailMessage msg){
 		HashSet<Integer> needUsers=new HashSet<>(msg.to);
 		needUsers.add(msg.senderID);
-		if(msg.cc!=null)
-			needUsers.addAll(msg.cc);
+		needUsers.addAll(msg.cc);
 		Map<Integer, User> users=context.getUsersController().getUsers(needUsers);
 
 		Read read=new Read().withActorAndObjectLinks(self, msg);
 		HashSet<Integer> to=new HashSet<>(msg.to);
 		to.add(msg.senderID);
 		read.to=to.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
-		if(msg.cc!=null && !msg.cc.isEmpty())
+		if(!msg.cc.isEmpty())
 			read.cc=msg.cc.stream().filter(id->id!=self.id).map(id->new LinkOrObject(users.get(id).activityPubID)).toList();
-		read.activityPubID=UriBuilder.local().path("activitypub", "objects", "messages", msg.encodedID).fragment("read"+self.id).build();
+		read.activityPubID=UriBuilder.local().path("activitypub", "objects", "messages", msg.getIdString()).fragment("read"+self.id).build();
 
 		Set<URI> inboxes=users.values().stream().filter(u->u instanceof ForeignUser).map(this::actorInbox).collect(Collectors.toSet());
 		submitActivity(read, self, inboxes);
@@ -902,6 +901,14 @@ public class ActivityPubWorker{
 		submitActivity(accept, self, actorInbox(repostAuthor));
 	}
 
+	public void sendQuoteRequest(User self, Post repost, Post repostedPost, ForeignUser repostedAuthor){
+		QuoteRequest qreq=new QuoteRequest()
+				.withActorAndObjectLinks(self, repostedPost);
+		qreq.activityPubID=new UriBuilder(repost.getActivityPubID()).fragment("quoteAuth").build();
+		qreq.instrument=new LinkOrObject(NoteOrQuestion.fromNativePost(repost, context));
+		submitActivity(qreq, self, actorInbox(repostedAuthor));
+	}
+
 	// region Photo albums
 
 	private void sendActivityForPhotoAlbum(Actor actor, PhotoAlbum album, Activity activity){
@@ -932,11 +939,21 @@ public class ActivityPubWorker{
 		sendActivityForPhotoAlbum(actor, album, delete);
 	}
 
-	public void sendUpdatePhotoAlbum(Actor actor, PhotoAlbum album){
+	public void sendUpdatePhotoAlbum(Actor actor, PhotoAlbum album, PrivacySetting prevViewPrivacy){
 		Update update=new Update()
 				.withActorLinkAndObject(actor, ActivityPubPhotoAlbum.fromNativeAlbum(album, context));
 		update.activityPubID=new UriBuilder(album.getActivityPubID()).fragment("update"+rand()).build();
-		sendActivityForPhotoAlbum(actor, album, update);
+		if(actor instanceof User user){
+			HashSet<URI> inboxes=new HashSet<>();
+			try{
+				getInboxesWithPrivacy(inboxes, user, prevViewPrivacy==null ? album.viewPrivacy : PrivacySetting.combine(album.viewPrivacy, prevViewPrivacy));
+			}catch(SQLException x){
+				throw new InternalServerErrorException(x);
+			}
+			submitActivity(update, user, inboxes, Server.Feature.PHOTO_ALBUMS);
+		}else if(actor instanceof Group group){
+			submitActivityForMembers(update, group, Server.Feature.PHOTO_ALBUMS);
+		}
 	}
 
 	// endregion
@@ -1250,6 +1267,43 @@ public class ActivityPubWorker{
 				.withActorFragmentID("deleteTopic"+topic.getIdString());
 
 		sendActivityForBoardTopic(delete, topic, group);
+	}
+
+	// endregion
+	// region Apps
+
+	public void sendAddAppToAppServer(User self, ClientApp app){
+		URI inbox=app.apSharedInbox==null ? app.apInbox : app.apSharedInbox;
+		if(inbox==null){
+			LOG.debug("Not sending Add{Application} for {} because it does not have an inbox", app.apID);
+			return;
+		}
+		Add add=new Add()
+				.withActorAndObjectLinks(self, app)
+				.withTarget(self.getAppsURL())
+				.withActorFragmentID("addApp"+app.id+"_"+rand());
+		submitActivity(add, self, inbox);
+	}
+
+	public void sendRemoveAppToAppServer(User self, ClientApp app){
+		URI inbox=app.apSharedInbox==null ? app.apInbox : app.apSharedInbox;
+		if(inbox==null){
+			LOG.debug("Not sending Remove{Application} for {} because it does not have an inbox", app.apID);
+			return;
+		}
+		Remove add=new Remove()
+				.withActorAndObjectLinks(self, app)
+				.withTarget(self.getAppsURL())
+				.withActorFragmentID("removeApp"+app.id+"_"+rand());
+		submitActivity(add, self, inbox);
+	}
+
+	public void sendUpdateAppToUsers(ClientApp app, Set<URI> inboxes){
+		ActivityPubApplication apApp=ActivityPubApplication.fromNativeApp(app, context);
+		Update update=new Update()
+				.withActorLinkAndObject(apApp, apApp)
+				.withObjectFragmentID("updateSelf"+rand());
+		submitActivity(update, apApp, inboxes);
 	}
 
 	// endregion

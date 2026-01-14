@@ -1,10 +1,6 @@
 package smithereen.routes;
 
-import com.google.gson.JsonObject;
-
-import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.AttributeProvider;
 import org.commonmark.renderer.html.HtmlRenderer;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
@@ -17,7 +13,6 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -28,12 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,18 +40,14 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
-import smithereen.activitypub.objects.ActivityPubPhotoAlbum;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.FederationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.RemoteObjectFetchException;
-import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.exceptions.UserErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
@@ -76,31 +62,29 @@ import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.Poll;
-import smithereen.model.PollOption;
 import smithereen.model.Post;
 import smithereen.model.ServerRule;
-import smithereen.model.admin.ViolationReport;
-import smithereen.model.board.BoardTopic;
-import smithereen.model.groups.GroupLink;
-import smithereen.model.media.PhotoViewerInlineData;
-import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.ViolationReport;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.attachments.GraffitiAttachment;
+import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
-import smithereen.model.comments.CommentReplyParent;
-import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.groups.GroupLink;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
+import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.util.QuickSearchResults;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
-import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
@@ -239,6 +223,24 @@ public class SystemRoutes{
 						mime="image/jpeg";
 				}
 			}
+			case "app_logo" -> {
+				itemType=MediaCache.ItemType.AVATAR;
+				mime="image/jpeg";
+				long appID=safeParseLong(req.queryParams("app_id"));
+				ClientApp app=ctx.getAppsController().getAppByID(appID);
+				if(app.apID==null){
+					LOG.warn("downloading app_logo: app {} is local", appID);
+					return "";
+				}
+				Image im=app.logo;
+				if(im!=null && im.url!=null){
+					uri=im.url;
+					if(StringUtils.isNotEmpty(im.mediaType))
+						mime=im.mediaType;
+					else
+						mime="image/jpeg";
+				}
+			}
 			case "post_photo", "message_photo", "comment_photo" -> {
 				itemType=MediaCache.ItemType.PHOTO;
 				SessionInfo sess=sessionInfo(req);
@@ -251,7 +253,7 @@ public class SystemRoutes{
 						requireQueryParams(req, "msg_id");
 						if(sess==null || sess.account==null)
 							yield null;
-						long msgID=decodeLong(req.queryParams("msg_id"));
+						long msgID=XTEA.decodeObjectID(req.queryParams("msg_id"), ObfuscatedObjectIDType.MAIL_MESSAGE);
 						yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
 					}
 					case "comment_photo" -> {
@@ -406,12 +408,13 @@ public class SystemRoutes{
 	}
 
 	private static Object uploadPhotoAttachment(Request req, Response resp, Account self, boolean isGraffiti){
-		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, self, isGraffiti);
+		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, self, isGraffiti, "file");
 		if(isAjax(req)){
 			resp.type("application/json");
-			PhotoViewerInlineData pvData=new PhotoViewerInlineData(0, "rawFile/"+photo.getLocalID(), photo.getURLsForPhotoViewer());
+			String localID=photo.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id);
+			PhotoViewerInlineData pvData=new PhotoViewerInlineData(0, "rawFile/"+localID, photo.getURLsForPhotoViewer());
 			return new JsonObjectBuilder()
-					.add("id", photo.fileRecord.id().getIDForClient())
+					.add("id", localID)
 					.add("width", photo.width)
 					.add("height", photo.height)
 					.add("thumbs", new JsonObjectBuilder()
@@ -424,16 +427,16 @@ public class SystemRoutes{
 		return "";
 	}
 
-	public static Object aboutServer(Request req, Response resp) throws SQLException{
+	public static Object aboutServer(Request req, Response resp){
 		ApplicationContext ctx=context(req);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("about_server", req);
 		model.with("title", lang(req).get("about_server"));
 		model.with("serverPolicy", Config.serverPolicy)
-				.with("serverAdmins", UserStorage.getAdmins())
+				.with("serverAdmins", ctx.getModerationController().getPublicServerAdmins())
 				.with("serverAdminEmail", Config.serverAdminEmail)
-				.with("totalUsers", UserStorage.getLocalUserCount())
-				.with("totalPosts", PostStorage.getLocalPostCount(false))
-				.with("totalGroups", GroupStorage.getLocalGroupCount())
+				.with("totalUsers", ctx.getUsersController().getLocalUserCount())
+				.with("totalPosts", ctx.getWallController().getLocalPostCount(false))
+				.with("totalGroups", ctx.getGroupsController().getLocalGroupCount())
 				.with("serverVersion", BuildInfo.VERSION)
 				.with("restrictedServers", ctx.getModerationController().getAllServers(0, 10000, null, true, null).list)
 				.with("serverRules", ctx.getModerationController().getServerRules());
@@ -488,33 +491,20 @@ public class SystemRoutes{
 				case OTHER_ERROR -> l.get("remote_object_loading_error");
 			});
 			if(x.getCause()!=null){
-				jb.add("details", TextProcessor.escapeHTML(x.getCause().getMessage()));
+				jb.add("details", x.getCause().getMessage());
 			}else if(StringUtils.isNotEmpty(x.getMessage())){
-				jb.add("details", TextProcessor.escapeHTML(x.getMessage()));
+				jb.add("details", x.getMessage());
 			}
 			return jb.build();
 		}
 	}
 
-	public static Object votePoll(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object votePoll(Request req, Response resp, Account self, ApplicationContext ctx){
 		int id=parseIntOrDefault(req.queryParams("id"), 0);
 		if(id==0)
 			throw new ObjectNotFoundException();
-		Poll poll=PostStorage.getPoll(id, null);
-		if(poll==null)
-			throw new ObjectNotFoundException();
+		Poll poll=ctx.getWallController().getPollByID(id);
 
-		Actor owner;
-		if(poll.ownerID>0){
-			User _owner=UserStorage.getById(poll.ownerID);
-			ensureUserNotBlocked(self.user, _owner);
-			owner=_owner;
-		}else{
-			Group _owner=ctx.getGroupsController().getGroupOrThrow(-poll.ownerID);
-			ensureUserNotBlocked(self.user, _owner);
-			ctx.getPrivacyController().enforceUserAccessToGroupContent(self.user, _owner);
-			owner=_owner;
-		}
 
 		String[] _options=req.queryMap("option").values();
 		if(_options.length<1)
@@ -524,53 +514,21 @@ public class SystemRoutes{
 		if(_options.length>poll.options.size())
 			throw new BadRequestException("invalid option count");
 		int[] optionIDs=new int[_options.length];
-		List<PollOption> options=new ArrayList<>(_options.length);
+		
 		for(int i=0;i<_options.length;i++){
 			int optID=parseIntOrDefault(_options[i], 0);
 			if(optID<=0)
 				throw new BadRequestException("invalid option id '"+_options[i]+"'");
-			PollOption option=null;
-			for(PollOption opt:poll.options){
-				if(opt.id==optID){
-					option=opt;
-					break;
-				}
-			}
-			if(option==null)
-				throw new BadRequestException("option with id "+optID+" does not exist in this poll");
-			if(options.contains(option))
-				throw new BadRequestException("option with id "+optID+" seen more than once");
 			optionIDs[i]=optID;
-			options.add(option);
 		}
 
-		if(poll.isExpired())
-			return wrapError(req, resp, "err_poll_expired");
-
-		int[] voteIDs=PostStorage.voteInPoll(self.user.id, poll.id, optionIDs);
-		if(voteIDs==null)
-			return wrapError(req, resp, "err_poll_already_voted");
-
-		poll.numVoters++;
-		for(PollOption opt:options)
-			opt.numVotes++;
-
-		ctx.getActivityPubWorker().sendPollVotes(self.user, poll, owner, options, voteIDs);
-		int postID=PostStorage.getPostIdByPollId(id);
-		Post post;
-		if(postID>0){
-			post=ctx.getWallController().getPostOrThrow(postID);
-			post.poll=poll; // So the last vote time is as it was before the vote
-			ctx.getWallController().sendUpdateQuestionIfNeeded(post);
-		}else{
-			post=null;
-		}
+		ctx.getWallController().voteInPoll(self.user, poll, optionIDs);
 
 		if(isAjax(req)){
 			UserInteractions interactions=new UserInteractions();
 			interactions.pollChoices=Arrays.stream(optionIDs).boxed().collect(Collectors.toList());
 			RenderedTemplateResponse model=new RenderedTemplateResponse("poll", req).with("poll", poll).with("interactions", interactions);
-			model.with("post", new PostViewModel(post));
+			model.with("post", new PostViewModel(ctx.getWallController().getPostOrThrow(ctx.getWallController().getPostIDForPoll(poll))));
 			return new WebDeltaResponse(resp).setContent("poll"+poll.id, model.renderBlock("inner"));
 		}
 
@@ -626,7 +584,7 @@ public class SystemRoutes{
 				otherServerDomain=group instanceof ForeignGroup fg ? fg.domain : null;
 			}
 			case "message" -> {
-				long id=decodeLong(rawID);
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.MAIL_MESSAGE);
 				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 				User user=ctx.getUsersController().getUserOrThrow(msg.senderID);
 				actorForAvatar=user;
@@ -731,7 +689,7 @@ public class SystemRoutes{
 				content=null;
 			}
 			case "message" -> {
-				long id=decodeLong(rawID);
+				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.MAIL_MESSAGE);
 				MailMessage msg=ctx.getMailController().getMessage(self.user, id, false);
 				target=ctx.getUsersController().getUserOrThrow(msg.senderID);
 				content=List.of(msg);
@@ -892,7 +850,7 @@ public class SystemRoutes{
 				.filter(Predicate.not(String::isBlank))
 				.map(s->Pattern.compile("\\b"+Pattern.quote(s), Pattern.CASE_INSENSITIVE))
 				.toList();
-		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10);
+		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10).list;
 		HashMap<Integer, String> highlightedNames=new HashMap<>(), highlightedUsernames=new HashMap<>();
 		List<CharacterRange> nameRanges=new ArrayList<>(), usernameRanges=new ArrayList<>();
 		for(User u:results){
@@ -949,7 +907,7 @@ public class SystemRoutes{
 				.map(s->Pattern.compile("\\b"+Pattern.quote(s), Pattern.CASE_INSENSITIVE))
 				.toList();
 
-		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10);
+		List<User> results=ctx.getSearchController().searchUsers(query, self.user, 10).list;
 		List<CharacterRange> nameRanges=new ArrayList<>();
 		JsonArrayBuilder arr=new JsonArrayBuilder();
 		for(User u:results){

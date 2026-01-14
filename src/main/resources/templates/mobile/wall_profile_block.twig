@@ -1,6 +1,6 @@
 {% if canPostOnWall and wallOwner.hasWall %}
 <div class="card">
-{% include "wall_post_form" %}
+{% include "wall_post_form" with {'id': "wall#{wallOwner.ownerID}"} %}
 </div>
 {%endif%}
 <div id="postList">
@@ -28,9 +28,11 @@
 		{%include "wall_post" with {'post': post}%}
 	</div>
 	{% else %}
-		<div id="wallEmptyState" class="card padded">
+	{% if pinnedPosts is empty %}
+	<div id="wallEmptyState" class="card padded">
 		{{ L('wall_empty') }}
 	</div>
+	{% endif %}
 	{%endfor%}
 </div>
 <div class="singleColumn">

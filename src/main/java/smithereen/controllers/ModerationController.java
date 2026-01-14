@@ -49,7 +49,6 @@ import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.MailMessage;
-import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OtherSession;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -94,13 +93,13 @@ import smithereen.storage.GroupStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.PhotoStorage;
+import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
 import smithereen.util.InetAddressRange;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
-import smithereen.util.XTEA;
 import spark.Request;
 import spark.utils.StringUtils;
 
@@ -397,7 +396,7 @@ public class ModerationController{
 						context.getWallController().deletePostAsServerModerator(session.account.user, post);
 					}
 					case MailMessage msg -> {
-						if(context.getMailController().getMessagesAsModerator(Set.of(XTEA.obfuscateObjectID(msg.id, ObfuscatedObjectIDType.MAIL_MESSAGE))).isEmpty()){
+						if(context.getMailController().getMessagesAsModerator(Set.of(msg.id)).isEmpty()){
 							LOG.debug("Message {} already deleted", msg.id);
 							continue;
 						}
@@ -628,6 +627,22 @@ public class ModerationController{
 		}
 	}
 
+	public int getPeerDomainCount(){
+		try{
+			return UserStorage.getPeerDomainCount();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public List<String> getPeerDomains(){
+		try{
+			return UserStorage.getPeerDomains();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	// endregion
 	// region Account roles
 
@@ -752,6 +767,14 @@ public class ModerationController{
 		}
 	}
 
+	public List<User> getPublicServerAdmins(){
+		try{
+			return UserStorage.getAdmins();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	// endregion
 	// region Audit log
 
@@ -808,7 +831,10 @@ public class ModerationController{
 
 	public void terminateUserSession(User self, Account account, OtherSession session){
 		try{
-			SessionStorage.deleteSession(account.id, session.fullID());
+			if(session.appID()!=0)
+				context.getAppsController().revokeAccessToken(session.fullID());
+			else
+				SessionStorage.deleteSession(account.id, session.fullID());
 			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.END_USER_SESSION, account.user.id, 0, null, Map.of("ip", Base64.getEncoder().withoutPadding().encodeToString(Utils.serializeInetAddress(session.ip()))));
 			SmithereenApplication.invalidateAllSessionsForAccount(account.id);
 		}catch(SQLException x){
@@ -873,6 +899,22 @@ public class ModerationController{
 			username="id"+target.id;
 		try{
 			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CHANGE_USER_USERNAME, target.id, 0, null, Map.of("old", oldUsername, "new", username));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void recountUserFriends(User user){
+		try{
+			UserStorage.recountFriends(user);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void recountActorWallComments(Actor actor){
+		try{
+			PostStorage.recountComments(actor.getOwnerID());
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

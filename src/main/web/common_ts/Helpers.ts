@@ -349,6 +349,8 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 			if(onDone(resp))
 				return;
 		}
+		if(resp[0]=='[')
+			resp=JSON.parse(resp);
 		if(resp instanceof Array){
 			for(var i=0;i<resp.length;i++){
 				applyServerCommand(resp[i]);
@@ -364,7 +366,6 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 		if(onProgress)
 			onProgress(ev.loaded/ev.total);
 	};
-	xhr.responseType="json";
 	xhr.send(formData);
 }
 
@@ -1750,7 +1751,7 @@ function setMenuCounters(counters:{[key:string]:number}){
 function activateNotificationsPostForm(id:string, postID:string, type:PostFormReplyType, randomID:string){
 	var ev=window.event;
 	var target=ev.target as HTMLElement;
-	if(target.tagName=='A' || target.tagName=='LABEL' || target.tagName=='INPUT')
+	if((ev.target as HTMLElement).closest("a, label, input"))
 		return true;
 	var formEl=ge("wallPostForm_"+id);
 	if(!formEl)

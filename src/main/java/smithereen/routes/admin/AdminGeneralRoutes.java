@@ -51,7 +51,7 @@ public class AdminGeneralRoutes{
 	public static Object serverInfo(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_server_info", req);
 		Lang l=lang(req);
-		model.with("title", l.get("profile_edit_basic")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
+		model.with("title", l.get("profile_edit_general")+" | "+l.get("menu_admin")).with("toolbarTitle", l.get("menu_admin"));
 		model.with("serverName", Config.getServerDisplayName())
 				.with("serverDescription", Config.serverDescription)
 				.with("serverShortDescription", Config.serverShortDescription)

@@ -23,7 +23,7 @@
 </div>
 <div class="postLayerActions" id="postFloatingActions{{ post.post.id }}_{{ randomID }}">
 	<span class="likeWrap" onmouseenter="likeOnMouseChange(this, true)" onmouseleave="likeOnMouseChange(this, false)">
-		<a href="{{ realPost.internalURL }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}&amp;rid={{ randomID }}" class="button like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPost{{ realPost.id }}_{{ randomID }}" data-obj-type="post" data-obj-id="{{ realPost.id }}_{{ randomID }}" data-popover-url="{{ realPost.internalURL }}/likePopover" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
+		<a href="{{ realPost.internalURL }}/{% if interactions.isLiked %}un{% endif %}like?csrf={{ csrf }}&amp;rid={{ randomID }}" class="button like{% if interactions.isLiked %} liked{% endif %} popoverButton" id="likeButtonPost{{ realPost.id }}_{{ randomID }}" data-obj-type="post" data-obj-id="{{ realPost.id }}_{{ randomID }}" data-popover-url="{{ realPost.internalURL }}/likePopover?rid={{ randomID }}" {% if currentUser is not null %}onclick="return likeOnClick(this)"{% else %}data-ajax-box{% endif %} rel="nofollow">
 			{{- L('like') }}<span class="icon">&nbsp;</span><span class="counter" id="likeCounterPost{{ realPost.id }}_{{ randomID }}" data-count="{{ interactions.likeCount }}" style="{%if interactions.likeCount==0%}display: none{%endif%}">
 			{{- interactions.likeCount | numberformat -}}
 		</span></a>
@@ -73,14 +73,14 @@
 <div>
 <div id="postReplies{{post.post.id}}_{{ randomID }}" class="postLayerComments">
 	{%- for reply in items %}
-	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentReplyPost#{post.post.id}_#{randomID}", 'first': false, 'topLevel': post, 'randomID': randomID} %}
+	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_comment#{commentViewType=='FLAT' ? '' : 'Reply'}Post#{post.post.id}_#{randomID}", 'first': false, 'topLevel': post, 'randomID': randomID} %}
 	{% endfor -%}
 </div>
 {% set interactions=postInteractions[post.post.id] %}
 {% if currentUser is not null %}
 {% if interactions.canComment %}
-{% include "wall_post_form" with {'id': "commentReplyPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'hidden': true, 'randomID': randomID} %}
-{% include "wall_post_form" with {'id': "commentPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'addClasses': "collapsed postLayerCommentForm", 'showOwnAvatar': true, 'randomID': randomID} %}
+{% if commentViewType!='FLAT' %}{% include "wall_post_form" with {'id': "commentReplyPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'hidden': true, 'randomID': randomID, 'showReplyBar': commentViewType!='THREADED'} %}{% endif %}
+{% include "wall_post_form" with {'id': "commentPost#{post.post.id}_#{randomID}", 'replyTo': post.post, 'addClasses': "collapsed postLayerCommentForm", 'showOwnAvatar': true, 'randomID': randomID, 'showReplyBar': commentViewType=='FLAT'} %}
 {% else %}
 <div class="postLayerCommentForm commentsRestricted">{{ L('commenting_restricted') }}</div>
 {% endif %}

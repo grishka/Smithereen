@@ -49,7 +49,7 @@
 	</noscript>
 </div>
 {% script %}
-var friendList={{ json(friendList) }};
+var friendList={{ json(friendList) | raw }};
 new UserSelector(ge("partner"), ge("partnerID"), friendList);
 
 var relationDD=ge("relationship");

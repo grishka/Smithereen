@@ -1,0 +1,8 @@
+{% extends "page" %}
+{% block content %}
+<div id="oauthPromptHeader">
+<h2>{{ L('oauth_heading', {'serverName': serverName}) }}</h2>
+<p>{{ L('oauth_error', {'error': error}) }}</p>
+</div>
+{% endblock %}
+

@@ -25,7 +25,7 @@ public class ProfileRelFunction implements Function{
 			if(id>0){
 				Map<Integer, User> users=(Map<Integer, User>) context.getVariable("users");
 				actor=users.get(id);
-			}else{
+			}else if(id<0){
 				Map<Integer, Group> groups=(Map<Integer, Group>) context.getVariable("groups");
 				actor=groups.get(-id);
 			}

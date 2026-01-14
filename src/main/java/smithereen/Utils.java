@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.ByteArrayInputStream;
@@ -60,34 +61,34 @@ import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FormValidationException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
-import smithereen.model.friends.FriendList;
-import smithereen.model.friends.PublicFriendList;
-import smithereen.text.TextProcessor;
-import smithereen.util.PublicSuffixList;
-import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.FormValidationException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.lang.Lang;
+import smithereen.model.friends.FriendList;
+import smithereen.model.friends.PublicFriendList;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
 import smithereen.util.EmailCodeActionType;
 import smithereen.util.FloodControl;
 import smithereen.util.InstantMillisJsonAdapter;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.LocaleJsonAdapter;
+import smithereen.util.PublicSuffixList;
 import smithereen.util.TimeZoneJsonAdapter;
+import smithereen.util.UriBuilder;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -97,7 +98,7 @@ import spark.utils.StringUtils;
 public class Utils{
 
 	private static final Set<String> RESERVED_USERNAMES=Set.of("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz",
-			"albums", "photos", "videos", "audios", "topics", "apps", "docs", "res", "files", "comments");
+			"albums", "photos", "videos", "audios", "topics", "apps", "docs", "res", "files", "comments", "oauth");
 	private static final Random rand=new Random();
 
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");
@@ -476,7 +477,7 @@ public class Utils{
 		return os.toByteArray();
 	}
 
-	public static Set<Integer> deserializeIntSet(byte[] a){
+	public static @NotNull Set<Integer> deserializeIntSet(byte @Nullable [] a){
 		if(a==null)
 			return Set.of();
 		return Arrays.stream(deserializeIntArray(a)).boxed().collect(Collectors.toSet());
@@ -778,6 +779,30 @@ public class Utils{
 		return bldr.build();
 	}
 
+	public static byte[] packInt(int x){
+		byte[] r=new byte[4];
+		for(int i=3;i>=0;i--){
+			r[i]=(byte)x;
+			x>>=8;
+		}
+		return r;
+	}
+
+	public static int unpackInt(byte[] x){
+		return unpackInt(x, 0);
+	}
+
+	public static int unpackInt(byte[] x, int offset){
+		if(x==null || x.length-offset<4)
+			return 0;
+		int r=0;
+		for(int i=0;i<4;i++){
+			r<<=8;
+			r|=((int)x[i+offset]) & 0xFF;
+		}
+		return r;
+	}
+
 	public static byte[] packLong(long x){
 		byte[] r=new byte[8];
 		for(int i=7;i>=0;i--){
@@ -787,7 +812,7 @@ public class Utils{
 		return r;
 	}
 
-	public static String encodeLong(long x){
+	public static @NotNull String encodeLong(long x){
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(packLong(x));
 	}
 

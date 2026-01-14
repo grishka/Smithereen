@@ -2,6 +2,10 @@ package smithereen.activitypub.objects;
 
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.util.Base64;
 
@@ -14,15 +18,18 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.photos.AbsoluteImageRect;
 import smithereen.model.photos.AvatarCropRects;
-import smithereen.model.photos.ImageRect;
 import smithereen.storage.ImgProxy;
 import smithereen.storage.media.MediaFileStorageDriver;
 import smithereen.util.XTEA;
 
-public class LocalImage extends Image implements SizedImage{
+public non-sealed class LocalImage extends Image implements SizedImage{
+	@NotNull
 	public Dimensions size=Dimensions.UNKNOWN;
+
 	public long fileID;
 	public MediaFileRecord fileRecord;
 	public long photoID;
@@ -119,7 +126,9 @@ public class LocalImage extends Image implements SizedImage{
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
+	@Nullable
+	@Contract("_, _, _, true -> !null")
+	public URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback){
 		if(fileRecord==null){
 			LOG.warn("Tried to get a URL for a LocalImage with fileRecord not set (file ID {})", fileID);
 			if(useFallback)
@@ -186,6 +195,7 @@ public class LocalImage extends Image implements SizedImage{
 	}
 
 	@Override
+	@NotNull
 	public Dimensions getOriginalDimensions(){
 		return rotation==Rotation._90 || rotation==Rotation._270 ? new Dimensions(height, width) : size;
 	}
@@ -203,6 +213,11 @@ public class LocalImage extends Image implements SizedImage{
 		return MediaFileStorageDriver.getInstance().getFilePublicURL(fileRecord.id());
 	}
 
+	@Override
+	public String getBlurHash(){
+		return blurHash;
+	}
+
 	public void fillIn(MediaFileRecord mfr){
 		fileRecord=mfr;
 		width=mfr.metadata().width();
@@ -214,13 +229,17 @@ public class LocalImage extends Image implements SizedImage{
 		isGraffiti=mfr.id().type()==MediaFileType.IMAGE_GRAFFITI;
 	}
 
-	public String getLocalID(){
+	public String getLocalID(MediaFileUploadPurpose purpose, int ownerID){
 		if(fileRecord==null){
 			LOG.warn("Tried to get a local ID for a LocalImage with fileRecord not set (file ID {})", fileID);
 			return null;
 		}
 		if(photoID!=0)
 			return "photo:"+XTEA.encodeObjectID(photoID, ObfuscatedObjectIDType.PHOTO);
-		return fileRecord.id().getIDForClient();
+		return fileRecord.id().getEncodedID()+":"+MediaFileUploadTokens.getToken(fileRecord.id(), purpose, ownerID);
+	}
+
+	public String getLocalID(String purpose, int ownerID){
+		return getLocalID(MediaFileUploadPurpose.valueOf(purpose), ownerID);
 	}
 }

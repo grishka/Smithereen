@@ -446,6 +446,13 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			throw new Error("already loading");
 		this.loading=true;
 		ajaxGet(addParamsToURL(this.listURL, {list: this.listID, offset: offset.toString()}), (_r)=>{
+			if(_r instanceof Array){
+				for(var cmd of _r)
+					applyServerCommand(cmd);
+				if(this.photosLoadedOffset==null)
+					this.dismiss();
+				return;
+			}
 			var r=_r as PhotoViewerInfoAjaxResponse;
 			this.total=r.total;
 			this.updateTitle();
@@ -467,7 +474,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				this.handleFailedLoad();
 			}
 		}, (msg)=>{
-			new MessageBox(lang("error"), msg, lang("close")).show();
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 			this.loading=false;
 		}, "json");
 	}
@@ -586,6 +593,8 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			};
 			this.tagAreaSelector.onEndDrag=()=>{
 				var area=this.tagAreaSelector.getSelectedArea();
+				if(!area.w || !area.h)
+					return;
 				this.tagFriendListPopup.style.left=(this.tagsWrap.offsetLeft+area.x+area.w)+"px";
 				this.tagFriendListPopup.style.top=(this.tagsWrap.offsetTop+area.y)+"px";
 				this.tagFriendListPopup.showAnimated();

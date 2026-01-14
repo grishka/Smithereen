@@ -2,6 +2,9 @@ package smithereen.model.photos;
 
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -41,7 +44,10 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 	public long albumID;
 	public long localFileID;
 	public URI remoteSrc;
-	public String description;
+
+	@NotNull
+	public String description="";
+
 	public Instant createdAt;
 	public PhotoMetadata metadata;
 	public URI apID;
@@ -80,6 +86,7 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 		return Config.localURI(getURL()).toString();
 	}
 
+	@NotNull
 	public String getIdString(){
 		return Utils.encodeLong(XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.PHOTO));
 	}
@@ -125,6 +132,7 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 	}
 
 	@Override
+	@NotNull
 	public URI getActivityPubID(){
 		if(apID!=null)
 			return apID;
@@ -137,12 +145,14 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 		return album.activityPubComments!=null ? album.activityPubComments : new UriBuilder(album.getActivityPubID()).appendPath("comments").build();
 	}
 
+	@NotNull
 	public URI getActivityPubURL(){
 		if(metadata!=null && metadata.apURL!=null)
 			return metadata.apURL;
 		return getActivityPubID();
 	}
 
+	@Nullable
 	public String getBlurHash(){
 		if(image instanceof LocalImage li)
 			return li.blurHash;

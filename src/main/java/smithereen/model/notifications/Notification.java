@@ -1,25 +1,46 @@
 package smithereen.model.notifications;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Objects;
 
 import smithereen.storage.DatabaseUtils;
 
 public final class Notification implements NotificationWrapper{
 	public int id;
+
+	@NotNull
 	public Type type;
+
+	@Nullable
 	public ObjectType objectType;
+
 	public long objectID;
+
+	@Nullable
 	public ObjectType relatedObjectType;
+
 	public long relatedObjectID;
 	public int actorID;
+
+	@NotNull
 	public Instant time;
 
+	private Notification(@NotNull Type type, @NotNull Instant time){
+		this.type=type;
+		this.time=time;
+	}
+
 	public static Notification fromResultSet(ResultSet res) throws SQLException{
-		Notification n=new Notification();
+		Notification n=new Notification(
+				Type.values()[res.getInt("type")],
+				Objects.requireNonNull(DatabaseUtils.getInstant(res, "time"))
+		);
 		n.id=res.getInt("id");
-		n.type=Type.values()[res.getInt("type")];
 		n.objectID=res.getLong("object_id");
 		if(!res.wasNull())
 			n.objectType=ObjectType.values()[res.getInt("object_type")];
@@ -27,7 +48,6 @@ public final class Notification implements NotificationWrapper{
 		if(!res.wasNull())
 			n.relatedObjectType=ObjectType.values()[res.getInt("related_object_type")];
 		n.actorID=res.getInt("actor_id");
-		n.time=DatabaseUtils.getInstant(res, "time");
 		return n;
 	}
 
@@ -47,6 +67,7 @@ public final class Notification implements NotificationWrapper{
 	}
 
 	@Override
+	@NotNull
 	public Notification getLatestNotification(){
 		return this;
 	}
@@ -54,22 +75,31 @@ public final class Notification implements NotificationWrapper{
 	public enum Type{
 		/**
 		 * %username% replied to you
+		 * object is the comment
+		 * relatedObject is the top-level post or comment parent
 		 */
 		REPLY,
 		/**
 		 * %username% liked your %object%
+		 * object is what was liked
+		 * relatedObject is the top-level post or comment parent, if comment was liked
 		 */
 		LIKE,
 		/**
 		 * %username% mentioned you in their %object%
+		 * object is post/comment mentioning the user
+		 * relatedObject is the top-level post or comment parent, if mention is in a comment
 		 */
 		MENTION,
 		/**
 		 * %username% reposted (Mastodon style) your post
+		 * object is wall post/comment that was reposted
+		 * relatedObject is the top-level post if object is a comment
 		 */
 		RETOOT,
 		/**
 		 * %username% posted on your wall
+		 * object is the wall post
 		 */
 		POST_OWN_WALL,
 		/**
@@ -86,6 +116,8 @@ public final class Notification implements NotificationWrapper{
 		FRIEND_REQ_ACCEPT,
 		/**
 		 * %username% reposted (quoted) your %object%
+		 * object is wall post/comment that was reposted
+		 * relatedObject is the top-level post if object is a comment
 		 */
 		REPOST;
 

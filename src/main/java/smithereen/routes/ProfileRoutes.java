@@ -27,6 +27,7 @@ import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.FriendsController;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.controllers.WallController;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
@@ -36,6 +37,7 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Post;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -61,7 +63,7 @@ import spark.utils.StringUtils;
 import static smithereen.Utils.*;
 
 public class ProfileRoutes{
-	private static final Pattern ID_PATTERN=Pattern.compile("^(id|club|event)(\\d+)$");
+	private static final Pattern ID_PATTERN=Pattern.compile("^(id|club|event|app)(\\d+)$");
 
 	public static Object profile(Request req, Response resp){
 		ApplicationContext ctx=context(req);
@@ -73,6 +75,9 @@ public class ProfileRoutes{
 			Matcher matcher=ID_PATTERN.matcher(username);
 			if(matcher.find()){
 				int id=safeParseInt(matcher.group(2));
+				if("app".equals(matcher.group(1))){
+					return AppsRoutes.appPage(req, resp, id);
+				}
 				try{
 					Actor actor=switch(matcher.group(1)){
 						case "id" -> ctx.getUsersController().getUserOrThrow(id);
@@ -88,6 +93,7 @@ public class ProfileRoutes{
 		return switch(ur.type()){
 			case USER -> userProfile(req, resp, ctx.getUsersController().getUserOrThrow(ur.localID()));
 			case GROUP -> GroupsRoutes.groupProfile(req, resp, ctx.getGroupsController().getGroupOrThrow(ur.localID()));
+			case APPLICATION -> AppsRoutes.appPage(req, resp, ur.localID());
 		};
 	}
 
@@ -101,12 +107,13 @@ public class ProfileRoutes{
 		boolean isSelf=self!=null && self.user.id==user.id;
 		int offset=offset(req);
 		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		HashSet<Long> needApps=new HashSet<>();
 
 		boolean canSeeOthers=ctx.getPrivacyController().checkUserPrivacy(self!=null ? self.user : null, user, UserPrivacySettingKey.WALL_OTHERS_POSTS);
 		boolean canPost=canSeeOthers && self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.WALL_POSTING);
 		boolean canMessage=self!=null && ctx.getPrivacyController().checkUserPrivacy(self.user, user, UserPrivacySettingKey.PRIVATE_MESSAGES);
 
-		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, user, !canSeeOthers, offset, 20));
+		PaginatedList<PostViewModel> wall=PostViewModel.wrap(ctx.getWallController().getWallPosts(self!=null ? self.user : null, user, canSeeOthers ? WallController.WallMode.ALL : WallController.WallMode.OWNER, offset, 20));
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("profile", req)
 				.pageTitle(user.getFullName())
@@ -155,9 +162,13 @@ public class ProfileRoutes{
 		model.with("maxReplyDepth", PostRoutes.getMaxReplyDepth(self)).with("commentViewType", viewType);
 
 		PostViewModel.collectActorIDs(wall.list, needUsers, needGroups);
-		if(pinnedPosts!=null)
+		PostViewModel.collectAppIDs(wall.list, needApps);
+		if(pinnedPosts!=null){
 			PostViewModel.collectActorIDs(pinnedPosts, needUsers, needGroups);
-		model.with("users", ctx.getUsersController().getUsers(needUsers, true));
+			PostViewModel.collectAppIDs(pinnedPosts, needApps);
+		}
+		model.with("users", ctx.getUsersController().getUsers(needUsers, true))
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 
 		PaginatedList<User> friends=ctx.getFriendsController().getFriends(user, 0, 6, FriendsController.SortOrder.RANDOM);
 		model.with("friendCount", friends.total).with("friends", friends.list);

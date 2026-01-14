@@ -21,6 +21,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import jakarta.servlet.MultipartConfigElement;
@@ -34,6 +35,7 @@ import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
@@ -50,8 +52,12 @@ import smithereen.model.media.MediaFileID;
 import smithereen.model.media.MediaFileMetadata;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.model.media.MediaFileType;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.photos.Photo;
 import smithereen.storage.media.MediaFileStorageDriver;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.util.BlurHash;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.XTEA;
@@ -65,6 +71,7 @@ import static smithereen.Utils.lang;
 public class MediaStorageUtils{
 	private static final Logger LOG=LoggerFactory.getLogger(MediaStorageUtils.class);
 	public static final int QUALITY_LOSSLESS=-1;
+	public static final long MAX_IMAGE_SIZE=10*1024*1024;
 
 	public static long writeResizedWebpImage(VipsImage img, int widthOrSize, int height, int quality, File file, int[] outSize) throws IOException{
 		double factor;
@@ -126,7 +133,7 @@ public class MediaStorageUtils{
 		return att.asActivityPubObject(null, new SerializerContext(null, (String)null));
 	}
 
-	public static void fillAttachmentObjects(ApplicationContext context, User self, List<ActivityPubObject> attachObjects, List<String> attachmentIDs, Map<String, String> altTexts, int attachmentCount, int maxAttachments) throws SQLException{
+	public static void fillAttachmentObjects(ApplicationContext context, User self, List<ActivityPubObject> attachObjects, List<String> attachmentIDs, Map<String, String> altTexts, int attachmentCount, int maxAttachments, boolean allowGraffiti) throws SQLException{
 		for(String id:attachmentIDs){
 			String[] idParts=id.split(":");
 			if(idParts.length!=2)
@@ -154,29 +161,39 @@ public class MediaStorageUtils{
 				img.fillIn(mfr);
 				attachObjects.add(img);
 			}else{
-				long fileID;
-				byte[] fileRandomID;
-				try{
-					byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
-					fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
-					if(_fileID.length!=8 || fileRandomID.length!=18)
-						continue;
-					fileID=XTEA.deobfuscateObjectID(Utils.unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
-				}catch(IllegalArgumentException x){
+				LocalImage img=getLocalImage(id, MediaFileUploadPurpose.ATTACHMENT, self.id);
+				if(img==null || (img.isGraffiti && !allowGraffiti))
 					continue;
-				}
-				MediaFileRecord mfr=MediaStorage.getMediaFileRecord(fileID);
-				if(mfr==null || !Arrays.equals(mfr.id().randomID(), fileRandomID))
-					continue;
-				LocalImage img=new LocalImage();
-				img.fileID=fileID;
-				img.fillIn(mfr);
 				img.name=altTexts.get(id);
 				attachObjects.add(img);
 			}
 			attachmentCount++;
 			if(attachmentCount==maxAttachments)
 				break;
+		}
+	}
+
+	public static LocalImage getLocalImage(String id, MediaFileUploadPurpose expectedPurpose, int expectedOwnerID) throws SQLException{
+		String[] idParts=id.split(":");
+		if(idParts.length!=2)
+			return null;
+		long fileID=XTEA.decodeObjectID(idParts[0], ObfuscatedObjectIDType.MEDIA_FILE);
+		if(fileID<=0)
+			return null;
+		return getLocalImage(fileID, idParts[1], expectedPurpose, expectedOwnerID);
+	}
+
+	public static LocalImage getLocalImage(long fileID, String token, MediaFileUploadPurpose expectedPurpose, int expectedOwnerID){
+		try{
+			MediaFileRecord mfr=MediaStorage.getMediaFileRecord(fileID);
+			if(mfr==null || !MediaFileUploadTokens.verifyToken(token, mfr.id(), expectedPurpose, expectedOwnerID))
+				return null;
+			LocalImage img=new LocalImage();
+			img.fileID=fileID;
+			img.fillIn(mfr);
+			return img;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}
 	}
 
@@ -188,24 +205,38 @@ public class MediaStorageUtils{
 				return;
 			}
 			LOG.trace("Deleting: {}", fileRecords);
-			Set<MediaFileID> deleted=MediaFileStorageDriver.getInstance().deleteFiles(fileRecords.stream().map(MediaFileRecord::id).collect(Collectors.toSet()));
-			if(!deleted.isEmpty())
-				MediaStorage.deleteMediaFileRecords(deleted.stream().map(MediaFileID::id).collect(Collectors.toSet()));
+			Set<MediaFileID> idsToDelete=fileRecords.stream().map(MediaFileRecord::id).collect(Collectors.toSet());
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+				DatabaseUtils.doWithTransaction(conn, ()->MediaStorage.deleteMediaFileRecords(idsToDelete.stream().map(MediaFileID::id).collect(Collectors.toSet())));
+			}
+			// Make sure that we only delete actual files on disk if the corresponding rows in the media_files table were successfully deleted.
+			MediaFileStorageDriver.getInstance().deleteFiles(idsToDelete);
 		}catch(SQLException x){
 			LOG.warn("Failed to delete unused media files", x);
 		}
 	}
 
-	public static LocalImage saveUploadedImage(Request req, Response resp, Account self, boolean isGraffiti){
+	public static LocalImage saveUploadedImage(Request req, Response resp, Account self, boolean isGraffiti, String fieldName){
+		return saveUploadedImage(req, resp, self, isGraffiti, fieldName, 2560, 0, null);
+	}
+
+	public static LocalImage saveUploadedImage(Request req, Response resp, Account self, boolean isGraffiti, String fieldName, int maxWidthOrSize, int maxHeight, Consumer<VipsImage> extraValidator){
 		Lang l=lang(req);
 		try{
-			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, 10*1024*1024, -1L, 0));
-			Part part=req.raw().getPart("file");
+			req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(null, MAX_IMAGE_SIZE, -1L, 0));
+			Part part;
+			try{
+				part=req.raw().getPart(fieldName);
+			}catch(IllegalStateException x){
+				// Payload Too Large
+				Spark.halt(413, l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(MAX_IMAGE_SIZE))));
+				return null;
+			}
 			if(part==null)
 				throw new BadRequestException();
-			if(part.getSize()>10*1024*1024){
+			if(part.getSize()>MAX_IMAGE_SIZE){
 				// Payload Too Large
-				Spark.halt(413, l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(10*1024*1024))));
+				Spark.halt(413, l.get("err_file_upload_too_large", Map.of("maxSize", l.formatFileSize(MAX_IMAGE_SIZE))));
 			}
 
 			String mime=part.getContentType();
@@ -240,9 +271,11 @@ public class MediaStorageUtils{
 			LocalImage photo=new LocalImage();
 			MediaFileRecord fileRecord;
 			try{
+				if(extraValidator!=null)
+					extraValidator.accept(img);
 				File resizedFile=File.createTempFile("SmithereenUploadResized", ".webp");
 				int[] outSize={0,0};
-				writeResizedWebpImage(img, 2560, 0, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
+				writeResizedWebpImage(img, maxWidthOrSize, maxHeight, isGraffiti ? MediaStorageUtils.QUALITY_LOSSLESS : 93, resizedFile, outSize);
 				MediaFileMetadata meta=new ImageMetadata(outSize[0], outSize[1], BlurHash.encode(img, 4, 4), null);
 				fileRecord=MediaStorage.createMediaFileRecord(isGraffiti ? MediaFileType.IMAGE_GRAFFITI : MediaFileType.IMAGE_PHOTO, resizedFile.length(), self.user.id, meta);
 				photo.fileID=fileRecord.id().id();
