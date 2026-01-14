@@ -114,7 +114,8 @@ public class GroupsController{
 			if(isEvent && startTime==null)
 				throw new BadRequestException("start time is required for event");
 			FloodControl.GROUP_CREATE.incrementOrThrow(admin);
-			startTime=startTime.truncatedTo(ChronoUnit.MINUTES);
+			if(startTime!=null)
+				startTime=startTime.truncatedTo(ChronoUnit.MINUTES);
 			if(endTime!=null)
 				endTime=endTime.truncatedTo(ChronoUnit.MINUTES);
 			int id=GroupStorage.createGroup(name, description==null ? null : TextProcessor.preprocessPostHTML(description, null), description, admin.id, isEvent, startTime, endTime);
