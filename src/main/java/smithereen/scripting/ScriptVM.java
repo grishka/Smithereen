@@ -318,8 +318,8 @@ public class ScriptVM{
 				}
 				case Op.GET_ARGUMENT -> {
 					String name=((ScriptValue.Str)script.constants[script.operands[ip-1]]).str();
-					String value=env.getArgumentCallback.apply(name);
-					stack.push(value==null ? null : ScriptValue.of(value));
+					ScriptValue value=env.getArgumentCallback.apply(name);
+					stack.push(value);
 				}
 				case Op.LOAD_NUMBER_IMM -> stack.push(ScriptValue.of(script.operands[ip-1]));
 				default -> throw new ScriptRuntimeException("Unknown opcode "+opcode, script.getLineNumber(ip-1));

@@ -47,7 +47,18 @@ public class ExecuteMethods{
 			}
 		}
 		int[] methodCalls={0};
-		ScriptEnvironment env=new ScriptEnvironment(actx::optParamString, (method, params)->{
+		ScriptEnvironment env=new ScriptEnvironment(name->{
+			return switch(actx.params.get(name)){
+				case JsonElement j -> convertJsonToScriptValue(j);
+				case String str -> ScriptValue.of(str);
+				case Long l -> ScriptValue.of(l);
+				case Double d -> ScriptValue.of(d);
+				case Integer i -> ScriptValue.of(i);
+				case Float f -> ScriptValue.of(f);
+				case Boolean b -> b ? ScriptValue.TRUE : ScriptValue.FALSE;
+				case null, default -> null;
+			};
+		}, (method, params)->{
 			if("execute".equals(method)){
 				throw actx.error(ApiErrorType.EXECUTE_RUNTIME_ERROR, "Can't call execute from within execute");
 			}

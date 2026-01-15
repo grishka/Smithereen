@@ -7,10 +7,10 @@ import java.util.function.Function;
 public class ScriptEnvironment{
 	Map<String, ScriptVM.BuiltInFunctionRecord> builtInFunctions=new HashMap<>();
 	Map<ScriptVM.MethodKey, ScriptVM.BuiltInMethodRecord> builtInMethods=new HashMap<>();
-	final Function<String, String> getArgumentCallback;
+	final Function<String, ScriptValue> getArgumentCallback;
 	final ScriptVM.ApiCallCallback apiCallCallback;
 
-	public ScriptEnvironment(Function<String, String> getArgumentCallback, ScriptVM.ApiCallCallback apiCallCallback){
+	public ScriptEnvironment(Function<String, ScriptValue> getArgumentCallback, ScriptVM.ApiCallCallback apiCallCallback){
 		this.getArgumentCallback=getArgumentCallback;
 		this.apiCallCallback=apiCallCallback;
 		addFunction("parseInt", 1, 1, BuiltInFunctions::parseInt);
