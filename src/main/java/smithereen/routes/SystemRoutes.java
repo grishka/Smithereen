@@ -2,6 +2,8 @@ package smithereen.routes;
 
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +55,7 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ActivityPubRepresentable;
 import smithereen.model.AttachmentHostContentObject;
+import smithereen.model.BlurHashable;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignGroup;
@@ -82,10 +85,17 @@ import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.reports.ReportableContentObject;
 import smithereen.model.util.QuickSearchResults;
 import smithereen.model.viewmodel.PostViewModel;
+import smithereen.storage.CommentStorage;
+import smithereen.storage.DatabaseUtils;
 import smithereen.storage.GroupStorage;
+import smithereen.storage.MailStorage;
 import smithereen.storage.MediaCache;
 import smithereen.storage.MediaStorageUtils;
+import smithereen.storage.PhotoStorage;
+import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
+import smithereen.storage.sql.DatabaseConnection;
+import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
 import smithereen.util.CaptchaGenerator;
@@ -132,13 +142,13 @@ public class SystemRoutes{
 		}
 	}
 
-	private static ActivityPubObject verifyObjectAndGetAttachment(int index, String type, Object obj){
+	private static ActivityPubObject verifyObjectAndGetAttachment(int index, String type, AttachmentHostContentObject obj){
 		ActivityPubRepresentable apr=(ActivityPubRepresentable) obj;
 		if(obj==null || Config.isLocal(apr.getActivityPubID())){
 			LOG.warn("downloading {}: post not found or is local", type);
 			return null;
 		}
-		List<ActivityPubObject> attachments=((AttachmentHostContentObject)obj).getAttachments();
+		List<ActivityPubObject> attachments=obj.getAttachments();
 		if(index>=attachments.size() || index<0){
 			LOG.warn("downloading {}: index {} out of bounds {}", type, index, attachments.size());
 			return null;
@@ -149,6 +159,38 @@ public class SystemRoutes{
 			return null;
 		}
 		return att;
+	}
+
+	private static abstract class BlurHashUpdater<C>{
+		@Nullable
+		BlurHashable blurHashable;
+
+		@NotNull
+		abstract C fetchContainerFromDatabase();
+
+		@Nullable
+		abstract Object getBlurHashable(@NotNull C container);
+
+		/**
+		 * Must be called within the same transaction as {@link #fetchContainerFromDatabase}!
+		 */
+		abstract void updateContainerInDatabase(@NotNull DatabaseConnection conn, @NotNull C container) throws SQLException;
+	}
+
+	private static abstract class AttachmentBlurHashUpdater<C extends AttachmentHostContentObject> extends BlurHashUpdater<C>{
+		private final int index;
+		private final String type;
+
+		public AttachmentBlurHashUpdater(int index, String type){
+			this.index=index;
+			this.type=type;
+		}
+
+		@Override
+		@Nullable
+		Object getBlurHashable(@NotNull C container){
+			return verifyObjectAndGetAttachment(index, type, container);
+		}
 	}
 
 	public static Object downloadExternalMedia(Request req, Response resp) throws SQLException{
@@ -182,7 +224,7 @@ public class SystemRoutes{
 		Group group=null;
 		boolean isGraffiti=false;
 
-		boolean isPostPhoto="post_photo".equals(type);
+		BlurHashUpdater<?> blurHashUpdater=null;
 
 		switch(type){
 			case "user_ava" -> {
@@ -244,9 +286,21 @@ public class SystemRoutes{
 			case "post_photo", "message_photo", "comment_photo" -> {
 				itemType=MediaCache.ItemType.PHOTO;
 				SessionInfo sess=sessionInfo(req);
-				Object contentObj=switch(type){
+				int index=safeParseInt(req.queryParams("index"));
+				AttachmentHostContentObject contentObj=switch(type){
 					case "post_photo" -> {
 						int postID=parseIntOrDefault(req.queryParams("post_id"), 0);
+						blurHashUpdater=new AttachmentBlurHashUpdater<Post>(index, type){
+							@Override
+							@NotNull Post fetchContainerFromDatabase(){
+								return ctx.getWallController().getPostOrThrow(postID);
+							}
+
+							@Override
+							void updateContainerInDatabase(@NotNull DatabaseConnection conn, @NotNull Post post) throws SQLException{
+								PostStorage.updateForeignWallPostStatement(conn, post).execute();
+							}
+						};
 						yield ctx.getWallController().getPostOrThrow(postID);
 					}
 					case "message_photo" -> {
@@ -254,10 +308,34 @@ public class SystemRoutes{
 						if(sess==null || sess.account==null)
 							yield null;
 						long msgID=XTEA.decodeObjectID(req.queryParams("msg_id"), ObfuscatedObjectIDType.MAIL_MESSAGE);
+						blurHashUpdater=new AttachmentBlurHashUpdater<MailMessage>(index, type){
+							@Override
+							@NotNull
+							MailMessage fetchContainerFromDatabase(){
+								return context(req).getMailController().getMessage(sess.account.user, msgID, false);
+							}
+
+							@Override
+							void updateContainerInDatabase(@NotNull DatabaseConnection conn, @NotNull MailMessage message) throws SQLException{
+								MailStorage.updateForeignMessage(message, false);
+							}
+						};
 						yield context(req).getMailController().getMessage(sess.account.user, msgID, false);
 					}
 					case "comment_photo" -> {
 						long id=XTEA.decodeObjectID(req.queryParams("comment_id"), ObfuscatedObjectIDType.COMMENT);
+						blurHashUpdater=new AttachmentBlurHashUpdater<Comment>(index, type){
+							@Override
+							@NotNull
+							Comment fetchContainerFromDatabase(){
+								return ctx.getCommentsController().getCommentIgnoringPrivacy(id);
+							}
+
+							@Override
+							void updateContainerInDatabase(@NotNull DatabaseConnection conn, @NotNull Comment comment) throws SQLException{
+								CommentStorage.putOrUpdateForeignComment(comment, false);
+							}
+						};
 						yield ctx.getCommentsController().getCommentIgnoringPrivacy(id);
 					}
 					default -> throw new IllegalStateException("Unexpected value: "+type);
@@ -267,7 +345,6 @@ public class SystemRoutes{
 					ctx.getPrivacyController().enforceObjectPrivacy(sess==null || sess.account==null ? null : sess.account.user, oco);
 				}
 
-				int index=safeParseInt(req.queryParams("index"));
 				ActivityPubObject att=verifyObjectAndGetAttachment(index, type, contentObj);
 				if(att==null)
 					return "";
@@ -290,6 +367,9 @@ public class SystemRoutes{
 					throw new BadRequestException();
 				}
 				isGraffiti=att instanceof Image img && img.isGraffiti;
+				if(blurHashUpdater!=null && att instanceof BlurHashable blurHashable){
+					blurHashUpdater.blurHashable=blurHashable;
+				}
 				uri=att.url;
 			}
 			case "album_photo" -> {
@@ -297,6 +377,25 @@ public class SystemRoutes{
 				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
 				SessionInfo sess=sessionInfo(req);
 				ctx.getPrivacyController().enforceObjectPrivacy(sess!=null && sess.account!=null ? sess.account.user : null, photo);
+				blurHashUpdater=new BlurHashUpdater<Photo>(){
+					@Override
+					@NotNull
+					Photo fetchContainerFromDatabase(){
+						return ctx.getPhotosController().getPhotoIgnoringPrivacy(id);
+					}
+
+					@Override
+					@NotNull
+					Object getBlurHashable(@NotNull Photo photo){
+						return photo;
+					}
+
+					@Override
+					void updateContainerInDatabase(@NotNull DatabaseConnection conn, @NotNull Photo photo) throws SQLException{
+						PhotoStorage.updatePhotoMetadata(photo.id, photo.metadata);
+					}
+				};
+				blurHashUpdater.blurHashable=photo;
 				uri=photo.remoteSrc;
 				mime="image/webp";
 				itemType=MediaCache.ItemType.PHOTO;
@@ -378,7 +477,9 @@ public class SystemRoutes{
 							resp.status(404);
 						}else{
 							LOG.debug("downloadExternalMedia: download finished {}", uri);
-							resp.redirect(new CachedRemoteImage(item, cropRegion, uri).getUriForSizeAndFormat(sizeType, format).toString());
+							var cached=new CachedRemoteImage(item, cropRegion, uri);
+							computeBlurHashForExternalMediaIfNeeded(cached, blurHashUpdater);
+							resp.redirect(cached.getUriForSizeAndFormat(sizeType, format).toString());
 						}
 						return "";
 					}catch(IOException x){
@@ -396,6 +497,34 @@ public class SystemRoutes{
 			}
 		}
 		return "";
+	}
+
+	private static <C> void computeBlurHashForExternalMediaIfNeeded(@NotNull CachedRemoteImage cached, @Nullable BlurHashUpdater<C> updater){
+		if(updater==null || updater.blurHashable==null || updater.blurHashable.getBlurHash() != null) {
+			return;
+		}
+		String blurHash;
+		try{
+			blurHash=MediaStorageUtils.calculateBlurHash(cached.getPathInMediaCache());
+		}catch(IOException e){
+			LOG.warn("Could not compute BlurHash for external media", e);
+			return;
+		}
+		updater.blurHashable.setBlurHash(blurHash);
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			// The transaction here is absolutely necessary, otherwise there may be a race condition
+			// when we're e.g. loading multiple attachments of the same wall post simultaneously,
+			// and only one attachment will have BlurHash instead of all of them.
+			DatabaseUtils.doWithTransaction(conn, ()->{
+				C container=updater.fetchContainerFromDatabase();
+				if(updater.getBlurHashable(container) instanceof BlurHashable blurHashable && blurHashable.getBlurHash()==null){
+					blurHashable.setBlurHash(blurHash);
+					updater.updateContainerInDatabase(conn, container);
+				}
+			});
+		}catch(SQLException e){
+			LOG.warn("Could not save BlurHash for a downloaded external media to the database", e);
+		}
 	}
 
 	public static Object uploadPostPhoto(Request req, Response resp, Account self, ApplicationContext ctx){

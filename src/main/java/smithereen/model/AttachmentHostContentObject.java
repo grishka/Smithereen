@@ -2,6 +2,8 @@ package smithereen.model;
 
 import com.google.gson.JsonArray;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +25,7 @@ import smithereen.storage.MediaStorageUtils;
 import spark.utils.StringUtils;
 
 public sealed interface AttachmentHostContentObject permits MailMessage, PostLikeObject{
+	@NotNull
 	List<ActivityPubObject> getAttachments();
 	NonCachedRemoteImage.Args getPhotoArgs(int index);
 	String getPhotoListID();

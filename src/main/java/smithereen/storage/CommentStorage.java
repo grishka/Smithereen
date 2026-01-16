@@ -488,7 +488,7 @@ public class CommentStorage{
 		}
 	}
 
-	public static void putOrUpdateForeignComment(Comment comment) throws SQLException{
+	public static void putOrUpdateForeignComment(Comment comment, boolean markAsUpdated) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			if(comment.id==0){
 				comment.id=new SQLQueryBuilder(conn)
@@ -550,7 +550,7 @@ public class CommentStorage{
 						.value("attachments", comment.serializeAttachments())
 						.value("content_warning", comment.contentWarning)
 						.value("mentions", Utils.serializeIntList(comment.mentionedUserIDs))
-						.value("updated_at", comment.updatedAt==null ? Instant.now() : comment.updatedAt)
+						.value("updated_at", markAsUpdated && comment.updatedAt==null ? Instant.now() : comment.updatedAt)
 						.executeNoResult();
 			}
 		}

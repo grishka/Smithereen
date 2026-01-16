@@ -540,7 +540,7 @@ public class CommentsController{
 			isNew=true;
 		}
 		try{
-			CommentStorage.putOrUpdateForeignComment(comment);
+			CommentStorage.putOrUpdateForeignComment(comment, true);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
