@@ -529,6 +529,8 @@ class Compiler{
 		emitInstruction(Op.NEW_OBJECT);
 		if(!match(TokenType.RIGHT_BRACE)){
 			do{
+				if(check(TokenType.RIGHT_BRACE)) // allow { ... ,}
+					break;
 				if(!match(TokenType.IDENTIFIER) && !match(TokenType.STRING))
 					throw new ScriptCompilationException("Expected object field name", current.lineNumber());
 				emitInstruction(Op.DUPLICATE);
@@ -572,6 +574,8 @@ class Compiler{
 		emitInstruction(Op.NEW_ARRAY);
 		if(!match(TokenType.RIGHT_BRACKET)){
 			do{
+				if(check(TokenType.RIGHT_BRACKET) || match(TokenType.COMMA)) // allow [ ... ,] or [,]
+					break;
 				emitInstruction(Op.DUPLICATE);
 				parseExpression();
 				emitInstruction(Op.ADD_ARRAY_ELEMENT);

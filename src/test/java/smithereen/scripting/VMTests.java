@@ -617,7 +617,7 @@ public class VMTests{
 	@Test
 	public void testGettingArguments(){
 		Script s=Script.compile("return Args.test_arg;");
-		assertEquals(ScriptValue.of("pass"), ScriptVM.execute(s, new ScriptEnvironment(name->name.equals("test_arg") ? "pass" : null, null)));
+		assertEquals(ScriptValue.of("pass"), ScriptVM.execute(s, new ScriptEnvironment(name->name.equals("test_arg") ? ScriptValue.of("pass") : null, null)));
 	}
 
 	@Test
@@ -775,5 +775,28 @@ public class VMTests{
 	public void testIssue219_24(){
 		Script s=Script.compile("if(7)2;else{return-0;}{}");
 		assertDoesNotThrow(()->ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testTrailingCommaInArrayLiteral(){
+		Script s=Script.compile("return [1, \"test\",];");
+		assertEquals(ScriptValue.of(List.of(ScriptValue.of(1), ScriptValue.of("test"))), ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testTrailingCommaInEmptyArrayLiteral(){
+		Script s=Script.compile("return [,];");
+		assertEquals(ScriptValue.of(List.of()), ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testTrailingCommaInObjectLiteral(){
+		Script s=Script.compile("return {test: 1,};");
+		assertEquals(ScriptValue.of(Map.of("test", ScriptValue.of(1))), ScriptVM.execute(s));
+	}
+
+	@Test
+	public void testTrailingCommaInEmptyObjectLiteral(){
+		assertThrows(ScriptCompilationException.class, ()->Script.compile("return {,};"));
 	}
 }
