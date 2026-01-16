@@ -732,7 +732,7 @@ public class PhotosRoutes{
 				img.fillIn(mfr);
 				PhotoAttachment fakeAttachment=new PhotoAttachment();
 				fakeAttachment.image=img;
-				fakeAttachment.blurHash=img.blurHash;
+				fakeAttachment.setBlurHash(img.getBlurHash());
 				yield List.of(makePhotoInfoForAttachment(req, fakeAttachment, self, self, Instant.now(), null, 0, EnumSet.of(PhotoViewerPhotoInfo.AllowedAction.EDIT_DESCRIPTION)));
 			}
 			case "newTags" -> {

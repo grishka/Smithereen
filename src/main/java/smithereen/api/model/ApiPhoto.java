@@ -114,7 +114,7 @@ public class ApiPhoto{
 		this.userId=authorId;
 		text=att.description!=null ? att.description : "";
 		date=parentCreatedAt.getEpochSecond();
-		blurhash=att.blurHash;
+		blurhash=att.getBlurHash();
 		populateSizes(att.image, actx);
 		width=att.getWidth();
 		height=att.getHeight();

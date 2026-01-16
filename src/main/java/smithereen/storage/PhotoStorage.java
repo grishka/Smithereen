@@ -407,7 +407,7 @@ public class PhotoStorage{
 				}else{
 					ri=new NonCachedRemoteImage(new NonCachedRemoteImage.AlbumPhotoArgs(p), new SizedImage.Dimensions(p.metadata.width, p.metadata.height), p.remoteSrc);
 				}
-				ri.blurHash=p.getBlurHash();
+				ri.setBlurHash(p.getBlurHash());
 				p.image=ri;
 			}
 		}

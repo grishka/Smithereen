@@ -67,8 +67,9 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 					att.image=image;
 				}
 				if(o instanceof Document doc){
-					if(StringUtils.isNotEmpty(doc.blurHash))
-						att.blurHash=doc.blurHash;
+					String blurHash=doc.getBlurHash();
+					if(StringUtils.isNotEmpty(blurHash))
+						att.setBlurHash(blurHash);
 				}
 				result.add(att);
 			}else if(o instanceof Video || mediaType.startsWith("video/")){
@@ -80,7 +81,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 				if(o instanceof Document doc){
 					att.width=doc.width;
 					att.height=doc.height;
-					att.blurHash=doc.blurHash;
+					att.blurHash=doc.getBlurHash();
 				}
 				result.add(att);
 			}else if(o instanceof Audio || mediaType.startsWith("audio/")){

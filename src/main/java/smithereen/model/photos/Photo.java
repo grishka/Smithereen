@@ -17,6 +17,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.BlurHashable;
 import smithereen.model.LikeableContentObject;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
@@ -37,7 +38,7 @@ import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public sealed class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable, CommentableContentObject, ReportableContentObject permits ReportedPhoto{
+public sealed class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable, CommentableContentObject, ReportableContentObject, BlurHashable permits ReportedPhoto{
 	public long id;
 	public int ownerID;
 	public int authorID;
@@ -153,10 +154,20 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 	}
 
 	@Nullable
+	@Override
 	public String getBlurHash(){
 		if(image instanceof LocalImage li)
-			return li.blurHash;
+			return li.getBlurHash();
 		return metadata.blurhash;
+	}
+
+	@Override
+	public void setBlurHash(@Nullable String blurHash){
+		if(image instanceof LocalImage li){
+			li.setBlurHash(blurHash);
+		}else{
+			metadata.blurhash=blurHash;
+		}
 	}
 
 	public String getSinglePhotoListID(){

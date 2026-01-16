@@ -18,7 +18,7 @@ import smithereen.storage.ImgProxy;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
-public sealed interface SizedImage permits LocalImage, RemoteImage{
+public sealed interface SizedImage extends BlurHashable permits LocalImage, RemoteImage{
 
 	@Nullable
 	@Contract("_, _, _, true -> !null")
@@ -28,7 +28,6 @@ public sealed interface SizedImage permits LocalImage, RemoteImage{
 	Dimensions getOriginalDimensions();
 
 	URI getOriginalURI();
-	String getBlurHash();
 
 	default Dimensions getDimensionsForSize(Type size, Dimensions dimensions){
 		return size.getResizedDimensions(dimensions);

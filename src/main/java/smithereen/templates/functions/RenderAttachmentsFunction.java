@@ -158,10 +158,11 @@ public class RenderAttachmentsFunction implements Function{
 
 		List<String> imgAttrs=null;
 		ArrayList<String> attrs=new ArrayList<>();
-		if(StringUtils.isNotEmpty(photo.blurHash)){
+		String blurHash=photo.getBlurHash();
+		if(StringUtils.isNotEmpty(blurHash)){
 			imgAttrs=List.of(
-					String.format(Locale.US, "style=\"background-color: #%06X\"", BlurHash.decodeToSingleColor(photo.blurHash)),
-					"data-blurhash=\""+photo.blurHash+"\""
+					String.format(Locale.US, "style=\"background-color: #%06X\"", BlurHash.decodeToSingleColor(blurHash)),
+					"data-blurhash=\""+blurHash+"\""
 			);
 		}
 
