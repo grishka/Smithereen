@@ -167,7 +167,7 @@ public class PostStorage{
 		return pollID;
 	}
 
-	public static void putForeignWallPost(Post post) throws SQLException{
+	public static boolean putForeignWallPost(Post post) throws SQLException{
 		if(post.isReplyToUnknownPost){
 			throw new IllegalArgumentException("This post needs its parent thread to be fetched first");
 		}
@@ -302,6 +302,7 @@ public class PostStorage{
 		}finally{
 			foreignPostUpdateLocks.release(key);
 		}
+		return existing==null;
 	}
 
 	public static List<Post> getWallPosts(int ownerID, boolean isGroup, int minID, int maxID, int offset, int count, int[] total, WallController.WallMode mode, Set<Post.Privacy> allowedPrivacy) throws SQLException{

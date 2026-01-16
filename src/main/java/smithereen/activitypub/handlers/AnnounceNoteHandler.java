@@ -83,7 +83,8 @@ public class AnnounceNoteHandler extends ActivityTypeHandler<ForeignUser, Announ
 				repost.activityPubURL=activity.activityPubID;
 			}
 		}
-		PostStorage.putForeignWallPost(repost);
+		if(!PostStorage.putForeignWallPost(repost))
+			return; // This post already existed in the database
 		context.appContext.getNewsfeedController().clearFriendsFeedCache();
 
 		User author=context.appContext.getUsersController().getUserOrThrow(post.authorID);
