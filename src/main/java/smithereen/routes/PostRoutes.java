@@ -585,7 +585,10 @@ public class PostRoutes{
 		if(Utils.isMobile(req)){
 			Utils.jsLangKey(req, "attach_menu_photo_upload", "attach_menu_photo_from_album");
 		}
-		model.with("title", post.post.getShortTitle(50)+" | "+author.getFullName());
+		String shortTitle=post.post.getShortTitle(50).strip();
+		if(shortTitle.isEmpty())
+			shortTitle=lang(req).get("wall_post_title");
+		model.with("title", shortTitle+" | "+author.getFullName());
 		if(req.attribute("mobile")!=null){
 			model.with("toolbarTitle", lang(req).get("wall_post_title"));
 			List<Integer> likers=ctx.getUserInteractionsController().getLikesForObject(post.post, info!=null && info.account!=null ? info.account.user : null, 0, 10, true, false).list;
