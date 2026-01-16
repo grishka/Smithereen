@@ -101,7 +101,8 @@ public class RenderAttachmentsFunction implements Function{
 				}
 			}else{
 				int i=0;
-				for(SizedAttachment att : sized){
+				int graffitiCount=0;
+				for(SizedAttachment att:sized){
 					MediaLayoutHelper.TiledLayoutResult.Tile tile=tiledLayout.tiles[i];
 					String cellStyle="";
 					if(tile!=null){
@@ -114,7 +115,10 @@ public class RenderAttachmentsFunction implements Function{
 					}
 					lines.add("<div style=\""+cellStyle+"\">");
 					if(att instanceof PhotoAttachment photo){
-						renderPhotoAttachment(photo, lines, Math.round(Math.max(tile.width*510, tile.height*510)), overrideLinks, i, photoList, listURL);
+						renderPhotoAttachment(photo, lines, Math.round(Math.max(tile.width*510, tile.height*510)), overrideLinks, i-graffitiCount, photoList, listURL);
+					}
+					if(att instanceof GraffitiAttachment){
+						graffitiCount++;
 					}
 					lines.add("</div>");
 					i++;
@@ -142,7 +146,7 @@ public class RenderAttachmentsFunction implements Function{
 		return List.of("object", "owner", "overrideLinks", "listURL");
 	}
 
-	private void renderPhotoAttachment(PhotoAttachment photo, List<String> lines, int size, String overrideLinks, int index, String photoList, String listGetURL){
+	private void renderPhotoAttachment(PhotoAttachment photo, List<String> lines, int size, String overrideLinks, int photoIndex, String photoList, String listGetURL){
 		SizedImage.Type type;
 		if(size<=100){
 			type=SizedImage.Type.PHOTO_THUMB_SMALL;
@@ -176,7 +180,7 @@ public class RenderAttachmentsFunction implements Function{
 			if(overrideLinks!=null){
 				attrs.add("target=\"_blank\"");
 			}else{
-				PhotoViewerInlineData data=new PhotoViewerInlineData(index, photoList, photo.image.getURLsForPhotoViewer());
+				PhotoViewerInlineData data=new PhotoViewerInlineData(photoIndex, photoList, photo.image.getURLsForPhotoViewer());
 				attrs.add("onclick=\"return openPhotoViewer(this)\"");
 				attrs.add("data-pv=\""+TextProcessor.escapeHTML(Utils.gson.toJson(data))+"\"");
 				attrs.add("data-pv-ctx=\""+photoList+"\"");

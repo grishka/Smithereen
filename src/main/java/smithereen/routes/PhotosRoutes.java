@@ -49,6 +49,7 @@ import smithereen.model.WebDeltaResponse;
 import smithereen.model.admin.ViolationReport;
 import smithereen.model.admin.ViolationReportAction;
 import smithereen.model.attachments.Attachment;
+import smithereen.model.attachments.GraffitiAttachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
@@ -566,7 +567,7 @@ public class PhotosRoutes{
 			photoInfos=Map.of();
 		}
 		for(Attachment att:attachments){
-			if(att instanceof PhotoAttachment pa){
+			if(att instanceof PhotoAttachment pa && !(att instanceof GraffitiAttachment)){
 				long photoID;
 				if(pa.photoID!=0)
 					photoID=pa.photoID;
