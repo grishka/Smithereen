@@ -73,6 +73,19 @@ public class MailStorage{
 		}
 	}
 
+	public static void updateForeignMessage(MailMessage updatedMsg, boolean markAsUpdated) throws SQLException{
+		new SQLQueryBuilder()
+				.update("mail_messages")
+				.value("to", Utils.serializeIntList(updatedMsg.to))
+				.value("cc", Utils.serializeIntList(updatedMsg.cc))
+				.value("text", updatedMsg.text)
+				.value("subject", updatedMsg.subject)
+				.value("attachments", updatedMsg.getSerializedAttachments())
+				.value("updated_at", markAsUpdated && updatedMsg.updatedAt==null ? Instant.now() : updatedMsg.updatedAt)
+				.where("ap_id=?", updatedMsg.activityPubID)
+				.executeNoResult();
+	}
+
 	public static long createMessage(String text, String subject, String attachments, int senderID, Set<Integer> to, Set<Integer> cc, Set<Integer> localOwners, URI apID, Map<Integer, MailMessage.ReplyInfo> replyInfos, Map<Integer, Long> allIDs) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			long[] _id={0};

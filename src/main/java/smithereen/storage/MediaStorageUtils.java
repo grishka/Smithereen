@@ -16,8 +16,6 @@ import java.net.http.HttpResponse;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +26,6 @@ import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Part;
 import smithereen.ApplicationContext;
-import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.SerializerContext;
@@ -293,26 +290,33 @@ public class MediaStorageUtils{
 		}
 	}
 
-	public static LocalImage copyRemoteImageToLocalStorage(@NotNull User self, @NotNull SizedImage image) throws SQLException, IOException{
-		if(image instanceof LocalImage)
-			throw new IllegalArgumentException("The method name literally says it's for REMOTE images. Why would you pass a local image here?");
-		String cacheKey=switch(image){
-			case CachedRemoteImage cri -> cri.cacheKey;
-			case NonCachedRemoteImage nri -> ((MediaCache.PhotoItem)MediaCache.getInstance().downloadAndPut(nri.getOriginalURI(), "image/jpeg", MediaCache.ItemType.PHOTO, false, 0, 0)).key;
-			default -> throw new IllegalStateException("Unexpected value: " + image);
-		};
-		File file=new File(Config.mediaCachePath, cacheKey+".webp");
-		if(!file.exists())
-			throw new IllegalStateException("This file was supposed to exist, but somehow it doesn't");
-		String blurhash;
+	@NotNull
+	public static String calculateBlurHash(@NotNull File file) throws IOException{
 		VipsImage img=null;
 		try{
 			img=new VipsImage(file.getAbsolutePath());
-			blurhash=BlurHash.encode(img, 4, 4);
+			return BlurHash.encode(img, 4, 4);
 		}finally{
 			if(img!=null)
 				img.release();
 		}
+	}
+
+	public static LocalImage copyRemoteImageToLocalStorage(@NotNull User self, @NotNull SizedImage image) throws SQLException, IOException{
+		if(image instanceof LocalImage)
+			throw new IllegalArgumentException("The method name literally says it's for REMOTE images. Why would you pass a local image here?");
+		CachedRemoteImage cached=switch(image){
+			case CachedRemoteImage cri -> cri;
+			case NonCachedRemoteImage nri -> {
+				var item=(MediaCache.PhotoItem) MediaCache.getInstance().downloadAndPut(nri.getOriginalURI(), "image/jpeg", MediaCache.ItemType.PHOTO, false, 0, 0);
+				yield new CachedRemoteImage(item, nri.getOriginalURI());
+			}
+			default -> throw new IllegalStateException("Unexpected value: " + image);
+		};
+		File file=cached.getPathInMediaCache();
+		if(!file.exists())
+			throw new IllegalStateException("This file was supposed to exist, but somehow it doesn't");
+		String blurhash=calculateBlurHash(file);
 		MediaFileMetadata meta=new ImageMetadata(image.getOriginalDimensions().width, image.getOriginalDimensions().height, blurhash, null);
 		MediaFileRecord fileRecord=MediaStorage.createMediaFileRecord(MediaFileType.IMAGE_PHOTO, file.length(), self.id, meta);
 		LocalImage li=new LocalImage();

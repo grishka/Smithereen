@@ -1,7 +1,9 @@
 package smithereen.model;
 
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.net.URI;
 
 import smithereen.Config;
@@ -31,6 +33,12 @@ public final class CachedRemoteImage extends RemoteImage{
 		if(cropRegion!=null && cropRegion.length!=4)
 			throw new IllegalArgumentException("Crop region must be 4 floats");
 		this.cropRegion=cropRegion;
+	}
+
+	@Contract(value=" -> new", pure=true)
+	@NotNull
+	public File getPathInMediaCache(){
+		return new File(Config.mediaCachePath, cacheKey+".webp");
 	}
 
 	@Override

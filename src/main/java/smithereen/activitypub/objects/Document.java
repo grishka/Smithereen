@@ -7,12 +7,13 @@ import org.jetbrains.annotations.Nullable;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.SerializerContext;
 import smithereen.jsonld.JLD;
+import smithereen.model.BlurHashable;
 import spark.utils.StringUtils;
 
-public class Document extends ActivityPubObject{
+public class Document extends ActivityPubObject implements BlurHashable{
 
 	@Nullable
-	public String blurHash;
+	private String blurHash;
 
 	public int width;
 	public int height;
@@ -25,15 +26,27 @@ public class Document extends ActivityPubObject{
 	@Override
 	protected ActivityPubObject parseActivityPubObject(JsonObject obj, ParserContext parserContext){
 		super.parseActivityPubObject(obj, parserContext);
-		blurHash=optString(obj, "blurhash");
+		setBlurHash(optString(obj, "blurhash"));
 		width=optInt(obj, "width");
 		height=optInt(obj, "height");
 		return this;
 	}
 
 	@Override
+	@Nullable
+	public String getBlurHash(){
+		return blurHash;
+	}
+
+	@Override
+	public void setBlurHash(@Nullable String blurHash){
+		this.blurHash=blurHash;
+	}
+
+	@Override
 	public JsonObject asActivityPubObject(JsonObject obj, SerializerContext serializerContext){
 		obj=super.asActivityPubObject(obj, serializerContext);
+		String blurHash=getBlurHash();
 		if(StringUtils.isNotEmpty(blurHash)){
 			obj.addProperty("blurhash", blurHash);
 			serializerContext.addAlias("toot", JLD.MASTODON);

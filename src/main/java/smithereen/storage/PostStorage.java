@@ -167,6 +167,20 @@ public class PostStorage{
 		return pollID;
 	}
 
+	public static PreparedStatement updateForeignWallPostStatement(@NotNull DatabaseConnection conn, @NotNull Post post) throws SQLException{
+		return new SQLQueryBuilder(conn)
+				.update("wall_posts")
+				.where("ap_id=?", post.getActivityPubID().toString())
+				.value("text", post.text)
+				.value("attachments", post.serializeAttachments())
+				.value("content_warning", post.contentWarning)
+				.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
+				.value("poll_id", post.poll!=null ? post.poll.id : null)
+				.value("extra", post.serializeExtraFields())
+				.value("flags", Utils.serializeEnumSet(post.flags))
+				.createStatement();
+	}
+
 	public static boolean putForeignWallPost(Post post) throws SQLException{
 		if(post.isReplyToUnknownPost){
 			throw new IllegalArgumentException("This post needs its parent thread to be fetched first");
@@ -258,17 +272,7 @@ public class PostStorage{
 								.where("id=?", existing.poll.id)
 								.executeNoResult();
 					}
-					stmt=new SQLQueryBuilder(conn)
-							.update("wall_posts")
-							.where("ap_id=?", post.getActivityPubID().toString())
-							.value("text", post.text)
-							.value("attachments", post.serializeAttachments())
-							.value("content_warning", post.contentWarning)
-							.value("mentions", Utils.serializeIntList(post.mentionedUserIDs))
-							.value("poll_id", post.poll!=null ? post.poll.id : null)
-							.value("extra", post.serializeExtraFields())
-							.value("flags", Utils.serializeEnumSet(post.flags))
-							.createStatement();
+					stmt=updateForeignWallPostStatement(conn, post);
 				}
 				if(existing==null){
 					post.id=DatabaseUtils.insertAndGetID(stmt);

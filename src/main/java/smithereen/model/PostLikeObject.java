@@ -2,6 +2,8 @@ package smithereen.model;
 
 import com.google.gson.JsonParser;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -131,6 +133,7 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 	public abstract long getObjectID();
 
 	@Override
+	@NotNull
 	public List<ActivityPubObject> getAttachments(){
 		return attachments==null ? List.of() : attachments;
 	}

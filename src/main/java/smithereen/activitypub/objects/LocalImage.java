@@ -213,11 +213,6 @@ public non-sealed class LocalImage extends Image implements SizedImage{
 		return MediaFileStorageDriver.getInstance().getFilePublicURL(fileRecord.id());
 	}
 
-	@Override
-	public String getBlurHash(){
-		return blurHash;
-	}
-
 	public void fillIn(MediaFileRecord mfr){
 		fileRecord=mfr;
 		width=mfr.metadata().width();
@@ -225,7 +220,7 @@ public non-sealed class LocalImage extends Image implements SizedImage{
 		size=new Dimensions(width, height);
 		if(cropRegion==null)
 			cropRegion=mfr.metadata().cropRegion();
-		blurHash=mfr.metadata().blurhash();
+		setBlurHash(mfr.metadata().blurhash());
 		isGraffiti=mfr.id().type()==MediaFileType.IMAGE_GRAFFITI;
 	}
 
