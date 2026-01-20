@@ -23,6 +23,7 @@
 	{% if userPermissions.hasPermission('MANAGE_INVITES') and (serverSignupMode=='MANUAL_APPROVAL' or adminNotifications.signupRequestsCount>0) %}<li><a href="/settings/admin/signupRequests">{{ L('menu_signup_requests') }}{{ menuCounter(adminNotifications.signupRequestsCount, 'adminSignupRequests') }}</a></li>{% endif %}
 	{% if userPermissions.hasPermission('MANAGE_REPORTS') %}<li><a href="/settings/admin/reports">{{ L('menu_reports') }}{{ menuCounter(adminNotifications.openReportsCount, 'adminReports') }}</a></li>{% endif %}
 	{% if userPermissions.hasAnyPermission(['MANAGE_FEDERATION', 'MANAGE_BLOCKING_RULES']) %}<li><a href="/settings/admin/federation">{{ L('menu_access') }}</a></li>{% endif %}
+	{% if isDebugMode %}<li><a href="/settings/admin/debug/injectActivity">Debug tools</a></li>{% endif %}
 	{% endif %}
 	{% else %}
 	<li><a href="/account/login">{{ L('log_in') }}</a></li>

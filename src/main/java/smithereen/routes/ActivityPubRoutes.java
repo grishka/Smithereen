@@ -830,14 +830,18 @@ public class ActivityPubRoutes{
 		return undo;
 	}
 
-	private static Object inbox(Request req, Response resp, Actor owner) throws SQLException{
-		ApplicationContext ctx=context(req);
+	private static Object inbox(Request req, Response resp, Actor owner){
 		if(req.headers("digest")!=null){
 			if(!verifyHttpDigest(req.headers("digest"), req.bodyAsBytes())){
 				throw new BadRequestException("Digest verification failed");
 			}
 		}
 		String body=req.body();
+		return dispatchActivity(body, req, resp, true);
+	}
+
+	public static Object dispatchActivity(String body, Request req, Response resp, boolean verifySignatures){
+		ApplicationContext ctx=context(req);
 		LOG.debug("Incoming activity: {}", body);
 		JsonObject rawActivity;
 		try{
@@ -907,19 +911,23 @@ public class ActivityPubRoutes{
 		}
 
 		Actor httpSigOwner;
-		try{
-			httpSigOwner=ActivityPub.verifyHttpSignature(req, actor);
-		}catch(Exception x){
-			LOG.warn("Exception while verifying HTTP signature on {} from {}: {}", getActivityType(activity), actor.activityPubID, x.toString());
-			if(Config.DEBUG)
-				LOG.debug("", x);
-			throw new UserActionNotAllowedException(x);
+		if(verifySignatures){
+			try{
+				httpSigOwner=ActivityPub.verifyHttpSignature(req, actor);
+			}catch(Exception x){
+				LOG.warn("Exception while verifying HTTP signature on {} from {}: {}", getActivityType(activity), actor.activityPubID, x.toString());
+				if(Config.DEBUG)
+					LOG.debug("", x);
+				throw new UserActionNotAllowedException(x);
+			}
+		}else{
+			httpSigOwner=actor;
 		}
 
 		// if the activity has an LD-signature, verify that and allow any (cached) user to sign the HTTP signature
 		// if it does not, the owner of the HTTP signature must match the actor
 		boolean hasValidLDSignature=false;
-		if(rawActivity.has("signature")){
+		if(rawActivity.has("signature") && verifySignatures){
 			JsonObject sig=rawActivity.getAsJsonObject("signature");
 			try{
 				URI keyID=URI.create(sig.get("creator").getAsString());
@@ -1059,6 +1067,8 @@ public class ActivityPubRoutes{
 			LOG.debug("Bad request", x);
 			resp.status(400);
 			return TextProcessor.escapeHTML(x.getMessage());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}/*catch(Exception x){
 			LOG.warn("Exception while processing an incoming activity", x);
 			throw new BadRequestException(x.toString());
@@ -1066,7 +1076,7 @@ public class ActivityPubRoutes{
 		if(Config.DEBUG)
 			throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
 		else
-			LOG.error("Received and ignored an activity of an unsupported type {}: {}", getActivityType(activity), activity.asRootActivityPubObject(ctx, req.host()));
+			LOG.error("Received and ignored an activity of an unsupported type {}: {}", getActivityType(activity), body);
 		return "";
 	}
 

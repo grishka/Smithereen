@@ -92,6 +92,7 @@ import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
 import smithereen.routes.admin.AdminAnnouncementsRoutes;
 import smithereen.routes.admin.AdminCustomCSSRoutes;
+import smithereen.routes.admin.AdminDebugRoutes;
 import smithereen.routes.admin.AdminEmailRulesRoutes;
 import smithereen.routes.admin.AdminFaspRoutes;
 import smithereen.routes.admin.AdminFederationRoutes;
@@ -535,6 +536,13 @@ public class SmithereenApplication{
 						postRequiringPermissionWithCSRF("/update", UserRole.Permission.MANAGE_ANNOUNCEMENTS, AdminAnnouncementsRoutes::updateAnnouncement);
 					});
 				});
+
+				if(Config.DEBUG){
+					path("/debug", ()->{
+						getRequiringPermission("/injectActivity", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminDebugRoutes::injectActivity);
+						postRequiringPermissionWithCSRF("/injectActivity", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminDebugRoutes::doInjectActivity);
+					});
+				}
 			});
 		});
 

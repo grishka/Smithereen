@@ -199,6 +199,7 @@ public class Templates{
 				.with("serverName", Config.getServerDisplayName())
 				.with("serverDomain", Config.domain)
 				.with("serverVersion", BuildInfo.VERSION)
+				.with("isDebugMode", Config.DEBUG)
 				.with("langName", lang.name)
 				.with("isMobile", mobile)
 				.with("isAjax", Utils.isAjax(req))
