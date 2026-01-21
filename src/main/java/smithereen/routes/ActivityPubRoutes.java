@@ -1076,7 +1076,7 @@ public class ActivityPubRoutes{
 		if(Config.DEBUG)
 			throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
 		else
-			LOG.error("Received and ignored an activity of an unsupported type {}: {}", getActivityType(activity), body);
+			LOG.error("Received and ignored an activity of an unsupported type {} (actor type is {}): {}", getActivityType(activity), actor.getClass().getName(), body);
 		return "";
 	}
 
