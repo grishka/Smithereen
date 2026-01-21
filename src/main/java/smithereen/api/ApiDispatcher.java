@@ -93,6 +93,7 @@ public class ApiDispatcher{
 		registerMethod("server.getInfo", ServerMethods::getInfo, false);
 		registerMethod("server.getRestrictedServers", ServerMethods::getRestrictedServers, false);
 		registerMethod("server.report", ServerMethods::report, true);
+		registerMethod("server.getAnnouncements", ServerMethods::getAnnouncements, true);
 
 		registerMethod("wall.get", WallMethods::get, false);
 		registerMethod("wall.getById", WallMethods::getById, false);

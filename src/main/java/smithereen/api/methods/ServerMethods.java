@@ -6,6 +6,7 @@ import com.google.gson.JsonPrimitive;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +28,7 @@ import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.Server;
+import smithereen.model.ServerAnnouncement;
 import smithereen.model.ServerRule;
 import smithereen.model.User;
 import smithereen.model.admin.ViolationReport;
@@ -173,6 +175,18 @@ public class ServerMethods{
 
 		ctx.getModerationController().createViolationReport(actx.self.user, target, content, reason, rules, actx.optParamString("comment", ""), actx.optParamBoolean("forward"));
 		return true;
+	}
+
+	public static Object getAnnouncements(ApplicationContext ctx, ApiCallContext actx){
+		List<ServerAnnouncement> announcements=ctx.getModerationController().getCurrentAndFutureAnnouncements();
+		if(announcements.isEmpty())
+			return List.of();
+		record ApiAnnouncement(int id, String title, String text, String link, String linkUrl, Long showUntilDate){};
+		Locale locale=actx.lang.getLocale();
+		return announcements.stream()
+				.map(a->new ApiAnnouncement(a.id(), a.getTranslatedTitle(locale), a.getTranslatedDescription(locale),
+						a.getTranslatedLinkText(locale), a.getTranslatedLinkURL(locale), a.showTo()==null ? null : a.showTo().getEpochSecond()))
+				.toList();
 	}
 
 	private record ServerInfo(
