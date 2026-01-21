@@ -29,8 +29,8 @@ public class ApiAttachment{
 		switch(att){
 			case GraffitiAttachment ga -> {
 				type="graffiti";
-				graffiti=new Graffiti(ga.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.PNG).toString(),
-						ga.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_MEDIUM, actx.imageFormat).toString(),
+				graffiti=new Graffiti(ga.image.getApiUriForSizeAndFormat(SizedImage.Type.PHOTO_ORIGINAL, SizedImage.Format.PNG).toString(),
+						ga.image.getApiUriForSizeAndFormat(SizedImage.Type.PHOTO_THUMB_MEDIUM, actx.imageFormat).toString(),
 						ga.getWidth(), ga.getHeight());
 			}
 			case PhotoAttachment pa -> {

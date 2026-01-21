@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import java.net.URI;
 
 import smithereen.Utils;
+import smithereen.api.methods.ApiUtils;
 import smithereen.model.comments.Comment;
 import smithereen.model.groups.GroupLink;
 import smithereen.model.photos.Photo;
@@ -26,7 +27,7 @@ public final class NonCachedRemoteImage extends RemoteImage{
 
 	@Override
 	@NotNull
-	public URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback){
+	public URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback, boolean addApiHash){
 		UriBuilder builder=UriBuilder.local().path("system", "downloadExternalMedia");
 		args.addToUriBuilder(builder);
 		builder.queryParam("size", size.suffix()).queryParam("format", format.fileExtension());
@@ -34,7 +35,15 @@ public final class NonCachedRemoteImage extends RemoteImage{
 			builder.queryParam("2x", "");
 		if(useFallback)
 			builder.queryParam("fb", "");
+		if(addApiHash)
+			builder.queryParam("api", ApiUtils.getExternalMediaHash(builder.getQueryParamsMap()));
 		return builder.build();
+	}
+
+	@NotNull
+	@Override
+	public URI getApiUriForSizeAndFormat(Type size, Format format){
+		return getUriForSizeAndFormat(size, format, false, false, true);
 	}
 
 	@Override

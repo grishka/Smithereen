@@ -124,7 +124,7 @@ public class ApiPhoto{
 		sizes=new ArrayList<>();
 		for(SizedImage.Type sz:SIZES){
 			SizedImage.Dimensions dimensions=image.getDimensionsForSize(sz);
-			String url=image.getUriForSizeAndFormat(sz, actx.imageFormat).toString();
+			String url=image.getApiUriForSizeAndFormat(sz, actx.imageFormat).toString();
 			sizes.add(new Size(sz.suffix(), url, dimensions.width, dimensions.height));
 			if(dimensions.width<sz.getMaxWidth() && dimensions.height<sz.getMaxHeight())
 				break;

@@ -127,8 +127,8 @@ public non-sealed class LocalImage extends Image implements SizedImage{
 
 	@Override
 	@Nullable
-	@Contract("_, _, _, true -> !null")
-	public URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback){
+	@Contract("_, _, _, true, _ -> !null")
+	public URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback, boolean addApiHash){
 		if(fileRecord==null){
 			LOG.warn("Tried to get a URL for a LocalImage with fileRecord not set (file ID {})", fileID);
 			if(useFallback)

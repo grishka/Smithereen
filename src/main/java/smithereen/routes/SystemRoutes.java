@@ -20,12 +20,14 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,6 +48,7 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Document;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
+import smithereen.api.methods.ApiUtils;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -100,6 +103,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
 import smithereen.util.CaptchaGenerator;
 import smithereen.util.CharacterRange;
+import smithereen.util.CryptoUtils;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
@@ -434,7 +438,17 @@ public class SystemRoutes{
 					}
 					try{
 						SessionInfo sessionInfo=sessionInfo(req);
-						if(sessionInfo==null || sessionInfo.account==null){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
+						boolean canProceed=sessionInfo!=null && sessionInfo.account!=null;
+						boolean hadCorrectApiHash=false;
+						if(!canProceed){
+							String apiHash=req.queryParams("api");
+							if(StringUtils.isNotEmpty(apiHash)){
+								Map<String, String> params=req.queryParams().stream().collect(Collectors.toMap(Function.identity(), req::queryParams));
+								canProceed=apiHash.equals(ApiUtils.getExternalMediaHash(params));
+								hadCorrectApiHash=canProceed;
+							}
+						}
+						if(!canProceed){ // Only download attachments for logged-in users. Prevents crawlers from causing unnecessary churn in the media cache
 							if(req.queryParams("fb")!=null){
 								boolean is2x=req.queryParams("2x")!=null;
 								resp.redirect(Config.localURI(sizeType==SizedImage.Type.AVA_SQUARE_SMALL || (is2x && sizeType==SizedImage.Type.AVA_SQUARE_MEDIUM) ? "/res/broken_photo_small.svg" : "/res/broken_photo.svg").toString());
@@ -452,20 +466,27 @@ public class SystemRoutes{
 						if(item==null){
 							if(itemType==MediaCache.ItemType.AVATAR && req.queryParams("retrying")==null){
 								try{
-									String extraParams="";
+									HashMap<String, String> params=new HashMap<>();
 									if(req.queryParams("fb")!=null)
-										extraParams+="&fb";
+										params.put("fb", "");
 									if(req.queryParams("2x")!=null)
-										extraParams+="&2x";
+										params.put("fb", "");
+									params.put("size", sizeType.suffix());
+									params.put("format", format.fileExtension());
+									params.put("retrying", "");
 									if(user!=null){
 										ForeignUser updatedUser=context(req).getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
-										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=user_ava&user_id="+updatedUser.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying"+extraParams).toString());
-										return "";
+										params.put("type", "user_ava");
+										params.put("user_id", updatedUser.id+"");
 									}else{
 										ForeignGroup updatedGroup=context(req).getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
-										resp.redirect(Config.localURI("/system/downloadExternalMedia?type=group_ava&user_id="+updatedGroup.id+"&size="+sizeType.suffix()+"&format="+format.fileExtension()+"&retrying"+extraParams).toString());
-										return "";
+										params.put("type", "group_ava");
+										params.put("group_id", updatedGroup.id+"");
 									}
+									if(hadCorrectApiHash)
+										params.put("api", ApiUtils.getExternalMediaHash(params));
+									resp.redirect("/system/downloadExternalMedia?"+params.entrySet().stream().map(e->e.getKey()+"="+URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8)).collect(Collectors.joining("&")));
+									return "";
 								}catch(ObjectNotFoundException ignore){}
 							}
 							LOG.debug("downloadExternalMedia: all attempts failed for {}", uri);

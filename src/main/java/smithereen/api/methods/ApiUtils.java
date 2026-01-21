@@ -9,6 +9,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -72,6 +74,7 @@ import spark.utils.StringUtils;
 
 public class ApiUtils{
 	public static final byte[] UPLOAD_KEY=CryptoUtils.randomBytes(16);
+	public static final byte[] EXTERNAL_MEDIA_KEY=CryptoUtils.randomBytes(16);
 	public static final HashMap<Integer, Long> uploadUrlIDs=new HashMap<>();
 	public static final AtomicInteger lastUploadUrlID=new AtomicInteger();
 
@@ -464,9 +467,9 @@ public class ApiUtils{
 			};
 		}
 		return new ApiGroup.Link(l.id, l.url.toString(), title, l.getDescription(),
-				img==null ? null : img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, actx.imageFormat).toString(),
-				img==null ? null : img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, actx.imageFormat).toString(),
-				img==null ? null : img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_LARGE, actx.imageFormat).toString(),
+				img==null ? null : img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, actx.imageFormat).toString(),
+				img==null ? null : img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, actx.imageFormat).toString(),
+				img==null ? null : img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_LARGE, actx.imageFormat).toString(),
 				objType, objID);
 	}
 
@@ -747,6 +750,21 @@ public class ApiUtils{
 			tagCounts=null;
 		}
 		return photos.stream().map(p->new ApiPhoto(p, actx, interactions, tagCounts)).toList();
+	}
+
+	public static String getExternalMediaHash(Map<String, String> params){
+		List<String> hashParts=new ArrayList<>();
+		params.forEach((k, v)->{
+			if(!"api".equals(k))
+				hashParts.add(k+'='+v);
+		});
+		hashParts.sort(String::compareTo);
+		ByteArrayOutputStream buf=new ByteArrayOutputStream();
+		try{
+			buf.write(EXTERNAL_MEDIA_KEY);
+			buf.write(String.join("&", hashParts).getBytes(StandardCharsets.UTF_8));
+		}catch(IOException ignore){}
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(CryptoUtils.sha256(buf.toByteArray()));
 	}
 
 	public record InputAttachments(@NotNull List<String> ids, @NotNull Map<String, String> altTexts, @Nullable Poll poll){

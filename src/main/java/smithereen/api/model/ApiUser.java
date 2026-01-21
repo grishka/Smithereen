@@ -333,21 +333,21 @@ public class ApiUser{
 			SizedImage img=user.getAvatar();
 			if(img!=null){
 				if(fields.contains(Field.PHOTO_50))
-					photo50=img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, actx.imageFormat).toString();
+					photo50=img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, actx.imageFormat).toString();
 				if(fields.contains(Field.PHOTO_100))
-					photo100=img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, actx.imageFormat).toString();
+					photo100=img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, actx.imageFormat).toString();
 				if(fields.contains(Field.PHOTO_200))
-					photo200=img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_LARGE, actx.imageFormat).toString();
+					photo200=img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_LARGE, actx.imageFormat).toString();
 				if(fields.contains(Field.PHOTO_400))
-					photo400=img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, actx.imageFormat).toString();
+					photo400=img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, actx.imageFormat).toString();
 				if(fields.contains(Field.PHOTO_200_ORIG))
-					photo200Orig=img.getUriForSizeAndFormat(SizedImage.Type.AVA_RECT, actx.imageFormat).toString();
+					photo200Orig=img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_RECT, actx.imageFormat).toString();
 				if(fields.contains(Field.PHOTO_400_ORIG))
-					photo400Orig=img.getUriForSizeAndFormat(SizedImage.Type.AVA_RECT_LARGE, actx.imageFormat).toString();
+					photo400Orig=img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_RECT_LARGE, actx.imageFormat).toString();
 				if(fields.contains(Field.PHOTO_MAX_ORIG))
-					photoMaxOrig=img.getUriForSizeAndFormat(SizedImage.Type.AVA_RECT_LARGE, actx.imageFormat).toString();
+					photoMaxOrig=img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_RECT_LARGE, actx.imageFormat).toString();
 				if(fields.contains(Field.PHOTO_MAX))
-					photoMax=img.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, actx.imageFormat).toString();
+					photoMax=img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, actx.imageFormat).toString();
 
 				if(fields.contains(Field.PHOTO_ID)){
 					Photo photo=profilePhotos.get(id);

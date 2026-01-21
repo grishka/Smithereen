@@ -141,6 +141,10 @@ public class UriBuilder{
 		return this;
 	}
 
+	public Map<String, String> getQueryParamsMap(){
+		return query.stream().collect(Collectors.toMap(kv->kv.key, kv->kv.value, (a, b)->b));
+	}
+
 	public URI build(){
 		StringBuilder sb=new StringBuilder();
 		if(StringUtils.isNotEmpty(scheme)){

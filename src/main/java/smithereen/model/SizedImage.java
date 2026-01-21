@@ -21,8 +21,8 @@ import spark.utils.StringUtils;
 public sealed interface SizedImage extends BlurHashable permits LocalImage, RemoteImage{
 
 	@Nullable
-	@Contract("_, _, _, true -> !null")
-	URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback);
+	@Contract("_, _, _, true, _ -> !null")
+	URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback, boolean addApiHash);
 
 	@NotNull
 	Dimensions getOriginalDimensions();
@@ -43,7 +43,7 @@ public sealed interface SizedImage extends BlurHashable permits LocalImage, Remo
 		boolean isLocal=this instanceof LocalImage;
 		for(Type t:List.of(Type.PHOTO_SMALL, Type.PHOTO_MEDIUM, Type.PHOTO_LARGE, Type.PHOTO_ORIGINAL)){
 			Dimensions size=getDimensionsForSize(t);
-			urls.add(new SizedImageURLs(t.suffix, size.width, size.height, Objects.toString(getUriForSizeAndFormat(t, Format.WEBP, false, isLocal)), Objects.toString(getUriForSizeAndFormat(t, Format.JPEG, false, isLocal))));
+			urls.add(new SizedImageURLs(t.suffix, size.width, size.height, Objects.toString(getUriForSizeAndFormat(t, Format.WEBP, false, isLocal, false)), Objects.toString(getUriForSizeAndFormat(t, Format.JPEG, false, isLocal, false))));
 			if(size.width>=origSize.width && size.height>=origSize.height)
 				break;
 		}
@@ -56,7 +56,12 @@ public sealed interface SizedImage extends BlurHashable permits LocalImage, Remo
 
 	@NotNull
 	default URI getUriForSizeAndFormat(Type size, Format format){
-		return getUriForSizeAndFormat(size, format, false, true);
+		return getUriForSizeAndFormat(size, format, false, true, false);
+	}
+
+	@NotNull
+	default URI getApiUriForSizeAndFormat(Type size, Format format){
+		return getUriForSizeAndFormat(size, format, false, true, true);
 	}
 
 	default String generateHTML(Type size, List<String> additionalClasses, List<String> extraAttrs, int width, int height, boolean add2x, String altText){
@@ -109,7 +114,7 @@ public sealed interface SizedImage extends BlurHashable permits LocalImage, Remo
 		sb.append(getUriForSizeAndFormat(size, format));
 		if(add2x){
 			sb.append(", ");
-			sb.append(getUriForSizeAndFormat(size.get2xType(), format, true, true));
+			sb.append(getUriForSizeAndFormat(size.get2xType(), format, true, true, false));
 			sb.append(" 2x");
 		}
 		sb.append("\" type=\"");
