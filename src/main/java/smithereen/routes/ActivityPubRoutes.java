@@ -904,7 +904,13 @@ public class ActivityPubRoutes{
 		}
 		if(fa.needUpdate() && canUpdate){
 			try{
+				Actor oldActor=actor;
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
+
+				// Temporary fix until https://codeberg.org/superseriousbusiness/gotosocial/issues/4565 gets released and everyone updates to that version.
+				// Somehow, Application objects could end up interpreted as users in some previous Smithereen version.
+				if(actor instanceof ActivityPubApplication && oldActor instanceof ForeignUser fu)
+					actor=ctx.getUsersController().getUserOrThrow(fu.id);
 			}catch(ObjectNotFoundException x){
 				LOG.debug("Exception while refreshing remote actor {}", activity.actor.link, x);
 			}
