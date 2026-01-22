@@ -263,6 +263,26 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			Post nativePost=post.asNativePost(context.appContext);
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 			URI repostID=post.getQuoteRepostID();
+			if(nativePost.ownerID==nativePost.authorID){
+				int localFollowersCount=context.appContext.getFriendsController().getLocalFollowersCount(actor);
+				if(localFollowersCount==0 && (repostID==null || !Config.isLocal(repostID))){
+					boolean mentionsLocalUsers=false;
+					if(post.tag!=null){
+						for(ActivityPubObject tag:post.tag){
+							if(tag instanceof Mention mention){
+								if(Config.isLocal(mention.href)){
+									mentionsLocalUsers=true;
+									break;
+								}
+							}
+						}
+					}
+					if(!mentionsLocalUsers){
+						LOG.debug("Dropping post {} because its author has no followers on this server and it doesn't interact with any local users", post.activityPubID);
+						return;
+					}
+				}
+			}
 			Post firstRepost=null;
 			if(repostID!=null){
 				try{

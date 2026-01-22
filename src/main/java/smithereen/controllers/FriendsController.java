@@ -90,6 +90,14 @@ public class FriendsController{
 		}
 	}
 
+	public int getLocalFollowersCount(User user){
+		try{
+			return UserStorage.getLocalFollowersCount(user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	public PaginatedList<Integer> getFollowIDs(User user, int offset, int count){
 		try{
 			return UserStorage.getNonMutualFollowers(user.id, false, true, offset, count, true);
