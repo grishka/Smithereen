@@ -982,7 +982,7 @@ public class ActivityPubRoutes{
 				if(Config.DEBUG)
 					throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
 				else
-					LOG.error("Received and ignored an activity of an unsupported type {}: {}", getActivityType(activity), activity.asRootActivityPubObject(ctx, req.host()));
+					LOG.info("Received and ignored an activity of an unsupported type {}: {}", getActivityType(activity), activity.asRootActivityPubObject(ctx, req.host()));
 				return "";
 			}
 
