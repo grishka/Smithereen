@@ -425,7 +425,7 @@ public class NotificationsController{
 						if(StringUtils.isNotEmpty(preview))
 							yield makeActorLink(actor)+" "+preview;
 						User u=(User)actor;
-						String text=l.get("notification_content_comment_post", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
+						String text=l.get("notification_content_wall_post", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
 						yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL())));
 					}
 					case INVITE_SIGNUP -> makeActorLink(actor)+" "+l.get("notification_invite_signup", Map.of("gender", ((User)actor).gender));

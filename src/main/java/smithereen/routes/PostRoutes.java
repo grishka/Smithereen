@@ -884,7 +884,7 @@ public class PostRoutes{
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), comments.list).flatMap(List::stream).toList(), self!=null ? self.user : null);
 		model.with("postInteractions", interactions)
 					.with("preview", true)
-					.with("replyFormID", (viewType==CommentViewType.FLAT ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+postID+ridSuffix)
+					.with("replyFormID", (viewType==CommentViewType.FLAT || isMobile(req) ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+postID+ridSuffix)
 					.with("commentViewType", viewType);
 		model.with("topLevel", topLevel);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
@@ -940,7 +940,7 @@ public class PostRoutes{
 		}
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(topLevel), allReplies).flatMap(List::stream).toList(), self!=null ? self.user : null);
 		preparePostList(ctx, comments.list, model, self);
-		model.with("postInteractions", interactions).with("replyFormID", "wallPostForm_commentReplyPost"+topLevel.post.id+ridSuffix);
+		model.with("postInteractions", interactions).with("replyFormID", (isMobile(req) ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+topLevel.post.id+ridSuffix);
 		model.with("topLevel", topLevel);
 		model.with("commentViewType", viewType);
 		if(StringUtils.isNotEmpty(rid))
@@ -1253,11 +1253,11 @@ public class PostRoutes{
 			model.with("randomID", rid);
 		preparePostList(ctx, comments.list, model, self);
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(post), comments.list).flatMap(List::stream).toList(), self!=null ? self.user : null);
+		boolean mobile=isMobile(req);
 		model.with("postInteractions", interactions)
-				.with("replyFormID", "wallPostForm_commentReplyPost"+postID+ridSuffix)
+				.with("replyFormID", (mobile ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+postID+ridSuffix)
 				.with("commentViewType", viewType);
 		model.with("topLevel", post);
-		boolean mobile=isMobile(req);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
 				.runScript(mobile ? "window._layerScrollHeight=document.scrollingElement.scrollHeight;" : "window._layerScrollHeight=ge(\"postReplies"+postID+ridSuffix+"\").closest(\".layerContent\").scrollHeight;")
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+postID+ridSuffix, model.renderToString())
