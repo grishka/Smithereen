@@ -85,6 +85,10 @@ public abstract class ActivityPubObject{
 	public List<LinkOrObject> cc;
 	public List<LinkOrObject> bcc;
 	public String mediaType;
+
+	/**
+	 * Duration in milliseconds.
+	 */
 	public long duration;
 
 	public URI activityPubID;
