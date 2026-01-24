@@ -9,6 +9,7 @@ import java.util.Set;
 import smithereen.api.ApiCallContext;
 import smithereen.model.Post;
 import smithereen.model.UserInteractions;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.PostViewModel;
@@ -23,7 +24,7 @@ public class ApiWallPost{
 	public String privacy;
 	public Likes likes;
 	public Reposts reposts;
-	// TODO post source
+	public PostSource postSource;
 	public List<ApiAttachment> attachments;
 	public String contentWarning;
 	public boolean canDelete, canEdit;
@@ -44,14 +45,16 @@ public class ApiWallPost{
 	public record Reposts(int count, boolean canRepost, boolean userReposted){}
 	public record Comments(int count, boolean canComment){}
 	public record CommentThread(int count, int replyCount, List<ApiWallPost> items){}
+	public record PostSourceApp(long id, String apId, String name){}
+	public record PostSource(PostSourceApp app, String action){}
 
 	public ApiWallPost(PostViewModel post, ApiCallContext actx, Map<Integer, UserInteractions> interactions,
-					   Map<Integer, List<Integer>> pinnedIDs, Map<Long, Photo> photos){
-		this(post, actx, interactions, pinnedIDs, photos, true);
+					   Map<Integer, List<Integer>> pinnedIDs, Map<Long, Photo> photos, Map<Long, ClientApp> apps){
+		this(post, actx, interactions, pinnedIDs, photos, apps, true);
 	}
 
 	private ApiWallPost(PostViewModel post, ApiCallContext actx, Map<Integer, UserInteractions> interactions,
-						Map<Integer, List<Integer>> pinnedIDs, Map<Long, Photo> photos, boolean fillReposts){
+						Map<Integer, List<Integer>> pinnedIDs, Map<Long, Photo> photos, Map<Long, ClientApp> apps, boolean fillReposts){
 		Post p=post.post;
 		id=p.id;
 		ownerId=p.ownerID;
@@ -98,11 +101,19 @@ public class ApiWallPost{
 			attachments.add(pollAtt);
 		}
 
+		ClientApp app=p.appID==0 ? null : apps.get(p.appID);
+		if(app!=null || p.action!=null){
+			postSource=new PostSource(app==null ? null : new PostSourceApp(app.id, app.getActivityPubID().toString(), app.name), switch(p.action){
+				case AVATAR_UPDATE -> "profile_picture_update";
+				case null -> null;
+			});
+		}
+
 		if(p.getReplyLevel()==0){
 			isMastodonStyleRepost=p.isMastodonStyleRepost();
 			if(post.repost!=null && fillReposts){
 				repostHistory=new ArrayList<>();
-				fillReposts(post.repost, actx, interactions, pinnedIDs, photos, new HashSet<>());
+				fillReposts(post.repost, actx, interactions, pinnedIDs, photos, apps, new HashSet<>());
 			}
 			canPin=actx.self!=null && actx.self.user.id==p.ownerID;
 			if(p.ownerID>0){
@@ -116,16 +127,16 @@ public class ApiWallPost{
 				replyToComment=p.replyKey.getLast();
 				replyToUser=post.parentAuthorID;
 			}
-			List<ApiWallPost> replies=post.repliesObjects.stream().map(reply->new ApiWallPost(reply, actx, interactions, pinnedIDs, photos)).toList();
+			List<ApiWallPost> replies=post.repliesObjects.stream().map(reply->new ApiWallPost(reply, actx, interactions, pinnedIDs, photos, apps)).toList();
 			thread=new CommentThread(p.replyCount, p.immediateReplyCount, replies);
 		}
 	}
 
 	private void fillReposts(PostViewModel.Repost repost, ApiCallContext actx, Map<Integer, UserInteractions> interactions,
-							 Map<Integer, List<Integer>> pinnedIDs, Map<Long, Photo> photos, Set<Integer> seenPostIDs){
-		repostHistory.add(new ApiWallPost(repost.post(), actx, interactions, pinnedIDs, photos, false));
+							 Map<Integer, List<Integer>> pinnedIDs, Map<Long, Photo> photos, Map<Long, ClientApp> apps, Set<Integer> seenPostIDs){
+		repostHistory.add(new ApiWallPost(repost.post(), actx, interactions, pinnedIDs, photos, apps, false));
 		seenPostIDs.add(repost.post().post.id);
 		if(repost.post().repost!=null && !seenPostIDs.contains(repost.post().repost.post().post.id))
-			fillReposts(repost.post().repost, actx, interactions, pinnedIDs, photos, seenPostIDs);
+			fillReposts(repost.post().repost, actx, interactions, pinnedIDs, photos, apps, seenPostIDs);
 	}
 }

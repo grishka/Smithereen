@@ -50,6 +50,7 @@ import smithereen.model.User;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPresence;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.apps.ClientAppPermission;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
@@ -490,6 +491,7 @@ public class ApiUtils{
 
 		Map<Integer, List<Integer>> pinnedIDs=new HashMap<>();
 		Set<Long> needPhotos=new HashSet<>();
+		Set<Long> needApps=new HashSet<>();
 		for(PostViewModel p:posts){
 			PostViewModel post=p;
 			HashSet<Integer> seenPosts=new HashSet<>();
@@ -497,6 +499,8 @@ public class ApiUtils{
 				seenPosts.add(post.post.id);
 				if(post.post.ownerID>0 && !pinnedIDs.containsKey(post.post.ownerID))
 					pinnedIDs.put(post.post.ownerID, ctx.getWallController().getPinnedPostIDs(post.post.ownerID));
+				if(post.post.appID!=0)
+					needApps.add(post.post.appID);
 				List<Attachment> attachments=post.post.getProcessedAttachments();
 				for(Attachment att:attachments){
 					if(att instanceof PhotoAttachment pa && pa.photoID!=0){
@@ -509,7 +513,8 @@ public class ApiUtils{
 			}while(post!=null);
 		}
 		Map<Long, Photo> photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(needPhotos);
-		return posts.stream().map(p->new ApiWallPost(p, actx, interactions, pinnedIDs, photos)).toList();
+		Map<Long, ClientApp> apps=ctx.getAppsController().getAppsByIDs(needApps);
+		return posts.stream().map(p->new ApiWallPost(p, actx, interactions, pinnedIDs, photos, apps)).toList();
 	}
 
 	@NotNull
