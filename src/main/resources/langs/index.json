@@ -74,6 +74,11 @@
       "locale": "uk",
       "name": "Ukrainian",
       "fallback": "ru"
+    },
+    {
+      "locale" : "kk",
+      "name" : "Kazakh",
+      "fallback" : "ru"
     }
   ]
 }

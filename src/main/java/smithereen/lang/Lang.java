@@ -107,7 +107,7 @@ public class Lang{
 				pluralRules=new SlavicPluralRules();
 				inflector=null;
 			}
-			case "tr" -> {
+			case "tr", "kk" -> {
 				pluralRules=new SingleFormPluralRules();
 				inflector=null;
 			}
