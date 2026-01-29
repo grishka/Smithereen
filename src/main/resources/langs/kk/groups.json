@@ -1,5 +1,16 @@
 {
+  "groups": "Топтар",
+  "group_name": "Аты",
+  "members": "Қатысушылар",
+  "about_group": "Туралы",
+  "about_event": "Туралы",
   "group_admin_title": "Атауы",
+  "event_reminder_separator": ", ",
+  "event_reminder_separator_last": " және ",
+  "event_reminder_today": "бүгін",
+  "group_access_open": "Ашық",
   "group_feature_wall": "Қабырға",
+  "group_feature_wall_closed": "Жабық",
+  "group_feature_board_public": "Ашық",
   "event_location": "Орналасуы"
 }
