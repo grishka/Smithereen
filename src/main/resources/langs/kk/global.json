@@ -1,1 +1,20 @@
-{}
+{
+  "lang_name": "Ағылшын",
+  "yes": "Иә",
+  "no": "Жоқ",
+  "save": "Сақтау",
+  "menu_profile": "Менің бетім",
+  "menu_friends": "Менің достарым",
+  "menu_news": "Менің жаңалықтарым",
+  "name": "Аты",
+  "more_actions": "Тағы…",
+  "date_today": "бүгін",
+  "date_yesterday": "кеше",
+  "search": "Іздеу",
+  "search_people": "Адамдар",
+  "search_groups": "Топтар",
+  "statistics": "Статистика",
+  "next": "Келесі",
+  "menu_photos": "Менің фотосуреттерім",
+  "main_menu": "Негізгі меню"
+}
