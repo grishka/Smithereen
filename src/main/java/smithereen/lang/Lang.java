@@ -99,7 +99,7 @@ public class Lang{
 			fallbackLocale=null;
 		}
 		switch(localeID){
-			case "ru", "be" -> {
+			case "ru", "be", "uk" -> {
 				pluralRules=new SlavicPluralRules();
 				inflector=new RussianInflector();
 			}
@@ -107,7 +107,7 @@ public class Lang{
 				pluralRules=new SlavicPluralRules();
 				inflector=null;
 			}
-			case "tr" -> {
+			case "tr", "kk" -> {
 				pluralRules=new SingleFormPluralRules();
 				inflector=null;
 			}
