@@ -4585,6 +4585,8 @@ label.largeAccented{
 			width: 50px;
 			max-height: 50px;
 			flex: none;
+			object-fit: cover;
+			object-position: top;
 		}
 		.ava{
 			height: 50px;
