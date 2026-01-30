@@ -1,7 +1,10 @@
 {
   "friends": "Достар",
   "birthday": "Туған күндер",
+  "friend_list_your_friends": "Сіздің достарыңыз",
   "all_friends": "Барлық достар",
   "new_friends": "Жаңа достар",
-  "friend_list_relatives": "Отбасы"
+  "friend_list_relatives": "Отбасы",
+  "friend_list_university_friends": "Университет бойынша достар",
+  "friend_list_school_friends": "Мектеп бойынша достар"
 }
