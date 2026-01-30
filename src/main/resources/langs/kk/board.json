@@ -2,5 +2,7 @@
   "board_topic": "Тақырып",
   "board_topic_title": "Атауы",
   "board_topic_text": "Мәтін",
-  "board_viewing_topic": "Тақырып"
+  "board_viewing_topic": "Тақырып",
+  "board_topic_page_links": "Беттер",
+  "board_topic_new_title": "Жаңа тақырып"
 }
