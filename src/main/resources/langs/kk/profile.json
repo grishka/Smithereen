@@ -1,3 +1,27 @@
 {
-  "profile_political_libertarian": "Либертариандық"
+  "birthday": "Туған күні",
+  "profile_about": "Туралы",
+  "profile_edit_general": "Негізгі ақпарат",
+  "profile_edit_contacts": "Контакттар",
+  "profile_music": "Сүйікті музыка",
+  "profile_books": "Сүйікті кітаптар",
+  "profile_games": "Сүйікті ойындар",
+  "profile_edit_about": "Мен туралы",
+  "profile_political_communist": "Коммунисттық",
+  "profile_political_socialist": "Социалисттық",
+  "profile_political_liberal": "Либералдық",
+  "profile_political_conservative": "Консервативтік",
+  "profile_political_monarchist": "Монархиялық",
+  "profile_political_ultraconservative": "Ультраконсервативтік",
+  "profile_political_libertarian": "Либертариандық",
+  "profile_religion": "Дін",
+  "profile_religion_short": "Дін",
+  "profile_city": "Қала",
+  "profile_website": "Сайт",
+  "profile_edit_website": "Жеке сайт",
+  "profile_edit_phone_number": "Телефон нөмірі",
+  "profile_phone_number": "Телефон",
+  "profile_hometown": "Туған қаласы",
+  "profile_edit_relationship_spouse": "Кіммен",
+  "user_online": "Онлайн"
 }
