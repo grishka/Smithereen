@@ -1,1 +1,12 @@
-{}
+{
+  "photo_album_title": "Атау",
+  "photo_album_description": "Сипаттама",
+  "my_photo_albums": "Менің альбомдарым",
+  "group_photo_albums": "Топтардың альбомдары",
+  "photo_description": "Сипаттама",
+  "photo_description_saved": "Сипаттама сақталған",
+  "photo_album_label": "Альбом",
+  "avatar_open": "Фотосуреті ашу",
+  "photo_tags": "Мынау фотосуретте:",
+  "view_user_profile_photos": "Фотосуреттер көру"
+}
