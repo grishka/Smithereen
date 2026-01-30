@@ -1,1 +1,6 @@
-{}
+{
+  "oauth_scope_groups": "Топтар",
+  "oauth_grant_access": "Рұқсат беру",
+  "apps_app_name": "Атау",
+  "apps_app_description": "Сипаттама"
+}
