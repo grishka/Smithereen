@@ -235,8 +235,11 @@ public class SmithereenApplication{
 			SessionInfo info=sessionInfo(request);
 			if(info!=null && info.account!=null){
 				info.account=UserStorage.getAccount(info.account.id);
+				String psid=request.cookie("psid");
 				if(info.account==null){
 					response.removeCookie("/", "psid");
+					request.session().invalidate();
+				}else if(!Objects.equals(psid, info.persistentSessionID)){
 					request.session().invalidate();
 				}else{
 					info.permissions=SessionStorage.getUserPermissions(info.account);
@@ -250,7 +253,7 @@ public class SmithereenApplication{
 						info.ip=ip;
 						BackgroundTaskRunner.getInstance().submit(()->{
 							try{
-								SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive, ip, ua, uaHash);
+								SessionStorage.setLastActive(info.account.id, psid, info.account.lastActive, ip, ua, uaHash);
 							}catch(SQLException x){
 								LOG.warn("Error updating account session", x);
 							}

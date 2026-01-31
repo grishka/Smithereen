@@ -119,6 +119,7 @@ public class SessionStorage{
 			info.csrfToken=Utils.csrfTokenFromSessionID(sid);
 			info.ip=sr.ip;
 			info.userAgentHash=sr.uaHash;
+			info.persistentSessionID=psid;
 			if(info.account.prefs.locale==null){
 				Locale requestLocale=req.raw().getLocale();
 				if(requestLocale!=null){
