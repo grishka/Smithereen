@@ -253,8 +253,8 @@ public class MailController{
 
 	public void actuallyDeleteMessage(User self, MailMessage message, boolean deleteRelated){
 		try{
-			if(message.ownerID!=self.id && message.senderID!=self.id){
-				throw new IllegalArgumentException("This user can't delete this message");
+			if(message.ownerID!=self.id || message.senderID!=self.id){
+				throw new UserActionNotAllowedException("This user can't delete this message");
 			}
 			Set<Long> idsToDelete=new HashSet<>();
 			idsToDelete.add(message.id);

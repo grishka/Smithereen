@@ -253,7 +253,7 @@ public class MailRoutes{
 		}else{
 			origElementID="msgRow"+msg.getIdString();
 		}
-		if(msg.isUnread()){
+		if(msg.isUnread() && msg.senderID==self.user.id){
 			restoreHtml+=TextProcessor.substituteLinks(l.get(msg.to.size()>1 ? "restore_or_delete_for_peer_multi" : "restore_or_delete_for_peer",
 					Map.of("name", ctx.getUsersController().getUserOrThrow(msg.getFirstRecipientID()).getFirstAndGender())),
 					Map.of(
