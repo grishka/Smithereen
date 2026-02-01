@@ -159,6 +159,10 @@ public class Lang{
 		return fallback!=null ? fallback.get(key, formatArgs) : key.replace('_', ' ');
 	}
 
+	public boolean containsKey(String key){
+		return data.containsKey(key) || (fallback!=null && fallback.containsKey(key));
+	}
+
 	public void inflected(StringBuilder out, User.Gender gender, String first, String last, Inflector.Case _case){
 		if(inflector==null){
 			out.append(first);
