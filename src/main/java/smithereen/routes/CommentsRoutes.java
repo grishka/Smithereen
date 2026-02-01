@@ -210,7 +210,7 @@ public class CommentsRoutes{
 
 		model.with("preview", true)
 				.with("canComment", canComment)
-				.with("replyFormID", "wallPostForm_commentReply_"+elementID)
+				.with("replyFormID", "wallPostForm_"+(viewType==CommentViewType.FLAT ? "comment_" : "commentReply_")+elementID)
 				.with("commentViewType", viewType)
 				.with("parentObject", parent);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
@@ -363,11 +363,15 @@ public class CommentsRoutes{
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(parent.getURL());
 
+			CommentViewType viewType=self.prefs.commentViewType;
+			if(parent instanceof BoardTopic)
+				viewType=CommentViewType.FLAT;
+
 			CommentViewModel cvm=new CommentViewModel(comment);
 			RenderedTemplateResponse model=new RenderedTemplateResponse("comment", req)
 					.with("post", cvm)
 					.with("parentObject", parent)
-					.with("replyFormID", "wallPostForm_commentReply_"+parent.getCommentParentID().getHtmlElementID())
+					.with("replyFormID", "wallPostForm_"+(viewType==CommentViewType.FLAT ? "comment_" : "commentReply_")+parent.getCommentParentID().getHtmlElementID())
 					.with("canComment", true);
 			model.with("users", Map.of(self.user.id, self.user));
 			model.with("commentInteractions", ctx.getUserInteractionsController().getUserInteractions(List.of(cvm.post), self.user));

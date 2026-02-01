@@ -151,6 +151,8 @@ public class PostRoutes{
 			if(StringUtils.isNotEmpty(rid))
 				ridSuffix="_"+rid;
 
+			CommentViewType viewType=self.prefs.commentViewType;
+
 			boolean fromNotifications="notifications".equals(req.queryParams("from"));
 
 			String formID=req.queryParams("formID");
@@ -174,7 +176,7 @@ public class PostRoutes{
 			}
 			if(replyTo!=0){
 				PostViewModel topLevel=new PostViewModel(context(req).getWallController().getPostOrThrow(post.replyKey.getFirst()));
-				model.with("replyFormID", "wallPostForm_commentReplyPost"+post.getReplyChainElement(0)+ridSuffix);
+				model.with("replyFormID", (viewType==CommentViewType.FLAT || isMobile(req) ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+post.getReplyChainElement(0)+ridSuffix);
 				model.with("topLevel", topLevel);
 				needInteractions.add(topLevel);
 				if(StringUtils.isNotEmpty(rid))
@@ -1255,7 +1257,7 @@ public class PostRoutes{
 		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(post), comments.list).flatMap(List::stream).toList(), self!=null ? self.user : null);
 		boolean mobile=isMobile(req);
 		model.with("postInteractions", interactions)
-				.with("replyFormID", (mobile ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+postID+ridSuffix)
+				.with("replyFormID", (viewType==CommentViewType.FLAT || mobile ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+postID+ridSuffix)
 				.with("commentViewType", viewType);
 		model.with("topLevel", post);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
