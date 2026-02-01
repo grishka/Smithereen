@@ -1045,29 +1045,6 @@ public class GroupsRoutes{
 		return "";
 	}
 
-	public static Object syncRelationshipsCollections(Request req, Response resp, Account self, ApplicationContext ctx){
-		Group group=getGroup(req);
-		group.ensureRemote();
-		ctx.getActivityPubWorker().fetchActorRelationshipCollections(group);
-		Lang l=lang(req);
-		return new WebDeltaResponse(resp).messageBox(l.get("sync_members"), l.get("sync_started"), l.get("ok"));
-	}
-
-	public static Object syncProfile(Request req, Response resp, Account self, ApplicationContext ctx){
-		Group group=getGroup(req);
-		group.ensureRemote();
-		ctx.getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
-		return new WebDeltaResponse(resp).refresh();
-	}
-
-	public static Object syncContentCollections(Request req, Response resp, Account self, ApplicationContext ctx){
-		Group group=getGroup(req);
-		group.ensureRemote();
-		ctx.getActivityPubWorker().fetchActorContentCollections(group);
-		Lang l=lang(req);
-		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
-	}
-
 	public static Object updateGroupStatus(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
 		String status=req.queryParams("status");

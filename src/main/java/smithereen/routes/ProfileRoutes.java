@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,7 +36,6 @@ import smithereen.model.ForeignUser;
 import smithereen.model.Post;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
-import smithereen.model.apps.ClientApp;
 import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
@@ -476,29 +474,6 @@ public class ProfileRoutes{
 	private static User getUserOrThrow(Request req){
 		int id=parseIntOrDefault(req.params(":id"), 0);
 		return context(req).getUsersController().getUserOrThrow(id);
-	}
-
-	public static Object syncRelationshipsCollections(Request req, Response resp, Account self, ApplicationContext ctx){
-		User user=getUserOrThrow(req);
-		user.ensureRemote();
-		ctx.getActivityPubWorker().fetchActorRelationshipCollections(user);
-		Lang l=lang(req);
-		return new WebDeltaResponse(resp).messageBox(l.get("sync_friends_and_groups"), l.get("sync_started"), l.get("ok"));
-	}
-
-	public static Object syncProfile(Request req, Response resp, Account self, ApplicationContext ctx){
-		User user=getUserOrThrow(req);
-		user.ensureRemote();
-		ctx.getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
-		return new WebDeltaResponse(resp).refresh();
-	}
-
-	public static Object syncContentCollections(Request req, Response resp, Account self, ApplicationContext ctx){
-		User user=getUserOrThrow(req);
-		user.ensureRemote();
-		ctx.getActivityPubWorker().fetchActorContentCollections(user);
-		Lang l=lang(req);
-		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
 	}
 
 	public static Object mentionHoverCard(Request req, Response resp){

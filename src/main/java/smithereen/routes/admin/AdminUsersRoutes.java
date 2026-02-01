@@ -41,6 +41,7 @@ import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
+import smithereen.routes.ProfileRoutes;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
@@ -561,5 +562,28 @@ public class AdminUsersRoutes{
 			return new WebDeltaResponse(resp).showSnackbar(l.get("admin_metrics_recounted"));
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object syncProfile(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		user.ensureRemote();
+		ctx.getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
+		return new WebDeltaResponse(resp).refresh();
+	}
+
+	public static Object syncContentCollections(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		user.ensureRemote();
+		ctx.getActivityPubWorker().fetchActorContentCollections(user);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
+	}
+
+	public static Object syncRelationshipsCollections(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		user.ensureRemote();
+		ctx.getActivityPubWorker().fetchActorRelationshipCollections(user);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_friends_and_groups"), l.get("sync_started"), l.get("ok"));
 	}
 }

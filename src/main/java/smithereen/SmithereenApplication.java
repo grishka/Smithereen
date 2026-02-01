@@ -670,9 +670,9 @@ public class SmithereenApplication{
 			postWithCSRF("/doRemoveFriend", FriendsRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", FriendsRoutes::confirmRemoveFriend);
 
-			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncRelationshipsCollections);
-			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncContentCollections);
-			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncProfile);
+			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::syncRelationshipsCollections);
+			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::syncContentCollections);
+			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::syncProfile);
 			getRequiringPermission("/meminfo", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::userInfo);
 			getRequiringPermission("/meminfo/content", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::userContent);
 			getRequiringPermission("/banForm", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::banUserForm);
@@ -790,9 +790,9 @@ public class SmithereenApplication{
 			getWithCSRF("/invite", GroupsRoutes::inviteFriend);
 			postWithCSRF("/respondToInvite", GroupsRoutes::respondToInvite);
 
-			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncRelationshipsCollections);
-			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncContentCollections);
-			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncProfile);
+			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::syncRelationshipsCollections);
+			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::syncContentCollections);
+			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::syncProfile);
 			getRequiringPermission("/staffNotes", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNotes);
 			postRequiringPermissionWithCSRF("/addStaffNote", UserRole.Permission.MANAGE_GROUPS,AdminGroupsRoutes::groupStaffNoteAdd);
 			getRequiringPermission("/staffNotes/:noteID/confirmDelete", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNoteConfirmDelete);
