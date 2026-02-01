@@ -583,8 +583,8 @@ public class UsersController{
 
 	public void updateBasicProfileInfo(User self, String firstName, String lastName, String middleName, String maidenName, User.Gender gender, LocalDate birthDate, String hometown, User.RelationshipStatus relation, User partner){
 		try{
-			if(birthDate!=null && birthDate.isAfter(LocalDate.now().plusDays(1))){
-				birthDate=self.birthDate;
+			if(birthDate!=null && !Utils.isValidBirthDate(birthDate)){
+				birthDate=self.birthDate!=null && Utils.isValidBirthDate(self.birthDate) ? self.birthDate : null;
 			}
 			if(firstName.length()<2){
 				throw new UserErrorException("err_name_too_short");

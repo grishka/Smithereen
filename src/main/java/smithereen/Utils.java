@@ -999,5 +999,9 @@ public class Utils{
 		return year<2038 && year>=1970; // TODO temporary fix
 	}
 
+	public static boolean isValidBirthDate(LocalDate date){
+		return date.isBefore(LocalDate.now().plusDays(1)) && date.isAfter(LocalDate.of(1900, 1, 1));
+	}
+
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}
 }
