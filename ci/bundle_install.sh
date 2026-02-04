@@ -110,7 +110,8 @@ fi
 read -p "Database name and new MySQL user name [smithereen]: " dbName
 if [ -z "$dbName" ]; then dbName="smithereen"; fi
 read -p "Would you like to use an S3 cloud storage service for user-uploaded files (y/n)? [n]: " useS3
-if [ "$useS3" == [yY] ]; then
+echo "$useS3" | grep -q '[yY]'
+if [ "$?" ]; then
 	echo ""
 	echo "Make sure you've read the readme and configured your storage service correctly: https://github.com/grishka/Smithereen/blob/master/README.md#using-s3-object-storage"
 	echo ""
@@ -169,7 +170,8 @@ db.password=$mysqlUserPassword
 
 # The domain for your instance. Used for local object URIs in ActivityPub. If running on localhost, must include the port.
 domain=$domain"
-if [ "$useS3" == [yY] ]; then
+echo "$useS3" | grep -q '[yY]'
+if [ "$?" ]; then
 	configContent="$configContent
 
 # S3 storage configuration
@@ -190,7 +192,8 @@ upload.s3.bucket=$s3Bucket"
 		configContent="$configContent
 upload.s3.hostname=$s3Hostname"
 	fi
-	if [ $s3OverridePathStyle == [yY] ]; then
+    echo "$s3OverridePathStyle" | grep -q '[yY]'
+	if [ "$?" ]; then
 		configContent="$configContent
 upload.s3.override_path_style=true"
 	fi
@@ -234,7 +237,8 @@ echo "IMGPROXY_KEY=$imgproxyKey
 IMGPROXY_SALT=$imgproxySalt
 IMGPROXY_PATH_PREFIX=/i
 IMGPROXY_LOCAL_FILESYSTEM_ROOT=$webRoot/s" > "$installLocation/imgproxy.env"
-if [ "$useS3" == [yY] ]; then
+echo "$useS3" | grep -q '[yY]'
+if [ "$?" ]; then
 	if [ -z "$s3Hostname" ]; then s3Hostname="s3-$s3Region.amazonaws.com"; fi
 	echo "IMGPROXY_ALLOWED_SOURCES=local://,https://$s3Hostname/" >> "$installLocation/imgproxy.env"
 else
