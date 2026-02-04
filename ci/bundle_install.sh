@@ -61,11 +61,13 @@ if ! [ -x "$(command -v mysql)" ]; then
 If you would like to run the database on a separate server, you will have to install Smithereen manually."
 fi
 mysqlVersion="$(mysql --version | tr -s " ")"
-if [ "$(echo $mysqlVersion | grep MariaDB | wc -l)" -gt "0" ]; then
+echo $mysqlVersion | grep -q MariaDB
+if [ "$?" ]; then
 	failWithError "You have MariaDB instead of MySQL. Unfortunately, some distribution maintainers think that it's a drop-in replacement, but MariaDB is known to be incompatible with Smithereen.
 See $mysqlHelpUrl for instructions on how to install MySQL, or, if you need MariaDB for other applications on your server, consider running Smithereen in a container like Docker or LXC."
 fi
-if [ "$(echo $mysqlVersion | grep Distrib | wc -l)" -gt "0" ]; then
+echo $mysqlVersion | grep -q Distrib
+if [ "$?" ]; then
 	mysqlActualVersion="$(echo $mysqlVersion | cut -d " " -f 5)"
 else
 	mysqlActualVersion="$(echo $mysqlVersion | cut -d " " -f 3)"
