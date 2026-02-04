@@ -1,17 +1,20 @@
 #!/bin/bash
 
+function failWithError {
+    echo -e "\033[1;31mError:\033[0m $1" >&2
+    exit 1
+}
+
 cd $(dirname $0)
 
 installLocation=$1
 if [ -z "$installLocation" ]; then installLocation="/opt/smithereen"; fi
 
 if [[ ! -d $installLocation ]]; then
-	echo "$installLocation does not exist."
-	exit 1
+	failWithError "$installLocation does not exist."
 fi
 if [[ ! -f "$installLocation/smithereen.jar" ]]; then
-	echo "$installLocation does not appear to contain a Smithereen installation."
-	exit 1
+	failWithError "$installLocation does not appear to contain a Smithereen installation."
 fi
 
 echo "This script will now:"
@@ -24,7 +27,7 @@ service smithereen stop
 service smithereen_imgproxy stop
 
 rm -rf "$installLocation/lib"
-cp -v -R smithereen.jar lib libvips* imgproxy $installLocation
+cp -v -R smithereen.jar lib libvips* imgproxy $installLocation || failWithError "Unable to copy files to the $installLocation"
 
 service smithereen start
 service smithereen_imgproxy start

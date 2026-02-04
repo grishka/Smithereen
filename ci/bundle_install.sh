@@ -140,13 +140,13 @@ read -p "Press Enter to continue..."
 echo ""
 mkdir -p $installLocation || failWithError "Unable to create directory $installLocation"
 mkdir -p $installLocation/nginx_cache/images
-mkdir -p $webRoot
+mkdir -p $webRoot || failWithError "Unable to create directory $webRoot"
 mkdir $webRoot/s
 mkdir $webRoot/s/uploads
 mkdir $webRoot/s/media_cache
-chown -R www-data:www-data $webRoot
-chown -R www-data:www-data $installLocation/nginx_cache/images
-cp -v -R smithereen.jar lib libvips* imgproxy $installLocation
+chown -R www-data:www-data $webRoot || failWithError "Unable to change owner of $webRoot"
+chown -R www-data:www-data $installLocation/nginx_cache/images || failWithError "Unable to change owner of $installLocation/nginx_cache/images"
+cp -v -R smithereen.jar lib libvips* imgproxy $installLocation || failWithError "Unable to copy files to the $installLocation"
 
 echo "Creating database..."
 echo "CREATE DATABASE $dbName;" | $mysqlCommand > /dev/null || failWithError "Unable to create a MySQL database"
