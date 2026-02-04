@@ -233,10 +233,12 @@ imgproxy.key=$imgproxyKey
 imgproxy.salt=$imgproxySalt"
 
 echo "$configContent" > "$installLocation/config.properties"
-echo "IMGPROXY_KEY=$imgproxyKey
+cat <<EOF > "$installLocation/imgproxy.env"
+$imgproxyKey
 IMGPROXY_SALT=$imgproxySalt
 IMGPROXY_PATH_PREFIX=/i
-IMGPROXY_LOCAL_FILESYSTEM_ROOT=$webRoot/s" > "$installLocation/imgproxy.env"
+IMGPROXY_LOCAL_FILESYSTEM_ROOT=$webRoot/s
+EOF
 echo "$useS3" | grep -q '[yY]'
 if [ "$?" ]; then
 	if [ -z "$s3Hostname" ]; then s3Hostname="s3-$s3Region.amazonaws.com"; fi
