@@ -33,7 +33,7 @@ if [ "$EUID" -ne 0 ]; then
 	exit
 fi
 
-if ! [[ -d /run/systemd/system ]]; then
+if [ ! -d /run/systemd/system ]; then
 	failWithError "Your system is not running systemd. As this installer relies on systemd services to run daemons, it's of no use on your system. You will have to install Smithereen manually."
 fi
 
