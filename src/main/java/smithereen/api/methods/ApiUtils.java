@@ -12,10 +12,13 @@ import org.jetbrains.annotations.Unmodifiable;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,9 +31,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
+import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.api.ApiCallContext;
+import smithereen.api.ApiErrorException;
+import smithereen.api.model.ApiCaptchaError;
 import smithereen.api.model.ApiComment;
 import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiGroup;
@@ -67,6 +74,8 @@ import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.text.FormattedTextFormat;
+import smithereen.util.ByteArrayMapKey;
+import smithereen.util.CaptchaGenerator;
 import smithereen.util.CryptoUtils;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
@@ -78,6 +87,7 @@ public class ApiUtils{
 	public static final byte[] EXTERNAL_MEDIA_KEY=CryptoUtils.randomBytes(16);
 	public static final HashMap<Integer, Long> uploadUrlIDs=new HashMap<>();
 	public static final AtomicInteger lastUploadUrlID=new AtomicInteger();
+	private static final HashMap<ByteArrayMapKey, CaptchaInfo> captchas=new HashMap<>();
 
 	@NotNull
 	@Unmodifiable
@@ -723,10 +733,13 @@ public class ApiUtils{
 				.toString();
 	}
 
-	public static void removeOldUploadUrlIDs(){
+	public static void doCleanupTasks(){
+		long now=System.currentTimeMillis();
 		synchronized(uploadUrlIDs){
-			long now=System.currentTimeMillis();
 			uploadUrlIDs.values().removeIf(v->now-v>60_000);
+		}
+		synchronized(captchas){
+			captchas.values().removeIf(ci->now-ci.requestedAt.toEpochMilli()>600_000);
 		}
 	}
 
@@ -772,6 +785,61 @@ public class ApiUtils{
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(CryptoUtils.sha256(buf.toByteArray()));
 	}
 
-	public record InputAttachments(@NotNull List<String> ids, @NotNull Map<String, String> altTexts, @Nullable Poll poll){
+	public static void enforceCaptcha(ApplicationContext ctx, ApiCallContext actx){
+		if(actx.self==null)
+			throw new IllegalArgumentException("This method requires an account");
+		List<String> paramsHashSource=new ArrayList<>();
+		actx.params.forEach((k, v)->{
+			if(!"captcha_sid".equals(k) && !"captcha_answer".equals(k))
+				paramsHashSource.add(k+"="+v);
+		});
+		Collections.sort(paramsHashSource);
+		byte[] paramsHash=CryptoUtils.sha256(String.join("\n", paramsHashSource).getBytes(StandardCharsets.UTF_8));
+		if(actx.hasParam("captcha_sid") && actx.hasParam("captcha_answer")){
+			byte[] sid=Utils.tryDecodeBase64Url(actx.requireParamString("captcha_sid"));
+			if(sid!=null && sid.length==16){
+				CaptchaInfo info;
+				ByteArrayMapKey key=new ByteArrayMapKey(sid);
+				synchronized(captchas){
+					info=captchas.remove(key);
+				}
+				String answer=actx.requireParamString("captcha_answer");
+				if(info!=null && Arrays.equals(info.accessToken, actx.token.id()) && Arrays.equals(info.paramsHash, paramsHash) && answer.equals(info.answer)){
+					long now=System.currentTimeMillis();
+					if(now-info.generatedAt.toEpochMilli()>1500 && now-info.requestedAt.toEpochMilli()<600_000)
+						return;
+				}
+			}
+		}
+
+		byte[] sid=CryptoUtils.randomBytes(16);
+		synchronized(captchas){
+			captchas.put(new ByteArrayMapKey(sid), new CaptchaInfo(actx.token.id(), paramsHash, Instant.now(), null, null));
+		}
+		ApiCaptchaError error=new ApiCaptchaError(ApiErrorType.CAPTCHA_NEEDED, null, actx.params);
+		String encodedSid=Base64.getUrlEncoder().withoutPadding().encodeToString(sid);
+		error.captcha=new ApiCaptchaError.Captcha(Config.localURI("/api/captcha/"+encodedSid+".png").toString(), CaptchaGenerator.IMG_WIDTH, CaptchaGenerator.IMG_HEIGHT, encodedSid, actx.lang.get("captcha_hint"));
+		throw new ApiErrorException(error);
 	}
+
+	public static CaptchaInfo getCaptchaInfo(byte[] sid){
+		CaptchaInfo info=captchas.get(new ByteArrayMapKey(sid));
+		if(info==null || System.currentTimeMillis()-info.requestedAt.toEpochMilli()>600_000)
+			return null;
+		return info;
+	}
+
+	public static void updateCaptchaInfo(byte[] sid, String answer){
+		ByteArrayMapKey key=new ByteArrayMapKey(sid);
+		synchronized(captchas){
+			CaptchaInfo info=captchas.get(key);
+			if(info==null)
+				return;
+			captchas.put(key, new CaptchaInfo(info.accessToken, info.paramsHash, info.requestedAt, Instant.now(), answer));
+		}
+	}
+
+	public record InputAttachments(@NotNull List<String> ids, @NotNull Map<String, String> altTexts, @Nullable Poll poll){}
+
+	public record CaptchaInfo(byte[] accessToken, byte[] paramsHash, Instant requestedAt, Instant generatedAt, String answer){}
 }

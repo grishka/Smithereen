@@ -12,6 +12,8 @@ import com.google.gson.JsonSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -30,6 +32,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javax.imageio.ImageIO;
+
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.activitypub.objects.LocalImage;
@@ -46,6 +50,7 @@ import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FloodControlViolationException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.http.HttpContentType;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
@@ -60,6 +65,7 @@ import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.scripting.ScriptValueGsonTypeAdapterFactory;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.util.CaptchaGenerator;
 import smithereen.util.CryptoUtils;
 import smithereen.util.FloodControl;
 import smithereen.util.JsonObjectBuilder;
@@ -542,6 +548,52 @@ public class ApiRoutes{
 		}catch(BadRequestException x){
 			resp.status(400);
 			return new JsonObjectBuilder().add("error", "Field 'photo' not found").build();
+		}
+	}
+
+	public static Object captcha(Request req, Response resp) throws IOException{
+		String rawSid=req.params(":sid");
+		if(!rawSid.endsWith(".png"))
+			return null;
+		byte[] sid=tryDecodeBase64Url(rawSid.substring(0, rawSid.length()-4));
+		if(sid==null)
+			return null;
+		ApiUtils.CaptchaInfo info=ApiUtils.getCaptchaInfo(sid);
+		if(info==null)
+			return null;
+
+		CaptchaGenerator.Captcha captcha=CaptchaGenerator.generate();
+		ApiUtils.updateCaptchaInfo(sid, captcha.answer());
+		resp.type("image/png");
+		ByteArrayOutputStream out=new ByteArrayOutputStream();
+		ImageIO.write(captcha.image(), "png", out);
+		return out.toByteArray();
+	}
+
+	public static Object testValidation(Request req, Response resp){
+		req.attribute("popup", Boolean.TRUE);
+		try{
+			if(!"should be kept intact".equals(req.queryParams("this_parameter")) || !"as well".equals(req.queryParams("this_one")))
+				throw new UserErrorException("You accidentally removed the existing query parameters from the URL while adding your own.");
+			String rawUrl=req.queryParams("redirect_url");
+			if(StringUtils.isEmpty(rawUrl))
+				throw new UserErrorException("The redirect_url parameter is absent or empty.");
+			URI url;
+			try{
+				url=new URI(rawUrl);
+			}catch(URISyntaxException x){
+				throw new UserErrorException("redirect_url is not a valid URL.");
+			}
+			if(StringUtils.isEmpty(url.getScheme()) || StringUtils.isEmpty(url.getAuthority()))
+				throw new UserErrorException("redirect_url must have at least scheme and authority parts.");
+
+			String successStr=Base64.getUrlEncoder().withoutPadding().encodeToString(CryptoUtils.sha256("Success!".getBytes(StandardCharsets.UTF_8)));
+			return new RenderedTemplateResponse("validation_test", req)
+					.with("successURL", new UriBuilder(url).fragment("success=1&key="+successStr).build().toString())
+					.with("failureURL", new UriBuilder(url).fragment("error=1").build().toString())
+					.pageTitle("API validation test");
+		}catch(UserErrorException x){
+			return new RenderedTemplateResponse("generic_error", req).with("error", x.getMessage()).with("title", lang(req).get("error"));
 		}
 	}
 }

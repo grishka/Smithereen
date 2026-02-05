@@ -21,8 +21,8 @@ import javax.imageio.ImageIO;
 public class CaptchaGenerator{
 	// Inspired by http://www.captcha.ru/kcaptcha/
 
-	private static final int IMG_WIDTH=130;
-	private static final int IMG_HEIGHT=50;
+	public static final int IMG_WIDTH=130;
+	public static final int IMG_HEIGHT=50;
 	private static final SecureRandom rand=new SecureRandom();
 	private static final String FONT_ALPHABET="0123456789abcdefghijklmnopqrstuvwxyz";
 	private static final String GEN_ALPHABET="23456789abcdefghijkmnpqrstuvxyz";

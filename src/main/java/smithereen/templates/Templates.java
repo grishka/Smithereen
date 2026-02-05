@@ -95,12 +95,8 @@ public class Templates{
 		ApplicationContext ctx=Utils.context(req);
 		Lang lang=Utils.lang(req);
 		if(req.session(false)!=null){
-			SessionInfo info=req.session().attribute("info");
-			if(info==null){
-				info=new SessionInfo();
-				req.session().attribute("info", info);
-			}
-			Account account=info.account;
+			SessionInfo info=Utils.sessionInfo(req);
+			Account account=info==null ? null : info.account;
 			if(account!=null){
 				model.with("currentUser", account.user);
 				model.with("csrf", info.csrfToken);

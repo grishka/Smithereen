@@ -228,5 +228,6 @@
   "account_ban_content_photos": "таких фотографий",
   "clear_selection": "Сбросить выбор",
   "announcement": "Объявление",
-  "menu_apps": "Приложения"
+  "menu_apps": "Приложения",
+  "captcha_hint": "Введите код с картинки"
 }

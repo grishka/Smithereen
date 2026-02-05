@@ -421,6 +421,8 @@ public class Utils{
 	}
 
 	public static SessionInfo sessionInfo(Request req){
+		if(req.pathInfo().startsWith("/api/"))
+			return null;
 		Session sess=req.session(false);
 		if(sess==null)
 			return null;
@@ -980,7 +982,7 @@ public class Utils{
 		CaptchaInfo info=captchas.remove(sid);
 		if(info==null)
 			throw new UserErrorException("err_wrong_captcha");
-		if(!info.answer().equals(captcha) || System.currentTimeMillis()-info.generatedAt().toEpochMilli()<3000)
+		if(!info.answer().equals(captcha) || System.currentTimeMillis()-info.generatedAt().toEpochMilli()<1500)
 			throw new UserErrorException("err_wrong_captcha");
 	}
 
@@ -1009,6 +1011,14 @@ public class Utils{
 
 	public static boolean isValidBirthDate(LocalDate date){
 		return date.isBefore(LocalDate.now().plusDays(1)) && date.isAfter(LocalDate.of(1900, 1, 1));
+	}
+
+	public static byte[] tryDecodeBase64Url(String s){
+		try{
+			return Base64.getUrlDecoder().decode(s);
+		}catch(IllegalArgumentException x){
+			return null;
+		}
 	}
 
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}

@@ -232,5 +232,6 @@
   "account_ban_content_photos": "such photos",
   "clear_selection": "Clear selection",
   "announcement": "Announcement",
-  "menu_apps": "Applications"
+  "menu_apps": "Applications",
+  "captcha_hint": "Enter the code from the image"
 }

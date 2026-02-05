@@ -89,6 +89,8 @@ public class ApiDispatcher{
 		registerMethod("utils.getServerTime", UtilsMethods::getServerTime, false);
 		registerMethod("utils.loadRemoteObject", UtilsMethods::loadRemoteObject, true);
 		registerMethod("utils.resolveScreenName", UtilsMethods::resolveScreenName, false);
+		registerMethod("utils.testCaptcha", UtilsMethods::testCaptcha, true);
+		registerMethod("utils.testValidation", UtilsMethods::testValidation, true);
 
 		registerMethod("server.getInfo", ServerMethods::getInfo, false);
 		registerMethod("server.getRestrictedServers", ServerMethods::getRestrictedServers, false);
