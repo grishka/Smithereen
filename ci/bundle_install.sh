@@ -33,7 +33,7 @@ if [ "$EUID" -ne 0 ]; then
 	exit
 fi
 
-if ! [[ -d /run/systemd/system ]]; then
+if [ ! -d /run/systemd/system ]; then
 	failWithError "Your system is not running systemd. As this installer relies on systemd services to run daemons, it's of no use on your system. You will have to install Smithereen manually."
 fi
 
@@ -61,11 +61,13 @@ if ! [ -x "$(command -v mysql)" ]; then
 If you would like to run the database on a separate server, you will have to install Smithereen manually."
 fi
 mysqlVersion="$(mysql --version | tr -s " ")"
-if [ "$(echo $mysqlVersion | grep MariaDB | wc -l)" -gt "0" ]; then
+echo $mysqlVersion | grep -q MariaDB
+if [ "$?" ]; then
 	failWithError "You have MariaDB instead of MySQL. Unfortunately, some distribution maintainers think that it's a drop-in replacement, but MariaDB is known to be incompatible with Smithereen.
 See $mysqlHelpUrl for instructions on how to install MySQL, or, if you need MariaDB for other applications on your server, consider running Smithereen in a container like Docker or LXC."
 fi
-if [ "$(echo $mysqlVersion | grep Distrib | wc -l)" -gt "0" ]; then
+echo $mysqlVersion | grep -q Distrib
+if [ "$?" ]; then
 	mysqlActualVersion="$(echo $mysqlVersion | cut -d " " -f 5)"
 else
 	mysqlActualVersion="$(echo $mysqlVersion | cut -d " " -f 3)"
@@ -108,7 +110,8 @@ fi
 read -p "Database name and new MySQL user name [smithereen]: " dbName
 if [ -z "$dbName" ]; then dbName="smithereen"; fi
 read -p "Would you like to use an S3 cloud storage service for user-uploaded files (y/n)? [n]: " useS3
-if [ "$useS3" == [yY] ]; then
+echo "$useS3" | grep -q '[yY]'
+if [ "$?" ]; then
 	echo ""
 	echo "Make sure you've read the readme and configured your storage service correctly: https://github.com/grishka/Smithereen/blob/master/README.md#using-s3-object-storage"
 	echo ""
@@ -140,13 +143,13 @@ read -p "Press Enter to continue..."
 echo ""
 mkdir -p $installLocation || failWithError "Unable to create directory $installLocation"
 mkdir -p $installLocation/nginx_cache/images
-mkdir -p $webRoot
+mkdir -p $webRoot || failWithError "Unable to create directory $webRoot"
 mkdir $webRoot/s
 mkdir $webRoot/s/uploads
 mkdir $webRoot/s/media_cache
-chown -R www-data:www-data $webRoot
-chown -R www-data:www-data $installLocation/nginx_cache/images
-cp -v -R smithereen.jar lib libvips* imgproxy $installLocation
+chown -R www-data:www-data $webRoot || failWithError "Unable to change owner of $webRoot"
+chown -R www-data:www-data $installLocation/nginx_cache/images || failWithError "Unable to change owner of $installLocation/nginx_cache/images"
+cp -v -R smithereen.jar lib libvips* imgproxy $installLocation || failWithError "Unable to copy files to the $installLocation"
 
 echo "Creating database..."
 echo "CREATE DATABASE $dbName;" | $mysqlCommand > /dev/null || failWithError "Unable to create a MySQL database"
@@ -167,7 +170,8 @@ db.password=$mysqlUserPassword
 
 # The domain for your instance. Used for local object URIs in ActivityPub. If running on localhost, must include the port.
 domain=$domain"
-if [ "$useS3" == [yY] ]; then
+echo "$useS3" | grep -q '[yY]'
+if [ "$?" ]; then
 	configContent="$configContent
 
 # S3 storage configuration
@@ -188,7 +192,8 @@ upload.s3.bucket=$s3Bucket"
 		configContent="$configContent
 upload.s3.hostname=$s3Hostname"
 	fi
-	if [ $s3OverridePathStyle == [yY] ]; then
+    echo "$s3OverridePathStyle" | grep -q '[yY]'
+	if [ "$?" ]; then
 		configContent="$configContent
 upload.s3.override_path_style=true"
 	fi
@@ -228,11 +233,14 @@ imgproxy.key=$imgproxyKey
 imgproxy.salt=$imgproxySalt"
 
 echo "$configContent" > "$installLocation/config.properties"
-echo "IMGPROXY_KEY=$imgproxyKey
+cat <<EOF > "$installLocation/imgproxy.env"
+$imgproxyKey
 IMGPROXY_SALT=$imgproxySalt
 IMGPROXY_PATH_PREFIX=/i
-IMGPROXY_LOCAL_FILESYSTEM_ROOT=$webRoot/s" > "$installLocation/imgproxy.env"
-if [ "$useS3" == [yY] ]; then
+IMGPROXY_LOCAL_FILESYSTEM_ROOT=$webRoot/s
+EOF
+echo "$useS3" | grep -q '[yY]'
+if [ "$?" ]; then
 	if [ -z "$s3Hostname" ]; then s3Hostname="s3-$s3Region.amazonaws.com"; fi
 	echo "IMGPROXY_ALLOWED_SOURCES=local://,https://$s3Hostname/" >> "$installLocation/imgproxy.env"
 else
