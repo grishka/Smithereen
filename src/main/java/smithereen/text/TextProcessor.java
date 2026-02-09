@@ -169,26 +169,19 @@ public class TextProcessor{
 	}
 
 	public static String stripHTML(String s, boolean keepLineBreaks){
-		if(keepLineBreaks){
-			Document doc=new Cleaner(new Whitelist().addTags("p", "br")).clean(Jsoup.parseBodyFragment(s));
-			StringBuilder sb=new StringBuilder();
-			doc.body().traverse(new NodeVisitor(){
-				@Override
-				public void head(Node node, int depth){
-					if(node instanceof Element el){
-						if("p".equalsIgnoreCase(el.tagName()) && !sb.isEmpty())
-							sb.append("\n\n");
-						else if("br".equalsIgnoreCase(el.tagName()))
-							sb.append('\n');
-					}else if(node instanceof TextNode tn){
-						sb.append(tn.text());
-					}
-				}
-			});
-			return sb.toString().trim();
-		}else{
-			return new Cleaner(Whitelist.none()).clean(Jsoup.parseBodyFragment(s.replace("</p><", "</p> <").replace("<br>", " "))).body().html();
-		}
+		Document doc=new Cleaner(new Whitelist().addTags("p", "br")).clean(Jsoup.parseBodyFragment(s));
+		StringBuilder sb=new StringBuilder();
+		doc.body().traverse((node, depth)->{
+			if(node instanceof Element el){
+				if("p".equalsIgnoreCase(el.tagName()) && !sb.isEmpty())
+					sb.append(keepLineBreaks ? "\n\n" : " ");
+				else if("br".equalsIgnoreCase(el.tagName()))
+					sb.append(keepLineBreaks ? '\n' : ' ');
+			}else if(node instanceof TextNode tn){
+				sb.append(tn.text());
+			}
+		});
+		return sb.toString().trim();
 	}
 
 	private static void makeLinksAndMentions(Node node, @Nullable MentionCallback mentionCallback){
