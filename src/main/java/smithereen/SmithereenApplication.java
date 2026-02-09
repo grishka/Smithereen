@@ -159,6 +159,9 @@ public class SmithereenApplication{
 		LOG=LoggerFactory.getLogger(SmithereenApplication.class);
 
 		context=new ApplicationContext();
+
+		// Prevents the dock icon on macOS from appearing when BufferedImage is used in e.g. the captcha generator
+		System.setProperty("java.awt.headless", "true");
 	}
 
 	public static void main(String[] args){
