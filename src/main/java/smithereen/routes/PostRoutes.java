@@ -76,14 +76,14 @@ public class PostRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(PostRoutes.class);
 
 	public static Object createUserWallPost(Request req, Response resp, Account self, ApplicationContext ctx){
-		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		int id=parseIntOrDefault(req.params(":id"), 0);
 		User user=ctx.getUsersController().getUserOrThrow(id);
 		ctx.getUsersController().ensureUserNotBlocked(self.user, user);
 		return createWallPost(req, resp, self, user, ctx);
 	}
 
 	public static Object createGroupWallPost(Request req, Response resp, Account self, ApplicationContext ctx){
-		int id=Utils.parseIntOrDefault(req.params(":id"), 0);
+		int id=parseIntOrDefault(req.params(":id"), 0);
 		Group group=ctx.getGroupsController().getGroupOrThrow(id);
 		return createWallPost(req, resp, self, group, ctx);
 	}
@@ -110,7 +110,7 @@ public class PostRoutes{
 		}else{
 			poll=null;
 		}
-		int replyTo=Utils.parseIntOrDefault(req.queryParams("replyTo"), 0);
+		int replyTo=parseIntOrDefault(req.queryParams("replyTo"), 0);
 		String contentWarning=req.queryParams("contentWarning");
 		List<String> attachments;
 		Map<String, String> attachmentAltTexts;
@@ -212,7 +212,7 @@ public class PostRoutes{
 						.addClass("wallPostForm_"+formID, "collapsed");
 			}else if(replyTo==0){
 				rb=new WebDeltaResponse(resp).insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postList", postHTML);
-				int newPostCount=Utils.parseIntOrDefault(req.queryParams("wallPostCount"), -1)+1;
+				int newPostCount=parseIntOrDefault(req.queryParams("wallPostCount"), -1)+1;
 				if(newPostCount>0){
 					// When creating a new post, update the wall header with the incremented number.
 					// It is deliberate that we just increment the previous value instead of fetching the up-to-date value
@@ -248,7 +248,7 @@ public class PostRoutes{
 			}
 			return rb.setInputValue("postFormText_"+formID, "").setContent("postFormAttachments_"+formID, "");
 		}
-		resp.redirect(Utils.back(req));
+		resp.redirect(back(req));
 		return "";
 	}
 
@@ -420,13 +420,13 @@ public class PostRoutes{
 
 	public static Object standalonePost(Request req, Response resp){
 		ApplicationContext ctx=context(req);
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		int postID=parseIntOrDefault(req.params(":postID"), 0);
 		PostViewModel post=new PostViewModel(ctx.getWallController().getPostOrThrow(postID));
 
 		boolean isLayer=!isMobile(req) && req.queryParams("ajaxLayer")!=null;
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isLayer ? "wall_post_standalone_layer" : "wall_post_standalone", req);
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		Account self=null;
 		if(info!=null && info.account!=null){
 			self=info.account;
@@ -542,50 +542,73 @@ public class PostRoutes{
 			HashMap<String, String> meta=new LinkedHashMap<>();
 			meta.put("og:site_name", Config.serverDisplayName);
 			meta.put("og:type", "article");
-			meta.put("og:title", author.getFullName());
 			meta.put("og:url", post.post.getInternalURL().toString());
-			meta.put("og:published_time", Utils.formatDateAsISO(post.post.createdAt));
+			meta.put("og:published_time", formatDateAsISO(post.post.createdAt));
 			meta.put("og:author", author.url.toString());
 			meta.put("profile:username", author.username+"@"+Config.domain);
-			if(StringUtils.isNotEmpty(post.post.text)){
-				String text=post.post.hasContentWarning() ? post.post.contentWarning : TextProcessor.truncateOnWordBoundary(post.post.text, 250);
-				meta.put("og:description", text);
-				moreMeta.put("description", text);
-			}
+			String title, description;
 			boolean hasImage=false;
-			if(post.post.attachments!=null && !post.post.attachments.isEmpty()){
-				for(Attachment att : post.post.getProcessedAttachments()){
-					if(att instanceof PhotoAttachment pa){
-						SizedImage.Dimensions size=pa.image.getDimensionsForSize(SizedImage.Type.PHOTO_MEDIUM);
-						meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_MEDIUM, SizedImage.Format.JPEG).toString());
-						meta.put("og:image:width", String.valueOf(size.width));
-						meta.put("og:image:height", String.valueOf(size.height));
-						meta.put("og:image:type", "image/jpeg");
-						meta.put("twitter:card", "summary_large_image");
-						hasImage=true;
-						break;
+			if(post.post.hasContentWarning()){
+				description=post.post.contentWarning;
+			}else{
+				if(StringUtils.isNotEmpty(post.post.text)){
+					description=TextProcessor.truncateOnWordBoundary(post.post.text, 250);
+				}else{
+					description="";
+				}
+				if(post.post.attachments!=null && !post.post.attachments.isEmpty()){
+					for(Attachment att:post.post.getProcessedAttachments()){
+						if(att instanceof PhotoAttachment pa){
+							SizedImage.Dimensions size=pa.image.getDimensionsForSize(SizedImage.Type.PHOTO_MEDIUM);
+							meta.put("og:image", pa.image.getUriForSizeAndFormat(SizedImage.Type.PHOTO_MEDIUM, SizedImage.Format.JPEG).toString());
+							meta.put("og:image:width", String.valueOf(size.width));
+							meta.put("og:image:height", String.valueOf(size.height));
+							meta.put("og:image:type", "image/jpeg");
+							meta.put("twitter:card", "summary_large_image");
+							hasImage=true;
+							break;
+						}
 					}
 				}
 			}
+			Lang l=lang(req);
+			if(post.post.ownerID==post.post.authorID){
+				title=author.getFullName();
+			}else if(post.post.getReplyLevel()==0){
+				title=switch(owner){
+					case User user -> l.get("wall_of_X", Map.of("name", user.getFirstLastAndGender()));
+					case Group group -> group.name;
+					default -> throw new IllegalStateException("Unexpected value: " + owner);
+				};
+				description=author.getName()+": "+description;
+			}else{
+				title=switch(owner){
+					case User user -> l.get("comment_on_user_post", Map.of("name", user.getFirstLastAndGender()));
+					case Group group -> l.get(group.isEvent() ? "comment_on_event_post" : "comment_on_group_post", Map.of("name", group.name));
+					default -> throw new IllegalStateException("Unexpected value: " + owner);
+				};
+				description=author.getName()+": "+description;
+			}
+			meta.put("og:title", title);
+			meta.put("og:description", description);
+			moreMeta.put("description", description);
 			if(!hasImage){
 				meta.put("twitter:card", "summary");
 				if(author.hasAvatar()){
 					URI img=author.getAvatar().getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_XLARGE, SizedImage.Format.JPEG);
-					if(img!=null){
-						SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.AVA_SQUARE_XLARGE);
-						meta.put("og:image", img.toString());
-						meta.put("og:image:width", String.valueOf(size.width));
-						meta.put("og:image:height", String.valueOf(size.height));
-						meta.put("og:image:type", "image/jpeg");
-					}
+					SizedImage.Dimensions size=author.getAvatar().getDimensionsForSize(SizedImage.Type.AVA_SQUARE_XLARGE);
+					meta.put("og:image", img.toString());
+					meta.put("og:image:width", String.valueOf(size.width));
+					meta.put("og:image:height", String.valueOf(size.height));
+					meta.put("og:image:type", "image/jpeg");
 				}
 			}
 			model.with("metaTags", meta);
 			model.with("moreMetaTags", moreMeta);
 		}
-		Utils.jsLangKey(req, "yes", "no", "cancel", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");
-		if(Utils.isMobile(req)){
-			Utils.jsLangKey(req, "attach_menu_photo_upload", "attach_menu_photo_from_album");
+		jsLangKey(req, "yes", "no", "cancel", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "attach_menu_photo", "attach_menu_cw");
+		if(isMobile(req)){
+			jsLangKey(req, "attach_menu_photo_upload", "attach_menu_photo_from_album");
 		}
 		String shortTitle=post.post.getShortTitle(50).strip();
 		if(shortTitle.isEmpty())
@@ -613,12 +636,12 @@ public class PostRoutes{
 
 	public static Object confirmDelete(Request req, Response resp, Account self, ApplicationContext ctx){
 		req.attribute("noHistory", true);
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		int postID=parseIntOrDefault(req.params(":postID"), 0);
 		if(postID==0){
 			throw new ObjectNotFoundException("err_post_not_found");
 		}
-		String back=Utils.back(req);
-		return new RenderedTemplateResponse("generic_confirm", req).with("message", Utils.lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back);
+		String back=back(req);
+		return new RenderedTemplateResponse("generic_confirm", req).with("message", lang(req).get("delete_post_confirm")).with("formAction", Config.localURI("/posts/"+postID+"/delete?_redir="+URLEncoder.encode(back))).with("back", back);
 	}
 
 	public static Object delete(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -645,7 +668,7 @@ public class PostRoutes{
 			}else if(req.queryParams("elid")!=null){
 				return wdr.remove(req.queryParams("elid"));
 			}
-			int newPostCount=Utils.parseIntOrDefault(req.queryParams("wallPostCount"), -1)-1;
+			int newPostCount=parseIntOrDefault(req.queryParams("wallPostCount"), -1)-1;
 			if(newPostCount>=0){
 				wdr.setContent("wallPostCount", lang(req).get("X_posts", Map.of("count", newPostCount)))
 						.setInputValue("wallPostCountInput", Integer.toString(newPostCount));
@@ -655,7 +678,7 @@ public class PostRoutes{
 			}
 			return wdr.remove("post"+post.id+ridSuffix, "postReplies"+post.id+ridSuffix);
 		}
-		resp.redirect(Utils.back(req));
+		resp.redirect(back(req));
 		return "";
 	}
 
@@ -704,14 +727,14 @@ public class PostRoutes{
 
 	public static Object likeList(Request req, Response resp){
 		ApplicationContext ctx=context(req);
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		int postID=parseIntOrDefault(req.params(":postID"), 0);
 		Post post=ctx.getWallController().getPostOrThrow(postID);
 		return UserInteractionsRoutes.likeList(req, resp, post);
 	}
 
 	public static Object userWallAll(Request req, Response resp){
 		User user=context(req).getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
 		ctx.getPrivacyController().enforceUserPrivacy(self==null ? null : self.user, user, UserPrivacySettingKey.WALL_OTHERS_POSTS);
@@ -742,7 +765,7 @@ public class PostRoutes{
 	}
 
 	private static Object wall(Request req, Response resp, Actor owner, boolean ownOnly){
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
 		if(owner instanceof Group group)
@@ -820,7 +843,7 @@ public class PostRoutes{
 		ApplicationContext ctx=context(req);
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		User otherUser=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":otherUserID")));
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 
 		int offset=offset(req);
@@ -847,7 +870,7 @@ public class PostRoutes{
 	}
 
 	public static Object ajaxCommentPreview(Request req, Response resp){
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
 
@@ -904,7 +927,7 @@ public class PostRoutes{
 	}
 
 	public static Object ajaxCommentBranch(Request req, Response resp){
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
 		int offset=offset(req);
@@ -981,7 +1004,7 @@ public class PostRoutes{
 		if(option==null)
 			throw new ObjectNotFoundException();
 
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
@@ -1030,7 +1053,7 @@ public class PostRoutes{
 		if(option==null)
 			throw new ObjectNotFoundException();
 
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		context(req).getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 
@@ -1077,9 +1100,9 @@ public class PostRoutes{
 
 	public static Object repostList(Request req, Response resp){
 		ApplicationContext ctx=context(req);
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		int postID=parseIntOrDefault(req.params(":postID"), 0);
 		Post post=ctx.getWallController().getPostOrThrow(postID);
 		ctx.getPrivacyController().enforceObjectPrivacy(self!=null ? self.user : null, post);
 		int offset=offset(req);
@@ -1228,9 +1251,9 @@ public class PostRoutes{
 			throw new BadRequestException();
 
 		ApplicationContext ctx=context(req);
-		int postID=Utils.parseIntOrDefault(req.params(":postID"), 0);
+		int postID=parseIntOrDefault(req.params(":postID"), 0);
 		PostViewModel post=new PostViewModel(ctx.getWallController().getPostOrThrow(postID));
-		SessionInfo info=Utils.sessionInfo(req);
+		SessionInfo info=sessionInfo(req);
 		Account self=null;
 		if(info!=null && info.account!=null){
 			self=info.account;
