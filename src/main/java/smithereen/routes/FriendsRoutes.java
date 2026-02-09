@@ -440,6 +440,8 @@ public class FriendsRoutes{
 			throw new BadRequestException();
 		}
 		if(isAjax(req)){
+			if("profile".equals(req.queryParams("from")))
+				return new WebDeltaResponse(resp).refresh();
 			Lang l=lang(req);
 			String content;
 			if(accept){

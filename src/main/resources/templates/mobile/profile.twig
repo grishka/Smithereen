@@ -122,9 +122,9 @@
 			{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
 			{%if user.supportsFriendRequests%}
 				{% if friendRequestRecvd %}
-					<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept" class="button secondary" onclick="return showOptions(this)" data-options="{{ json([
-						{'label': L('accept').toString(), 'href': "/users/#{user.id}/respondToFriendRequest?accept", 'ajax': 'box'},
-						{'label': L('decline').toString(), 'href': "/users/#{user.id}/respondToFriendRequest?decline", 'ajax': 'box'}
+					<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept&from=profile" class="button secondary" onclick="return showOptions(this)" data-options="{{ json([
+						{'type': 'link', 'label': L('accept').toString(), 'href': "/users/#{user.id}/respondToFriendRequest?accept&csrf=#{csrf}&from=profile", 'ajax': 'box'},
+						{'type': 'link', 'label': L('decline').toString(), 'href': "/users/#{user.id}/respondToFriendRequest?decline&csrf=#{csrf}&from=profile", 'ajax': 'box'}
 					]) }}"><span class="ellipsize">{{ L("profile_user_friend_request_received") }}</span><span class="arrowIcon"></span></a>
 				{% else %}
 					<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button ellipsize" data-ajax-box>{{L("add_friend")}}</a>
