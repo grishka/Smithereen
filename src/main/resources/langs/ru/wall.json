@@ -83,5 +83,8 @@
   "wall_unpin_post": "Открепить",
   "wall_pinned_post": "запись закреплена",
   "wall_show_X_more_pinned": "Показать ещё {count, plural, one {# закреплённую запись} few {# закреплённых записи} other {# закреплённых записей}}",
-  "post_time_via_app": "<a id=\"post\">{time}</a> через <a id=\"app\">{appName}</a>"
+  "post_time_via_app": "<a id=\"post\">{time}</a> через <a id=\"app\">{appName}</a>",
+  "comment_on_user_post": "Комментарий на стене {name, inflect, genitive}",
+  "comment_on_group_post": "Комментарий в группе \"{name}\"",
+  "comment_on_event_post": "Комментарий во встрече \"{name}\""
 }
