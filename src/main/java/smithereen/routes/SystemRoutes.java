@@ -485,7 +485,7 @@ public class SystemRoutes{
 									}
 									if(hadCorrectApiHash)
 										params.put("api", ApiUtils.getExternalMediaHash(params));
-									resp.redirect("/system/downloadExternalMedia?"+params.entrySet().stream().map(e->e.getKey()+"="+URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8)).collect(Collectors.joining("&")));
+									resp.redirect(Config.localURI("/system/downloadExternalMedia?"+params.entrySet().stream().map(e->e.getKey()+"="+URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8)).collect(Collectors.joining("&"))).toString());
 									return "";
 								}catch(ObjectNotFoundException ignore){}
 							}
