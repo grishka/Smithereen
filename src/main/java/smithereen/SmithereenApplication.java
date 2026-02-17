@@ -139,6 +139,7 @@ public class SmithereenApplication{
 	private static HashMap<String, String> serverErrorPages=new HashMap<>();
 
 	static{
+		Locale.setDefault(Locale.US);
 		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
 		System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
 		if(Config.DEBUG){

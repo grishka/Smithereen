@@ -1,5 +1,6 @@
 package smithereen.routes;
 
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
@@ -72,6 +73,10 @@ public class SessionRoutes{
 		}
 		RenderedTemplateResponse model=new RenderedTemplateResponse("login", req);
 		if(req.requestMethod().equalsIgnoreCase("post")){
+			InetAddress ip=getRequestIP(req);
+			FloodControl.LOGIN_HARD1.incrementOrThrow(ip);
+			FloodControl.LOGIN_HARD2.incrementOrThrow(ip);
+			// TODO soft limits
 			Account acc=SessionStorage.getAccountForUsernameAndPassword(req.queryParams("username"), req.queryParams("password"));
 			if(acc!=null){
 				setupSessionWithAccount(req, resp, acc);

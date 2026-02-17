@@ -30,6 +30,9 @@ public class FloodControl<K>{
 	public static final FloodControl<byte[]> API_REQUESTS=FloodControl.ofByteArrayKey(3, 1, TimeUnit.SECONDS);
 	public static final FloodControl<User> POSTS=FloodControl.ofObjectKey(300, 3, TimeUnit.HOURS, u->"user"+u.id);
 	public static final FloodControl<User> GROUP_CREATE=FloodControl.ofObjectKey(10, 1, TimeUnit.HOURS, u->"user"+u.id);
+	public static final FloodControl<InetAddress> LOGIN_HARD1=FloodControl.ofIPKey(1, 1, TimeUnit.SECONDS);
+	public static final FloodControl<InetAddress> LOGIN_HARD2=FloodControl.ofIPKey(100, 1, TimeUnit.HOURS);
+	public static final FloodControl<InetAddress> LOGIN_SOFT=FloodControl.ofIPKey(3, 1, TimeUnit.MINUTES);
 
 	private long timeout;
 	private int count;

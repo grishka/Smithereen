@@ -1098,5 +1098,13 @@ public class UsersController{
 		}
 	}
 
+	public Account getAccountForUsernameAndPassword(@NotNull String usernameOrEmail, @NotNull String password){
+		try{
+			return SessionStorage.getAccountForUsernameAndPassword(usernameOrEmail, password);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	private record CachedUserPresence(int userID, long sessionID, UserPresence presence){}
 }

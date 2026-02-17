@@ -65,7 +65,12 @@ public class AccountMethods{
 	}
 
 	public static Object getAppPermissions(ApplicationContext ctx, ApiCallContext actx){
-		return actx.token.permissions().stream().map(ClientAppPermission::getScopeValue).toList();
+		EnumSet<ClientAppPermission> permissions=actx.token.permissions();
+		if(permissions.contains(ClientAppPermission.PASSWORD_GRANT_USED)){
+			permissions=EnumSet.allOf(ClientAppPermission.class);
+			permissions.remove(ClientAppPermission.PASSWORD_GRANT_USED);
+		}
+		return permissions.stream().map(ClientAppPermission::getScopeValue).toList();
 	}
 
 	public static Object getBannedUsers(ApplicationContext ctx, ApiCallContext actx){

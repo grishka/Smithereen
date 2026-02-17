@@ -287,6 +287,7 @@ public class Utils{
 		}
 	}
 
+	@NotNull
 	public static Locale localeForRequest(Request req){
 		String langParam=req.queryParams("lang");
 		if(StringUtils.isNotEmpty(langParam)){
@@ -299,9 +300,7 @@ public class Utils{
 			if(info.preferredLocale!=null)
 				return info.preferredLocale;
 		}
-		if(req.raw().getLocale()!=null)
-			return req.raw().getLocale();
-		return Locale.US;
+		return req.raw().getLocale();
 	}
 
 	public static ZoneId timeZoneForRequest(Request req){

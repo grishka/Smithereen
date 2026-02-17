@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -56,6 +57,7 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.SizedImage;
+import smithereen.model.UserBanStatus;
 import smithereen.model.apps.AppAccessToken;
 import smithereen.model.apps.AppAuthCode;
 import smithereen.model.apps.ClientApp;
@@ -95,6 +97,18 @@ public class ApiRoutes{
 		return new RenderedTemplateResponse("oauth_error", req)
 				.with("error", error)
 				.pageTitle(Config.serverDisplayName+" | "+lang(req).get("oauth_title"));
+	}
+
+	private static ClientApp getApp(ApplicationContext ctx, URI appApID, boolean forceReload){
+		ClientApp app=ctx.getObjectLinkResolver().resolveNative(appApID, ClientApp.class, true, true, false, (JsonObject) null, true, true, false);
+		if(!Config.isLocal(appApID)){
+			if(app.lastUpdated.isBefore(Instant.now().minus(1, ChronoUnit.DAYS)) || forceReload){
+				try{
+					app=ctx.getObjectLinkResolver().resolveNative(appApID, ClientApp.class, true, true, true, (JsonObject) null, true, true, false);
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
+		return app;
 	}
 
 	public static Object oauthAuthorize(Request req, Response resp){
@@ -140,16 +154,9 @@ public class ApiRoutes{
 
 		ClientApp app;
 		try{
-			app=ctx.getObjectLinkResolver().resolveNative(appApID, ClientApp.class, true, true, false, (JsonObject) null, true, true, false);
+			app=getApp(ctx, appApID, req.queryParams("forceReload")!=null);
 		}catch(ObjectNotFoundException x){
 			return oauthAuthorizeError(req, "failed to resolve client_id to an ActivityPub Application object: "+x.getMessage());
-		}
-		if(!Config.isLocal(appApID)){
-			if(app.lastUpdated.isBefore(Instant.now().minus(1, ChronoUnit.DAYS)) || req.queryParams("forceReload")!=null){
-				try{
-					app=ctx.getObjectLinkResolver().resolveNative(appApID, ClientApp.class, true, true, true, (JsonObject) null, true, true, false);
-				}catch(ObjectNotFoundException ignore){}
-			}
 		}
 
 		if(!app.allowedRedirectURIs.isEmpty() && !app.allowedRedirectURIs.contains(redirectUri)){
@@ -277,6 +284,63 @@ public class ApiRoutes{
 			if(token.expiresAt()!=null)
 				jb.add("expires_in", token.expiresAt().getEpochSecond()-Instant.now().getEpochSecond());
 			return jb.build();
+		}else if("password".equals(grantType)){
+			String clientID=req.queryParams("client_id");
+			String username=req.queryParams("username");
+			String password=req.queryParams("password");
+			if(StringUtils.isEmpty(clientID) || StringUtils.isEmpty(username) || StringUtils.isEmpty(password)){
+				ArrayList<String> missingFields=new ArrayList<>();
+				if(StringUtils.isEmpty(username))
+					missingFields.add("username");
+				if(StringUtils.isEmpty(password))
+					missingFields.add("password");
+				if(StringUtils.isEmpty(clientID))
+					missingFields.add("client_id");
+				return oauthTokenError(resp, "invalid_request", "Required parameters are missing: "+String.join(", ", missingFields));
+			}
+
+			URI appApID;
+			try{
+				appApID=new URI(clientID);
+			}catch(URISyntaxException x){
+				return oauthTokenError(resp, "invalid_request", "client_id is not a valid URL");
+			}
+			if(!"https".equals(appApID.getScheme()) || StringUtils.isEmpty(appApID.getHost()))
+				return oauthTokenError(resp, "invalid_request", "client_id is not a valid URL");
+
+			ClientApp app;
+			try{
+				app=getApp(ctx, appApID, false);
+			}catch(ObjectNotFoundException x){
+				return oauthTokenError(resp, "invalid_client", "failed to resolve client_id to an ActivityPub Application object: "+x.getMessage());
+			}
+
+			InetAddress ip=getRequestIP(req);
+			Lang l=lang(req);
+			try{
+				FloodControl.LOGIN_HARD1.incrementOrThrow(ip);
+				FloodControl.LOGIN_HARD2.incrementOrThrow(ip);
+			}catch(FloodControlViolationException x){
+				return oauthTokenError(resp, "invalid_grant", l.get("err_flood_control"));
+			}
+			// TODO soft limits
+			Account account=ctx.getUsersController().getAccountForUsernameAndPassword(username, password);
+			if(account==null)
+				return oauthTokenError(resp, "invalid_grant", l.get("login_incorrect"));
+			if(!account.isActive()){
+				return oauthTokenError(resp, "invalid_grant", l.get(switch(account.user.banStatus){
+					case SUSPENDED -> "account_suspended";
+					case FROZEN -> "account_frozen";
+					case null, default -> "account_deactivated";
+				}));
+			}
+
+			AppAccessToken token=ctx.getAppsController().createAccessToken(account, app, EnumSet.of(ClientAppPermission.PASSWORD_GRANT_USED), req);
+			return new JsonObjectBuilder()
+					.add("access_token", token.getEncodedID())
+					.add("token_type", "bearer")
+					.add("user_id", account.user.id)
+					.build();
 		}else{
 			return oauthTokenError(resp, "unsupported_grant_type", null);
 		}
