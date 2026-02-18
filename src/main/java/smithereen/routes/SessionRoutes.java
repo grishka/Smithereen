@@ -50,6 +50,7 @@ public class SessionRoutes{
 		req.session(true).attribute("info", info);
 		String psid=SessionStorage.putNewSession(req.session(), Objects.requireNonNull(req.userAgent(), ""), getRequestIP(req));
 		info.csrfToken=csrfTokenFromSessionID(Base64.getDecoder().decode(psid));
+		info.persistentSessionID=psid;
 		if(acc.prefs.locale==null){
 			Locale requestLocale=req.raw().getLocale();
 			if(requestLocale!=null){
@@ -80,10 +81,13 @@ public class SessionRoutes{
 			Account acc=SessionStorage.getAccountForUsernameAndPassword(req.queryParams("username"), req.queryParams("password"));
 			if(acc!=null){
 				setupSessionWithAccount(req, resp, acc);
-				if(StringUtils.isNotEmpty(to))
+				if(StringUtils.isNotEmpty(to)){
+					if(to.startsWith("/"))
+						to=Config.localURI(to).toString();
 					resp.redirect(to);
-				else
+				}else{
 					resp.redirect("/feed");
+				}
 				return "";
 			}
 			model.with("message", lang(req).get("login_incorrect"));
