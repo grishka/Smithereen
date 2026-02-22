@@ -204,6 +204,7 @@
   "admin_user_state_frozen": "Старонка замарожаная да <b>{expirationTime}</b>.",
   "admin_user_state_suspended": "Старонка заблакавана і будзе выдалена <b>{deletionTime}</b>.",
   "admin_user_state_suspended_foreign": "Гэты карыстальнік з іншага сервера заблакаваны на вашым серверы.",
+  "admin_user_state_self_deactivated": "Старонка дэактывавана карыстальнікам і будзе выдалена <b>{deletionTime}</b>.",
   "admin_user_state_hidden": "Старонка схаваная ад неаўтарызаваных карыстальнікаў.",
   "admin_user_delete_account_now": "Выдаліць зараз",
   "admin_user_delete_account_confirmation": "Вы збіраецеся неадкладна выдаліць старонку <b>{name}</b>.\n\nГэта дзеянне <b>НЕЗВАРОТНА<b>, нават калі ў вас ёсць копія базы дадзеных і медыяфайлаў. Каб працягнуць, увядзіце ніжэй Імя карыстальніка з даменам для выдалянай ўліковага запісу.",
