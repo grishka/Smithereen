@@ -204,6 +204,7 @@
   "admin_user_state_frozen": "La cuenta está congelada hasta <b>{expirationTime}</b>.",
   "admin_user_state_suspended": "La cuenta está suspendida y será eliminada <b>{deletionTime}</b>.",
   "admin_user_state_suspended_foreign": "Este usuario remoto está suspendido en tu servidor.",
+  "admin_user_state_self_deactivated": "La cuenta fue desactivada por el propio usuario y será eliminada <b>{deletionTime}</b>.",
   "admin_user_state_hidden": "El perfil está oculto de los usuarios no registrados.",
   "admin_user_delete_account_now": "Eliminar ahora",
   "admin_user_delete_account_confirmation": "Estas a punto de eliminar la cuenta de <b>{name}</b> con efecto inmediato.\n\nEsto es <b>IRREVERSIBLE</b> incluso si tienes una base de datos y archivos multimedia como copia de seguridad. Para proceder, introduce abajo el nombre de usuario completo con dominio para la cuenta que estás eliminando.",
