@@ -204,6 +204,7 @@
   "admin_user_state_frozen": "Le compte est bloqué jusqu'à <b>{expirationTime}</b>.",
   "admin_user_state_suspended": "Le compte est suspendu et sera supprimé à <b>{deletionTime}</b>.",
   "admin_user_state_suspended_foreign": "Cet utilisateur distant est suspendu sur votre serveur.",
+  "admin_user_state_self_deactivated": "Le compte a été désactivé par l'utilisateur lui-même et sera supprimé à <b>{deletionTime}</b>.",
   "admin_user_state_hidden": "Le profil est masqué pour les utilisateurs déconnectés.",
   "admin_user_delete_account_now": "Supprimer maintenant",
   "admin_user_delete_account_confirmation": "Vous êtes sur le point de supprimer le compte de <b>{name}</b> avec effet immédiat.\n\nCeci est <b>IRREVERSIBLE</b> même si vous disposez d'une sauvegarde de base de données et de fichiers multimédias. Pour continuer, saisissez ci-dessous le nom d'utilisateur complet avec le domaine du compte que vous supprimez.",
