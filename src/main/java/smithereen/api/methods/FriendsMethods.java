@@ -39,7 +39,7 @@ public class FriendsMethods{
 		User user=ApiUtils.getUserOrSelf(ctx, actx, "user_id");
 		boolean isSelf=actx.self!=null && user.id==actx.self.id;
 		String order=actx.optParamString("order");
-		Set<String> allowedOrder=onlineOnly ? Set.of("hints", "random", "id") : Set.of("hints", "recent", "random", "id");
+		Set<String> allowedOrder=onlineOnly ? Set.of("hints", "random", "id", "name", "first_name", "last_name") : Set.of("hints", "recent", "random", "id", "name", "first_name", "last_name");
 		if(StringUtils.isNotEmpty(order) && !allowedOrder.contains(order))
 			throw actx.paramError("order must be one of "+String.join(", ", allowedOrder));
 		if("hints".equals(order) || "recent".equals(order)){
@@ -59,6 +59,8 @@ public class FriendsMethods{
 			case "hints" -> FriendsController.SortOrder.HINTS;
 			case "recent" -> FriendsController.SortOrder.RECENTLY_ADDED;
 			case "random" -> FriendsController.SortOrder.RANDOM;
+			case "name", "first_name" -> FriendsController.SortOrder.FIRST_NAME;
+			case "last_name" -> FriendsController.SortOrder.LAST_NAME;
 			case null, default -> FriendsController.SortOrder.ID_ASCENDING;
 		};
 		PaginatedList<User> friends=ctx.getFriendsController().getFriends(user, offset, count, actualOrder, onlineOnly, listID);

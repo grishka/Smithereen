@@ -483,6 +483,8 @@ public class UserStorage{
 					.columns("followee_id");
 			if(onlineOnly){
 				b.join("RIGHT JOIN users ON followings.followee_id=users.id").where("users.is_online=1");
+			}else if(order==FriendsController.SortOrder.FIRST_NAME || order==FriendsController.SortOrder.LAST_NAME){
+				b.join("RIGHT JOIN users ON followings.followee_id=users.id");
 			}
 			if(listID>0){
 				b.andWhere("(lists & ?)<>0", 1L << (listID-1));
@@ -492,6 +494,8 @@ public class UserStorage{
 					.orderBy(switch(order){
 						case HINTS -> "hints_rank DESC, followee_id ASC";
 						case RECENTLY_ADDED -> "added_at DESC, followee_id DESC";
+						case FIRST_NAME -> "users.fname ASC, users.lname ASC, followee_id DESC";
+						case LAST_NAME -> "users.lname ASC, users.fname ASC, followee_id DESC";
 						default -> "followee_id ASC";
 					})
 					.limit(count, offset)

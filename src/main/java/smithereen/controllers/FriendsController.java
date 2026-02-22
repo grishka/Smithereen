@@ -132,7 +132,7 @@ public class FriendsController{
 	public PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order, boolean onlineOnly, int listID){
 		try{
 			return switch(order){
-				case ID_ASCENDING, HINTS, RECENTLY_ADDED -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, order, listID);
+				case ID_ASCENDING, HINTS, RECENTLY_ADDED, FIRST_NAME, LAST_NAME -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, order, listID);
 				case RANDOM -> UserStorage.getRandomFriendsForProfile(user.id, count, onlineOnly);
 			};
 		}catch(SQLException x){
@@ -629,7 +629,9 @@ public class FriendsController{
 		ID_ASCENDING,
 		RANDOM,
 		HINTS,
-		RECENTLY_ADDED
+		RECENTLY_ADDED,
+		FIRST_NAME,
+		LAST_NAME
 	}
 
 	private record PendingHintsRankIncrement(int followerID, int followeeID, int amount){}
