@@ -1,0 +1,12 @@
+{
+  "email": "E-mail",
+  "language": "Тіл",
+  "gender_male": "ер",
+  "gender_female": "әйел",
+  "settings_general": "Негізгі",
+  "privacy_settings_value_certain_friends_before": ": ",
+  "privacy_settings_value_except_name": "{name}",
+  "privacy_settings_value_name_separator": ", ",
+  "settings_activity_access_time": "Сағат",
+  "settings_filter_no_expiration": "Ешқашан"
+}
