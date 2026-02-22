@@ -204,7 +204,6 @@
   "admin_user_state_frozen": "Konto ist gesperrt bis <b>{expirationTime}</b>.",
   "admin_user_state_suspended": "Konto ist angehalten und wird gelöscht <b>{deletionTime}</b>.",
   "admin_user_state_suspended_foreign": "Dieser Fernnutzer ist angehalten auf Deinem Server.",
-  "admin_user_state_self_deactivated": "Das Konto wurde vom Benutzer selbst deaktiviert und wird gelöscht <b>{deletionTime}</b>.",
   "admin_user_state_hidden": "Das Profil ist versteckt vor unangemeldeten Benutzern.",
   "admin_user_delete_account_now": "Jetzt löschen",
   "admin_user_delete_account_confirmation": "Du bist dabei <b>{name}</b>''s Konto mit sofortiger Wirkung zu löschen.\n\nDies ist <b>UNWIDERRUFLICH</b> auch wenn Du eine Datenbank- und Mediendateiensicherung hast. Um fortzufahren, gib darunter den kompletten Benutzernamen mit Domäne für das zu löschende Konto ein.",
