@@ -302,6 +302,9 @@ textarea{
 		padding: 2px 0 2px 8px;
 		border-left: solid 2px $textAreaBorder;
 	}
+	blockquote+blockquote{
+		margin-top: 10px;
+	}
 	blockquote:first-child{
 		margin-top: 0;
 	}
