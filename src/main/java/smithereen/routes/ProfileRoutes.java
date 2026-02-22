@@ -33,18 +33,18 @@ import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignUser;
-import smithereen.model.Post;
-import smithereen.model.UserBanInfo;
-import smithereen.model.UserBanStatus;
-import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
+import smithereen.model.Post;
 import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.UserBanInfo;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserInteractions;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
@@ -135,7 +135,7 @@ public class ProfileRoutes{
 		}
 
 		if(user.banStatus!=UserBanStatus.NONE && user.banInfo!=null){
-			if(user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.FROZEN)
+			if(user.banStatus==UserBanStatus.SUSPENDED || user.banStatus==UserBanStatus.SELF_DEACTIVATED)
 				model.with("accountDeletionTime", user.banInfo.bannedAt().plus(UserBanInfo.ACCOUNT_DELETION_DAYS, ChronoUnit.DAYS));
 			if(user.banInfo.moderatorID()!=0)
 				needUsers.add(user.banInfo.moderatorID());
