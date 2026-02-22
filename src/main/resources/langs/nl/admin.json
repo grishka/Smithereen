@@ -204,7 +204,6 @@
   "admin_user_state_frozen": "Account is bevroren tot <b>{expirationTime}</b>.",
   "admin_user_state_suspended": "Account is opgeschort en zal <b>{deletionTime}</b> worden verwijderd.",
   "admin_user_state_suspended_foreign": "Deze externe gebruiker is opgeschort op uw server.",
-  "admin_user_state_self_deactivated": "Het account is door de gebruiker zelf gedeactiveerd en wordt <b>{deletionTime}</b> verwijderd.",
   "admin_user_state_hidden": "Profiel is verborgen voor uitgelogde gebruikers.",
   "admin_user_delete_account_now": "Verwijder nu meteen",
   "admin_user_delete_account_confirmation": "U staat op het punt het account van <b>{name}</b> met onmiddellijke ingang te verwijderen.\n\nDit is <b>ONOMKEERBAAR</b>, zelfs als u een back-up van de database en mediabestanden heeft. Om verder te gaan, voert u hieronder de volledige gebruikersnaam met domein in voor het account dat u verwijdert.",
