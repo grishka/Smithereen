@@ -64,7 +64,7 @@
 	{% elseif user.banStatus=='HIDDEN' %}
 	<p>{{ L('admin_user_state_hidden') }}</p>
 	{% elseif user.banStatus=='SELF_DEACTIVATED' %}
-	<p>{{ L('admin_user_state_self_deactivated', {'deletionTime': LD(accountDeletionTime)}) }}</p>
+	<p>{{ L('admin_user_state_self_deactivated', {'gender': user.gender, 'deletionTime': LD(accountDeletionTime)}) }}</p>
 	{% endif %}
 	{% if user.banInfo is not null %}
 	{% if user.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_user_suspended_remotely') }}</p>{% endif %}
