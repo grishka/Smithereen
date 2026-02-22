@@ -60,6 +60,9 @@
 		.post.comment &{
 			--audio-title-width: 430px;
 		}
+		.post.comment .commentHoverCard & {
+			--audio-title-width: 311px;
+		}
 		.columnLayout:not(.expanded) .post &{
 			--audio-title-width: 260px;
 		}
