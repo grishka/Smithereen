@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.pebbletemplates.pebble.extension.Function;
@@ -193,6 +194,18 @@ public class RenderAttachmentsFunction implements Function{
 		}
 	}
 
+	// See https://en.wikipedia.org/w/index.php?title=HTML_audio&oldid=1331140055#Supported_audio_coding_formats
+	private final static Set<String> SUPPORTED_AUDIO_FORMATS=Set.of(
+			"audio/wav",
+			"audio/mpeg",
+			"audio/mp4",
+			"audio/aac",
+			"audio/aacp",
+			"audio/ogg",
+			"audio/webm",
+			"audio/flac"
+	);
+
 	private void renderAudioAttachments(List<Attachment> attachments, AttachmentHostContentObject obj, List<String> lines, EvaluationContext evaluationContext){
 		Lang l=Lang.get(evaluationContext.getLocale());
 
@@ -210,13 +223,22 @@ public class RenderAttachmentsFunction implements Function{
 				Duration duration=null; // TODO: Try to parse it from the activity object or from ID3 tags
 				String artist=l.get("audio_unknown_artist"); // TODO: Try to parse it from the activity object or from ID3 tags
 				String title=StringUtils.isNotBlank(att.description) ? att.description : l.get("audio_unknown_title"); // TODO: Try to parse it from the activity object or from ID3 tags
+
+				// If the audio format is not supported by the majority of modern browsers,
+				// render the audio as unavailable:
+				int unavailable=0;
+				if(att.mediaType!=null && !SUPPORTED_AUDIO_FORMATS.contains(att.mediaType)){
+					unavailable=4;
+				}
+
 				AudioAttachmentViewModel viewModel=new AudioAttachmentViewModel(
 						hostID+"_"+audioIndex++,
 						l.formatDuration(duration),
 						duration==null ? -1 : duration.getSeconds(),
 						artist,
 						title,
-						audio.url
+						audio.url,
+						unavailable
 				);
 				viewModels.add(viewModel);
 			}
