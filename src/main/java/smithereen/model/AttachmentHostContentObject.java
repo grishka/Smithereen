@@ -37,6 +37,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 			String mediaType=o.mediaType==null ? "" : o.mediaType;
 			if(o instanceof Image || mediaType.startsWith("image/")){
 				PhotoAttachment att=o instanceof Image img && img.isGraffiti ? new GraffitiAttachment() : new PhotoAttachment();
+				att.mediaType=o.mediaType;
 				if(StringUtils.isNotEmpty(o.name))
 					att.description=o.name;
 				if(o instanceof LocalImage li){
@@ -79,6 +80,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 				if(o.url==null)
 					continue;
 				VideoAttachment att=new VideoAttachment();
+				att.mediaType=o.mediaType;
 				att.url=o.url;
 				att.description=o.name;
 				if(o instanceof Document doc){
@@ -91,6 +93,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 				if(o.url==null)
 					continue;
 				AudioAttachment att=new AudioAttachment();
+				att.mediaType=o.mediaType;
 				att.description=o.name;
 				att.url=o.url;
 				result.add(att);

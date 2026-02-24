@@ -7,6 +7,9 @@ import smithereen.util.TranslatableEnum;
 public abstract sealed class Attachment permits AudioAttachment, PhotoAttachment, VideoAttachment{
 
 	@Nullable
+	public String mediaType;
+
+	@Nullable
 	public String description;
 
 	public abstract Type getType();
