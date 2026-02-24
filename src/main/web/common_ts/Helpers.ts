@@ -374,13 +374,37 @@ function isVisible(el:HTMLElement):boolean{
 	return el.style.display!="none";
 }
 
-function lang(key:string, args:{[key:string]:(string|number)}={}):string{
+function isEmptyObject(obj:Object):boolean{
+	for(var prop in obj)
+		return false;
+	return true;
+}
+
+function lang(key:string, args:{[key:string]:(string|number)}={}, links:{[key:string]:{[key:string]:string}}={}):string{
 	if(!langKeys[key])
 		return key.replace(/_/g, " ");
 	var v=langKeys[key];
+	var result;
 	if(typeof v==="function")
-		return (v as Function).apply(this, [args]);
-	return v as string;
+		result=(v as Function).apply(this, [args]);
+	else
+		result=v as string;
+	if(!isEmptyObject(links)){
+		var el=ce("span");
+		el.innerHTML=result;
+		for(var linkID in links){
+			var link=el.qs("a#"+linkID);
+			if(!link)
+				continue;
+			link.removeAttribute("id");
+			var linkAttrs=links[linkID];
+			for(var attr in linkAttrs){
+				(link as any)[attr]=linkAttrs[attr];
+			}
+		}
+		result=el.innerHTML;
+	}
+	return result;
 }
 
 function langFileSize(size:number):string{
