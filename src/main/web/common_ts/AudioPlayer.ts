@@ -24,7 +24,13 @@ interface BaseSongInfo{
 	artist:string;
 }
 
-type SongInfo=BaseSongInfo&{url:string; unavailabilityReason?:never;}|BaseSongInfo&{url?:never; unavailabilityReason:string;};
+const enum AudioUnavailabilityReason{
+	UNSUPPORTED_FORMAT=4, // MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
+}
+
+type SongInfo=
+		BaseSongInfo&{url:string; unavailabilityReason?:AudioUnavailabilityReason;}
+		|BaseSongInfo&{url?:never; unavailabilityReason:AudioUnavailabilityReason;};
 
 interface AudioControlContainer{
 	idSuffix:string,
@@ -450,8 +456,16 @@ class AudioPlayer{
 		this.forEachControl(c=>c.loadLine.style.width=percentage+"%")
 	}
 
-	onError(code:number){
-		// TODO
+	onError(error:MediaError){
+		if(error.code==AudioUnavailabilityReason.UNSUPPORTED_FORMAT && this.lastSong!=null){
+			this.lastSong.unavailabilityReason=AudioUnavailabilityReason.UNSUPPORTED_FORMAT;
+			this.forEachControl(c => {
+				c.row.classList.add("unavailable");
+				c.row.dataset.unavailable=AudioUnavailabilityReason.UNSUPPORTED_FORMAT.toString();
+			});
+			this.stop();
+			this.showAudioUnavailableMessage(this.lastSong);
+		}
 	}
 
 	private setGraphics(control:AudioControl){
@@ -530,6 +544,7 @@ class AudioPlayer{
 			duration: audioEl.dataset.duration ? parseInt(audioEl.dataset.duration) : null,
 			artist: audioEl.dataset.artist,
 			title: audioEl.dataset.title,
+			unavailabilityReason: audioEl.dataset.unavailable ? parseInt(audioEl.dataset.unavailable) : undefined,
 		};
 	}
 
@@ -538,7 +553,19 @@ class AudioPlayer{
 	}
 
 	private showAudioUnavailableMessage(lastSong:SongInfo){
-		// TODO: Currently the server cannot specify the unavailability reason.
+		let title:string;
+		let msg:string;
+		switch(lastSong.unavailabilityReason){
+			case AudioUnavailabilityReason.UNSUPPORTED_FORMAT:
+				title=lang("audio_missing_box_title");
+				msg=`<p>${lang("audio_missing_box_message_1", {artist: lastSong.artist, title: lastSong.title})}</p>`;
+				if(lastSong.url){
+					msg+=`<p>${lang("audio_missing_box_message_2", {}, {missingAudioLink: {href: lastSong.url, target: "_blank"}})}</p>`;
+				}
+				break;
+		}
+		const box=new MessageBox(title, msg, lang("close"));
+		box.show();
 	}
 
 	private setCurTime(curTime:number, totalTime:number){
