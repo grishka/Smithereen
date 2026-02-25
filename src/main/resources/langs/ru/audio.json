@@ -1,4 +1,7 @@
 {
   "audio_unknown_artist": "Неизвестный",
-  "audio_unknown_title": "Без названия"
+  "audio_unknown_title": "Без названия",
+  "audio_missing_box_title": "Неподдерживаемая аудиозапись",
+  "audio_missing_box_message_1": "Не удалось воспроизвести аудиозапись <b>{artist}&nbsp;— {title}</b>. Возможно, она была удалена с сервера или имеет неизвестный формат.",
+  "audio_missing_box_message_2": "Вы можете попытаться <a id=\"missingAudioLink\">загрузить её напрямую</a>."
 }
