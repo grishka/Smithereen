@@ -22,7 +22,7 @@
 	<h2>{{ L('settings_apps_development') }}</h2>
 	<div class="form">
 		<div class="textByItself">
-			<p>{{ L('settings_apps_dev_explanation', {}, {'docs': {'href': 'https://smithereen.software/docs/api/creating-app/', 'target': '_blank'} }) }}</p>
+			<p>{{ L('settings_apps_dev_explanation', {}, {'docs': {'href': 'https://smithereen.software/docs/api/creating-app', 'target': '_blank'} }) }}</p>
 			{% if managed is not empty %}<p>{{ L('settings_apps_managed_summary', {'count': managed | length}) }}</p>{% endif %}
 		</div>
 		{% if managed is not empty %}
