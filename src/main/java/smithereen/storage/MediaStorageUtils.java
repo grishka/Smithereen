@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -30,13 +31,16 @@ import smithereen.Utils;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Audio;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.id3tag.ID3v2TagParser;
 import smithereen.lang.Lang;
 import smithereen.libvips.VipsImage;
 import smithereen.model.Account;
+import smithereen.model.AttachmentHostContentObject;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.Group;
 import smithereen.model.NonCachedRemoteImage;
@@ -57,6 +61,7 @@ import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.util.BlurHash;
 import smithereen.util.JsonObjectBuilder;
+import smithereen.util.RangeRequestReader;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
@@ -110,6 +115,66 @@ public class MediaStorageUtils{
 			}
 		}
 		return file.length();
+	}
+
+	public static void fetchAudioMetadata(AttachmentHostContentObject obj, ApplicationContext ctx){
+		List<ActivityPubObject> oldAttachments=obj.getAttachments();
+		if(oldAttachments.isEmpty()) return;
+		List<ActivityPubObject> newAttachments=new ArrayList<>(oldAttachments);
+		for(int i=0;i<newAttachments.size();++i){
+			ActivityPubObject att=newAttachments.get(i);
+			Audio audio;
+			if(att instanceof Audio a){
+				audio=a;
+			}else if(att.mediaType!=null && att.mediaType.startsWith("audio/")){
+				audio=new Audio();
+				audio.url=att.url;
+				audio.name=att.name;
+				audio.mediaType=att.mediaType;
+				audio.duration=att.duration;
+			}else{
+				continue;
+			}
+
+			// We only support loading ID3 tags for MP3 files
+			if(!Objects.equals(audio.mediaType, "audio/mpeg")){
+				continue;
+			}
+
+			if(audio.url==null){
+				continue;
+			}
+
+			if(audio.title!=null || audio.artist!=null){
+				// The metadata is already present, no need to fetch it.
+				continue;
+			}
+
+			LOG.trace("Fetching ID3 tags for audio attachment {}", att.asRootActivityPubObject(ctx, (String)null));
+			var rrr = new RangeRequestReader(audio.url);
+
+			try{
+				if (!rrr.supportsRangeRequests()){
+					LOG.trace("The target server does not support range requests, skipping");
+					continue;
+				}
+				new ID3v2TagParser(rrr).parseInto(audio);
+				if(audio.title==null && audio.artist==null){
+					LOG.trace("No valid supported ID3 tags found");
+					continue;
+				}
+			}catch(IOException e){
+				LOG.trace("Could not fetch ID3 metadata", e);
+			}catch(InterruptedException ignored){
+				return;
+			}catch(Throwable e){
+				LOG.error("Error while parsing ID3 tags of {}", att.url, e);
+				throw e;
+			}
+
+			newAttachments.set(i, audio);
+		}
+		obj.setAttachments(newAttachments);
 	}
 
 	public static JsonObject serializeAttachment(ActivityPubObject att){

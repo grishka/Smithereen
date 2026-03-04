@@ -1,5 +1,7 @@
 package smithereen.api.model;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.time.Instant;
 import java.util.Map;
 
@@ -52,7 +54,7 @@ public class ApiAttachment{
 			}
 			case AudioAttachment aa -> {
 				type="audio";
-				audio=new Audio(aa.url.toString(), aa.description);
+				audio=new Audio(aa.url.toString(), aa.description, aa.artist, aa.title, aa.duration>0 ? aa.duration/1000 : null);
 			}
 		}
 	}
@@ -60,6 +62,8 @@ public class ApiAttachment{
 	public ApiAttachment(){}
 
 	public record Video(String url, Integer width, Integer height, String blurhash, String description){}
-	public record Audio(String url, String description){}
+
+	public record Audio(String url, @Nullable String description, @Nullable String artist, @Nullable String title, @Nullable Long duration){
+	}
 	public record Graffiti(String url, String previewUrl, int width, int height){}
 }

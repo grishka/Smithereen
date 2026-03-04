@@ -7,7 +7,6 @@ import org.unbescape.html.HtmlEscape;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URI;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -220,9 +219,9 @@ public class RenderAttachmentsFunction implements Function{
 					case PostLikeObject p -> hostID=p.getObjectID();
 					case MailMessage m -> hostID=m.id;
 				}
-				Duration duration=null; // TODO: Try to parse it from the activity object or from ID3 tags
-				String artist=l.get("audio_unknown_artist"); // TODO: Try to parse it from the activity object or from ID3 tags
-				String title=StringUtils.isNotBlank(att.description) ? att.description : l.get("audio_unknown_title"); // TODO: Try to parse it from the activity object or from ID3 tags
+				String artist=audio.artist!=null ? audio.artist : l.get("audio_unknown_artist");
+				String title=audio.title!=null ? audio.title : (StringUtils.isNotBlank(att.description) ? att.description : l.get("audio_unknown_title"));
+				long durationInSeconds=audio.duration/1000;
 
 				// If the audio format is not supported by the majority of modern browsers,
 				// render the audio as unavailable:
@@ -233,8 +232,8 @@ public class RenderAttachmentsFunction implements Function{
 
 				AudioAttachmentViewModel viewModel=new AudioAttachmentViewModel(
 						hostID+"_"+audioIndex++,
-						l.formatDuration(duration),
-						duration==null ? -1 : duration.getSeconds(),
+						audio.duration>0 ? l.formatDuration(durationInSeconds) : l.invalidDuration(),
+						durationInSeconds,
 						artist,
 						title,
 						audio.url,

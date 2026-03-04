@@ -4,7 +4,7 @@
         {% set playerID = playerID ~ '_' ~ randomID %}
     {% endif %}
 <div id="audio{{ playerID }}" class="audio{% if audio.unavailable() > 0 %} unavailable{% endif %}" data-artist="{{ audio.artist }}" data-title="{{ audio.title }}"
-     {% if audio.durationSeconds >= 0 %}data-duration="{{ audio.durationSeconds }}"{% endif %}{% if audio.url is not null %} data-url="{{ audio.url }}"{% endif %}{% if audio.unavailable() > 0 %} data-unavailable="{{ audio.unavailable() }}"{% endif %}>
+     {% if audio.durationSeconds > 0 %}data-duration="{{ audio.durationSeconds }}"{% endif %}{% if audio.url is not null %} data-url="{{ audio.url }}"{% endif %}{% if audio.unavailable() > 0 %} data-unavailable="{{ audio.unavailable() }}"{% endif %}>
 	<div class="area" onclick="AudioPlayer.playOrPause('{{ audio.audioID }}')">
 		<table>
 			<tr>

@@ -27,6 +27,9 @@ import spark.utils.StringUtils;
 public sealed interface AttachmentHostContentObject permits MailMessage, PostLikeObject{
 	@NotNull
 	List<ActivityPubObject> getAttachments();
+
+	void setAttachments(@NotNull List<ActivityPubObject> attachments);
+
 	NonCachedRemoteImage.Args getPhotoArgs(int index);
 	String getPhotoListID();
 
@@ -96,6 +99,11 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 				att.mediaType=o.mediaType;
 				att.description=o.name;
 				att.url=o.url;
+				if(o instanceof Audio audio){
+					att.artist=audio.artist;
+					att.title=audio.title;
+					att.duration=audio.duration;
+				}
 				result.add(att);
 			}
 			i++;
