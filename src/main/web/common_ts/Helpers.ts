@@ -1708,6 +1708,9 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 			}
 			eval(xhr.response.s);
 			initDynamicControls();
+			if(AudioPlayer.isInitialized()){
+				AudioPlayer.getInstance().updateAllControls();
+			}
 		};
 		var extraScripts=xhr.response.sc;
 		if(extraScripts){
