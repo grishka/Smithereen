@@ -1,5 +1,6 @@
 package smithereen.templates.functions;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.unbescape.html.HtmlEscape;
@@ -38,6 +39,7 @@ import smithereen.model.attachments.SizedAttachment;
 import smithereen.model.attachments.VideoAttachment;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.viewmodel.AudioAttachmentViewModel;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.templates.MediaLayoutHelper;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
@@ -214,11 +216,6 @@ public class RenderAttachmentsFunction implements Function{
 		List<AudioAttachmentViewModel> viewModels=new ArrayList<>();
 		for(Attachment att: attachments){
 			if(att instanceof AudioAttachment audio){
-				long hostID;
-				switch(obj){
-					case PostLikeObject p -> hostID=p.getObjectID();
-					case MailMessage m -> hostID=m.id;
-				}
 				String artist=audio.artist!=null ? audio.artist : l.get("audio_unknown_artist");
 				String title=audio.title!=null ? audio.title : (StringUtils.isNotBlank(att.description) ? att.description : l.get("audio_unknown_title"));
 				long durationInSeconds=audio.duration/1000;
@@ -231,7 +228,7 @@ public class RenderAttachmentsFunction implements Function{
 				}
 
 				AudioAttachmentViewModel viewModel=new AudioAttachmentViewModel(
-						hostID+"_"+audioIndex++,
+						getPlayerID(audioIndex++, obj, evaluationContext),
 						audio.duration>0 ? l.formatDuration(durationInSeconds) : l.invalidDuration(),
 						durationInSeconds,
 						artist,
@@ -247,7 +244,6 @@ public class RenderAttachmentsFunction implements Function{
 		StringWriter writer=new StringWriter();
 		var context=new HashMap<String, Object>();
 		context.put("audios", viewModels);
-		context.put("randomID", evaluationContext.getVariable("randomID"));
 		context.put("isPostInLayer", evaluationContext.getVariable("isPostInLayer"));
 		try{
 			template.evaluate(writer, context, evaluationContext.getLocale());
@@ -255,5 +251,31 @@ public class RenderAttachmentsFunction implements Function{
 			log.error("Failure while evaluating template", e);
 		}
 		lines.add(writer.toString());
+	}
+
+	private static @NotNull String getPlayerID(int audioID, AttachmentHostContentObject host, EvaluationContext evaluationContext){
+		// The audio player identifier MUST be unique within a page, but also MUST be deterministic.
+		// The former is just a DOM requirement.
+		// The latter allows us to restore players' state after AJAX navigations.
+		StringBuilder playerID=new StringBuilder(Integer.toString(audioID));
+		switch(host){
+			case PostLikeObject p -> {
+				playerID.append("_");
+				PostViewModel repostParent=(PostViewModel) evaluationContext.getVariable("repostParent");
+				Long repostDepth=(Long) evaluationContext.getVariable("repostDepth");
+				if(repostParent!=null && repostDepth!=null && repostDepth>0){
+					playerID.append(repostParent.post.getObjectID());
+					playerID.append("_");
+					playerID.append(repostDepth);
+				}else{
+					playerID.append(p.getObjectID());
+				}
+			}
+			case MailMessage m -> {
+				playerID.append("_");
+				playerID.append(m.getIdString());
+			}
+		}
+		return playerID.toString();
 	}
 }
