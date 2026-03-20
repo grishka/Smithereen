@@ -18,10 +18,13 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 import smithereen.ApplicationContext;
@@ -116,6 +119,7 @@ public class SessionStorage{
 			info.csrfToken=Utils.csrfTokenFromSessionID(sid);
 			info.ip=sr.ip;
 			info.userAgentHash=sr.uaHash;
+			info.persistentSessionID=psid;
 			if(info.account.prefs.locale==null){
 				Locale requestLocale=req.raw().getLocale();
 				if(requestLocale!=null){
@@ -676,22 +680,15 @@ public class SessionStorage{
 				.executeAndGetSingleObject(SignupRequest::fromResultSet);
 	}
 
-	public static List<OtherSession> getAccountSessions(int accountID) throws SQLException{
+	public static List<OtherSession> getAccountSessions(int accountID, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT sessions.*, user_agents.user_agent AS user_agent_str FROM sessions LEFT JOIN user_agents ON sessions.user_agent=user_agents.hash WHERE account_id=? ORDER BY last_active DESC", accountID);
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT id, ip, last_active, sessions.user_agent AS user_agent, user_agents.user_agent AS user_agent_str, null as app_id FROM sessions " +
+					"LEFT JOIN user_agents ON sessions.user_agent=user_agents.hash WHERE account_id=? " +
+					"UNION ALL SELECT id, ip, last_active, api_tokens.user_agent AS user_agent, user_agents.user_agent AS user_agent_str, app_id from api_tokens " +
+					"LEFT JOIN user_agents ON api_tokens.user_agent=user_agents.hash WHERE account_id=? " +
+					"ORDER BY last_active DESC LIMIT ? OFFSET ?", accountID, accountID, count, offset);
 			try(ResultSet res=stmt.executeQuery()){
 				return DatabaseUtils.resultSetToObjectStream(res, OtherSession::fromResultSet, null).toList();
-			}
-		}
-	}
-
-	public static OtherSession getAccountMostRecentSession(int accountID) throws SQLException{
-		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			try(ResultSet res=SQLQueryBuilder.prepareStatement(conn, "SELECT sessions.*, user_agents.user_agent AS user_agent_str FROM sessions LEFT JOIN user_agents ON sessions.user_agent=user_agents.hash WHERE account_id=? ORDER BY last_active DESC LIMIT 1", accountID)
-					.executeQuery()){
-				if(!res.next())
-					return null;
-				return OtherSession.fromResultSet(res);
 			}
 		}
 	}
@@ -701,6 +698,18 @@ public class SessionStorage{
 				.deleteFrom("sessions")
 				.where("account_id=? AND id<>?", accountID, sid)
 				.executeNoResult();
+	}
+
+	public static void putUserAgents(Map<String, Long> hashedUserAgents) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			final ArrayList<Object> args=new ArrayList<>();
+			hashedUserAgents.forEach((k, v)->{
+				args.add(v);
+				args.add(k);
+			});
+			SQLQueryBuilder.prepareStatement(conn, "INSERT IGNORE INTO `user_agents` (`hash`, `user_agent`) VALUES "+String.join(", ", Collections.nCopies(hashedUserAgents.size(), "(?, ?)")), args.toArray())
+					.execute();
+		}
 	}
 
 	public enum SignupResult{

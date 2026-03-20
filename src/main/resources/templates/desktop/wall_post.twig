@@ -91,7 +91,11 @@
 					</span>
 				</span>
 				{%- endif -%}
+				{% if realPost.appID!=0 %}
+				{{ L('post_time_via_app', {'time': LD(realPost.createdAt), 'appName': apps[realPost.appID].name}, {'post': {'href': realPost.internalURL, 'onclick': "return openPostLayer('#{ realPost.id }')", 'class': 'postLink'}, 'app': {'class': 'postLink'} }) }}
+				{% else %}
 				<a href="{{ realPost.internalURL }}" onclick="return openPostLayer('{{ realPost.id }}')" class="postLink">{{ LD(realPost.createdAt) }}</a>
+				{% endif %}
 				{% if realPost.ownerID!=realPost.authorID and tab!="wall2wall" and realPost.ownerID>0 %} |
 					<a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}">{{ L('wall_to_wall') }}</a>
 				{% endif %}

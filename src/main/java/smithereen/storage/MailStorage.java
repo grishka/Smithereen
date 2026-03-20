@@ -1,10 +1,11 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,17 +19,14 @@ import java.util.stream.Collectors;
 import smithereen.Utils;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.LocalImage;
-import smithereen.controllers.ObjectLinkResolver;
 import smithereen.model.MailMessage;
 import smithereen.model.MessagesPrivacyGrant;
-import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.media.MediaFileRecord;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.Pair;
-import smithereen.util.XTEA;
 
 public class MailStorage{
 	public static PaginatedList<MailMessage> getInbox(int ownerID, int offset, int count) throws SQLException{
@@ -73,6 +71,19 @@ public class MailStorage{
 			postprocessMessages(messages);
 			return new PaginatedList<>(messages, total, offset, count);
 		}
+	}
+
+	public static void updateForeignMessage(MailMessage updatedMsg, boolean markAsUpdated) throws SQLException{
+		new SQLQueryBuilder()
+				.update("mail_messages")
+				.value("to", Utils.serializeIntList(updatedMsg.to))
+				.value("cc", Utils.serializeIntList(updatedMsg.cc))
+				.value("text", updatedMsg.text)
+				.value("subject", updatedMsg.subject)
+				.value("attachments", updatedMsg.getSerializedAttachments())
+				.value("updated_at", markAsUpdated && updatedMsg.updatedAt==null ? Instant.now() : updatedMsg.updatedAt)
+				.where("ap_id=?", updatedMsg.activityPubID)
+				.executeNoResult();
 	}
 
 	public static long createMessage(String text, String subject, String attachments, int senderID, Set<Integer> to, Set<Integer> cc, Set<Integer> localOwners, URI apID, Map<Integer, MailMessage.ReplyInfo> replyInfos, Map<Integer, Long> allIDs) throws SQLException{
@@ -132,7 +143,7 @@ public class MailStorage{
 				}
 			});
 			if(localOwners.contains(senderID))
-				return XTEA.obfuscateObjectID(_id[0], ObfuscatedObjectIDType.MAIL_MESSAGE);
+				return _id[0];
 			return 0;
 		}
 	}
@@ -141,7 +152,7 @@ public class MailStorage{
 		new SQLQueryBuilder()
 				.update("mail_messages")
 				.valueExpr("deleted_at", "CURRENT_TIMESTAMP()")
-				.where("id=? AND owner_id=?", XTEA.deobfuscateObjectID(messageID, ObfuscatedObjectIDType.MAIL_MESSAGE), ownerID)
+				.where("id=? AND owner_id=?", messageID, ownerID)
 				.executeNoResult();
 	}
 
@@ -149,13 +160,13 @@ public class MailStorage{
 		new SQLQueryBuilder()
 				.update("mail_messages")
 				.value("deleted_at", null)
-				.where("id=? AND owner_id=?", XTEA.deobfuscateObjectID(messageID, ObfuscatedObjectIDType.MAIL_MESSAGE), ownerID)
+				.where("id=? AND owner_id=?", messageID, ownerID)
 				.executeNoResult();
 	}
 
 	public static void actuallyDeleteMessages(Collection<Long> ids, URI activityPubID) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			Set<Long> realIDs=ids.stream().map(id->XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet());
+			Set<Long> realIDs=new HashSet<>(ids);
 			new SQLQueryBuilder(conn)
 					.deleteFrom("mail_messages")
 					.whereIn("id", realIDs)
@@ -187,7 +198,7 @@ public class MailStorage{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			new SQLQueryBuilder(conn)
 					.deleteFrom("mail_messages")
-					.whereIn("id", msgs.stream().map(m->XTEA.deobfuscateObjectID(m.id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
+					.whereIn("id", msgs.stream().map(m->m.id).collect(Collectors.toSet()))
 					.executeNoResult();
 			Set<String> apIDs=msgs.stream().map(m->m.activityPubID).filter(Objects::nonNull).map(URI::toString).collect(Collectors.toSet());
 			if(apIDs.isEmpty())
@@ -222,13 +233,13 @@ public class MailStorage{
 		}
 	}
 
-	public static MailMessage getMessage(int ownerID, long messageID, boolean wantDeleted) throws SQLException{
+	public static @Nullable MailMessage getMessage(int ownerID, long messageID, boolean wantDeleted) throws SQLException{
 		String where="id=? AND owner_id=?";
 		if(!wantDeleted)
 			where+=" AND deleted_at IS NULL";
 		MailMessage msg=new SQLQueryBuilder()
 				.selectFrom("mail_messages")
-				.where(where, XTEA.deobfuscateObjectID(messageID, ObfuscatedObjectIDType.MAIL_MESSAGE), ownerID)
+				.where(where, messageID, ownerID)
 				.executeAndGetSingleObject(MailMessage::fromResultSet);
 		if(msg==null)
 			return null;
@@ -236,11 +247,25 @@ public class MailStorage{
 		return msg;
 	}
 
+	public static Map<Long, MailMessage> getMessagesByIDs(int ownerID, Collection<Long> ids, boolean wantDeleted) throws SQLException{
+		String where="owner_id=?";
+		if(!wantDeleted)
+			where+=" AND deleted_at IS NULL";
+		Map<Long, MailMessage> msgs=new SQLQueryBuilder()
+				.selectFrom("mail_messages")
+				.whereIn("id", ids)
+				.andWhere(where, ownerID)
+				.executeAsStream(MailMessage::fromResultSet)
+				.collect(Collectors.toMap(m->m.id, Function.identity()));
+		postprocessMessages(msgs.values());
+		return msgs;
+	}
+
 	public static void addMessageReadReceipt(int ownerID, Collection<Long> messageIDs, int readByUserID) throws SQLException{
 		new SQLQueryBuilder()
 				.update("mail_messages")
 				.valueExpr("read_receipts", "CONCAT(IFNULL(read_receipts, ''), ?)", (Object)Utils.serializeIntArray(new int[]{readByUserID}))
-				.whereIn("id", messageIDs.stream().map(id->XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
+				.whereIn("id", messageIDs.stream().map(id->id).collect(Collectors.toSet()))
 				.andWhere("owner_id=? AND deleted_at IS NULL", ownerID)
 				.executeNoResult();
 	}
@@ -257,7 +282,7 @@ public class MailStorage{
 		List<MailMessage> msgs=new SQLQueryBuilder()
 				.selectFrom("mail_messages")
 				.allColumns()
-				.whereIn("id", ids.stream().map(id->XTEA.deobfuscateObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE)).collect(Collectors.toSet()))
+				.whereIn("id", ids.stream().map(id->id).collect(Collectors.toSet()))
 				.executeAsStream(MailMessage::fromResultSet)
 				.toList();
 		postprocessMessages(msgs);
@@ -332,7 +357,7 @@ public class MailStorage{
 				.selectFrom("mail_messages")
 				.whereIn("id", ids)
 				.executeAsStream(MailMessage::fromResultSet)
-				.collect(Collectors.toMap(m->XTEA.deobfuscateObjectID(m.id, ObfuscatedObjectIDType.MAIL_MESSAGE), Function.identity()));
+				.collect(Collectors.toMap(m->m.id, Function.identity()));
 		postprocessMessages(msgs.values());
 		return msgs;
 	}

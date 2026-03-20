@@ -31,6 +31,13 @@ public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 		return post.getReplyKeyForReplies();
 	}
 
+	public void collectRepostIDs(Collection<Integer> ids){
+		if(repost!=null && !ids.contains(repost.post.post.id)){
+			ids.add(repost.post.post.id);
+			repost.post.collectRepostIDs(ids);
+		}
+	}
+
 	public static PaginatedList<PostViewModel> wrap(PaginatedList<Post> list){
 		return new PaginatedList<>(list.list.stream().map(PostViewModel::new).collect(Collectors.toCollection(ArrayList::new)), list.total, list.offset, list.perPage);
 	}
@@ -57,6 +64,19 @@ public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 			if(pvm.parentAuthorID>0)
 				userIDs.add(pvm.parentAuthorID);
 			collectActorIDs(pvm.repliesObjects, userIDs, groupIDs);
+		}
+	}
+
+	public static void collectAppIDs(Collection<PostViewModel> posts, Set<Long> appIDs){
+		collectAppIDs(posts, appIDs, 0);
+	}
+
+	private static void collectAppIDs(Collection<PostViewModel> posts, Set<Long> appIDs, int depth){
+		for(PostViewModel pvm:posts){
+			if(pvm.post.appID!=0)
+				appIDs.add(pvm.post.appID);
+			if(pvm.repost!=null && depth<10)
+				collectAppIDs(Set.of(pvm.repost.post), appIDs, depth+1);
 		}
 	}
 

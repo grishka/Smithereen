@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 
 import smithereen.ApplicationContext;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
@@ -44,7 +43,7 @@ public class FetchAndStoreOneUserFolloweeTask extends NoResultCallable{
 					context.getObjectLinkResolver().ensureObjectIsInCollection(targetGroup, targetGroup.members, user.activityPubID);
 				if(targetGroup.id==0)
 					context.getObjectLinkResolver().storeOrUpdateRemoteObject(targetGroup, targetGroup);
-				context.getGroupsController().joinGroup(targetGroup, user, false, true);
+				context.getGroupsController().joinGroup(targetGroup, user, false, true, false);
 			}
 		}catch(Exception x){
 			LOG.debug("Error fetching remote actor {}", targetActorID, x);

@@ -2,6 +2,8 @@ package smithereen.model;
 
 import com.google.gson.JsonArray;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +25,11 @@ import smithereen.storage.MediaStorageUtils;
 import spark.utils.StringUtils;
 
 public sealed interface AttachmentHostContentObject permits MailMessage, PostLikeObject{
+	@NotNull
 	List<ActivityPubObject> getAttachments();
+
+	void setAttachments(@NotNull List<ActivityPubObject> attachments);
+
 	NonCachedRemoteImage.Args getPhotoArgs(int index);
 	String getPhotoListID();
 
@@ -34,6 +40,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 			String mediaType=o.mediaType==null ? "" : o.mediaType;
 			if(o instanceof Image || mediaType.startsWith("image/")){
 				PhotoAttachment att=o instanceof Image img && img.isGraffiti ? new GraffitiAttachment() : new PhotoAttachment();
+				att.mediaType=o.mediaType;
 				if(StringUtils.isNotEmpty(o.name))
 					att.description=o.name;
 				if(o instanceof LocalImage li){
@@ -67,22 +74,36 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 					att.image=image;
 				}
 				if(o instanceof Document doc){
-					if(StringUtils.isNotEmpty(doc.blurHash))
-						att.blurHash=doc.blurHash;
+					String blurHash=doc.getBlurHash();
+					if(StringUtils.isNotEmpty(blurHash))
+						att.setBlurHash(blurHash);
 				}
 				result.add(att);
 			}else if(o instanceof Video || mediaType.startsWith("video/")){
 				if(o.url==null)
 					continue;
 				VideoAttachment att=new VideoAttachment();
+				att.mediaType=o.mediaType;
 				att.url=o.url;
+				att.description=o.name;
+				if(o instanceof Document doc){
+					att.width=doc.width;
+					att.height=doc.height;
+					att.blurHash=doc.getBlurHash();
+				}
 				result.add(att);
 			}else if(o instanceof Audio || mediaType.startsWith("audio/")){
 				if(o.url==null)
 					continue;
 				AudioAttachment att=new AudioAttachment();
+				att.mediaType=o.mediaType;
 				att.description=o.name;
 				att.url=o.url;
+				if(o instanceof Audio audio){
+					att.artist=audio.artist;
+					att.title=audio.title;
+					att.duration=audio.duration;
+				}
 				result.add(att);
 			}
 			i++;

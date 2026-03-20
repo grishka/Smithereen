@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -45,6 +47,7 @@ import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.media.MediaFileReferenceType;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.CommentViewModel;
@@ -55,6 +58,7 @@ import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.utils.Pair;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.FormattedTextSource;
+import smithereen.util.FloodControl;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
@@ -62,6 +66,7 @@ public class CommentsController{
 	private static final Logger LOG=LoggerFactory.getLogger(CommentsController.class);
 
 	private final ApplicationContext context;
+	final HashMap<String, CommentGuidInfo> guids=new HashMap<>();
 
 	public CommentsController(ApplicationContext context){
 		this.context=context;
@@ -85,12 +90,26 @@ public class CommentsController{
 	}
 
 	public Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
-								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
-		return createComment(self, parent, inReplyTo, textSource, sourceFormat, contentWarning, attachmentIDs, attachAltTexts, false);
+								 @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts, String guid){
+		if(StringUtils.isNotEmpty(guid)){
+			CommentGuidInfo guidInfo=guids.get(guid);
+			if(guidInfo!=null && guidInfo.time.isAfter(Instant.now().minus(1, ChronoUnit.HOURS))){
+				try{
+					return getCommentIgnoringPrivacy(guidInfo.commentID);
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
+		Comment c=createComment(self, parent, inReplyTo, textSource, sourceFormat, contentWarning, attachmentIDs, attachAltTexts, false);
+		if(StringUtils.isNotEmpty(guid)){
+			synchronized(guids){
+				guids.put(guid, new CommentGuidInfo(c.id, Instant.now()));
+			}
+		}
+		return c;
 	}
 
 	Comment createComment(@NotNull User self, @NotNull CommentableContentObject parent, @Nullable Comment inReplyTo,
-								 @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts,
+						  @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts,
 								 boolean skipFederation){
 		OwnerAndAuthor oaa=context.getWallController().getContentAuthorAndOwner(parent);
 		if(context.getPrivacyController().isUserBlocked(self, oaa.owner()))
@@ -101,7 +120,7 @@ public class CommentsController{
 
 		if(inReplyTo!=null && !inReplyTo.parentObjectID.equals(parentID))
 			inReplyTo=null;
-		if(textSource.trim().isEmpty() && attachmentIDs.isEmpty())
+		if(StringUtils.isBlank(textSource) && attachmentIDs.isEmpty())
 			throw new BadRequestException("Empty comment");
 
 		final HashSet<User> mentionedUsers=new HashSet<>();
@@ -113,7 +132,7 @@ public class CommentsController{
 			String attachments=null;
 			if(!attachmentIDs.isEmpty()){
 				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
-				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, attachAltTexts, attachmentCount, maxAttachments);
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, attachmentIDs, attachAltTexts, attachmentCount, maxAttachments, false);
 				if(!attachObjects.isEmpty()){
 					if(attachObjects.size()==1){
 						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
@@ -137,6 +156,8 @@ public class CommentsController{
 				throw new BadRequestException("Empty comment");
 
 			List<Long> replyKey=inReplyTo==null ? null : inReplyTo.getReplyKeyForReplies();
+
+			FloodControl.POSTS.incrementOrThrow(self);
 
 			long id=CommentStorage.createComment(self.id, parent.getOwnerID(), parentID, text, new FormattedTextSource(textSource, sourceFormat), replyKey,
 					mentionedUsers.stream().map(u->u.id).collect(Collectors.toSet()), attachments, contentWarning);
@@ -173,6 +194,13 @@ public class CommentsController{
 			return comment;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void removeExpiredGuids(){
+		synchronized(guids){
+			Instant hourAgo=Instant.now().minus(1, ChronoUnit.HOURS);
+			guids.entrySet().removeIf(e->e.getValue().time.isBefore(hourAgo));
 		}
 	}
 
@@ -341,10 +369,10 @@ public class CommentsController{
 	}
 
 	@NotNull
-	public Comment editComment(@NotNull User self, Comment comment, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
+	public Comment editComment(@NotNull User self, Comment comment, @Nullable String textSource, @NotNull FormattedTextFormat sourceFormat, @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
 		try{
 			CommentableContentObject parent=getCommentParent(self, comment);
-			if(textSource.isEmpty() && attachmentIDs.isEmpty())
+			if(StringUtils.isEmpty(textSource) && attachmentIDs.isEmpty())
 				throw new BadRequestException("Empty post");
 
 			Comment replyTo=comment.replyKey.isEmpty() ? null : getCommentIgnoringPrivacy(comment.replyKey.getLast());
@@ -354,45 +382,43 @@ public class CommentsController{
 			int maxAttachments=comment.parentObjectID.type().getMaxAttachments();
 			int attachmentCount=0;
 			String attachments=null;
-			if(!attachmentIDs.isEmpty()){
-				ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
+			ArrayList<ActivityPubObject> attachObjects=new ArrayList<>();
 
-				ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
-				if(comment.attachments!=null){
-					for(ActivityPubObject att:comment.attachments){
-						if(att instanceof LocalImage li){
-							String localID=li.fileRecord.id().getIDForClient();
-							if(!newlyAddedAttachments.remove(localID)){
-								LOG.debug("Deleting attachment: {}", localID);
-								MediaStorage.deleteMediaFileReference(comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, li.fileID);
-							}else{
-								li.name=attachAltTexts.get(li.getLocalID());
-								attachObjects.add(li);
-							}
+			ArrayList<String> newlyAddedAttachments=new ArrayList<>(attachmentIDs);
+			if(comment.attachments!=null){
+				for(ActivityPubObject att:comment.attachments){
+					if(att instanceof LocalImage li){
+						String localID=li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.id);
+						if(!newlyAddedAttachments.remove(localID)){
+							LOG.debug("Deleting attachment: {}", localID);
+							MediaStorage.deleteMediaFileReference(comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, li.fileID);
 						}else{
-							attachObjects.add(att);
+							li.name=attachAltTexts.get(localID);
+							attachObjects.add(li);
 						}
-					}
-				}
-
-				if(!newlyAddedAttachments.isEmpty()){
-					MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments);
-					for(ActivityPubObject att:attachObjects){
-						if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.fileRecord.id().getIDForClient())){
-							MediaStorage.createMediaFileReference(li.fileID, comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, comment.ownerID);
-						}
-					}
-				}
-				if(!attachObjects.isEmpty()){
-					if(attachObjects.size()==1){
-						attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
 					}else{
-						JsonArray ar=new JsonArray();
-						for(ActivityPubObject o:attachObjects){
-							ar.add(MediaStorageUtils.serializeAttachment(o));
-						}
-						attachments=ar.toString();
+						attachObjects.add(att);
 					}
+				}
+			}
+
+			if(!newlyAddedAttachments.isEmpty()){
+				MediaStorageUtils.fillAttachmentObjects(context, self, attachObjects, newlyAddedAttachments, attachAltTexts, attachmentCount, maxAttachments, false);
+				for(ActivityPubObject att:attachObjects){
+					if(att instanceof LocalImage li && newlyAddedAttachments.contains(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.id))){
+						MediaStorage.createMediaFileReference(li.fileID, comment.id, MediaFileReferenceType.COMMENT_ATTACHMENT, comment.ownerID);
+					}
+				}
+			}
+			if(!attachObjects.isEmpty()){
+				if(attachObjects.size()==1){
+					attachments=MediaStorageUtils.serializeAttachment(attachObjects.getFirst()).toString();
+				}else{
+					JsonArray ar=new JsonArray();
+					for(ActivityPubObject o:attachObjects){
+						ar.add(MediaStorageUtils.serializeAttachment(o));
+					}
+					attachments=ar.toString();
 				}
 			}
 
@@ -514,7 +540,7 @@ public class CommentsController{
 			isNew=true;
 		}
 		try{
-			CommentStorage.putOrUpdateForeignComment(comment);
+			CommentStorage.putOrUpdateForeignComment(comment, true);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -558,4 +584,6 @@ public class CommentsController{
 			throw new InternalServerErrorException(x);
 		}
 	}
+
+	record CommentGuidInfo(long commentID, Instant time){}
 }

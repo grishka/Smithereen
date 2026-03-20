@@ -25,14 +25,14 @@
 		<div id="postFormAttachments_{{id}}">
 			{%set attachIDs=""%}
 			{%for attachment in draftAttachments%}
-			<div class="attachment" id="attachment_{{attachment.localID}}" data-id="{{attachment.localID}}">
+			<div class="attachment" id="attachment_{{attachment.getLocalID('ATTACHMENT', currentUser.id)}}" data-id="{{attachment.getLocalID('ATTACHMENT', currentUser.id)}}">
 				{{ attachment | pictureForPhoto('s') }}
 				{% if isEditing %}
 					<a href="#" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
 					{% else %}
-					<a href="/system/deleteDraftAttachment?id={{attachment.localID}}&csrf={{csrf}}" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
+					<a href="/system/deleteDraftAttachment?id={{attachment.getLocalID('ATTACHMENT', currentUser.id)}}&csrf={{csrf}}" class="deleteBtn" title="{{L('remove_attachment')}}"></a>
 				{% endif %}
-				{%set attachIDs=attachIDs+attachment.localID%}
+				{%set attachIDs=attachIDs+attachment.getLocalID('ATTACHMENT', currentUser.id)%}
 				{%if not loop.last%}{%set attachIDs=attachIDs+","%}{%endif%}
 			</div>
 			{%endfor%}

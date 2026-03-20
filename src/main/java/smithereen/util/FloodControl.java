@@ -4,6 +4,7 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -13,6 +14,7 @@ import java.util.function.Function;
 import smithereen.Utils;
 import smithereen.model.Account;
 import smithereen.exceptions.FloodControlViolationException;
+import smithereen.model.User;
 
 /**
  * A thing that allows some action to be performed no more than X times over a period of time.
@@ -24,6 +26,13 @@ public class FloodControl<K>{
 	public static final FloodControl<InetAddress> OPEN_SIGNUP_OR_INVITE_REQUEST=FloodControl.ofIPKey(25, 5, TimeUnit.MINUTES);
 	public static final FloodControl<Account> ACTION_CONFIRMATION=FloodControl.ofObjectKey(5, 10, TimeUnit.MINUTES, acc->"account"+acc.id);
 	public static final FloodControl<Account> PASSWORD_CHECK=FloodControl.ofObjectKey(5, 1, TimeUnit.MINUTES, acc->"account"+acc.id);
+	public static final FloodControl<InetAddress> API_REQUESTS_ANON=FloodControl.ofIPKey(3, 1, TimeUnit.SECONDS);
+	public static final FloodControl<byte[]> API_REQUESTS=FloodControl.ofByteArrayKey(3, 1, TimeUnit.SECONDS);
+	public static final FloodControl<User> POSTS=FloodControl.ofObjectKey(300, 3, TimeUnit.HOURS, u->"user"+u.id);
+	public static final FloodControl<User> GROUP_CREATE=FloodControl.ofObjectKey(10, 1, TimeUnit.HOURS, u->"user"+u.id);
+	public static final FloodControl<InetAddress> LOGIN_HARD1=FloodControl.ofIPKey(1, 1, TimeUnit.SECONDS);
+	public static final FloodControl<InetAddress> LOGIN_HARD2=FloodControl.ofIPKey(100, 1, TimeUnit.HOURS);
+	public static final FloodControl<InetAddress> LOGIN_SOFT=FloodControl.ofIPKey(3, 1, TimeUnit.MINUTES);
 
 	private long timeout;
 	private int count;
@@ -57,6 +66,11 @@ public class FloodControl<K>{
 				throw new IllegalArgumentException();
 			}
 		});
+	}
+
+	public static FloodControl<byte[]> ofByteArrayKey(int count, long time, TimeUnit unit){
+		Base64.Encoder enc=Base64.getEncoder();
+		return new FloodControl<>(count, time, unit, enc::encodeToString);
 	}
 
 	private ActionTracker tracker(K key){

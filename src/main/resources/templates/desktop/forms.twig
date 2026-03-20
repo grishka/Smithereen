@@ -35,7 +35,7 @@
 		<td>
 			{% if options.prefix is not empty %}
 			<div class="prefixedInput control{{ options.addClasses is not empty ? " #{options.addClasses}" : "" }}">
-				<label class="prefix" for="{{ name }}">{{ options.prefix }}</label>
+				<label class="prefix" for="{{ name }}"><span>{{ options.prefix }}</span></label>
 			{% endif %}
 			<input type="{%if options.type is not null%}{{options.type}}{%else%}text{%endif%}" id="{{name}}" name="{{name}}" value="{{value}}" class="{{ options.prefix is empty ?  'control' : '' }}{{ options.addClasses is not empty and options.prefix is empty ? " #{options.addClasses}" : "" }}"
 			{%- if options.maxlength is not null %} maxlength="{{options.maxlength}}"{%endif%}
@@ -162,7 +162,7 @@ autoSizeTextArea(ge("{{ name }}"));
 	</tr>
 {%endmacro%}
 
-{%macro labeledText(label, text)%}
+{%macro labeledText(label, text, options)%}
 	<tr>
 		<td class="label">
 				{% if label is not empty %}
@@ -171,6 +171,9 @@ autoSizeTextArea(ge("{{ name }}"));
 		</td>
 		<td class="text">
 			{{ text }}
+			{% if options.explanation is not empty %}
+				<div class="formExplanation smallMarginBefore">{{ options.explanation }}</div>
+			{% endif %}
 		</td>
 	</tr>
 {%endmacro%}

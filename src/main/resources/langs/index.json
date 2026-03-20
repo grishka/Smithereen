@@ -16,7 +16,8 @@
     "photos.json",
     "audio.json",
     "admin_fasp.json",
-    "board.json"
+    "board.json",
+    "apps.json"
   ],
   "languages": [
     {
@@ -73,6 +74,11 @@
       "locale": "uk",
       "name": "Ukrainian",
       "fallback": "ru"
+    },
+    {
+      "locale" : "kk",
+      "name" : "Kazakh",
+      "fallback" : "ru"
     }
   ]
 }

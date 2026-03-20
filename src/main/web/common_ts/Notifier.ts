@@ -148,6 +148,18 @@ class Notifier{
 				break;
 			}
 			case "notification": {
+				if(Notifier.isMainTab){
+					// We somehow ended up with multiple "main" tabs. Let's sort this out.
+					// Make this tab main only if its ID is the smallest one.
+					var sortedIDs=Notifier.allTabs.sort();
+					if(Notifier.tabID!=sortedIDs[0]){
+						Notifier.isMainTab=false;
+						if(Notifier.socket){
+							Notifier.socket.close();
+							Notifier.socket=null;
+						}
+					}
+				}
 				Notifier.handleNotification(m.notification as RealtimeNotification);
 				break;
 			}
@@ -288,7 +300,7 @@ class Notifier{
 					underlayLink.setAttribute(attr, n.linkExtraAttrs[attr]);
 				}
 			}
-			
+
 			closeBtn.addEventListener("click", (ev)=>Notifier.dismissNotification(el, true));
 			el.addEventListener("mouseenter", (ev)=>{
 				Notifier.notificationUnderMouse=el;

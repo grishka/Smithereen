@@ -181,6 +181,10 @@ public class NewsfeedRoutes{
 			onlines=Map.of();
 		}
 		model.with("onlines", onlines);
+
+		HashSet<Long> needApps=new HashSet<>();
+		PostViewModel.collectAppIDs(feedPosts, needApps);
+		model.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 	}
 
 	public static Object feed(Request req, Response resp, Account self, ApplicationContext ctx){
@@ -189,9 +193,13 @@ public class NewsfeedRoutes{
 		EnumSet<FriendsNewsfeedTypeFilter> filter=self.prefs.friendFeedFilter;
 		if(filter==null)
 			filter=EnumSet.allOf(FriendsNewsfeedTypeFilter.class);
-		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, filter, timeZoneForRequest(req), startFromID, offset, 25);
-		if(!feed.list.isEmpty() && startFromID==0)
-			startFromID=feed.list.getFirst().id;
+		PaginatedList<NewsfeedEntry> feed=ctx.getNewsfeedController().getFriendsFeed(self, filter, timeZoneForRequest(req), startFromID, offset, 25, false);
+		if(!feed.list.isEmpty() && startFromID==0){
+			startFromID=switch(feed.list.getFirst()){
+				case GroupedNewsfeedEntry gne -> gne.childEntries.getFirst().id;
+				case NewsfeedEntry e -> e.id;
+			};
+		}
 		jsLangKey(req, "yes", "no", "delete_post", "delete_post_confirm", "delete_reply", "delete_reply_confirm", "delete", "post_form_cw", "post_form_cw_placeholder", "cancel", "feed_filters");
 		Templates.addJsLangForNewPostForm(req);
 
@@ -278,7 +286,7 @@ public class NewsfeedRoutes{
 				.with("paginationUrlPrefix", "/feed/groups?startFrom="+startFromID+"&offset=").with("totalItems", feed.total).with("paginationOffset", offset).with("paginationPerPage", 25).with("paginationFirstPageUrl", "/feed/groups")
 				.with("feedFilter", filter.stream().map(Object::toString).collect(Collectors.toSet()))
 				.with("photosList", "groupsFeed")
-				.with("groupedPhotosList", "groupsFeedGrouped");
+				.with("groupedPhotosList", "groupsFeed");
 
 		prepareFeed(ctx, req, self, feed.list, model, false, FilterContext.GROUPS_FEED);
 

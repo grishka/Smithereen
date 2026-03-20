@@ -26,6 +26,11 @@ public class DatabaseConnectionManager{
 			conn.useDepth++;
 			return conn;
 		}
+		try{
+			semaphore.acquire();
+		}catch(InterruptedException x){
+			throw new RuntimeException(x);
+		}
 		synchronized(pool){
 			conn=pool.isEmpty() ? null : pool.removeLast();
 		}
@@ -73,15 +78,11 @@ public class DatabaseConnectionManager{
 				pool.add(conn);
 				LOG.trace("Reusing database connection. Pool size is {}", pool.size());
 			}
+			semaphore.release();
 		}
 	}
 
 	private static Connection newConnection() throws SQLException{
-		try{
-			semaphore.acquire();
-		}catch(InterruptedException x){
-			throw new RuntimeException(x);
-		}
 		LOG.trace("Opening new database connection");
 		Connection conn=DriverManager.getConnection("jdbc:mysql://"+Config.dbHost+"/"+Config.dbName+"?serverTimezone=GMT&connectionTimeZone=GMT&useUnicode=true&characterEncoding=UTF-8&forceConnectionTimeZoneToSession=true&useSSL=false&allowPublicKeyRetrieval=true",
 				Config.dbUser, Config.dbPassword);
@@ -94,7 +95,6 @@ public class DatabaseConnectionManager{
 		try{
 			conn.actualConnection.close();
 		}catch(SQLException ignore){}
-		semaphore.release();
 	}
 
 	private static void validateConnection(Connection conn) throws SQLException{

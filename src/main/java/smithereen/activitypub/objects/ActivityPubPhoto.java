@@ -8,7 +8,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -93,7 +92,7 @@ public class ActivityPubPhoto extends ActivityPubObject{
 		image.url=photo.image.getOriginalURI();
 		image.width=photo.getWidth();
 		image.height=photo.getHeight();
-		image.blurHash=photo.getBlurHash();
+		image.setBlurHash(photo.getBlurHash());
 		p.image=List.of(image);
 
 		List<PhotoTag> tags=context.getPhotosController().getTagsForPhoto(photo.id);
@@ -164,7 +163,7 @@ public class ActivityPubPhoto extends ActivityPubObject{
 		p.metadata.apURL=url!=null ? url : activityPubID;
 		p.metadata.width=image.width;
 		p.metadata.height=image.height;
-		p.metadata.blurhash=image.blurHash;
+		p.metadata.blurhash=image.getBlurHash();
 		if(replies!=null){
 			if(replies.link!=null)
 				p.metadata.apReplies=replies.link;

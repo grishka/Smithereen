@@ -10,7 +10,6 @@ import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.User;
 import smithereen.exceptions.BadRequestException;
-import smithereen.storage.UserStorage;
 import smithereen.util.BackgroundTaskRunner;
 
 public class GroupAddPersonHandler extends ActivityTypeHandler<ForeignGroup, Add, User>{
@@ -27,7 +26,7 @@ public class GroupAddPersonHandler extends ActivityTypeHandler<ForeignGroup, Add
 				BackgroundTaskRunner.getInstance().submit(()->{
 					try{
 						context.appContext.getObjectLinkResolver().ensureObjectIsInCollection(foreignUser, foreignUser.getGroupsURL(), actor.activityPubID);
-						context.appContext.getGroupsController().joinGroup(actor, object, target.equals(actor.tentativeMembers), true);
+						context.appContext.getGroupsController().joinGroup(actor, object, target.equals(actor.tentativeMembers), true, false);
 					}catch(Exception x){
 						LOG.warn("Error verifying that {} is a member of {} or storing that relationship", actor.activityPubID, object.activityPubID);
 					}

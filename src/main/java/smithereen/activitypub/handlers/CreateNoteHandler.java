@@ -41,6 +41,7 @@ import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
+import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoMetadata;
@@ -112,8 +113,12 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 		if(post.inReplyTo==null){
 			checkNotBlocked(owner, actor, false);
 			if(owner instanceof User u && u.id!=actor.id){
+				if(owner instanceof ForeignUser)
+					throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Send Create{Note} to the wall owner only, which would then send Add{Note} to followers.");
 				context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_POSTING);
 				context.appContext.getPrivacyController().enforceUserPrivacy(actor, u, UserPrivacySettingKey.WALL_OTHERS_POSTS);
+			}else if(owner instanceof ForeignGroup){
+				throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Send Create{Note} to the wall owner only, which would then send Add{Note} to followers.");
 			}
 		}
 
@@ -201,12 +206,11 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			if(parent!=null){
 				Post nativePost=post.asNativePost(context.appContext);
 				context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
-//				post.setParent(parent);
-				Post topLevel=context.appContext.getWallController().getPostOrThrow(parent.getReplyLevel()>0 ? parent.replyKey.get(0) : parent.id);
+				Post topLevel=context.appContext.getWallController().getPostOrThrow(parent.getReplyLevel()>0 ? parent.replyKey.getFirst() : parent.id);
 				OwnerAndAuthor oaa=context.appContext.getWallController().getContentAuthorAndOwner(topLevel);
 				owner=oaa.owner();
-//				nativePost.replyKey=parent.getReplyKeyForReplies();
-//				nativePost.ownerID=topLevel.ownerID;
+				if(topLevel.ownerID!=topLevel.authorID && owner instanceof ForeignActor)
+					throw new BadRequestException("Create{Note} can't be used to notify about comments on foreign actors' wall-to-wall posts. Send Create{Note} to the wall owner only, which would then send Add{Note} to followers.");
 
 				checkNotBlocked(owner, actor, true);
 				if(owner instanceof User u)
@@ -259,6 +263,26 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 			Post nativePost=post.asNativePost(context.appContext);
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 			URI repostID=post.getQuoteRepostID();
+			if(nativePost.ownerID==nativePost.authorID){
+				int localFollowersCount=context.appContext.getFriendsController().getLocalFollowersCount(actor);
+				if(localFollowersCount==0 && (repostID==null || !Config.isLocal(repostID))){
+					boolean mentionsLocalUsers=false;
+					if(post.tag!=null){
+						for(ActivityPubObject tag:post.tag){
+							if(tag instanceof Mention mention){
+								if(Config.isLocal(mention.href)){
+									mentionsLocalUsers=true;
+									break;
+								}
+							}
+						}
+					}
+					if(!mentionsLocalUsers){
+						LOG.debug("Dropping post {} because its author has no followers on this server and it doesn't interact with any local users", post.activityPubID);
+						return;
+					}
+				}
+			}
 			Post firstRepost=null;
 			if(repostID!=null){
 				try{
@@ -280,8 +304,9 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 				context.appContext.getNotificationsController().createNotificationsForObject(nativePost);
 			if(nativePost.ownerID!=nativePost.authorID){
 				context.appContext.getActivityPubWorker().sendAddPostToWallActivity(nativePost);
-				if(nativePost.ownerID<0)
-					context.appContext.getNewsfeedController().clearGroupsFeedCache();
+				if(nativePost.ownerID<0){
+					context.appContext.getNewsfeedController().putGroupsFeedEntry((Group)owner, nativePost.id, NewsfeedEntry.Type.POST, nativePost.createdAt);
+				}
 			}else{
 				context.appContext.getNewsfeedController().clearFriendsFeedCache();
 			}
@@ -297,11 +322,8 @@ public class CreateNoteHandler extends ActivityTypeHandler<ForeignUser, Create, 
 	}
 
 	private void checkNotBlocked(Actor owner, ForeignUser actor, boolean isReply) throws SQLException{
-		if(owner instanceof User user && !Objects.equals(owner.activityPubID, actor.activityPubID)){
+		if(owner instanceof User user && !Objects.equals(owner.activityPubID, actor.activityPubID))
 			Utils.ensureUserNotBlocked(actor, user);
-			if(owner instanceof ForeignActor && !isReply)
-				throw new BadRequestException("Create{Note} can't be used to notify about posts on foreign actors' walls. Wall owner must send an Add{Note} instead.");
-		}
 		if(owner instanceof Group group)
 			Utils.ensureUserNotBlocked(actor, group);
 	}

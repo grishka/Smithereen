@@ -11,8 +11,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -26,7 +24,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -55,6 +55,8 @@ import smithereen.model.UserDataExport;
 import smithereen.model.UserPrivacySettingKey;
 import smithereen.model.admin.UserRole;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.apps.AppAccessGrant;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.model.filtering.FilterContext;
 import smithereen.model.filtering.WordFilter;
@@ -102,11 +104,21 @@ public class SettingsRoutes{
 		model.with("title", l.get("settings"));
 		OtherSession session=ctx.getUsersController().getAccountMostRecentSession(self);
 		if(session!=null){
-			model.with("lastActivityDescription", l.get("settings_activity_web_short", Map.of(
-					"time", l.formatDate(session.lastActive(), timeZoneForRequest(req), false),
-					"ip", session.ip().getHostAddress(),
-					"browserName", session.browserInfo().name()
-			)));
+			String descr;
+			if(session.appID()==0){
+				descr=l.get("settings_activity_web_short", Map.of(
+						"time", l.formatDate(session.lastActive(), timeZoneForRequest(req), false),
+						"ip", session.ip().getHostAddress(),
+						"browserName", session.browserInfo().name()
+				));
+			}else{
+				descr=l.get("settings_activity_api_short", Map.of(
+						"time", l.formatDate(session.lastActive(), timeZoneForRequest(req), false),
+						"ip", session.ip().getHostAddress(),
+						"appName", ctx.getAppsController().getAppByID(session.appID()).name
+				));
+			}
+			model.with("lastActivityDescription", descr);
 		}
 		if(req.queryParams("sessionsTerminated")!=null){
 			model.with("accountActivityMessage", l.get("settings_sessions_ended"));
@@ -124,7 +136,7 @@ public class SettingsRoutes{
 		new Random().nextBytes(code);
 		UserStorage.putInvite(self.id, code, 1, null, null);
 		req.session().attribute("settings.inviteMessage", Utils.lang(req).get("invitation_created"));
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -148,7 +160,7 @@ public class SettingsRoutes{
 			return new WebDeltaResponse(resp).show("formMessage_changePassword").setContent("formMessage_changePassword", message);
 		}
 		req.session().attribute("settings.passwordMessage", message);
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -211,10 +223,10 @@ public class SettingsRoutes{
 			rotation=null;
 		}
 
-		LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false);
+		LocalImage img=MediaStorageUtils.saveUploadedImage(req, resp, self, false, "file");
 		img.rotation=rotation;
 		try{
-			ctx.getPhotosController().updateAvatar(self, group, img, cropRects);
+			ctx.getPhotosController().updateAvatar(self, group, img, cropRects, null);
 		}catch(UserErrorException x){
 			LOG.error("Exception while processing a profile picture upload", x);
 			if(isAjax(req)){
@@ -223,7 +235,7 @@ public class SettingsRoutes{
 			}
 
 			req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("image_upload_error"));
-			resp.redirect("/settings/");
+			resp.redirect("/settings");
 			return "";
 		}
 
@@ -231,7 +243,7 @@ public class SettingsRoutes{
 			return new WebDeltaResponse(resp).refresh();
 
 		req.session().attribute("settings.profilePicMessage", Utils.lang(req).get("avatar_updated"));
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -247,7 +259,7 @@ public class SettingsRoutes{
 		}else{
 			info.preferredLocale=Locale.forLanguageTag(lang);
 		}
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -265,7 +277,7 @@ public class SettingsRoutes{
 		}
 		if(req.queryParams("_ajax")!=null)
 			return "";
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
@@ -328,13 +340,13 @@ public class SettingsRoutes{
 
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
-		resp.redirect("/settings/");
+		resp.redirect("/settings");
 		return "";
 	}
 
 	public static Object blocking(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_blocking", req).pageTitle(lang(req).get("settings_blocking")).mobileToolbarTitle(lang(req).get("settings"));
-		model.with("blockedUsers", ctx.getPrivacyController().getBlockedUsers(self.user));
+		model.with("blockedUsers", ctx.getPrivacyController().getBlockedUsers(self.user, 0, 1000).list);
 		model.with("blockedDomains", ctx.getPrivacyController().getBlockedDomains(self.user));
 		jsLangKey(req, "unblock", "yes", "no", "cancel");
 		return model;
@@ -345,13 +357,9 @@ public class SettingsRoutes{
 		return wrapForm(req, resp, "block_domain", "/settings/blockDomain", lang(req).get("block_a_domain"), "block", model);
 	}
 
-	public static Object blockDomain(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object blockDomain(Request req, Response resp, Account self, ApplicationContext ctx){
 		String domain=req.queryParams("domain");
-		if(domain.matches("^([a-zA-Z0-9-]+\\.)+[a-zA-Z0-9-]{2,}$")){
-			if(UserStorage.isDomainBlocked(self.user.id, domain))
-				return wrapError(req, resp, "err_domain_already_blocked");
-			UserStorage.blockDomain(self.user.id, domain);
-		}
+		ctx.getPrivacyController().blockDomain(self.user, domain);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
@@ -365,10 +373,9 @@ public class SettingsRoutes{
 		return new RenderedTemplateResponse("generic_confirm", req).with("message", l.get("confirm_unblock_domain_X", Map.of("domain", domain))).with("formAction", "/settings/unblockDomain?domain="+domain+"_redir="+URLEncoder.encode(back)).with("back", back);
 	}
 
-	public static Object unblockDomain(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
+	public static Object unblockDomain(Request req, Response resp, Account self, ApplicationContext ctx){
 		String domain=req.queryParams("domain");
-		if(StringUtils.isNotEmpty(domain))
-			UserStorage.unblockDomain(self.user.id, domain);
+		ctx.getPrivacyController().unblockDomain(self.user, domain);
 		if(isAjax(req))
 			return new WebDeltaResponse(resp).refresh();
 		resp.redirect(back(req));
@@ -713,7 +720,10 @@ public class SettingsRoutes{
 
 	public static Object sessions(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse(isAjax(req) ? "settings_activity_history" : "content_wrap", req);
-		model.with("sessions", ctx.getUsersController().getAccountSessions(info.account))
+		List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(info.account, 0, 20);
+		Set<Long> needApps=sessions.stream().map(OtherSession::appID).filter(id->id!=0).collect(Collectors.toSet());
+		model.with("sessions", sessions)
+				.with("apps", ctx.getAppsController().getAppsByIDs(needApps))
 				.with("currentSessionID", Base64.getDecoder().decode(req.cookie("psid")))
 				.with("isAjax", isAjax(req));
 		Lang l=lang(req);
@@ -1024,7 +1034,7 @@ public class SettingsRoutes{
 		Lang l=lang(req);
 		String title=l.get("settings_transfer_followers_title");
 		model.pageTitle(title)
-				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings"), "/settings")
 				.addNavBarItem(title);
 		if(isAjax(req)){
 			if(isMobile(req)){
@@ -1044,7 +1054,7 @@ public class SettingsRoutes{
 		Lang l=lang(req);
 		String title=l.get("settings_transfer_links_title");
 		model.pageTitle(title)
-				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings"), "/settings")
 				.addNavBarItem(l.get("settings_transfer_followers_title"), "/settings/moveAccountOptions")
 				.addNavBarItem(title);
 		if(isAjax(req)){
@@ -1107,7 +1117,7 @@ public class SettingsRoutes{
 		String title=l.get("settings_transfer_out_title");
 		RenderedTemplateResponse model=RenderedTemplateResponse.ofAjaxLayer("settings_move_account_transfer", req)
 				.pageTitle(title)
-				.addNavBarItem(l.get("settings"), "/settings/")
+				.addNavBarItem(l.get("settings"), "/settings")
 				.addNavBarItem(l.get("settings_transfer_followers_title"), "/settings/moveAccountOptions")
 				.addNavBarItem(title);
 		if(isAjax(req)){
@@ -1244,5 +1254,33 @@ public class SettingsRoutes{
 		}
 		ctx.getUserDataExportWorker().startExport(self);
 		return ajaxAwareRedirect(req, resp, "/settings/export");
+	}
+
+	public static Object apps(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_apps", req)
+				.pageTitle(l.get("menu_apps"))
+				.mobileToolbarTitle(l.get("settings"));
+		List<AppAccessGrant> grants=ctx.getAppsController().getAllAccessGrants(self);
+		List<Long> managedApps=ctx.getAppsController().getUserManagedApps(self.user);
+		Set<Long> needApps=Stream.of(managedApps.stream(), grants.stream().map(AppAccessGrant::appID))
+				.flatMap(Function.identity())
+				.collect(Collectors.toSet());
+		Map<Long, ClientApp> apps=ctx.getAppsController().getAppsByIDs(needApps);
+		model.with("grants", grants.stream().map(g->apps.get(g.appID())).toList())
+				.with("managed", managedApps.stream().map(apps::get).toList());
+		return model;
+	}
+
+	public static Object appsRevokeAccess(Request req, Response resp, Account self, ApplicationContext ctx){
+		long id=safeParseInt(req.params(":id"));
+		ClientApp app=ctx.getAppsController().getAppByID(id);
+		ctx.getAppsController().deleteAccessGrantAndRevokeTokens(self, app);
+		if(isAjax(req)){
+			return new WebDeltaResponse(resp)
+					.setContent("appRevoke"+id, "<span class=\"grayText\">— "+lang(req).get("settings_apps_revoked")+"</span>");
+		}
+		resp.redirect(back(req));
+		return "";
 	}
 }

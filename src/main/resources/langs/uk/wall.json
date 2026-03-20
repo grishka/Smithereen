@@ -1,4 +1,23 @@
 {
+  "wall_all_posts": "Всі записи",
+  "wall_posts_of_X": "Записи {name, inflect, genitive}",
+  "wall_my_posts": "Мої записи",
+  "wall": "Cтiна",
+  "X_posts": "{count, plural, =0 {Немає записів} one {# запис} few {# записи} other {# записів}}",
+  "add_reply": "Відповісти",
+  "comment_placeholder": "Написати коментар",
+  "poll": "Опитування",
+  "submit_vote": "Проголосувати",
+  "anonymous_poll": "Анонімне голосування",
+  "public_poll": "Відкрите голосування",
+  "attach_menu_poll": "Опитування",
+  "create_poll_anonymous": "Анонімне голосування",
+  "editing_post": "Редагування запису",
+  "editing_comment": "Редагування коментаря",
+  "attach_menu_graffiti": "Графіті",
   "comment_repost_title": "<a id=\"originalComment\">{time}</a> до запису <a id=\"topLevelPost\">{postSnippet}</a>",
-  "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> до віддаленого запису"
+  "comment_deleted_repost_title": "<a id=\"originalComment\">{time}</a> до віддаленого запису",
+  "post_action_updated_avatar": "{gender, select, male {оновив} female {оновила} other {оновив}} фотографiю профiлю:",
+  "wall_pin_post": "Закріпити",
+  "wall_unpin_post": "Відкріпити"
 }

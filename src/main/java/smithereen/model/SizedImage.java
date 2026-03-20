@@ -2,8 +2,11 @@ package smithereen.model;
 
 import com.google.gson.annotations.SerializedName;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
-import java.text.Format;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -15,9 +18,15 @@ import smithereen.storage.ImgProxy;
 import smithereen.text.TextProcessor;
 import spark.utils.StringUtils;
 
-public interface SizedImage{
-	URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback);
+public sealed interface SizedImage extends BlurHashable permits LocalImage, RemoteImage{
+
+	@Nullable
+	@Contract("_, _, _, true, _ -> !null")
+	URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback, boolean addApiHash);
+
+	@NotNull
 	Dimensions getOriginalDimensions();
+
 	URI getOriginalURI();
 
 	default Dimensions getDimensionsForSize(Type size, Dimensions dimensions){
@@ -34,7 +43,7 @@ public interface SizedImage{
 		boolean isLocal=this instanceof LocalImage;
 		for(Type t:List.of(Type.PHOTO_SMALL, Type.PHOTO_MEDIUM, Type.PHOTO_LARGE, Type.PHOTO_ORIGINAL)){
 			Dimensions size=getDimensionsForSize(t);
-			urls.add(new SizedImageURLs(t.suffix, size.width, size.height, Objects.toString(getUriForSizeAndFormat(t, Format.WEBP, false, isLocal)), Objects.toString(getUriForSizeAndFormat(t, Format.JPEG, false, isLocal))));
+			urls.add(new SizedImageURLs(t.suffix, size.width, size.height, Objects.toString(getUriForSizeAndFormat(t, Format.WEBP, false, isLocal, false)), Objects.toString(getUriForSizeAndFormat(t, Format.JPEG, false, isLocal, false))));
 			if(size.width>=origSize.width && size.height>=origSize.height)
 				break;
 		}
@@ -45,11 +54,17 @@ public interface SizedImage{
 		return getUriForSizeAndFormat(Type.fromSuffix(size), Format.fromFileExtension(format)).toString();
 	}
 
+	@NotNull
 	default URI getUriForSizeAndFormat(Type size, Format format){
-		return getUriForSizeAndFormat(size, format, false, true);
+		return getUriForSizeAndFormat(size, format, false, true, false);
 	}
 
-	default String generateHTML(Type size, List<String> additionalClasses, String styleAttr, int width, int height, boolean add2x, String altText){
+	@NotNull
+	default URI getApiUriForSizeAndFormat(Type size, Format format){
+		return getUriForSizeAndFormat(size, format, false, true, true);
+	}
+
+	default String generateHTML(Type size, List<String> additionalClasses, List<String> extraAttrs, int width, int height, boolean add2x, String altText){
 		StringBuilder sb=new StringBuilder("<picture>");
 		appendHtmlForFormat(size, Format.WEBP, sb, add2x);
 		appendHtmlForFormat(size, Format.JPEG, sb, add2x);
@@ -69,10 +84,11 @@ public interface SizedImage{
 			}
 			sb.append('"');
 		}
-		if(StringUtils.isNotEmpty(styleAttr)){
-			sb.append(" style=\"");
-			sb.append(styleAttr);
-			sb.append('"');
+		if(extraAttrs!=null && !extraAttrs.isEmpty()){
+			for(String attr:extraAttrs){
+				sb.append(' ');
+				sb.append(attr);
+			}
 		}
 		if(width>0){
 			sb.append(" width=\"");
@@ -98,12 +114,22 @@ public interface SizedImage{
 		sb.append(getUriForSizeAndFormat(size, format));
 		if(add2x){
 			sb.append(", ");
-			sb.append(getUriForSizeAndFormat(size.get2xType(), format, true, true));
+			sb.append(getUriForSizeAndFormat(size.get2xType(), format, true, true, false));
 			sb.append(" 2x");
 		}
 		sb.append("\" type=\"");
 		sb.append(format.contentType());
 		sb.append("\"/>");
+	}
+
+	default String generateAvatarHTML(Type size, int width, int height, List<String> classes, List<String> wrapperClasses){
+		classes=new ArrayList<>(classes);
+		classes.add("avaImage");
+		String typeStr=size.suffix;
+		if(size.isRect())
+			typeStr=typeStr.substring(1);
+		return "<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(String.join(" ", wrapperClasses))+"\""+(size.isRect() || width!=size.maxWidth || height!=size.maxHeight ? (" style=\"--ava-width: "+width+"px;--ava-height: "+height+"px\"") : "")+">"
+				+generateHTML(size, classes, null, 0, 0, true, null)+"</span>";
 	}
 
 	enum Type{
@@ -162,14 +188,14 @@ public interface SizedImage{
 		private final int maxWidth, maxHeight;
 		private final ImgProxy.ResizingType resizingType;
 
-		Type(String suffix, int maxWidth, int maxHeight, ImgProxy.ResizingType resizingType){
+		Type(@NotNull String suffix, int maxWidth, int maxHeight, ImgProxy.ResizingType resizingType){
 			this.suffix=suffix;
 			this.maxWidth=maxWidth;
 			this.maxHeight=maxHeight;
 			this.resizingType=resizingType;
 		}
 
-		public String suffix(){
+		public @NotNull String suffix(){
 			return suffix;
 		}
 

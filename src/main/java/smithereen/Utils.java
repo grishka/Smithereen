@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.ByteArrayInputStream;
@@ -60,34 +61,34 @@ import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import smithereen.activitypub.objects.Actor;
+import smithereen.exceptions.BadRequestException;
+import smithereen.exceptions.FormValidationException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CaptchaInfo;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.SessionInfo;
 import smithereen.model.StatsPoint;
-import smithereen.model.friends.FriendList;
-import smithereen.model.friends.PublicFriendList;
-import smithereen.text.TextProcessor;
-import smithereen.util.PublicSuffixList;
-import smithereen.util.UriBuilder;
 import smithereen.model.User;
 import smithereen.model.WebDeltaResponse;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.FormValidationException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.lang.Lang;
+import smithereen.model.friends.FriendList;
+import smithereen.model.friends.PublicFriendList;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
 import smithereen.util.EmailCodeActionType;
 import smithereen.util.FloodControl;
 import smithereen.util.InstantMillisJsonAdapter;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.LocaleJsonAdapter;
+import smithereen.util.PublicSuffixList;
 import smithereen.util.TimeZoneJsonAdapter;
+import smithereen.util.UriBuilder;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -97,7 +98,7 @@ import spark.utils.StringUtils;
 public class Utils{
 
 	private static final Set<String> RESERVED_USERNAMES=Set.of("account", "settings", "feed", "activitypub", "api", "system", "users", "groups", "posts", "session", "robots.txt", "my", "activitypub_service_actor", "healthz",
-			"albums", "photos", "videos", "audios", "topics", "apps", "docs", "res", "files", "comments");
+			"albums", "photos", "videos", "audios", "topics", "apps", "docs", "res", "files", "comments", "oauth", "share");
 	private static final Random rand=new Random();
 
 	private static final Pattern SIGNATURE_HEADER_PATTERN=Pattern.compile("([!#$%^'*+\\-.^_`|~0-9A-Za-z]+)=(?:(?:\\\"((?:[^\\\"\\\\]|\\\\.)*)\\\")|([!#$%^'*+\\-.^_`|~0-9A-Za-z]+))\\s*([,;])?\\s*");
@@ -190,7 +191,11 @@ public class Utils{
 
 	public static Object wrapError(Request req, Response resp, String errorKey, Map<String, Object> formatArgs){
 		Lang l=lang(req);
-		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		String msg;
+		if(l.containsKey(errorKey))
+			msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		else
+			msg=TextProcessor.escapeHTML(errorKey);
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).messageBox(l.get("error"), msg, l.get("close"));
 		}
@@ -203,7 +208,11 @@ public class Utils{
 
 	public static String wrapErrorString(Request req, Response resp, String errorKey, Map<String, Object> formatArgs, String msgExtra){
 		Lang l=lang(req);
-		String msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		String msg;
+		if(l.containsKey(errorKey))
+			msg=formatArgs!=null ? l.get(errorKey, formatArgs) : l.get(errorKey);
+		else
+			msg=TextProcessor.escapeHTML(errorKey);
 		if(msgExtra!=null)
 			msg+="<br/><br/>"+TextProcessor.escapeHTML(msgExtra);
 		if(isAjax(req)){
@@ -278,6 +287,7 @@ public class Utils{
 		}
 	}
 
+	@NotNull
 	public static Locale localeForRequest(Request req){
 		String langParam=req.queryParams("lang");
 		if(StringUtils.isNotEmpty(langParam)){
@@ -290,9 +300,7 @@ public class Utils{
 			if(info.preferredLocale!=null)
 				return info.preferredLocale;
 		}
-		if(req.raw().getLocale()!=null)
-			return req.raw().getLocale();
-		return Locale.US;
+		return req.raw().getLocale();
 	}
 
 	public static ZoneId timeZoneForRequest(Request req){
@@ -412,6 +420,8 @@ public class Utils{
 	}
 
 	public static SessionInfo sessionInfo(Request req){
+		if(req.pathInfo().startsWith("/api/"))
+			return null;
 		Session sess=req.session(false);
 		if(sess==null)
 			return null;
@@ -476,7 +486,7 @@ public class Utils{
 		return os.toByteArray();
 	}
 
-	public static Set<Integer> deserializeIntSet(byte[] a){
+	public static @NotNull Set<Integer> deserializeIntSet(byte @Nullable [] a){
 		if(a==null)
 			return Set.of();
 		return Arrays.stream(deserializeIntArray(a)).boxed().collect(Collectors.toSet());
@@ -778,6 +788,30 @@ public class Utils{
 		return bldr.build();
 	}
 
+	public static byte[] packInt(int x){
+		byte[] r=new byte[4];
+		for(int i=3;i>=0;i--){
+			r[i]=(byte)x;
+			x>>=8;
+		}
+		return r;
+	}
+
+	public static int unpackInt(byte[] x){
+		return unpackInt(x, 0);
+	}
+
+	public static int unpackInt(byte[] x, int offset){
+		if(x==null || x.length-offset<4)
+			return 0;
+		int r=0;
+		for(int i=0;i<4;i++){
+			r<<=8;
+			r|=((int)x[i+offset]) & 0xFF;
+		}
+		return r;
+	}
+
 	public static byte[] packLong(long x){
 		byte[] r=new byte[8];
 		for(int i=7;i>=0;i--){
@@ -787,7 +821,7 @@ public class Utils{
 		return r;
 	}
 
-	public static String encodeLong(long x){
+	public static @NotNull String encodeLong(long x){
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(packLong(x));
 	}
 
@@ -947,7 +981,7 @@ public class Utils{
 		CaptchaInfo info=captchas.remove(sid);
 		if(info==null)
 			throw new UserErrorException("err_wrong_captcha");
-		if(!info.answer().equals(captcha) || System.currentTimeMillis()-info.generatedAt().toEpochMilli()<3000)
+		if(!info.answer().equals(captcha) || System.currentTimeMillis()-info.generatedAt().toEpochMilli()<1500)
 			throw new UserErrorException("err_wrong_captcha");
 	}
 
@@ -972,6 +1006,18 @@ public class Utils{
 	public static boolean isWithinDatabaseLimits(Instant instant){
 		int year=instant.atZone(ZoneId.of("Z")).getYear();
 		return year<2038 && year>=1970; // TODO temporary fix
+	}
+
+	public static boolean isValidBirthDate(LocalDate date){
+		return date.isBefore(LocalDate.now().plusDays(1)) && date.isAfter(LocalDate.of(1900, 1, 1));
+	}
+
+	public static byte[] tryDecodeBase64Url(String s){
+		try{
+			return Base64.getUrlDecoder().decode(s);
+		}catch(IllegalArgumentException x){
+			return null;
+		}
 	}
 
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}

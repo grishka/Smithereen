@@ -7,7 +7,6 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -46,18 +45,18 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserInteractions;
-import smithereen.model.admin.ViolationReport;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.ViolationReport;
 import smithereen.model.admin.ViolationReportAction;
 import smithereen.model.attachments.Attachment;
+import smithereen.model.attachments.GraffitiAttachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
-import smithereen.model.feed.FriendsNewsfeedTypeFilter;
-import smithereen.model.feed.GroupedNewsfeedEntry;
-import smithereen.model.feed.GroupsNewsfeedTypeFilter;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
+import smithereen.model.media.MediaFileUploadPurpose;
+import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.media.PhotoViewerPhotoInfo;
 import smithereen.model.photos.AvatarCropRects;
@@ -210,7 +209,8 @@ public class PhotosRoutes{
 			String paginationID=req.queryParams("pagination");
 			if(StringUtils.isNotEmpty(paginationID)){
 				WebDeltaResponse r=new WebDeltaResponse(resp)
-						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+						.runScript("renderBlurhashes();");
 				if(photos.offset+photos.perPage>=photos.total){
 					r.remove("ajaxPagination_"+paginationID);
 				}else{
@@ -230,7 +230,7 @@ public class PhotosRoutes{
 		if(album.systemType!=null || !info.permissions.canUploadToPhotoAlbum(album))
 			throw new UserActionNotAllowedException();
 
-		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, info.account, false);
+		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, info.account, false, "file");
 		long photoID=ctx.getPhotosController().createPhoto(info.account.user, album, photo.fileID, null, null);
 		SizedImage.Type sizeType=SizedImage.Type.PHOTO_THUMB_SMALL;
 		SizedImage.Dimensions size=photo.getDimensionsForSize(sizeType);
@@ -384,7 +384,7 @@ public class PhotosRoutes{
 					.queryParam("id", saveID=switch(parent){
 						case Post post -> String.valueOf(post.id);
 						case Comment comment -> comment.getIDString();
-						case MailMessage msg -> msg.encodedID;
+						case MailMessage msg -> msg.getIdString();
 					})
 					.queryParam("index", String.valueOf(index))
 					.queryParam("csrf", sessionInfo(req).csrfToken)
@@ -567,7 +567,7 @@ public class PhotosRoutes{
 			photoInfos=Map.of();
 		}
 		for(Attachment att:attachments){
-			if(att instanceof PhotoAttachment pa){
+			if(att instanceof PhotoAttachment pa && !(att instanceof GraffitiAttachment)){
 				long photoID;
 				if(pa.photoID!=0)
 					photoID=pa.photoID;
@@ -623,7 +623,7 @@ public class PhotosRoutes{
 			case "messages" -> {
 				if(self==null)
 					throw new UserActionNotAllowedException();
-				MailMessage msg=ctx.getMailController().getMessage(self, decodeLong(listParts[1]), false);
+				MailMessage msg=ctx.getMailController().getMessage(self, XTEA.decodeObjectID(listParts[1], ObfuscatedObjectIDType.MAIL_MESSAGE), false);
 				User author=ctx.getUsersController().getUserOrThrow(msg.senderID);
 
 				PaginatedList<PhotoViewerPhotoInfo> info=makePhotoInfoForAttachHostObject(req, msg, author, msg.createdAt, selfAccount);
@@ -639,47 +639,39 @@ public class PhotosRoutes{
 				title=album.getLocalizedTitle(lang(req), self, ctx.getWallController().getContentAuthorAndOwner(album).owner());
 				yield makePhotoInfosForPhotoList(req, _photos.list, ctx, selfAccount, Map.of(album.id, album));
 			}
-			case "friendsFeedGrouped", "groupsFeedGrouped" -> {
+			case "friendsFeed", "groupsFeed" -> {
 				if(self==null)
 					throw new UserActionNotAllowedException();
+				if(listParts.length!=5)
+					throw new BadRequestException();
 				int id=safeParseInt(listParts[1]);
+				int expectedTypeOrdinal=parseIntOrDefault(listParts[2], -1);
+				int expectedAuthorID=safeParseInt(listParts[3]);
+				long rawExpectedTimestamp=safeParseLong(listParts[4]);
+				if(rawExpectedTimestamp==0)
+					throw new ObjectNotFoundException();
+				Instant expectedTimestamp=Instant.ofEpochSecond(rawExpectedTimestamp);
+				NewsfeedEntry.Type expectedType=expectedTypeOrdinal>=0 && expectedTypeOrdinal<NewsfeedEntry.Type.values().length ? NewsfeedEntry.Type.values()[expectedTypeOrdinal] : null;
+				if(expectedType!=NewsfeedEntry.Type.ADD_PHOTO && expectedType!=NewsfeedEntry.Type.PHOTO_TAG)
+					throw new ObjectNotFoundException();
+				int offset=offset(req);
+				int count=10;
 				PaginatedList<NewsfeedEntry> feed=switch(listParts[0]){
-					case "friendsFeedGrouped" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100);
-					case "groupsFeedGrouped" -> ctx.getNewsfeedController().getGroupsFeed(selfAccount, EnumSet.allOf(GroupsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 100);
+					case "friendsFeed" -> ctx.getNewsfeedController().getFriendsGroupedEntries(self, expectedType, ctx.getUsersController().getUserOrThrow(expectedAuthorID),
+							id, expectedTimestamp, timeZoneForRequest(req), offset, count);
+					case "groupsFeed" -> ctx.getNewsfeedController().getGroupsGroupedEntries(self, expectedType, ctx.getGroupsController().getGroupOrThrow(-expectedAuthorID),
+							id, expectedTimestamp, timeZoneForRequest(req), offset, count);
 					default -> throw new IllegalStateException("Unexpected value: " + listParts[0]);
 				};
-				if(feed.list.isEmpty() || !(feed.list.getFirst() instanceof GroupedNewsfeedEntry gne) || (gne.childEntriesType!=NewsfeedEntry.Type.ADD_PHOTO && gne.childEntriesType!=NewsfeedEntry.Type.PHOTO_TAG))
+				if(feed.list.isEmpty())
 					throw new ObjectNotFoundException();
-				total=gne.childEntries.size();
+				total=feed.total;
 				title=null;
-				int offset=offset(req);
-				if(offset>=total)
-					throw new BadRequestException();
-				List<Long> photoIDs=gne.childEntries.subList(offset, Math.min(offset+10, total)).stream().map(e->e.objectID).toList();
+				List<Long> photoIDs=feed.list.stream().map(e->e.objectID).toList();
 				Map<Long, Photo> _photos=ctx.getPhotosController().getPhotosIgnoringPrivacy(photoIDs);
 				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(_photos.values().stream().map(p->p.albumID).collect(Collectors.toSet()));
 
 				yield makePhotoInfosForPhotoList(req, photoIDs.stream().map(_photos::get).toList(), ctx, selfAccount, albums);
-			}
-			case "friendsFeed", "groupsFeed" -> {
-				if(self==null)
-					throw new UserActionNotAllowedException();
-				int id=safeParseInt(listParts[1]);
-				List<NewsfeedEntry> feed=switch(listParts[0]){
-					case "friendsFeed" -> ctx.getNewsfeedController().getFriendsFeed(selfAccount, EnumSet.allOf(FriendsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1).list;
-					case "groupsFeed" -> ctx.getNewsfeedController().getGroupsFeed(selfAccount, EnumSet.allOf(GroupsNewsfeedTypeFilter.class), timeZoneForRequest(req), id, 0, 1).list;
-					default -> throw new IllegalStateException("Unexpected value: " + listParts[0]);
-				};
-				if(feed.isEmpty())
-					throw new ObjectNotFoundException();
-				NewsfeedEntry e=feed.getFirst();
-				if(e.type!=NewsfeedEntry.Type.ADD_PHOTO && e.type!=NewsfeedEntry.Type.PHOTO_TAG)
-					throw new ObjectNotFoundException();
-				Photo photo=ctx.getPhotosController().getPhotoIgnoringPrivacy(e.objectID);
-				PhotoAlbum album=ctx.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID);
-				total=1;
-				title=null;
-				yield makePhotoInfosForPhotoList(req, List.of(photo), ctx, selfAccount, Map.of(album.id, album));
 			}
 			case "single" -> {
 				long id=XTEA.deobfuscateObjectID(decodeLong(listParts[1]), ObfuscatedObjectIDType.PHOTO);
@@ -709,6 +701,8 @@ public class PhotosRoutes{
 				yield makePhotoInfosForPhotoList(req, allPhotos.list, ctx, selfAccount, albums);
 			}
 			case "rawFile" -> {
+				if(self==null)
+					throw new UserActionNotAllowedException();
 				title=null;
 				total=1;
 
@@ -717,11 +711,9 @@ public class PhotosRoutes{
 					throw new BadRequestException();
 
 				long fileID;
-				byte[] fileRandomID;
 				try{
 					byte[] _fileID=Base64.getUrlDecoder().decode(idParts[0]);
-					fileRandomID=Base64.getUrlDecoder().decode(idParts[1]);
-					if(_fileID.length!=8 || fileRandomID.length!=18)
+					if(_fileID.length!=8)
 						throw new BadRequestException();
 					fileID=XTEA.deobfuscateObjectID(unpackLong(_fileID), ObfuscatedObjectIDType.MEDIA_FILE);
 				}catch(IllegalArgumentException x){
@@ -733,14 +725,14 @@ public class PhotosRoutes{
 				}catch(SQLException x){
 					throw new InternalServerErrorException(x);
 				}
-				if(mfr==null || !Arrays.equals(mfr.id().randomID(), fileRandomID))
+				if(mfr==null || !MediaFileUploadTokens.verifyToken(idParts[1], mfr.id(), MediaFileUploadPurpose.ATTACHMENT, self.id))
 					throw new ObjectNotFoundException();
 				LocalImage img=new LocalImage();
 				img.fileID=fileID;
 				img.fillIn(mfr);
 				PhotoAttachment fakeAttachment=new PhotoAttachment();
 				fakeAttachment.image=img;
-				fakeAttachment.blurHash=img.blurHash;
+				fakeAttachment.setBlurHash(img.getBlurHash());
 				yield List.of(makePhotoInfoForAttachment(req, fakeAttachment, self, self, Instant.now(), null, 0, EnumSet.of(PhotoViewerPhotoInfo.AllowedAction.EDIT_DESCRIPTION)));
 			}
 			case "newTags" -> {
@@ -755,7 +747,7 @@ public class PhotosRoutes{
 			case "tagged" -> {
 				int uid=safeParseInt(listParts[1]);
 				User user=ctx.getUsersController().getUserOrThrow(uid);
-				PaginatedList<Photo> allPhotos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset(req), 10);
+				PaginatedList<Photo> allPhotos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset(req), 10, false);
 				Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(allPhotos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
 				total=allPhotos.total;
 				title=null;
@@ -1005,7 +997,7 @@ public class PhotosRoutes{
 			throw new BadRequestException();
 		AttachmentHostContentObject obj=switch(type){
 			case "post" -> ctx.getWallController().getPostOrThrow(safeParseInt(id));
-			case "message" -> ctx.getMailController().getMessage(self.user, decodeLong(id), false);
+			case "message" -> ctx.getMailController().getMessage(self.user, XTEA.decodeObjectID(id, ObfuscatedObjectIDType.MAIL_MESSAGE), false);
 			case "comment" -> ctx.getCommentsController().getCommentIgnoringPrivacy(XTEA.decodeObjectID(id, ObfuscatedObjectIDType.COMMENT));
 			default -> throw new BadRequestException();
 		};
@@ -1066,7 +1058,8 @@ public class PhotosRoutes{
 		model.paginate(photos);
 
 		WebDeltaResponse r=new WebDeltaResponse(resp)
-				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+				.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+				.runScript("renderBlurhashes();");
 		if(photos.offset+photos.perPage>=photos.total){
 			r.remove("ajaxPagination_"+paginationID);
 		}else{
@@ -1147,7 +1140,8 @@ public class PhotosRoutes{
 		if(req.queryParams("pagination")!=null){
 			String paginationID=req.queryParams("pagination");
 			WebDeltaResponse r=new WebDeltaResponse(resp)
-					.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+					.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+					.runScript("renderBlurhashes();");
 			if(photos.offset+photos.perPage>=photos.total){
 				r.remove("ajaxPagination_"+paginationID);
 			}else{
@@ -1231,7 +1225,7 @@ public class PhotosRoutes{
 		for(int i=0;i<4;i++){
 			try{
 				float v=Float.parseFloat(rectStr[i]);
-				if(v<0 || v>1)
+				if(v<0 || v>1 || !Float.isFinite(v))
 					throw new BadRequestException();
 				rectArr[i]=v;
 			}catch(NumberFormatException x){
@@ -1307,7 +1301,8 @@ public class PhotosRoutes{
 			String paginationID=req.queryParams("pagination");
 			if(StringUtils.isNotEmpty(paginationID)){
 				WebDeltaResponse r=new WebDeltaResponse(resp)
-						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+						.runScript("renderBlurhashes();");
 				if(photos.offset+photos.perPage>=photos.total){
 					r.remove("ajaxPagination_"+paginationID);
 				}else{
@@ -1359,7 +1354,7 @@ public class PhotosRoutes{
 			owner=ctx.getGroupsController().getGroupOrThrow(-album.ownerID);
 		model.with("owner", owner).headerBack(owner).pageTitle(album.getLocalizedTitle(lang(req), self, owner));
 		int offset=offset(req);
-		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset, 100);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset, 100, false);
 		model.paginate(photos);
 
 		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
@@ -1374,7 +1369,8 @@ public class PhotosRoutes{
 			String paginationID=req.queryParams("pagination");
 			if(StringUtils.isNotEmpty(paginationID)){
 				WebDeltaResponse r=new WebDeltaResponse(resp)
-						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"));
+						.insertHTML(WebDeltaResponse.ElementInsertionMode.BEFORE_BEGIN, "ajaxPagination_"+paginationID, model.renderBlock("photosInner"))
+						.runScript("renderBlurhashes();");
 				if(photos.offset+photos.perPage>=photos.total){
 					r.remove("ajaxPagination_"+paginationID);
 				}else{

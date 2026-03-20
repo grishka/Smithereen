@@ -95,12 +95,8 @@ public class Templates{
 		ApplicationContext ctx=Utils.context(req);
 		Lang lang=Utils.lang(req);
 		if(req.session(false)!=null){
-			SessionInfo info=req.session().attribute("info");
-			if(info==null){
-				info=new SessionInfo();
-				req.session().attribute("info", info);
-			}
-			Account account=info.account;
+			SessionInfo info=Utils.sessionInfo(req);
+			Account account=info==null ? null : info.account;
 			if(account!=null){
 				model.with("currentUser", account.user);
 				model.with("csrf", info.csrfToken);
@@ -168,7 +164,8 @@ public class Templates{
 			}
 		}
 		for(String key:List.of("error", "ok", "network_error", "close", "cancel", "yes", "no", "show_technical_details", "photo_X_of_Y",
-				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder", "save", "photo_description", "photo_load_failed_remote", "photo_load_failed_local")){
+				"photo_edit_description", "post_form_cw", "post_form_cw_placeholder", "save", "photo_description", "photo_load_failed_remote", "photo_load_failed_local",
+				"audio_missing_box_title", "audio_missing_box_message_1", "audio_missing_box_message_2")){
 			if(k!=null && k.contains(key))
 				continue;
 			jsLang.add("\""+key+"\":"+lang.getAsJS(key));
@@ -199,6 +196,7 @@ public class Templates{
 				.with("serverName", Config.getServerDisplayName())
 				.with("serverDomain", Config.domain)
 				.with("serverVersion", BuildInfo.VERSION)
+				.with("isDebugMode", Config.DEBUG)
 				.with("langName", lang.name)
 				.with("isMobile", mobile)
 				.with("isAjax", Utils.isAjax(req))

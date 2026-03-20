@@ -77,6 +77,8 @@ public class JLDProcessor{
 		lc.addProperty("votersCount", "toot:votersCount");
 		lc.addProperty("suspended", "toot:suspended");
 		lc.add("featured", idAndTypeObject("toot:featured", "@id"));
+		lc.addProperty("indexable", "toot:indexable");
+		lc.addProperty("discoverable", "toot:discoverable");
 
 		// Misskey quote-reposts
 		lc.add("_misskey_quote", idAndTypeObject(JLD.MISSKEY+"_misskey_quote", "@id"));
@@ -162,6 +164,7 @@ public class JLDProcessor{
 		addSmAlias(lc, "TopicCreationRequest");
 		addSmAlias(lc, "TopicRenameRequest");
 		addSmIdAlias(lc, "links");
+		addSmAlias(lc, "redirectUri");
 
 		// litepub aliases
 		lc.addProperty("capabilities", "litepub:capabilities");
@@ -295,6 +298,7 @@ public class JLDProcessor{
 			case "https://www.w3.org/ns/did/v1" -> readResourceFile("w3-did");
 			case "https://w3id.org/security/multikey/v1" -> readResourceFile("w3-multikey");
 			case "https://purl.archive.org/socialweb/webfinger" -> readResourceFile("purl-webfinger");
+			case "https://gotosocial.org/ns" -> readResourceFile("gotosocial");
 			default -> {
 				if(allowNetworking){
 					remoteContextFetchMutexes.acquire(iri);

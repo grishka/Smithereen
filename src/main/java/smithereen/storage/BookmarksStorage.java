@@ -1,7 +1,10 @@
 package smithereen.storage;
 
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import smithereen.model.PaginatedList;
 import smithereen.storage.sql.DatabaseConnection;
@@ -52,6 +55,17 @@ public class BookmarksStorage{
 				.executeNoResult();
 	}
 
+	public static Set<Integer> filterUserIDs(int ownerID, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("bookmarks_user")
+				.columns("user_id")
+				.whereIn("user_id", ids)
+				.andWhere("owner_id=?", ownerID)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
+	}
+
 
 
 	public static PaginatedList<Integer> getGroups(int ownerID, int offset, int count) throws SQLException{
@@ -95,5 +109,16 @@ public class BookmarksStorage{
 				.deleteFrom("bookmarks_group")
 				.where("owner_id=? AND group_id=?", ownerID, groupID)
 				.executeNoResult();
+	}
+
+	public static Set<Integer> filterGroupIDs(int ownerID, Collection<Integer> ids) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("bookmarks_group")
+				.columns("group_id")
+				.whereIn("group_id", ids)
+				.andWhere("owner_id=?", ownerID)
+				.executeAndGetIntStream()
+				.boxed()
+				.collect(Collectors.toSet());
 	}
 }

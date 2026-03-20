@@ -36,6 +36,7 @@ import smithereen.activitypub.NestedActivityTypeHandler;
 import smithereen.activitypub.handlers.AcceptFollowGroupHandler;
 import smithereen.activitypub.handlers.AcceptFollowPersonHandler;
 import smithereen.activitypub.handlers.AcceptQuoteRequestHandler;
+import smithereen.activitypub.handlers.AddApplicationHandler;
 import smithereen.activitypub.handlers.AddGroupHandler;
 import smithereen.activitypub.handlers.AddNoteHandler;
 import smithereen.activitypub.handlers.AddPhotoHandler;
@@ -60,6 +61,7 @@ import smithereen.activitypub.handlers.GroupBlockPersonHandler;
 import smithereen.activitypub.handlers.GroupCreateBoardTopicHandler;
 import smithereen.activitypub.handlers.GroupDeleteBoardTopicHandler;
 import smithereen.activitypub.handlers.GroupRemovePersonHandler;
+import smithereen.activitypub.handlers.GroupRemovePhotoHandler;
 import smithereen.activitypub.handlers.GroupUndoBlockPersonHandler;
 import smithereen.activitypub.handlers.InviteGroupHandler;
 import smithereen.activitypub.handlers.LeaveGroupHandler;
@@ -80,9 +82,9 @@ import smithereen.activitypub.handlers.RejectOfferFollowPersonHandler;
 import smithereen.activitypub.handlers.RejectPhotoHandler;
 import smithereen.activitypub.handlers.RejectQuoteRequestHandler;
 import smithereen.activitypub.handlers.RemoveActorStatusHandler;
+import smithereen.activitypub.handlers.RemoveApplicationHandler;
 import smithereen.activitypub.handlers.RemoveGroupHandler;
 import smithereen.activitypub.handlers.RemoveNoteHandler;
-import smithereen.activitypub.handlers.GroupRemovePhotoHandler;
 import smithereen.activitypub.handlers.TopicCreationRequestHandler;
 import smithereen.activitypub.handlers.TopicRenameRequestHandler;
 import smithereen.activitypub.handlers.UndoAcceptFollowGroupHandler;
@@ -92,6 +94,7 @@ import smithereen.activitypub.handlers.UndoFollowGroupHandler;
 import smithereen.activitypub.handlers.UndoFollowPersonHandler;
 import smithereen.activitypub.handlers.UndoInviteGroupHandler;
 import smithereen.activitypub.handlers.UndoLikeObjectHandler;
+import smithereen.activitypub.handlers.UpdateApplicationHandler;
 import smithereen.activitypub.handlers.UpdateGroupHandler;
 import smithereen.activitypub.handlers.UpdateNoteHandler;
 import smithereen.activitypub.handlers.UpdatePersonHandler;
@@ -100,6 +103,7 @@ import smithereen.activitypub.handlers.UpdatePhotoHandler;
 import smithereen.activitypub.handlers.UserRemovePhotoHandler;
 import smithereen.activitypub.objects.Activity;
 import smithereen.activitypub.objects.ActivityPubActorStatus;
+import smithereen.activitypub.objects.ActivityPubApplication;
 import smithereen.activitypub.objects.ActivityPubBoardTopic;
 import smithereen.activitypub.objects.ActivityPubCollection;
 import smithereen.activitypub.objects.ActivityPubObject;
@@ -136,15 +140,20 @@ import smithereen.activitypub.objects.activities.TopicRenameRequest;
 import smithereen.activitypub.objects.activities.Undo;
 import smithereen.activitypub.objects.activities.Update;
 import smithereen.controllers.ObjectLinkResolver;
+import smithereen.controllers.WallController;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
+import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.RemoteObjectFetchException;
+import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.jsonld.JLDProcessor;
+import smithereen.jsonld.LinkedDataSignatures;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
 import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
-import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.Group;
 import smithereen.model.NodeInfo;
 import smithereen.model.ObfuscatedObjectIDType;
@@ -157,7 +166,10 @@ import smithereen.model.PollVote;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.StatsType;
+import smithereen.model.User;
+import smithereen.model.UserBanStatus;
 import smithereen.model.UserPrivacySettingKey;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.comments.Comment;
@@ -166,21 +178,14 @@ import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.CommentViewModel;
-import smithereen.text.TextProcessor;
-import smithereen.util.UriBuilder;
-import smithereen.model.User;
-import smithereen.exceptions.BadRequestException;
-import smithereen.exceptions.ObjectNotFoundException;
-import smithereen.exceptions.UserActionNotAllowedException;
-import smithereen.jsonld.JLDProcessor;
-import smithereen.jsonld.LinkedDataSignatures;
-import smithereen.model.UserBanStatus;
 import smithereen.sparkext.ActivityPubCollectionPageResponse;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.LikeStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
 import smithereen.templates.RenderedTemplateResponse;
+import smithereen.text.TextProcessor;
+import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
@@ -276,6 +281,11 @@ public class ActivityPubRoutes{
 		registerActivityHandler(ForeignUser.class, TopicRenameRequest.class, ActivityPubBoardTopic.class, new TopicRenameRequestHandler());
 		registerActivityHandler(ForeignGroup.class, Delete.class, ActivityPubBoardTopic.class, new GroupDeleteBoardTopicHandler());
 
+		// Apps
+		registerActivityHandler(ForeignUser.class, Add.class, ActivityPubApplication.class, new AddApplicationHandler());
+		registerActivityHandler(ForeignUser.class, Remove.class, ActivityPubApplication.class, new RemoveApplicationHandler());
+		registerActivityHandler(ActivityPubApplication.class, Update.class, ActivityPubApplication.class, new UpdateApplicationHandler());
+
 		// More general handlers at the end so they match last
 		registerActivityHandler(ForeignUser.class, Like.class, ActivityPubObject.class, new LikeObjectHandler());
 		registerActivityHandler(ForeignUser.class, Undo.class, Like.class, ActivityPubObject.class, new UndoLikeObjectHandler());
@@ -315,47 +325,48 @@ public class ActivityPubRoutes{
 		typeOnlyHandlers.add(new ActivityTypeOnlyHandlerRecord<>(activityClass, handler));
 	}
 
-	public static Object userActor(Request req, Response resp) throws SQLException{
-		String username=req.params(":username");
-		Actor actor;
-		if(username!=null){
-			actor=UserStorage.getByUsername(username);
-			if(actor==null){
-				return groupActor(req, resp);
-			}
-		}else{
-			actor=UserStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
-		}
-		if(actor!=null && !(actor instanceof ForeignUser)){
-			resp.type(ActivityPub.CONTENT_TYPE);
-			return actor;
-		}
-		throw new ObjectNotFoundException();
+	public static Object actorByUsername(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		ObjectLinkResolver.UsernameResolutionResult rr=ctx.getObjectLinkResolver().resolveUsernameLocally(req.params(":username"));
+		return switch(rr.type()){
+			case USER -> userActor(req, resp, rr.localID());
+			case GROUP -> groupActor(req, resp, rr.localID());
+			case APPLICATION -> appActor(req, resp, rr.localID());
+		};
 	}
 
-	public static Object groupActor(Request req, Response resp) throws SQLException{
-		String username=req.params(":username");
-		Group group;
-		if(username!=null)
-			group=GroupStorage.getByUsername(username);
-		else
-			group=GroupStorage.getById(Utils.parseIntOrDefault(req.params(":id"), 0));
-		if(group!=null && !(group instanceof ForeignGroup)){
-			if(group.accessType==Group.AccessType.PRIVATE){
-				Actor requester;
-				try{
-					requester=ActivityPub.verifyHttpSignature(req, null);
-				}catch(Exception x){
-					throw new UserActionNotAllowedException("This is a private group. Valid HTTP signature of a group member or invitee is required.", x);
-				}
-				if(!GroupStorage.areThereGroupMembersWithDomain(group.id, requester.domain) && !GroupStorage.areThereGroupInvitationsWithDomain(group.id, requester.domain))
-					throw new UserActionNotAllowedException("This is a private group and there are no "+requester.domain+" members or invitees in it.");
-			}
-			group.adminsForActivityPub=GroupStorage.getGroupAdmins(group.id);
-			resp.type(ActivityPub.CONTENT_TYPE);
-			return group;
-		}
-		throw new ObjectNotFoundException();
+	public static Object userActor(Request req, Response resp){
+		return userActor(req, resp, safeParseInt(req.params(":id")));
+	}
+
+	private static Object userActor(Request req, Response resp, int id){
+		resp.type(ActivityPub.CONTENT_TYPE);
+		return context(req).getUsersController().getLocalUserOrThrow(id);
+	}
+
+	public static Object groupActor(Request req, Response resp){
+		return groupActor(req, resp, safeParseInt(req.params(":id")));
+	}
+
+	private static Object groupActor(Request req, Response resp, int id){
+		ApplicationContext ctx=context(req);
+		Group group=ctx.getGroupsController().getLocalGroupOrThrow(id);
+		ctx.getPrivacyController().enforceGroupProfileAccess(req, group);
+		group.adminsForActivityPub=ctx.getGroupsController().getAdmins(group);
+		resp.type(ActivityPub.CONTENT_TYPE);
+		return group;
+	}
+
+	public static Object appActor(Request req, Response resp){
+		return appActor(req, resp, safeParseLong(req.params(":id")));
+	}
+
+	public static Object appActor(Request req, Response resp, long id){
+		ApplicationContext ctx=context(req);
+		ClientApp app=ctx.getAppsController().getAppByID(id);
+		if(!app.isLocal())
+			throw new ObjectNotFoundException();
+		return ActivityPubApplication.fromNativeApp(app, ctx);
 	}
 
 	public static Object post(Request req, Response resp) throws SQLException{
@@ -468,7 +479,7 @@ public class ActivityPubRoutes{
 		int minID=Math.max(0, _minID);
 		int maxID=Math.max(0, _maxID);
 		int[] _total={0};
-		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, 25, _total, true, EnumSet.of(Post.Privacy.PUBLIC));
+		List<Post> posts=PostStorage.getWallPosts(user.id, false, minID, maxID, 0, 25, _total, WallController.WallMode.OWNER, EnumSet.of(Post.Privacy.PUBLIC));
 		int total=_total[0];
 		CollectionPage page=new CollectionPage(true);
 		page.totalItems=total;
@@ -760,29 +771,6 @@ public class ActivityPubRoutes{
 		}
 	}
 
-	public static Object remoteFollow(Request req, Response resp, Account self, ApplicationContext ctx) throws SQLException{
-		String username=req.params(":username");
-		if(!(ctx.getUsersController().getUserByUsernameOrThrow(username) instanceof ForeignUser user)){
-			return Utils.wrapError(req, resp, "err_user_not_found");
-		}
-		FriendshipStatus status=UserStorage.getFriendshipStatus(self.user.id, user.id);
-		if(status==FriendshipStatus.REQUEST_SENT){
-			return Utils.wrapError(req, resp, "err_friend_req_already_sent");
-		}else if(status==FriendshipStatus.FOLLOWING){
-			return Utils.wrapError(req, resp, "err_already_following");
-		}else if(status==FriendshipStatus.FRIENDS){
-			return Utils.wrapError(req, resp, "err_already_friends");
-		}
-		String msg=req.queryParams("message");
-		if(user.supportsFriendRequests()){
-			ctx.getFriendsController().sendFriendRequest(self.user, user, msg);
-		}else{
-			ctx.getFriendsController().followUser(self.user, user);
-		}
-		resp.redirect(user.getProfileURL());
-		return "Success";
-	}
-
 	public static Object nodeInfo(Request req, Response resp) throws SQLException{
 		String ver=req.pathInfo().substring(req.pathInfo().length()-3);
 		resp.type("application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/"+ver+"#\"");
@@ -842,14 +830,18 @@ public class ActivityPubRoutes{
 		return undo;
 	}
 
-	private static Object inbox(Request req, Response resp, Actor owner) throws SQLException{
-		ApplicationContext ctx=context(req);
+	private static Object inbox(Request req, Response resp, Actor owner){
 		if(req.headers("digest")!=null){
 			if(!verifyHttpDigest(req.headers("digest"), req.bodyAsBytes())){
 				throw new BadRequestException("Digest verification failed");
 			}
 		}
 		String body=req.body();
+		return dispatchActivity(body, req, resp, true);
+	}
+
+	public static Object dispatchActivity(String body, Request req, Response resp, boolean verifySignatures){
+		ApplicationContext ctx=context(req);
 		LOG.debug("Incoming activity: {}", body);
 		JsonObject rawActivity;
 		try{
@@ -912,26 +904,36 @@ public class ActivityPubRoutes{
 		}
 		if(fa.needUpdate() && canUpdate){
 			try{
+				Actor oldActor=actor;
 				actor=ctx.getObjectLinkResolver().resolve(activity.actor.link, Actor.class, true, true, true);
+
+				// Temporary fix until https://codeberg.org/superseriousbusiness/gotosocial/issues/4565 gets released and everyone updates to that version.
+				// Somehow, Application objects could end up interpreted as users in some previous Smithereen version.
+				if(actor instanceof ActivityPubApplication && oldActor instanceof ForeignUser fu)
+					actor=ctx.getUsersController().getUserOrThrow(fu.id);
 			}catch(ObjectNotFoundException x){
 				LOG.debug("Exception while refreshing remote actor {}", activity.actor.link, x);
 			}
 		}
 
 		Actor httpSigOwner;
-		try{
-			httpSigOwner=ActivityPub.verifyHttpSignature(req, actor);
-		}catch(Exception x){
-			LOG.warn("Exception while verifying HTTP signature on {} from {}: {}", getActivityType(activity), actor.activityPubID, x.toString());
-			if(Config.DEBUG)
-				LOG.debug("", x);
-			throw new UserActionNotAllowedException(x);
+		if(verifySignatures){
+			try{
+				httpSigOwner=ActivityPub.verifyHttpSignature(req, actor);
+			}catch(Exception x){
+				LOG.warn("Exception while verifying HTTP signature on {} from {}: {}", getActivityType(activity), actor.activityPubID, x.toString());
+				if(Config.DEBUG)
+					LOG.debug("", x);
+				throw new UserActionNotAllowedException(x);
+			}
+		}else{
+			httpSigOwner=actor;
 		}
 
 		// if the activity has an LD-signature, verify that and allow any (cached) user to sign the HTTP signature
 		// if it does not, the owner of the HTTP signature must match the actor
 		boolean hasValidLDSignature=false;
-		if(rawActivity.has("signature")){
+		if(rawActivity.has("signature") && verifySignatures){
 			JsonObject sig=rawActivity.getAsJsonObject("signature");
 			try{
 				URI keyID=URI.create(sig.get("creator").getAsString());
@@ -986,7 +988,7 @@ public class ActivityPubRoutes{
 				if(Config.DEBUG)
 					throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
 				else
-					LOG.error("Received and ignored an activity of an unsupported type {}", getActivityType(activity));
+					LOG.info("Received and ignored an activity of an unsupported type {}: {}", getActivityType(activity), activity.asRootActivityPubObject(ctx, req.host()));
 				return "";
 			}
 
@@ -1071,6 +1073,8 @@ public class ActivityPubRoutes{
 			LOG.debug("Bad request", x);
 			resp.status(400);
 			return TextProcessor.escapeHTML(x.getMessage());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
 		}/*catch(Exception x){
 			LOG.warn("Exception while processing an incoming activity", x);
 			throw new BadRequestException(x.toString());
@@ -1078,7 +1082,7 @@ public class ActivityPubRoutes{
 		if(Config.DEBUG)
 			throw new BadRequestException("No handler found for activity type: "+getActivityType(activity));
 		else
-			LOG.error("Received and ignored an activity of an unsupported type {}", getActivityType(activity));
+			LOG.error("Received and ignored an activity of an unsupported type {} (actor type is {}): {}", getActivityType(activity), actor.getClass().getName(), body);
 		return "";
 	}
 
@@ -1135,7 +1139,7 @@ public class ActivityPubRoutes{
 		ApplicationContext ctx=context(req);
 		User user=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
 		ctx.getPrivacyController().enforceUserPrivacyForRemoteServer(req, user, user.getPrivacySetting(UserPrivacySettingKey.PHOTO_TAG_LIST));
-		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, offset, count);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotosIgnoringPrivacy(user, offset, count, false);
 		Map<Long, PhotoAlbum> albums=ctx.getPhotosController().getAlbumsIgnoringPrivacy(photos.list.stream().map(p->p.albumID).collect(Collectors.toSet()));
 		return ActivityPubCollectionPageResponse.forLinksOrObjects(photos.list.stream().map(p->p.apID==null ? new LinkOrObject(ActivityPubPhoto.fromNativePhoto(p, albums.get(p.albumID), ctx)) : new LinkOrObject(p.apID)).toList(), photos.total);
 	}
@@ -1165,10 +1169,8 @@ public class ActivityPubRoutes{
 		}catch(Exception x){
 			throw new UserActionNotAllowedException("Valid member HTTP signature is required.");
 		}
-		if(!(signer instanceof ForeignUser user))
-			throw new UserActionNotAllowedException("HTTP signature is valid but actor has wrong type: "+signer.getType());
 		resp.type("application/json");
-		return ActivityPub.generateActorToken(context(req), user, group);
+		return ActivityPub.generateActorToken(context(req), signer, group);
 	}
 
 	public static Object userCollectionQuery(Request req, Response resp){

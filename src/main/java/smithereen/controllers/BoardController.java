@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,7 +39,9 @@ import smithereen.model.comments.Comment;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.storage.BoardStorage;
+import smithereen.storage.CommentStorage;
 import smithereen.text.FormattedTextFormat;
+import spark.utils.StringUtils;
 
 public class BoardController{
 	private static final Logger LOG=LoggerFactory.getLogger(BoardController.class);
@@ -140,7 +143,15 @@ public class BoardController{
 	}
 
 	public BoardTopic createTopic(User self, Group group, String title, @NotNull String textSource, @NotNull FormattedTextFormat sourceFormat,
-								  @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts){
+								  @Nullable String contentWarning, @NotNull List<String> attachmentIDs, @NotNull Map<String, String> attachAltTexts, String guid){
+		if(StringUtils.isNotEmpty(guid)){
+			CommentsController.CommentGuidInfo guidInfo=context.getCommentsController().guids.get(guid);
+			if(guidInfo!=null && guidInfo.time().isAfter(Instant.now().minus(1, ChronoUnit.HOURS))){
+				try{
+					return getTopicIgnoringPrivacy(guidInfo.commentID());
+				}catch(ObjectNotFoundException ignore){}
+			}
+		}
 		enforceTopicCreationPermission(self, group);
 		try{
 			if(textSource.trim().isEmpty() && attachmentIDs.isEmpty())
@@ -173,6 +184,12 @@ public class BoardController{
 			}
 
 			topicCache.put(id, topic);
+			if(StringUtils.isNotEmpty(guid)){
+				HashMap<String, CommentsController.CommentGuidInfo> guids=context.getCommentsController().guids;
+				synchronized(guids){
+					guids.put(guid, new CommentsController.CommentGuidInfo(id, Instant.now()));
+				}
+			}
 			return topic;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -357,5 +374,13 @@ public class BoardController{
 			throw new InternalServerErrorException(x);
 		}
 		topicCache.remove(topic.id);
+	}
+
+	public Map<Long, Comment> getFirstOrLastComments(Collection<Long> topicIDs, boolean first, boolean needAttachments){
+		try{
+			return CommentStorage.getFirstOrLastBoardTopicComments(topicIDs, first, needAttachments);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
 	}
 }

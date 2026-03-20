@@ -7,9 +7,14 @@ import io.pebbletemplates.pebble.template.EvaluationContext;
 import io.pebbletemplates.pebble.template.PebbleTemplate;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
+import smithereen.activitypub.objects.LocalImage;
+import smithereen.model.RemoteImage;
 import smithereen.model.SizedImage;
+import smithereen.util.BlurHash;
+import spark.utils.StringUtils;
 
 public class PictureForPhotoFilter implements Filter{
 	@Override
@@ -17,7 +22,15 @@ public class PictureForPhotoFilter implements Filter{
 		if(input instanceof SizedImage img){
 			SizedImage.Type type=SizedImage.Type.fromSuffix(args.get("size").toString());
 			SizedImage.Dimensions size=img.getDimensionsForSize(type);
-			return new SafeString(img.generateHTML(type, (List<String>) args.get("addClasses"), null, size.width, size.height, (boolean)args.getOrDefault("add2x", Boolean.TRUE), null));
+			List<String> imgAttrs=null;
+			String blurhash=img.getBlurHash();
+			if(StringUtils.isNotEmpty(blurhash)){
+				imgAttrs=List.of(
+						String.format(Locale.US, "style=\"background-color: #%06X\"", BlurHash.decodeToSingleColor(blurhash)),
+						"data-blurhash=\""+blurhash+"\""
+				);
+			}
+			return new SafeString(img.generateHTML(type, (List<String>) args.get("addClasses"), imgAttrs, size.width, size.height, (boolean)args.getOrDefault("add2x", Boolean.TRUE), null));
 		}
 		throw new IllegalArgumentException("Input is an unknown type: "+input);
 	}

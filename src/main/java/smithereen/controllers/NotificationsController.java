@@ -40,8 +40,6 @@ import smithereen.model.SessionInfo;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserDataExport;
-import smithereen.model.notifications.RealtimeNotificationSettingType;
-import smithereen.model.notifications.UserNotifications;
 import smithereen.model.UserPresence;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
@@ -56,6 +54,8 @@ import smithereen.model.notifications.GroupedNotification;
 import smithereen.model.notifications.Notification;
 import smithereen.model.notifications.NotificationWrapper;
 import smithereen.model.notifications.RealtimeNotification;
+import smithereen.model.notifications.RealtimeNotificationSettingType;
+import smithereen.model.notifications.UserNotifications;
 import smithereen.model.photos.Photo;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.SessionStorage;
@@ -425,7 +425,7 @@ public class NotificationsController{
 						if(StringUtils.isNotEmpty(preview))
 							yield makeActorLink(actor)+" "+preview;
 						User u=(User)actor;
-						String text=l.get("notification_content_comment_post", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
+						String text=l.get("notification_content_wall_post", Map.of("name", u.getFirstLastAndGender(), "gender", u.gender));
 						yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL())));
 					}
 					case INVITE_SIGNUP -> makeActorLink(actor)+" "+l.get("notification_invite_signup", Map.of("gender", ((User)actor).gender));
@@ -474,7 +474,7 @@ public class NotificationsController{
 					case Post post -> post.getReplyLevel()>0 && relatedObject instanceof Post parentPost ? parentPost.getInternalURL().toString()+"#comment"+post.id : post.getInternalURL().toString();
 					case Photo photo -> photo.getURL();
 					case Comment comment when relatedObject instanceof CommentableContentObject parent -> parent.getURL()+"#comment"+comment.getIDString();
-					case MailMessage msg -> "/my/mail/messages/"+msg.encodedID;
+					case MailMessage msg -> "/my/mail/messages/"+msg.getIdString();
 					case UserDataExport ude -> "/settings/export";
 					case null, default -> actor.getProfileURL();
 				};
@@ -482,7 +482,7 @@ public class NotificationsController{
 					case Post post -> String.valueOf(post.id);
 					case Photo photo -> XTEA.encodeObjectID(photo.id, ObfuscatedObjectIDType.PHOTO);
 					case Comment comment -> XTEA.encodeObjectID(comment.id, ObfuscatedObjectIDType.COMMENT);
-					case MailMessage msg -> msg.encodedID;
+					case MailMessage msg -> msg.getIdString();
 					case null, default -> null;
 				};
 
@@ -528,7 +528,7 @@ public class NotificationsController{
 						}
 					}else if(object instanceof Group group){
 						SizedImage groupAva=group.getAvatar();
-						extraImage=new RealtimeNotification.ImageURLs(
+						extraImage=groupAva==null ? null : new RealtimeNotification.ImageURLs(
 								groupAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, SizedImage.Format.JPEG).toString(),
 								groupAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, SizedImage.Format.WEBP).toString(),
 								groupAva.getUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, SizedImage.Format.JPEG).toString(),

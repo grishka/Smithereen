@@ -41,6 +41,7 @@ import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
+import smithereen.routes.ProfileRoutes;
 import smithereen.storage.ModerationStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
@@ -181,7 +182,10 @@ public class AdminUsersRoutes{
 					model.with("inviter", ctx.getUsersController().getAccountOrThrow(account.inviterAccountID).user);
 				}catch(ObjectNotFoundException ignore){}
 			}
-			model.with("sessions", ctx.getUsersController().getAccountSessions(account));
+			List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(account, 0, 10000);
+			Set<Long> needApps=sessions.stream().map(OtherSession::appID).filter(id->id!=0).collect(Collectors.toSet());
+			model.with("sessions", sessions)
+					.with("apps", ctx.getAppsController().getAppsByIDs(needApps));
 		}else{
 			account=null;
 		}
@@ -232,7 +236,7 @@ public class AdminUsersRoutes{
 	public static Object endUserSession(Request req, Response resp, Account self, ApplicationContext ctx){
 		Account target=ctx.getUsersController().getAccountOrThrow(safeParseInt(req.queryParams("accountID")));
 		int sessionID=safeParseInt(req.queryParams("sessionID"));
-		List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(target);
+		List<OtherSession> sessions=ctx.getUsersController().getAccountSessions(target, 0, 10000);
 		OtherSession sessionToRevoke=null;
 		for(OtherSession session:sessions){
 			if(session.id()==sessionID){
@@ -538,5 +542,48 @@ public class AdminUsersRoutes{
 		Lang l=lang(req);
 		String newUsername="id"+target.id;
 		return wrapConfirmation(req, resp, l.get("admin_reset_username_title"), l.get("admin_reset_username_confirm", Map.of("newUsername", newUsername)), "/users/"+target.id+"/adminChangeUsername?username="+newUsername);
+	}
+
+	public static Object recountFriends(Request req, Response resp, Account self, ApplicationContext ctx){
+		User target=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		Lang l=lang(req);
+		ctx.getModerationController().recountUserFriends(target);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).showSnackbar(l.get("admin_metrics_recounted"));
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object recountWall(Request req, Response resp, Account self, ApplicationContext ctx){
+		User target=ctx.getUsersController().getLocalUserOrThrow(safeParseInt(req.params(":id")));
+		Lang l=lang(req);
+		ctx.getModerationController().recountActorWallComments(target);
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).showSnackbar(l.get("admin_metrics_recounted"));
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object syncProfile(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		user.ensureRemote();
+		ctx.getObjectLinkResolver().resolve(user.activityPubID, ForeignUser.class, true, true, true);
+		return new WebDeltaResponse(resp).refresh();
+	}
+
+	public static Object syncContentCollections(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		user.ensureRemote();
+		ctx.getActivityPubWorker().fetchActorContentCollections(user);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
+	}
+
+	public static Object syncRelationshipsCollections(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		user.ensureRemote();
+		ctx.getActivityPubWorker().fetchActorRelationshipCollections(user);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_friends_and_groups"), l.get("sync_started"), l.get("ok"));
 	}
 }

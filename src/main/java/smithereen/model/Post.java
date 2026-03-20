@@ -47,6 +47,8 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	public EnumSet<Flag> flags=EnumSet.noneOf(Flag.class);
 	public Action action;
 	public URI mastodonQuoteAuth;
+	public long appID;
+	public URI appApID;
 
 	@Override
 	public URI getActivityPubID(){
@@ -94,6 +96,9 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 			JsonObject extra=JsonParser.parseString(extraStr).getAsJsonObject();
 			if(repostOf!=0 && !flags.contains(Flag.MASTODON_STYLE_REPOST) && extra.has("quoteAuth")){
 				mastodonQuoteAuth=URI.create(extra.get("quoteAuth").getAsString());
+			}
+			if(extra.has("app")){
+				appID=extra.get("app").getAsLong();
 			}
 		}
 	}
@@ -260,13 +265,18 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	}
 
 	public String serializeExtraFields(){
+		JsonObjectBuilder jb=new JsonObjectBuilder();
 		if(mastodonQuoteAuth!=null){
-			return new JsonObjectBuilder()
-					.add("quoteAuth", mastodonQuoteAuth.toString())
-					.build()
-					.toString();
+			jb.add("quoteAuth", mastodonQuoteAuth.toString());
 		}
-		return null;
+		if(appID!=0){
+			jb.add("app", appID);
+		}
+		if(appApID!=null){
+			jb.add("appAP", appApID.toString());
+		}
+		JsonObject o=jb.build();
+		return o.isEmpty() ? null : o.toString();
 	}
 
 	public enum Privacy{

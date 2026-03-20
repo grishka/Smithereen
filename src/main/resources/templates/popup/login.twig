@@ -1,15 +1,18 @@
-{%extends "page"%}
-{%block content%}
-<center>
-	{%if message%}
-	<h4>{{message}}</h4>
-	{%endif%}
-	<form action="/account/login{{additionalParams}}" method="post" class="externalInteractionLoginForm">
-		<div align="left" class="label"><label for="username">{{L("email_or_username")}}:</label></div>
-		<input type="text" name="username" id="username"/>
-		<div align="left" class="label"><label for="password">{{L("password")}}:</label></div>
-		<input type="password" name="password" id="password"/>
-		<center><input type="submit" value="{{ L('log_in') }}"/></center>
-	</form>
-</center>
-{%endblock%}
+{% extends "page" %}
+{% block content %}
+<div id="oauthPromptHeader">
+<h2>{{ L('oauth_heading', {'serverName': serverName}) }}</h2>
+<p>{{ L('oauth_text', {'appName': app.name}, {'app': {'href': app.url, 'target': '_blank'} }) }}</p>
+</div>
+{% if message is not empty %}<div class="settingsMessage">{{ message }}</div>{% endif %}
+<form action="/account/login{{additionalParams}}" method="post" class="externalInteractionLoginForm">
+	<label for="username">{{L("email_or_username")}}:</label>
+	<input type="text" name="username" id="username" value="{{ username }}"/>
+	<label for="password">{{L("password")}}:</label>
+	<input type="password" name="password" id="password"/>
+	<div class="boxButtonBar" style="position: fixed; bottom: 0; left: 0; right: 0;">
+		<input type="submit" value="{{ L('log_in') }}"/>
+		<a href="{{ rejectURL }}" class="button secondary">{{ L('cancel') }}</a>
+	</div>
+</form>
+{% endblock %}

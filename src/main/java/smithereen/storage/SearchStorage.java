@@ -83,22 +83,30 @@ public class SearchStorage{
 		}
 	}
 
-	public static List<Integer> searchUsers(String query, int selfID, int count) throws SQLException{
+	public static PaginatedList<Integer> searchUsers(String query, int selfID, int count) throws SQLException{
 		query=prepareQuery(query);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT COUNT(*) FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IS NOT NULL", query).executeQuery());
+			if(total==0)
+				return PaginatedList.emptyList(count);
 			ArrayList<Integer> results=new ArrayList<>();
 			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index " +
 					"LEFT JOIN followings ON followings.followee_id=qsearch_index.user_id " +
 					"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND followings.follower_id=? ORDER BY followings.hints_rank DESC LIMIT ?", query, selfID, count);
 			DatabaseUtils.intResultSetToStream(stmt.executeQuery(), null).forEach(results::add);
 			if(results.size()<count){
-				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IS NOT NULL LIMIT ?", query, count);
+				String notIn="";
+				if(!results.isEmpty()){
+					notIn=" AND user_id NOT IN ("+results.stream().map(Object::toString).collect(Collectors.joining(","))+")";
+				}
+				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IS NOT NULL"+notIn+" LIMIT ?", query, count);
 				DatabaseUtils.intResultSetToStream(stmt.executeQuery(), null).forEach(id->{
 					if(!results.contains(id) && results.size()<count)
 						results.add(id);
 				});
 			}
-			return results;
+			return new PaginatedList<>(results, total, 0, count);
 		}
 	}
 
@@ -136,6 +144,23 @@ public class SearchStorage{
 							"RIGHT JOIN group_memberships ON group_memberships.group_id=qsearch_index.group_id " +
 							"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND `groups`.`type`=?"+privateWhere+" AND group_memberships.user_id=? AND accepted=1"+orderBy+" LIMIT ? OFFSET ?",
 					query, events ? Group.Type.EVENT : Group.Type.GROUP, selfID, count, offset).executeQuery());
+			return new PaginatedList<>(list, total, offset, count);
+		}
+	}
+
+	public static PaginatedList<Integer> searchAllGroups(String query, boolean events, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			query=prepareQuery(query);
+			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT COUNT(*) FROM qsearch_index JOIN `groups` ON group_id=`groups`.id WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND `groups`.`type`=? AND groups.access_type<>2",
+					query, events ? Group.Type.EVENT : Group.Type.GROUP).executeQuery());
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Integer> list=DatabaseUtils.intResultSetToList(SQLQueryBuilder.prepareStatement(conn,
+					"SELECT qsearch_index.group_id FROM qsearch_index " +
+							"JOIN `groups` ON qsearch_index.group_id=`groups`.id " +
+							"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND `groups`.`type`=? AND groups.access_type<>2 LIMIT ? OFFSET ?",
+					query, events ? Group.Type.EVENT : Group.Type.GROUP, count, offset).executeQuery());
 			return new PaginatedList<>(list, total, offset, count);
 		}
 	}

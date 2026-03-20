@@ -102,6 +102,11 @@
 	</div>
 	{% endif %}
 	{% if account is not null %}
+	<h2 class="marginBefore marginAfter">{{ L('admin_database_maintenance') }}</h2>
+	<div class="marginBefore marginAfter">
+		<a href="/users/{{ user.id }}/recountFriends?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('admin_recount_relationship_metrics') }}</a>
+		<a href="/users/{{ user.id }}/recountWall?csrf={{ csrf }}" class="button" data-ajax-box>{{ L('admin_recount_wall_comments') }}</a>
+	</div>
 	<h2 class="marginBefore marginAfter">{{ L('settings_sessions') }}</h2>
 	<div class="wideDataTableWrap">
 		<table class="dataTable wideTable">
@@ -116,7 +121,9 @@
 		{% for session in sessions %}
 			<tr id="adminSessionRow{{ session.id }}">
 				<td>
-					{% if session.userAgent is empty %}
+					{%- if session.appID!=0 %}
+					{{- L('settings_activity_api', {'appName': apps[session.appID].name}) }}
+					{%- elseif session.userAgent is empty %}
 					{{ L('unknown_browser') }}
 					{% else %}
 					{{ L('settings_activity_web', {'browserName': session.browserInfo.name, 'browserVersion': session.browserInfo.majorVersion, 'osName': session.browserInfo.os.displayName}) }}
@@ -147,7 +154,7 @@
 		{% elseif user.banStatus=='HIDDEN' %}
 		<p>{{ L('admin_user_state_hidden') }}</p>
 		{% elseif user.banStatus=='SELF_DEACTIVATED' %}
-		<p>{{ L('admin_user_state_self_deactivated', {'deletionTime': LD(accountDeletionTime)}) }}</p>
+		<p>{{ L('admin_user_state_self_deactivated', {'gender': user.gender, 'deletionTime': LD(accountDeletionTime)}) }}</p>
 		{% endif %}
 		{% if user.banInfo is not null %}
 		{% if user.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_user_suspended_remotely') }}</p>{% endif %}

@@ -123,7 +123,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 	public onWindowResize(){
 		super.onWindowResize();
 		this.updateSize();
-		this.updateImageURLs();
+		this.updateImageURLs(this.currentURLs, this.imgEl, this.sourceWebp, this.sourceJpeg);
 	}
 
 	public wantsDarkerScrim(){
@@ -140,7 +140,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		if(!this.wasShown){
 			this.wasShown=true;
 			this.updateSize();
-			this.updateImageURLs();
+			this.updateImageURLs(this.currentURLs, this.imgEl, this.sourceWebp, this.sourceJpeg);
 		}
 	}
 
@@ -249,7 +249,6 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			this.updateSize();
 		});
 		this.imgEl.addEventListener("error", (ev)=>{
-			console.log(this.imgEl.currentSrc);
 			if(this.imgEl.currentSrc.indexOf("/system/downloadExternalMedia")!=-1){
 				this.failed=true;
 				if(!this.loading)
@@ -273,13 +272,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		var ph=this.photos[this.currentIndex];
 		if(ph.originalURL){
 			var err=document.createDocumentFragment();
-			err.appendChild(ce("span", {innerHTML: lang("photo_load_failed_remote")}));
-			var link=err.getElementById("direct") as HTMLAnchorElement;
-			if(link){
-				link.id="";
-				link.href=ph.originalURL;
-				link.target="_blank";
-			}
+			err.appendChild(ce("span", {innerHTML: lang("photo_load_failed_remote", {}, {direct: {href: ph.originalURL, target: "_blank"} })}));
 			this.errorOverlay.appendChild(err);
 		}else{
 			this.errorOverlay.innerHTML=lang("photo_load_failed_local");
@@ -287,22 +280,51 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		this.imgWrap.appendChild(this.errorOverlay);
 	}
 
-	private updateImageURLs(){
-		var size=this.currentURLs[0], x2size=this.currentURLs[0];
-		for(var i=0;i<this.currentURLs.length;i++){
-			size=this.currentURLs[i];
-			x2size=i<this.currentURLs.length-1 ? this.currentURLs[i+1] : null;
-			if(size.width>=this.imgW && size.height>=this.imgH)
+	private updateImageURLs(urls:PhotoViewerSizedImageURLs[], imgEl:HTMLImageElement, sourceWebp:HTMLSourceElement, sourceJpeg:HTMLSourceElement){
+		var viewportW=window.innerWidth;
+		var viewportH=window.innerHeight;
+		var biggest=urls[urls.length-1];
+		var phW=biggest.width;
+		var phH=biggest.height;
+
+		var w=viewportW-2-120-34-50;
+		var h=viewportH-31-28-72;
+		if(w>1280){
+			w=1280;
+		}else if(w>807 && w>907){
+			w=807;
+		}else if(w<604){
+			w=604;
+		}
+		if(h<453){
+			h=453;
+		}
+
+		var c=phW>w ? (w/phW) : 1;
+		if(phH*c>h){
+			c=h/phH;
+		}
+		w=Math.max(604, Math.floor(phW*c));
+		h=Math.max(453, Math.floor(phH*c));
+
+		imgEl.style.width=w+"px";
+		imgEl.style.height=h+"px";
+
+		var size=urls[0], x2size=urls[0];
+		for(var i=0;i<urls.length;i++){
+			size=urls[i];
+			x2size=i<urls.length-1 ? urls[i+1] : null;
+			if(size.width>=w && size.height>=h)
 				break;
 		}
-		this.imgEl.src=size.jpeg;
+		imgEl.src=size.jpeg;
 		if(x2size){
 			var multiplier=x2size.width/size.width; // Might not actually be 2x. Will cause misalignment on retina displays if you still put "2x" there.
-			this.sourceWebp.srcset=`${size.webp}, ${x2size.webp} ${multiplier}x`;
-			this.sourceJpeg.srcset=`${size.jpeg}, ${x2size.jpeg} ${multiplier}x`;
+			sourceWebp.srcset=`${size.webp}, ${x2size.webp} ${multiplier}x`;
+			sourceJpeg.srcset=`${size.jpeg}, ${x2size.jpeg} ${multiplier}x`;
 		}else{
-			this.sourceWebp.srcset=size.webp;
-			this.sourceJpeg.srcset=size.jpeg;
+			sourceWebp.srcset=size.webp;
+			sourceJpeg.srcset=size.jpeg;
 		}
 	}
 
@@ -368,7 +390,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 						this.photos[this.currentIndex].urls=urls;
 						this.currentURLs=urls;
 						this.updateSize();
-						this.updateImageURLs();
+						this.updateImageURLs(this.currentURLs, this.imgEl, this.sourceWebp, this.sourceJpeg);
 					}, (err)=>{
 						new MessageBox(lang("error"), err || lang("network_error"), lang("close")).show();
 						buttons.show();
@@ -446,6 +468,13 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			throw new Error("already loading");
 		this.loading=true;
 		ajaxGet(addParamsToURL(this.listURL, {list: this.listID, offset: offset.toString()}), (_r)=>{
+			if(_r instanceof Array){
+				for(var cmd of _r)
+					applyServerCommand(cmd);
+				if(this.photosLoadedOffset==null)
+					this.dismiss();
+				return;
+			}
 			var r=_r as PhotoViewerInfoAjaxResponse;
 			this.total=r.total;
 			this.updateTitle();
@@ -461,13 +490,14 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				this.photos[i+offset]=r.photos[i];
 			}
 			this.updateBottomPart();
+			this.preloadAdjacentPhotos();
 			this.loading=false;
 			this.maybeLoadMorePhotos();
 			if(this.failed){
 				this.handleFailedLoad();
 			}
 		}, (msg)=>{
-			new MessageBox(lang("error"), msg, lang("close")).show();
+			new MessageBox(lang("error"), msg || lang("network_error"), lang("close")).show();
 			this.loading=false;
 		}, "json");
 	}
@@ -495,10 +525,38 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		this.currentURLs=this.photos[index].urls;
 		this.updateImage();
 		this.updateSize();
-		this.updateImageURLs();
+		this.updateImageURLs(this.currentURLs, this.imgEl, this.sourceWebp, this.sourceJpeg);
 		this.updateTitle();
 		this.updateBottomPart();
 		this.maybeLoadMorePhotos();
+		this.preloadAdjacentPhotos();
+	}
+
+	private preloadAdjacentPhotos(){
+		if(this.total==1)
+			return;
+		var next=this.photos[(this.currentIndex+1)%this.total];
+		if(next){
+			var sourceWebp, sourceJpeg, imgEl;
+			var pictureEl=ce("picture", {}, [
+				sourceWebp=ce("source", {type: "image/webp"}),
+				sourceJpeg=ce("source", {type: "image/jpeg"}),
+				imgEl=ce("img")
+			]);
+			this.updateImageURLs(next.urls, imgEl, sourceWebp, sourceJpeg);
+		}
+		if(this.total==2)
+			return;
+		var prev=this.photos[this.currentIndex==0 ? this.total-1 : this.currentIndex-1];
+		if(prev){
+			var sourceWebp, sourceJpeg, imgEl;
+			var pictureEl=ce("picture", {}, [
+				sourceWebp=ce("source", {type: "image/webp"}),
+				sourceJpeg=ce("source", {type: "image/jpeg"}),
+				imgEl=ce("img")
+			]);
+			this.updateImageURLs(prev.urls, imgEl, sourceWebp, sourceJpeg);
+		}
 	}
 
 	public showNext(){
@@ -586,6 +644,8 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 			};
 			this.tagAreaSelector.onEndDrag=()=>{
 				var area=this.tagAreaSelector.getSelectedArea();
+				if(!area.w || !area.h)
+					return;
 				this.tagFriendListPopup.style.left=(this.tagsWrap.offsetLeft+area.x+area.w)+"px";
 				this.tagFriendListPopup.style.top=(this.tagsWrap.offsetTop+area.y)+"px";
 				this.tagFriendListPopup.showAnimated();

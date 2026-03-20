@@ -32,6 +32,8 @@ import jakarta.servlet.http.HttpSessionListener;
 import smithereen.activitypub.ActivityPub;
 import smithereen.activitypub.objects.ActivityPubObject;
 import smithereen.activitypub.objects.Actor;
+import smithereen.api.methods.ApiUtils;
+import smithereen.api.model.ApiSerializable;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.MailController;
 import smithereen.controllers.ModerationController;
@@ -59,8 +61,8 @@ import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPresence;
-import smithereen.model.admin.UserRole;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.UserRole;
 import smithereen.model.admin.ViolationReport;
 import smithereen.model.comments.Comment;
 import smithereen.model.fasp.FASPCapability;
@@ -68,14 +70,16 @@ import smithereen.model.photos.Photo;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.routes.ActivityPubRoutes;
+import smithereen.routes.ApiRoutes;
+import smithereen.routes.AppsRoutes;
 import smithereen.routes.BoardRoutes;
-import smithereen.routes.FaspApiRoutes;
-import smithereen.routes.MastodonApiRoutes;
 import smithereen.routes.BookmarksRoutes;
 import smithereen.routes.CommentsRoutes;
+import smithereen.routes.FaspApiRoutes;
 import smithereen.routes.FriendsRoutes;
 import smithereen.routes.GroupsRoutes;
 import smithereen.routes.MailRoutes;
+import smithereen.routes.MastodonApiRoutes;
 import smithereen.routes.NewsfeedRoutes;
 import smithereen.routes.NotificationsRoutes;
 import smithereen.routes.NotifierWebSocket;
@@ -83,13 +87,14 @@ import smithereen.routes.PhotosRoutes;
 import smithereen.routes.PostRoutes;
 import smithereen.routes.ProfileRoutes;
 import smithereen.routes.SessionRoutes;
-import smithereen.routes.admin.AdminAnnouncementsRoutes;
-import smithereen.routes.admin.AdminFaspRoutes;
-import smithereen.routes.admin.AdminCustomCSSRoutes;
 import smithereen.routes.SettingsRoutes;
 import smithereen.routes.SystemRoutes;
 import smithereen.routes.WellKnownRoutes;
+import smithereen.routes.admin.AdminAnnouncementsRoutes;
+import smithereen.routes.admin.AdminCustomCSSRoutes;
+import smithereen.routes.admin.AdminDebugRoutes;
 import smithereen.routes.admin.AdminEmailRulesRoutes;
+import smithereen.routes.admin.AdminFaspRoutes;
 import smithereen.routes.admin.AdminFederationRoutes;
 import smithereen.routes.admin.AdminGeneralRoutes;
 import smithereen.routes.admin.AdminGroupsRoutes;
@@ -116,7 +121,6 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.MaintenanceScheduler;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.TopLevelDomainList;
-import spark.Filter;
 import spark.Request;
 import spark.Response;
 import spark.Session;
@@ -135,6 +139,7 @@ public class SmithereenApplication{
 	private static HashMap<String, String> serverErrorPages=new HashMap<>();
 
 	static{
+		Locale.setDefault(Locale.US);
 		System.setProperty("org.slf4j.simpleLogger.logFile", "System.out");
 		System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
 		if(Config.DEBUG){
@@ -155,6 +160,9 @@ public class SmithereenApplication{
 		LOG=LoggerFactory.getLogger(SmithereenApplication.class);
 
 		context=new ApplicationContext();
+
+		// Prevents the dock icon on macOS from appearing when BufferedImage is used in e.g. the captcha generator
+		System.setProperty("java.awt.headless", "true");
 	}
 
 	public static void main(String[] args){
@@ -231,8 +239,11 @@ public class SmithereenApplication{
 			SessionInfo info=sessionInfo(request);
 			if(info!=null && info.account!=null){
 				info.account=UserStorage.getAccount(info.account.id);
+				String psid=request.cookie("psid");
 				if(info.account==null){
 					response.removeCookie("/", "psid");
+					request.session().invalidate();
+				}else if(!Objects.equals(psid, info.persistentSessionID)){
 					request.session().invalidate();
 				}else{
 					info.permissions=SessionStorage.getUserPermissions(info.account);
@@ -246,7 +257,7 @@ public class SmithereenApplication{
 						info.ip=ip;
 						BackgroundTaskRunner.getInstance().submit(()->{
 							try{
-								SessionStorage.setLastActive(info.account.id, request.cookie("psid"), info.account.lastActive, ip, ua, uaHash);
+								SessionStorage.setLastActive(info.account.id, psid, info.account.lastActive, ip, ua, uaHash);
 							}catch(SQLException x){
 								LOG.warn("Error updating account session", x);
 							}
@@ -394,6 +405,10 @@ public class SmithereenApplication{
 			getLoggedIn("/export", SettingsRoutes::dataExports);
 			getLoggedIn("/requestExport", SettingsRoutes::requestDataExportForm);
 			postWithCSRF("/requestExport", SettingsRoutes::requestDataExport);
+			path("/apps", ()->{
+				getLoggedIn("", SettingsRoutes::apps);
+				getWithCSRF("/:id/revoke", SettingsRoutes::appsRevokeAccess);
+			});
 
 			path("/admin", ()->{
 				getRequiringPermission("", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminGeneralRoutes::serverInfo);
@@ -528,6 +543,13 @@ public class SmithereenApplication{
 						postRequiringPermissionWithCSRF("/update", UserRole.Permission.MANAGE_ANNOUNCEMENTS, AdminAnnouncementsRoutes::updateAnnouncement);
 					});
 				});
+
+				if(Config.DEBUG){
+					path("/debug", ()->{
+						getRequiringPermission("/injectActivity", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminDebugRoutes::injectActivity);
+						postRequiringPermissionWithCSRF("/injectActivity", UserRole.Permission.MANAGE_SERVER_SETTINGS, AdminDebugRoutes::doInjectActivity);
+					});
+				}
 			});
 		});
 
@@ -652,9 +674,9 @@ public class SmithereenApplication{
 			postWithCSRF("/doRemoveFriend", FriendsRoutes::doRemoveFriend);
 			getLoggedIn("/confirmRemoveFriend", FriendsRoutes::confirmRemoveFriend);
 
-			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncRelationshipsCollections);
-			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncContentCollections);
-			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_USERS, ProfileRoutes::syncProfile);
+			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::syncRelationshipsCollections);
+			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::syncContentCollections);
+			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::syncProfile);
 			getRequiringPermission("/meminfo", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::userInfo);
 			getRequiringPermission("/meminfo/content", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::userContent);
 			getRequiringPermission("/banForm", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::banUserForm);
@@ -670,6 +692,8 @@ public class SmithereenApplication{
 			getRequiringPermission("/adminChangeUsernameForm", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::changeUserUsernameForm);
 			postRequiringPermissionWithCSRF("/adminChangeUsername", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::changeUserUsername);
 			getRequiringPermission("/adminConfirmResetUsername", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::confirmResetUserUsername);
+			getRequiringPermissionWithCSRF("/recountFriends", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::recountFriends);
+			getRequiringPermissionWithCSRF("/recountWall", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::recountWall);
 
 			get("/hoverCard", ProfileRoutes::mentionHoverCard);
 
@@ -702,8 +726,7 @@ public class SmithereenApplication{
 				}
 				return "";
 			});
-			get("", "application/activity+json", ActivityPubRoutes::groupActor);
-			get("", "application/ld+json", ActivityPubRoutes::groupActor);
+			getActivityPub("", ActivityPubRoutes::groupActor);
 
 			postWithCSRF("/createWallPost", PostRoutes::createGroupWallPost);
 
@@ -771,9 +794,9 @@ public class SmithereenApplication{
 			getWithCSRF("/invite", GroupsRoutes::inviteFriend);
 			postWithCSRF("/respondToInvite", GroupsRoutes::respondToInvite);
 
-			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncRelationshipsCollections);
-			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncContentCollections);
-			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_GROUPS, GroupsRoutes::syncProfile);
+			getRequiringPermissionWithCSRF("/syncRelCollections", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::syncRelationshipsCollections);
+			getRequiringPermissionWithCSRF("/syncContentCollections", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::syncContentCollections);
+			getRequiringPermissionWithCSRF("/syncProfile", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::syncProfile);
 			getRequiringPermission("/staffNotes", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNotes);
 			postRequiringPermissionWithCSRF("/addStaffNote", UserRole.Permission.MANAGE_GROUPS,AdminGroupsRoutes::groupStaffNoteAdd);
 			getRequiringPermission("/staffNotes/:noteID/confirmDelete", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupStaffNoteConfirmDelete);
@@ -804,6 +827,18 @@ public class SmithereenApplication{
 			getActivityPubCollection("/pinnedTopics", 100, ActivityPubRoutes::groupPinnedTopics);
 
 			getRequiringPermission("/groupinfo", UserRole.Permission.MANAGE_GROUPS, AdminGroupsRoutes::groupInfo);
+		});
+
+		path("/apps", ()->{
+			getLoggedIn("/create", AppsRoutes::createAppForm);
+			postWithCSRF("/create", AppsRoutes::createApp);
+			postWithCSRF("/uploadLogo", AppsRoutes::uploadAppLogo);
+			path("/:id", ()->{
+				get("", AppsRoutes::appPage);
+				getActivityPub("", ActivityPubRoutes::appActor);
+				getLoggedIn("/edit", AppsRoutes::editAppForm);
+				postWithCSRF("/edit", AppsRoutes::editApp);
+			});
 		});
 
 		path("/posts/:postID", ()->{
@@ -956,14 +991,6 @@ public class SmithereenApplication{
 				postWithCSRF("/send", MailRoutes::sendMessage);
 				getLoggedIn("/history", MailRoutes::history);
 				path("/messages/:id", ()->{
-					Filter idParserFilter=(req, resp)->{
-						long id=decodeLong(req.params(":id"));
-						if(id==0)
-							throw new ObjectNotFoundException();
-						req.attribute("id", id);
-					};
-					before("", idParserFilter);
-					before("/*", idParserFilter);
 					getLoggedIn("", MailRoutes::viewMessage);
 					getWithCSRF("/delete", MailRoutes::delete);
 					getWithCSRF("/deleteForEveryone", MailRoutes::deleteForEveryone);
@@ -992,6 +1019,22 @@ public class SmithereenApplication{
 				post("/registration", FaspApiRoutes::registration);
 				postFaspAPI("/debug/v0/callback/responses", FASPCapability.DEBUG, FaspApiRoutes::debugCallback);
 			});
+			get("/method/:method", ApiRoutes::apiCall);
+			post("/method/:method", ApiRoutes::apiCall);
+			options("/method/:method", ApiRoutes::apiCallPreflight);
+			post("/uploadAttachmentPhoto", ApiRoutes::uploadAttachmentPhoto);
+			post("/uploadAlbumPhoto", ApiRoutes::uploadAlbumPhoto);
+			post("/uploadAvatar", ApiRoutes::uploadAvatar);
+			options("/uploadAttachmentPhoto", ApiRoutes::apiCallPreflight);
+			options("/uploadAlbumPhoto", ApiRoutes::apiCallPreflight);
+			options("/uploadAvatar", ApiRoutes::apiCallPreflight);
+			get("/captcha/:sid", ApiRoutes::captcha);
+			get("/testValidation", ApiRoutes::testValidation);
+		});
+		path("/oauth", ()->{
+			get("/authorize", ApiRoutes::oauthAuthorize);
+			post("/token", ApiRoutes::oauthToken);
+			postLoggedIn("/doAuthorize", ApiRoutes::oauthDoAuthorize);
 		});
 
 		get("/healthz", (req, resp)->"");
@@ -999,9 +1042,7 @@ public class SmithereenApplication{
 		path("/:username", ()->{
 			get("", ProfileRoutes::profile);
 			// These also handle groups
-			getActivityPub("", ActivityPubRoutes::userActor);
-
-			postWithCSRF("/remoteFollow", ActivityPubRoutes::remoteFollow);
+			getActivityPub("", ActivityPubRoutes::actorByUsername);
 		});
 
 
@@ -1081,7 +1122,7 @@ public class SmithereenApplication{
 
 					SessionInfo info=req.session().attribute("info");
 					if(info.account!=null){
-						context(req).getUsersController().setOnline(info.account.user, isMobile(req) ? UserPresence.PresenceType.MOBILE_WEB : UserPresence.PresenceType.WEB, req.cookie("psid").hashCode());
+						context(req).getUsersController().setOnline(info.account.user, isMobile(req) ? UserPresence.PresenceType.MOBILE_WEB : UserPresence.PresenceType.WEB, req.cookie("psid").hashCode(), 0);
 					}
 
 					if(req.requestMethod().equalsIgnoreCase("get") && req.attribute("noHistory")==null){
@@ -1188,6 +1229,15 @@ public class SmithereenApplication{
 			writer.flush();
 		});
 
+		responseTypeSerializer(ApiSerializable.class, (out, obj, req, resp)->{
+			OutputStreamWriter writer=new OutputStreamWriter(out, StandardCharsets.UTF_8);
+			if(req.attribute("serializeNulls")!=null)
+				ApiRoutes.gsonWithNulls.toJson(obj, writer);
+			else
+				ApiRoutes.gson.toJson(obj, writer);
+			writer.flush();
+		});
+
 		addServletEventListener(new HttpSessionListener(){
 			@Override
 			public void sessionDestroyed(HttpSessionEvent se){
@@ -1221,6 +1271,11 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(DatabaseConnectionManager::closeUnusedConnections, 10, TimeUnit.MINUTES);
 		MaintenanceScheduler.runPeriodically(MailController::deleteRestorableMessages, 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(MediaStorageUtils::deleteAbandonedFiles, 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getAppsController().deleteExpiredCodesAndTokens(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getWallController().removeExpiredGuids(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getCommentsController().removeExpiredGuids(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(()->context.getMailController().removeExpiredGuids(), 1, TimeUnit.HOURS);
+		MaintenanceScheduler.runPeriodically(ApiUtils::doCleanupTasks, 10, TimeUnit.MINUTES);
 		context.getUsersController().loadPresenceFromDatabase();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{

@@ -1,5 +1,8 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,7 +22,6 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import smithereen.Utils;
 import smithereen.storage.sql.DatabaseConnection;
 import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
@@ -78,6 +80,13 @@ public class DatabaseUtils{
 					.where("username=? AND domain=''", username)
 					.executeAndGetInt();
 			if(groupCount>0)
+				return false;
+			int appCount=new SQLQueryBuilder(conn)
+					.selectFrom("api_applications")
+					.count()
+					.where("username=? AND domain=''", username)
+					.executeAndGetInt();
+			if(appCount>0)
 				return false;
 			action.run();
 			return true;
@@ -209,7 +218,7 @@ public class DatabaseUtils{
 		}
 	}
 
-	public static Instant getInstant(ResultSet res, String name) throws SQLException{
+	public static @Nullable Instant getInstant(@NotNull ResultSet res, @NotNull String name) throws SQLException{
 		Timestamp ts=res.getTimestamp(name);
 		return ts==null ? null : ts.toInstant();
 	}

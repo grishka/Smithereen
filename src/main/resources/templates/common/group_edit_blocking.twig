@@ -6,21 +6,18 @@
 	<div class="summary">{{ L('settings_blocked_users') }}</div>
 </div>
 <div class="singleColumn">
-	<table width="100%" class="dataTable noOuterBorders">
-		<colgroup><col width="*"/><col width="100"/></colgroup>
-		{% for user in blockedUsers %}
-			<tr>
-				<td><a href="{{ user.profileURL }}"><span class="tinyInlineAva">{{user | pictureForAvatar('a', 32)}}</span>{{ user | name('complete') }}</a></td>
-				<td align="right">
-					<a href="/groups/{{ group.id }}/confirmUnblockUser?id={{ user.id }}" data-confirm-action="/groups/{{ group.id }}/unblockUser?id={{ user.id }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L('confirm_unblock_user_X', {'name': user | name('fullAndGender')}) | forceEscape }}">{{ L('unblock') }}</a>
-				</td>
-			</tr>
-		{% else %}
-			<tr>
-				<td colspan="2" ><div class="emptyState">{{ L('settings_no_blocked_users') }}</div></td>
-			</tr>
-		{% endfor %}
-	</table>
+	{% for user in blockedUsers %}
+	<div class="listItemWithDivider flexContainer">
+		<div class="flexStretch">
+			<a href="{{ user.profileURL }}"><span class="tinyInlineAva">{{user | pictureForAvatar('a', 32)}}</span>{{ user | name }}</a>
+		</div>
+		<div class="flexFixed">
+			<a href="/groups/{{ group.id }}/confirmUnblockUser?id={{ user.id }}" data-confirm-action="/groups/{{ group.id }}/unblockUser?id={{ user.id }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L('confirm_unblock_user_X', {'name': user | name('fullAndGender')}) | forceEscape }}">{{ L('unblock') }}</a>
+		</div>
+	</div>
+	{% else %}
+	<div class="emptyState">{{ L('settings_no_blocked_users') }}</div>
+	{% endfor %}
 </div>
 
 <div class="summaryWrap">
@@ -30,20 +27,15 @@
 	</div>
 </div>
 <div class="singleColumn">
-	<table width="100%" class="dataTable noOuterBorders">
-		<colgroup><col width="*"/><col width="100"/></colgroup>
-		{% for domain in blockedDomains %}
-			<tr>
-				<td>{{ domain }}</td>
-				<td align="right">
-					<a href="/groups/{{ group.id }}/confirmUnblockDomain?domain={{ domain }}" data-confirm-action="/groups/{{ group.id }}/unblockDomain?domain={{ domain }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L('confirm_unblock_domain_X', {'domain': domain}) | forceEscape }}">{{ L('unblock') }}</a>
-				</td>
-			</tr>
-			{% else %}
-			<tr>
-				<td colspan="2"><div class="emptyState">{{ L('settings_no_blocked_domains') }}</div></td>
-			</tr>
-		{% endfor %}
-	</table>
+	{% for domain in blockedDomains %}
+	<div class="listItemWithDivider flexContainer">
+		<div class="flexStretch">{{ domain }}</div>
+		<div class="flexFixed">
+			<a href="/groups/{{ group.id }}/confirmUnblockDomain?domain={{ domain }}" data-confirm-action="/groups/{{ group.id }}/unblockDomain?domain={{ domain }}" data-confirm-title="{{ L('unblock') }}" data-confirm-message="{{ L('confirm_unblock_domain_X', {'domain': domain}) | forceEscape }}">{{ L('unblock') }}</a>
+		</div>
+	</div>
+	{% else %}
+	<div class="emptyState">{{ L('settings_no_blocked_domains') }}</div>
+	{% endfor %}
 </div>
 {% endblock %}

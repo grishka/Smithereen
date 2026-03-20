@@ -7,7 +7,6 @@ import java.net.URI;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
-import smithereen.activitypub.ActivityPubWorker;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.util.NoResultCallable;
@@ -35,7 +34,7 @@ public class FetchAndStoreOneGroupMemberTask extends NoResultCallable{
 				context.getObjectLinkResolver().ensureObjectIsInCollection(user, user.getGroupsURL(), group.activityPubID);
 			if(user.id==0)
 				context.getObjectLinkResolver().storeOrUpdateRemoteObject(user, user);
-			context.getGroupsController().joinGroup(group, user, tentative, true);
+			context.getGroupsController().joinGroup(group, user, tentative, true, false);
 		}catch(Exception x){
 			LOG.debug("Error fetching remote user {}", userID, x);
 		}

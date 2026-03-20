@@ -1,5 +1,8 @@
 package smithereen.storage;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -23,6 +26,7 @@ import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.PrivacySetting;
+import smithereen.model.RemoteImage;
 import smithereen.model.SizedImage;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.media.MediaFileRecord;
@@ -236,7 +240,7 @@ public class PhotoStorage{
 				.executeAndGetInt();
 	}
 
-	public static long createLocalPhoto(int ownerID, int authorID, long albumID, long fileID, String description, String descriptionSrc, FormattedTextFormat descriptionFormat, PhotoMetadata metadata) throws SQLException{
+	public static long createLocalPhoto(int ownerID, int authorID, long albumID, long fileID, String description, @Nullable String descriptionSrc, @Nullable FormattedTextFormat descriptionFormat, @Nullable PhotoMetadata metadata) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int displayOrder=new SQLQueryBuilder(conn)
 					.selectFrom("photos")
@@ -397,11 +401,14 @@ public class PhotoStorage{
 			Map<URI, MediaCache.Item> items=MediaCache.getInstance().get(needCacheItems);
 			for(Photo p:remotePhotos){
 				MediaCache.Item item=items.get(p.remoteSrc);
+				RemoteImage ri;
 				if(item instanceof MediaCache.PhotoItem pi){
-					p.image=new CachedRemoteImage(pi, p.remoteSrc);
+					ri=new CachedRemoteImage(pi, p.remoteSrc);
 				}else{
-					p.image=new NonCachedRemoteImage(new NonCachedRemoteImage.AlbumPhotoArgs(p), new SizedImage.Dimensions(p.metadata.width, p.metadata.height), p.remoteSrc);
+					ri=new NonCachedRemoteImage(new NonCachedRemoteImage.AlbumPhotoArgs(p), new SizedImage.Dimensions(p.metadata.width, p.metadata.height), p.remoteSrc);
 				}
+				ri.setBlurHash(p.getBlurHash());
+				p.image=ri;
 			}
 		}
 	}
@@ -537,6 +544,7 @@ public class PhotoStorage{
 						.executeAndGetLong();
 				new SQLQueryBuilder(conn)
 						.update("photos")
+						.value("album_id", photo.albumID)
 						.value("remote_src", photo.remoteSrc)
 						.value("description", photo.description)
 						.value("metadata", Utils.gson.toJson(photo.metadata))
@@ -624,6 +632,14 @@ public class PhotoStorage{
 				.collect(Collectors.toMap(Pair::first, Pair::second));
 	}
 
+	public static int getCountOfPhotosInAlbums(Collection<Long> albumIDs) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.count()
+				.whereIn("album_id", albumIDs)
+				.executeAndGetInt();
+	}
+
 	public static PaginatedList<Photo> getAllPhotosInAlbums(Collection<Long> albumIDs, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
@@ -646,7 +662,7 @@ public class PhotoStorage{
 		}
 	}
 
-	public static long createPhotoTag(long photoID, int placerID, int userID, String name, boolean approved, ImageRect rect, URI apID) throws SQLException{
+	public static long createPhotoTag(long photoID, int placerID, int userID, @NotNull String name, boolean approved, @NotNull ImageRect rect, @Nullable URI apID) throws SQLException{
 		return new SQLQueryBuilder()
 				.insertInto("photo_tags")
 				.value("photo_id", photoID)
@@ -682,6 +698,18 @@ public class PhotoStorage{
 				.collect(Collectors.groupingBy(PhotoTag::photoID));
 	}
 
+	public static Map<Long, Integer> getPhotoTagCounts(Collection<Long> photoIDs) throws SQLException{
+		if(photoIDs.isEmpty())
+			return Map.of();
+		return new SQLQueryBuilder()
+				.selectFrom("photo_tags")
+				.selectExpr("photo_id, count(*)")
+				.whereIn("photo_id", photoIDs)
+				.groupBy("photo_id")
+				.executeAsStream(r->new Pair<>(r.getLong(1), r.getInt(2)))
+				.collect(Collectors.toMap(Pair::first, Pair::second));
+	}
+
 	public static PhotoTag getPhotoTag(long photoID, long tagID) throws SQLException{
 		return new SQLQueryBuilder()
 				.selectFrom("photo_tags")
@@ -712,7 +740,7 @@ public class PhotoStorage{
 				.executeNoResult();
 	}
 
-	public static PaginatedList<Long> getUserTaggedPhotos(int userID, int offset, int count, boolean approved) throws SQLException{
+	public static PaginatedList<Long> getUserTaggedPhotos(int userID, int offset, int count, boolean approved, boolean reverseOrder) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=new SQLQueryBuilder(conn)
 					.selectFrom("photo_tags")
@@ -725,7 +753,7 @@ public class PhotoStorage{
 					.selectFrom("photo_tags")
 					.columns("photo_id")
 					.where("user_id=? AND approved=?", userID, approved)
-					.orderBy("created_at DESC")
+					.orderBy("created_at "+(reverseOrder ? "ASC" : "DESC"))
 					.limit(count, offset)
 					.executeAndGetLongStream()
 					.boxed()
@@ -807,5 +835,13 @@ public class PhotoStorage{
 						return Config.localURI("/photos/"+XTEA.encodeObjectID(p.first(), ObfuscatedObjectIDType.PHOTO));
 					return URI.create(apID);
 				}));
+	}
+
+	public static long getPhotoIdByFileId(long fileID, int ownerID) throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("photos")
+				.columns("id")
+				.where("local_file_id=? AND owner_id=?", fileID, ownerID)
+				.executeAndGetLong();
 	}
 }

@@ -160,10 +160,7 @@ public class UserDataExportWorker{
 				}, filesToInclude, zos, null, "bookmarkedGroups", false);
 
 				// Blocked users
-				writeLinkCollections(offset->{
-					List<User> users=context.getPrivacyController().getBlockedUsers(user);
-					return new PaginatedList<>(users, users.size(), 0, users.size());
-				}, filesToInclude, zos, null, "blockedUsers", false);
+				writeLinkCollections(offset->context.getPrivacyController().getBlockedUsers(user, offset, 500), filesToInclude, zos, null, "blockedUsers", false);
 
 				// Blocked domains
 				writeJsonElement(context.getPrivacyController().getBlockedDomains(user).stream().collect(JsonArrayBuilder.COLLECTOR), zos, "blockedDomains");
@@ -181,7 +178,7 @@ public class UserDataExportWorker{
 
 				// Wall
 				writeLocalObjectRemoteLinkCollections(offset->{
-					PaginatedList<Post> posts=context.getWallController().getWallPosts(user, user, false, offset, 100);
+					PaginatedList<Post> posts=context.getWallController().getWallPosts(user, user, WallController.WallMode.ALL, offset, 100);
 					return new PaginatedList<>(posts, posts.list.stream().map(p->NoteOrQuestion.fromNativePost(p, context)).toList());
 				}, filesToInclude, zos, user.getWallURL(), "wall", false);
 
@@ -230,7 +227,7 @@ public class UserDataExportWorker{
 
 				// Tagged photos
 				writeLocalObjectRemoteLinkCollections(offset->{
-					PaginatedList<Photo> photos=context.getPhotosController().getUserTaggedPhotos(user, user, offset, 100);
+					PaginatedList<Photo> photos=context.getPhotosController().getUserTaggedPhotos(user, user, offset, 100, false);
 					Set<Long> needAlbums=photos.list.stream().map(p->p.albumID).collect(Collectors.toSet());
 					Map<Long, PhotoAlbum> albums=context.getPhotosController().getAlbumsIgnoringPrivacy(needAlbums);
 					return new PaginatedList<>(photos, photos.list.stream().map(p->ActivityPubPhoto.fromNativePhoto(p, albums.get(p.albumID), context)).toList());

@@ -17,7 +17,7 @@ public class RemoveGroupHandler extends ActivityTypeHandler<ForeignUser, Remove,
 			throw new BadRequestException("activity.target is required and must be a URI");
 		URI target=activity.target.link;
 		if(target.equals(actor.getGroupsURL())){
-			context.appContext.getGroupsController().leaveGroup(object, actor);
+			context.appContext.getGroupsController().leaveGroup(object, actor, false);
 		}else{
 			LOG.warn("Unknown Remove{Group} target {}", target);
 		}

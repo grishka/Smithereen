@@ -1,6 +1,6 @@
 package smithereen.model.api;
 
-public class ApiInstance{
+public class MastodonApiInstance{
 	public String uri;
 	public String title;
 	public String shortDescription;

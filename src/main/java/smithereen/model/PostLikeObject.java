@@ -2,6 +2,8 @@ package smithereen.model;
 
 import com.google.gson.JsonParser;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -28,7 +30,7 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 	public String contentWarning;
 	public Instant updatedAt;
 	public Set<Integer> mentionedUserIDs=Set.of();
-	public int replyCount;
+	public int replyCount, immediateReplyCount;
 	public FederationState federationState=FederationState.NONE;
 	public URI activityPubURL;
 	public URI activityPubReplies;
@@ -40,6 +42,7 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 		if(res.wasNull())
 			ownerID=-res.getInt("owner_group_id");
 		replyCount=res.getInt("reply_count");
+		immediateReplyCount=res.getInt("immediate_reply_count");
 
 		authorID=res.getInt("author_id");
 		if(res.wasNull()){
@@ -130,8 +133,14 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 	public abstract long getObjectID();
 
 	@Override
+	@NotNull
 	public List<ActivityPubObject> getAttachments(){
 		return attachments==null ? List.of() : attachments;
+	}
+
+	@Override
+	public void setAttachments(@NotNull List<ActivityPubObject> attachments){
+		this.attachments=attachments;
 	}
 
 	public void setActivityPubID(URI activityPubID){

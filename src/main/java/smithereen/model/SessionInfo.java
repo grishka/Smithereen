@@ -17,6 +17,7 @@ public class SessionInfo{
 	public UserPermissions permissions;
 	public long userAgentHash;
 	public InetAddress ip;
+	public String persistentSessionID;
 
 	public static class PageHistory{
 		public ArrayList<String> entries=new ArrayList<>();

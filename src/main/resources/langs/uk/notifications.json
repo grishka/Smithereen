@@ -1,1 +1,3 @@
-{}
+{
+  "notification_replied_to_comment": "{gender, select, female {відповіла} other {відповів}} на ваш коментар"
+}

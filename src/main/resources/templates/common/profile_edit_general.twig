@@ -16,7 +16,7 @@
 				{'value': 'FEMALE', 'label': L('gender_female'), 'selected': currentUser.gender=='FEMALE'},
 				{'value': 'OTHER', 'label': L('gender_other'), 'selected': currentUser.gender=='OTHER'}
 			]) }}
-        	{{ form.textInput('bdate', L('birthday'), currentUser.birthDate, {'type': 'date', 'max': todayDate}) }}
+        	{{ form.textInput('bdate', L('birthday'), currentUser.birthDate, {'type': 'date', 'max': todayDate, 'min': '1900-01-01'}) }}
         	{{ form.textInput('hometown', L('profile_hometown'), currentUser.hometown) }}
 			{%- set options=[{'value': "", 'label': L('profile_field_none_selected'), 'selected': currentUser.relationship is null}] %}
 			{%- for option in relationshipOptions %}

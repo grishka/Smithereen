@@ -132,6 +132,6 @@ class AudioManager{
 	}
 
 	private onErr(e:ErrorEvent){
-		this.audioPlayer.onError((e.target as HTMLMediaElement).error.code)
+		this.audioPlayer.onError((e.target as HTMLMediaElement).error)
 	}
 }

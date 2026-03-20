@@ -15,20 +15,23 @@ import smithereen.activitypub.objects.Actor;
 import smithereen.model.Group;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
+import smithereen.model.apps.ClientApp;
 import smithereen.templates.Templates;
 
 public class PictureForAvatarFilter implements Filter{
 	@Override
 	public Object apply(Object input, Map<String, Object> args, PebbleTemplate self, EvaluationContext context, int lineNumber) throws PebbleException{
-		SizedImage image;
 		String additionalClasses="";
-		if(input instanceof Actor actor){
-			image=actor.getAvatar();
-			if(actor instanceof Group)
-				additionalClasses=" group";
-		}else{
-			image=null;
-		}
+		SizedImage image=switch(input){
+			case Actor actor -> {
+				if(actor instanceof Group)
+					additionalClasses=" group";
+				yield actor.getAvatar();
+			}
+			case SizedImage img -> img;
+			case ClientApp app -> app.getLogo();
+			case null, default -> null;
+		};
 
 		String typeStr=(String) args.get("type");
 		SizedImage.Type type=SizedImage.Type.fromSuffix(
@@ -64,12 +67,11 @@ public class PictureForAvatarFilter implements Filter{
 		}
 
 		List<String> classes=new ArrayList<>();
-		classes.add("avaImage");
 		if(args.containsKey("classes")){
 			classes.add(args.get("classes").toString());
 		}
-		return new SafeString("<span class=\"ava avaHasImage size"+typeStr.toUpperCase()+(args.containsKey("wrapperClasses") ? (" "+args.get("wrapperClasses")) : "")+"\""+(isRect || args.containsKey("size") ? (" style=\"--ava-width: "+width+"px;--ava-height: "+height+"px\"") : "")+">"
-				+image.generateHTML(type, classes, null, 0, 0, true, null)+"</span>");
+		List<String> wrapperClasses=args.containsKey("wrapperClasses") ? List.of(args.get("wrapperClasses").toString().split(" ")) : List.of();
+		return new SafeString(image.generateAvatarHTML(type, width, height, classes, wrapperClasses));
 	}
 
 	@Override

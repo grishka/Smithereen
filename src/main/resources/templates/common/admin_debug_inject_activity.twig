@@ -1,0 +1,12 @@
+{% extends "page" %}
+{% block content %}
+{% include "admin_debug_tabbar" with {'tab': 'injectActivity'} %}
+<div class="gray borderBottom singleColumn textByItself">
+	<p>Use this to inject activities as if they were posted to this server's inbox with a valid signature. Useful for debugging federation issues.</p>
+</div>
+<form class="singleColumn" action="/settings/admin/debug/injectActivity" method="post" data-ajax>
+	<textarea name="activity" placeholder="Activity JSON" style="width: 100%; font-family: monospace" id="activity"></textarea>
+	{% script %}autoSizeTextArea(ge('activity'));{% endscript %}
+	<input type="submit" value="Submit"/>
+</form>
+{% endblock %}

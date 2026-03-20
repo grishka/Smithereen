@@ -168,11 +168,11 @@ public class ActivityPub{
 				.toFormatter();
 	}
 
-	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean acceptHTML) throws IOException{
-		return fetchRemoteObjectInternal(_uri, signer, actorToken, ctx, true, acceptHTML);
+	public static ActivityPubObject fetchRemoteObject(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean acceptHTML, boolean enforceContentType) throws IOException{
+		return fetchRemoteObjectInternal(_uri, signer, actorToken, ctx, true, acceptHTML, enforceContentType);
 	}
 
-	private static ActivityPubObject fetchRemoteObjectInternal(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean tryHTML, boolean acceptHTML) throws IOException{
+	private static ActivityPubObject fetchRemoteObjectInternal(URI _uri, Actor signer, JsonObject actorToken, ApplicationContext ctx, boolean tryHTML, boolean acceptHTML, boolean enforceContentType) throws IOException{
 		LOG.trace("Fetching remote object from {}", _uri);
 		URI uri;
 		String token;
@@ -247,7 +247,7 @@ public class ActivityPub{
 						LOG.trace("Will follow redirect: {}", url);
 						if(StringUtils.isNotEmpty(url)){
 							try{
-								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false, false);
+								return fetchRemoteObjectInternal(UriBuilder.parseAndEncode(url), signer, actorToken, ctx, false, false, enforceContentType);
 							}catch(URISyntaxException x){
 								throw new ObjectNotFoundExceptionWithFallback("Failed to parse URL from <link rel=\"alternate\"> on HTML page at "+uri, x, htmlDocument);
 							}
@@ -257,7 +257,7 @@ public class ActivityPub{
 				throw new ObjectNotFoundExceptionWithFallback("Received HTML that doesn't contain a <link>", htmlDocument);
 			}
 			// Allow "application/activity+json" or "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""
-			if(!contentType.matches("application/activity+json") && !contentType.matches(EXPECTED_CONTENT_TYPE)){
+			if(enforceContentType && !contentType.matches("application/activity+json") && !contentType.matches(EXPECTED_CONTENT_TYPE)){
 				throw new ObjectNotFoundException("Invalid Content-Type for "+uri+": "+contentType);
 			}
 
@@ -333,8 +333,10 @@ public class ActivityPub{
 	}
 
 	public static void postActivity(URI inboxUrl, Activity activity, Actor actor, ApplicationContext ctx, boolean isRetry, EnumSet<Server.Feature> requiredServerFeatures, boolean throwFor403) throws IOException{
-		if(actor.privateKey==null)
+		if(actor.privateKey==null){
+			LOG.error("Tried to send an activity on behalf of foreign actor {} to {}: {}", actor.activityPubID, inboxUrl, activity.asRootActivityPubObject(ctx, inboxUrl.getAuthority()));
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
+		}
 
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
@@ -650,7 +652,7 @@ public class ActivityPub{
 	private static String generateActorTokenStringToBeSigned(JsonObject obj){
 		return obj.keySet()
 				.stream()
-				.filter(key->!key.equals("signature"))
+				.filter(key->!key.equals("signatures"))
 				.map(key->key+": "+obj.getAsJsonPrimitive(key).toString())
 				.sorted()
 				.collect(Collectors.joining("\n"));
@@ -747,6 +749,7 @@ public class ActivityPub{
 	}
 
 	public static JsonObject fetchActorToken(@NotNull ApplicationContext context, @NotNull Actor actor, @NotNull ForeignGroup group){
+		LOG.debug("Fetching actor token for {} on behalf of {}", group.activityPubID, actor.activityPubID);
 		String url=Objects.requireNonNull(group.actorTokenEndpoint).toString();
 		HttpRequest.Builder builder=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10));
 		signRequest(builder, group.actorTokenEndpoint, actor, null, "get");

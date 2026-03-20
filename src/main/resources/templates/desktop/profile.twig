@@ -64,7 +64,7 @@
 	{% elseif user.banStatus=='HIDDEN' %}
 	<p>{{ L('admin_user_state_hidden') }}</p>
 	{% elseif user.banStatus=='SELF_DEACTIVATED' %}
-	<p>{{ L('admin_user_state_self_deactivated', {'deletionTime': LD(accountDeletionTime)}) }}</p>
+	<p>{{ L('admin_user_state_self_deactivated', {'gender': user.gender, 'deletionTime': LD(accountDeletionTime)}) }}</p>
 	{% endif %}
 	{% if user.banInfo is not null %}
 	{% if user.banInfo.suspendedOnRemoteServer %}<p>{{ L('admin_user_suspended_remotely') }}</p>{% endif %}
@@ -118,7 +118,7 @@
 			{%if not(isFriend) and not(following) and not(friendRequestSent) and not(followRequested)%}
 			{%if user.supportsFriendRequests%}
 			{% if friendRequestRecvd %}
-				<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept" class="button" data-ajax="1">{{L("add_friend")}}</a>
+				<a href="/users/{{ user.id }}/respondToFriendRequest?csrf={{csrf}}&accept&from=profile" class="button" data-ajax="1">{{L("add_friend")}}</a>
 			{% else %}
 				<a href="/users/{{ user.id }}/confirmSendFriendRequest?csrf={{csrf}}" class="button" data-ajax-box="1">{{L("add_friend")}}</a>
 			{% endif %}

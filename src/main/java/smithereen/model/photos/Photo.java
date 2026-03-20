@@ -2,6 +2,9 @@ package smithereen.model.photos;
 
 import com.google.gson.JsonObject;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -14,6 +17,7 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.model.ActivityPubRepresentable;
+import smithereen.model.BlurHashable;
 import smithereen.model.LikeableContentObject;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
@@ -34,14 +38,17 @@ import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
-public sealed class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable, CommentableContentObject, ReportableContentObject permits ReportedPhoto{
+public sealed class Photo implements SizedAttachment, OwnedContentObject, LikeableContentObject, ActivityPubRepresentable, CommentableContentObject, ReportableContentObject, BlurHashable permits ReportedPhoto{
 	public long id;
 	public int ownerID;
 	public int authorID;
 	public long albumID;
 	public long localFileID;
 	public URI remoteSrc;
-	public String description;
+
+	@NotNull
+	public String description="";
+
 	public Instant createdAt;
 	public PhotoMetadata metadata;
 	public URI apID;
@@ -80,6 +87,7 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 		return Config.localURI(getURL()).toString();
 	}
 
+	@NotNull
 	public String getIdString(){
 		return Utils.encodeLong(XTEA.obfuscateObjectID(id, ObfuscatedObjectIDType.PHOTO));
 	}
@@ -125,6 +133,7 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 	}
 
 	@Override
+	@NotNull
 	public URI getActivityPubID(){
 		if(apID!=null)
 			return apID;
@@ -137,16 +146,28 @@ public sealed class Photo implements SizedAttachment, OwnedContentObject, Likeab
 		return album.activityPubComments!=null ? album.activityPubComments : new UriBuilder(album.getActivityPubID()).appendPath("comments").build();
 	}
 
+	@NotNull
 	public URI getActivityPubURL(){
 		if(metadata!=null && metadata.apURL!=null)
 			return metadata.apURL;
 		return getActivityPubID();
 	}
 
+	@Nullable
+	@Override
 	public String getBlurHash(){
 		if(image instanceof LocalImage li)
-			return li.blurHash;
+			return li.getBlurHash();
 		return metadata.blurhash;
+	}
+
+	@Override
+	public void setBlurHash(@Nullable String blurHash){
+		if(image instanceof LocalImage li){
+			li.setBlurHash(blurHash);
+		}else{
+			metadata.blurhash=blurHash;
+		}
 	}
 
 	public String getSinglePhotoListID(){

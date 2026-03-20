@@ -1,4 +1,7 @@
 {
-  "audio_unknown_artist" : "Unknown Artist",
-  "audio_unknown_title" : "Unknown Title"
+  "audio_unknown_artist": "Unknown Artist",
+  "audio_unknown_title": "Unknown Title",
+  "audio_missing_box_title" : "Missing audio",
+  "audio_missing_box_message_1" : "The audio <b>{artist}&nbsp;— {title}</b> could not be played because it was deleted from the remote server, or has an unsupported format.",
+  "audio_missing_box_message_2" : "You can try to <a id=\"missingAudioLink\">download it directly</a>."
 }

@@ -25,7 +25,7 @@
 				{% elseif image is not null %}
 				<span class="ava avaHasImage sizeA">{{ image | pictureForPhoto(size='a', addClasses=['avaImage']) }}</span>
 				{% else %}
-				<span class="ava avaHasImage sizeA"><img src="/res/lnkouter.svg" class="avaImage"/></span>
+				<span class="ava avaHasImage sizeA avaImage groupLinkPlaceholder"></span>
 				{% endif %}
 				{% set options=[{'type': 'link', 'href': "/groups/#{group.id}/editAdminForm?id=#{admin.user.id}", 'label': L('edit').toString(), 'ajax': 'box'}] %}
 				{% set _=options.add({'type': 'confirm', 'url': "/groups/#{group.id}/links/#{link.id}/delete", 'label': L('delete').toString(), 'title': L('group_delete_link_title').toString(), 'msg': L('group_delete_link_confirm').toString() }) %}

@@ -50,7 +50,7 @@ public class TextProcessor{
 	private static final String IDN_DOMAIN_REGEX=IDN_VALID_CHAR_REGEX+"+(?:\\."+IDN_VALID_CHAR_REGEX+"+)+";
 	public static final Pattern USERNAME_DOMAIN_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)@("+IDN_DOMAIN_REGEX+")");
 	public static final Pattern MENTION_PATTERN=Pattern.compile("@([a-zA-Z0-9._-]+)(?:@("+IDN_DOMAIN_REGEX+"))?");
-	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))*)*)(\\?(?:\\w+(?:=(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
+	public static final Pattern URL_PATTERN=Pattern.compile("\\b(https?:\\/\\/)?("+IDN_DOMAIN_REGEX+")(?:\\:\\d+)?((?:\\/(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))*)*)(\\?(?:\\w+(?:=(?:[\\w\\.~@%:!+-]|\\([^\\s]+?\\))+&?)?)+)?(#(?:[\\w\\.~@%:!+/-]|\\([^\\s]+?\\))+)?", Pattern.CASE_INSENSITIVE);
 	private static final Pattern MATRIX_USERNAME_PATTERN=Pattern.compile("@?([a-zA-Z0-9._-]+)[:@]("+IDN_DOMAIN_REGEX+")");
 	private static final Pattern SIGNAL_USERNAME_PATTERN=Pattern.compile("^@?([a-zA-Z0-9._-]+\\.\\d{2})$");
 	private static final Pattern LOCAL_USERNAME_PATTERN=Pattern.compile("^@?([a-zA-Z0-9._-]+)$");
@@ -67,10 +67,12 @@ public class TextProcessor{
 			.extensions(markdownExtensions)
 			.build();
 
+	@NotNull
 	public static String sanitizeHTML(String src){
 		return sanitizeHTML(src, null);
 	}
 
+	@NotNull
 	public static String sanitizeHTML(String src, URI documentLocation){
 		Cleaner cleaner=new Cleaner(HTML_SANITIZER);
 		Document doc=Parser.parseBodyFragment(src, Objects.toString(documentLocation, ""));
@@ -167,26 +169,19 @@ public class TextProcessor{
 	}
 
 	public static String stripHTML(String s, boolean keepLineBreaks){
-		if(keepLineBreaks){
-			Document doc=new Cleaner(new Whitelist().addTags("p", "br")).clean(Jsoup.parseBodyFragment(s));
-			StringBuilder sb=new StringBuilder();
-			doc.body().traverse(new NodeVisitor(){
-				@Override
-				public void head(Node node, int depth){
-					if(node instanceof Element el){
-						if("p".equalsIgnoreCase(el.tagName()) && !sb.isEmpty())
-							sb.append("\n\n");
-						else if("br".equalsIgnoreCase(el.tagName()))
-							sb.append('\n');
-					}else if(node instanceof TextNode tn){
-						sb.append(tn.text());
-					}
-				}
-			});
-			return sb.toString().trim();
-		}else{
-			return new Cleaner(Whitelist.none()).clean(Jsoup.parseBodyFragment(s.replace("</p><", "</p> <").replace("<br>", " "))).body().html();
-		}
+		Document doc=new Cleaner(new Whitelist().addTags("p", "br")).clean(Jsoup.parseBodyFragment(s));
+		StringBuilder sb=new StringBuilder();
+		doc.body().traverse((node, depth)->{
+			if(node instanceof Element el){
+				if("p".equalsIgnoreCase(el.tagName()) && !sb.isEmpty())
+					sb.append(keepLineBreaks ? "\n\n" : " ");
+				else if("br".equalsIgnoreCase(el.tagName()))
+					sb.append(keepLineBreaks ? '\n' : ' ');
+			}else if(node instanceof TextNode tn){
+				sb.append(tn.text());
+			}
+		});
+		return sb.toString().trim();
 	}
 
 	private static void makeLinksAndMentions(Node node, @Nullable MentionCallback mentionCallback){
@@ -306,6 +301,10 @@ public class TextProcessor{
 			whitelist=HTML_SANITIZER_MARKDOWN;
 		}else{
 			whitelist=HTML_SANITIZER;
+		}
+
+		if(format==FormattedTextFormat.PLAIN){
+			text=text.replace("<", "&lt;").replace(">", "&gt;");
 		}
 
 		Document doc=Jsoup.parseBodyFragment(text);

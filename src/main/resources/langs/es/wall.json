@@ -69,8 +69,14 @@
   "commenting_on_repost_hint": "Tu comentario aparecerá en la publicación original de {name}.",
   "reposts_empty": "Nadie compartió esta publicación.",
   "load_older_posts": "Mostrar las publicaciones previas",
+  "embed_post": "Insertar",
+  "embed_post_explanation": "Inserta esta publicación en tu sitio web copiando este código:",
   "embed_preview": "Vista previa",
   "comment_in_reply_to_user": "respondió a <a id=\"parentComment\">{name}</a>",
   "comment_in_reply_to_user_short": "a <a id=\"parentComment\">{name}</a>",
-  "post_action_updated_avatar": "actualizó {gender, select, male {su} female {su} other {su}} foto de perfil:"
+  "post_action_updated_avatar": "actualizó {gender, select, male {su} female {su} other {su}} foto de perfil:",
+  "wall_pin_post": "Fijar",
+  "wall_unpin_post": "Desfijar",
+  "wall_pinned_post": "publicación fijada",
+  "wall_show_X_more_pinned": "Mostrar {count, plural, one {# publicación fijada más} other {# publicaciones fijadas más}}"
 }

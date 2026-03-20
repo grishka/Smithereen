@@ -54,6 +54,10 @@ public class UserPermissions{
 		return managedGroups.getOrDefault(group.id, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);
 	}
 
+	public boolean canManageGroup(int groupID){
+		return managedGroups.getOrDefault(groupID, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);
+	}
+
 	public boolean canReport(Object obj){
 		return switch(obj){
 			case User u -> u.id!=userID;

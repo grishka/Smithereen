@@ -1,1 +1,19 @@
-{}
+{
+  "group_name": "Назва",
+  "X_members_bold": "{count, plural, one {<b>#</b> учасник} few {<b>#</b> учасника} other {<b>#</b> учасників}}",
+  "members": "Учасники",
+  "events": "Зустрічі",
+  "join_event_certain": "Точно піду",
+  "join_event_tentative": "Можливо піду",
+  "event_reminder_today": "Сьогодні",
+  "event_reminder_tomorrow": "Завтра",
+  "group_invitations": "Запрошення",
+  "group_join_requests": "Заявки",
+  "group_access_admin": "Адміністратор",
+  "group_feature_wall": "Cтiна",
+  "group_feature_photos": "Фотоальбоми",
+  "group_feature_board": "Обговорення",
+  "group_links": "Посилання",
+  "group_website": "Веб-сайт",
+  "event_location": "Місце"
+}

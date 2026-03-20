@@ -21,20 +21,20 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.LruCache;
 import smithereen.Utils;
+import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserActionNotAllowedException;
+import smithereen.exceptions.UserErrorException;
 import smithereen.model.ForeignUser;
-import smithereen.model.friends.FollowRelationship;
-import smithereen.model.friends.FriendRequest;
-import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.PaginatedList;
 import smithereen.model.User;
 import smithereen.model.feed.NewsfeedEntry;
+import smithereen.model.friends.FollowRelationship;
 import smithereen.model.friends.FriendList;
+import smithereen.model.friends.FriendRequest;
+import smithereen.model.friends.FriendshipStatus;
 import smithereen.model.friends.PublicFriendList;
 import smithereen.model.notifications.Notification;
-import smithereen.exceptions.InternalServerErrorException;
-import smithereen.exceptions.UserErrorException;
 import smithereen.model.notifications.RealtimeNotification;
 import smithereen.storage.UserStorage;
 import smithereen.storage.utils.IntPair;
@@ -54,9 +54,9 @@ public class FriendsController{
 		MaintenanceScheduler.runPeriodically(this::doPendingHintsUpdates, 10, TimeUnit.MINUTES);
 	}
 
-	public PaginatedList<FriendRequest> getIncomingFriendRequests(User self, int offset, int count){
+	public PaginatedList<FriendRequest> getIncomingFriendRequests(User self, int offset, int count, int mutualCount){
 		try{
-			return UserStorage.getIncomingFriendRequestsForUser(self.id, offset, count);
+			return UserStorage.getIncomingFriendRequestsForUser(self.id, offset, count, mutualCount);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -73,7 +73,7 @@ public class FriendsController{
 		}
 	}
 
-	public PaginatedList<User> getFollowers(User user, int offset, int count){
+	public PaginatedList<Integer> getFollowerIDs(User user, int offset, int count){
 		try{
 			return UserStorage.getNonMutualFollowers(user.id, true, true, offset, count, false);
 		}catch(SQLException x){
@@ -81,9 +81,35 @@ public class FriendsController{
 		}
 	}
 
-	public PaginatedList<User> getFollows(User user, int offset, int count){
+	public PaginatedList<User> getFollowers(User user, int offset, int count){
+		try{
+			PaginatedList<Integer> ids=getFollowerIDs(user, offset, count);
+			return new PaginatedList<>(ids, UserStorage.getByIdAsList(ids.list));
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public int getLocalFollowersCount(User user){
+		try{
+			return UserStorage.getLocalFollowersCount(user.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Integer> getFollowIDs(User user, int offset, int count){
 		try{
 			return UserStorage.getNonMutualFollowers(user.id, false, true, offset, count, true);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<User> getFollows(User user, int offset, int count){
+		try{
+			PaginatedList<Integer> ids=getFollowIDs(user, offset, count);
+			return new PaginatedList<>(ids, UserStorage.getByIdAsList(ids.list));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -106,7 +132,7 @@ public class FriendsController{
 	public PaginatedList<User> getFriends(User user, int offset, int count, SortOrder order, boolean onlineOnly, int listID){
 		try{
 			return switch(order){
-				case ID_ASCENDING, HINTS, RECENTLY_ADDED -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, order, listID);
+				case ID_ASCENDING, HINTS, RECENTLY_ADDED, FIRST_NAME, LAST_NAME -> UserStorage.getFriendListForUser(user.id, offset, count, onlineOnly, order, listID);
 				case RANDOM -> UserStorage.getRandomFriendsForProfile(user.id, count, onlineOnly);
 			};
 		}catch(SQLException x){
@@ -132,6 +158,26 @@ public class FriendsController{
 		}
 	}
 
+	public Map<Integer, Integer> getMutualFriendsCounts(User user, Collection<Integer> ids){
+		// TODO cache these
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			HashMap<Integer, Integer> counts=new HashMap<>();
+			for(int id:ids){
+				int count;
+				if(id==user.id)
+					count=0;
+				else
+					count=UserStorage.getMutualFriendsCount(user.id, id);
+				counts.put(id, count);
+			}
+			return counts;
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
 	/**
 	 * Same as getFriendshipStatus but doesn't check friend requests
 	 * @param self
@@ -141,6 +187,26 @@ public class FriendsController{
 	public FriendshipStatus getSimpleFriendshipStatus(User self, User other){
 		try{
 			return UserStorage.getSimpleFriendshipStatus(self.id, other.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, FriendshipStatus> getSimpleFriendshipStatuses(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return UserStorage.getFriendshipStatuses(self.id, ids, false);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Map<Integer, FriendshipStatus> getFriendshipStatuses(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Map.of();
+		try{
+			return UserStorage.getFriendshipStatuses(self.id, ids, true);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -171,6 +237,7 @@ public class FriendsController{
 				throw new UserErrorException("err_cant_friend_self");
 			}
 			Utils.ensureUserNotBlocked(self, user);
+			Utils.ensureUserNotBlocked(user, self);
 			FriendshipStatus status=getFriendshipStatus(self, user);
 			switch(status){
 				case NONE, FOLLOWED_BY -> {
@@ -206,6 +273,7 @@ public class FriendsController{
 				throw new UserErrorException("err_cant_friend_self");
 			}
 			Utils.ensureUserNotBlocked(self, user);
+			Utils.ensureUserNotBlocked(user, self);
 			FriendshipStatus status=getFriendshipStatus(self, user);
 			switch(status){
 				case NONE, FOLLOWED_BY, REQUEST_RECVD -> {
@@ -348,6 +416,24 @@ public class FriendsController{
 		try{
 			UserStorage.setUserMuted(self.id, user.id, muted);
 			ctx.getNewsfeedController().clearFriendsFeedCache(self.id);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public Set<Integer> getMutedUserIDs(User self, Collection<Integer> ids){
+		if(ids.isEmpty())
+			return Set.of();
+		try{
+			return UserStorage.getMutedUserIDs(self.id, ids);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<User> getAllMutedUsers(User self, int offset, int count){
+		try{
+			return UserStorage.getAllMutedUsers(self.id, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -512,7 +598,7 @@ public class FriendsController{
 
 		boolean anythingChanged=false;
 		try{
-			if(existing!=null && !Objects.equals(existing.name(), name)){
+			if(existing!=null && !Objects.equals(existing.name(), name) && !existing.isPublic()){
 				anythingChanged=true;
 				UserStorage.renameFriendList(owner.id, id, name);
 			}
@@ -543,7 +629,9 @@ public class FriendsController{
 		ID_ASCENDING,
 		RANDOM,
 		HINTS,
-		RECENTLY_ADDED
+		RECENTLY_ADDED,
+		FIRST_NAME,
+		LAST_NAME
 	}
 
 	private record PendingHintsRankIncrement(int followerID, int followeeID, int amount){}

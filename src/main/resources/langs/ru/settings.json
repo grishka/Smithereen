@@ -275,5 +275,17 @@
   "settings_exports_request": "Запросить архив",
   "settings_exports_unavailable": "Вы уже недавно запрашивали архив своих данных. Сделать повторный запрос можно будет после <b>{date}</b>.",
   "settings_exports_empty": "Вы ещё ни разу не запрашивали архив своих данных.",
-  "settings_request_export_password_explanation": "Чтобы подтвердить, что это вы, введите ваш пароль. Когда ваш архив будет готов, вам придёт уведомление."
+  "settings_request_export_password_explanation": "Чтобы подтвердить, что это вы, введите ваш пароль. Когда ваш архив будет готов, вам придёт уведомление.",
+  "settings_apps_grants": "Авторизованные приложения",
+  "settings_apps_grants_empty": "Приложения, которым вы предоставите доступ к своей странице, появятся здесь.",
+  "settings_apps_grants_summary": "Вы предоставили доступ к своей странице {count, plural, one {# приложению} few {# приложениям} other {# приложениям}}:",
+  "settings_apps_revoke": "отменить доступ",
+  "settings_apps_revoked": "доступ отменён",
+  "settings_apps_development": "Разработка",
+  "settings_apps_dev_explanation": "Вы можете зарегистрировать своё приложение на этом сервере. Подробнее об идентификации и метаданных приложений читайте в <a id=\"docs\">документации для разработчиков</a>.",
+  "settings_apps_create": "Создать приложение",
+  "settings_apps_create_title": "Создание приложения",
+  "settings_apps_managed_summary": "Вы зарегистрировали {count, plural, one {# приложение} few {# приложения} other {# приложений}}:",
+  "settings_activity_api": "Приложение {appName}",
+  "settings_activity_api_short": "{time} ({ip}, приложение {appName})"
 }

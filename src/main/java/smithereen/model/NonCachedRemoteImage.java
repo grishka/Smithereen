@@ -1,8 +1,11 @@
 package smithereen.model;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.net.URI;
 
 import smithereen.Utils;
+import smithereen.api.methods.ApiUtils;
 import smithereen.model.comments.Comment;
 import smithereen.model.groups.GroupLink;
 import smithereen.model.photos.Photo;
@@ -12,16 +15,19 @@ import smithereen.util.XTEA;
 public final class NonCachedRemoteImage extends RemoteImage{
 
 	private final Args args;
+
+	@NotNull
 	private final Dimensions origDimensions;
 
-	public NonCachedRemoteImage(Args args, Dimensions origDimensions, URI originalURL){
+	public NonCachedRemoteImage(Args args, @NotNull Dimensions origDimensions, URI originalURL){
 		super(originalURL);
 		this.args=args;
 		this.origDimensions=origDimensions;
 	}
 
 	@Override
-	public URI getUriForSizeAndFormat(Type size, Format format, boolean is2x, boolean useFallback){
+	@NotNull
+	public URI getUriForSizeAndFormat(@NotNull Type size, @NotNull Format format, boolean is2x, boolean useFallback, boolean addApiHash){
 		UriBuilder builder=UriBuilder.local().path("system", "downloadExternalMedia");
 		args.addToUriBuilder(builder);
 		builder.queryParam("size", size.suffix()).queryParam("format", format.fileExtension());
@@ -29,10 +35,19 @@ public final class NonCachedRemoteImage extends RemoteImage{
 			builder.queryParam("2x", "");
 		if(useFallback)
 			builder.queryParam("fb", "");
+		if(addApiHash)
+			builder.queryParam("api", ApiUtils.getExternalMediaHash(builder.getQueryParamsMap()));
 		return builder.build();
 	}
 
+	@NotNull
 	@Override
+	public URI getApiUriForSizeAndFormat(Type size, Format format){
+		return getUriForSizeAndFormat(size, format, false, false, true);
+	}
+
+	@Override
+	@NotNull
 	public Dimensions getOriginalDimensions(){
 		return origDimensions;
 	}
@@ -68,6 +83,21 @@ public final class NonCachedRemoteImage extends RemoteImage{
 		protected void addToUriBuilder(UriBuilder builder){
 			builder.queryParam("type", "group_ava");
 			builder.queryParam("group_id", groupID+"");
+		}
+	}
+
+	public static class AppLogoArgs extends Args{
+
+		private final long appID;
+
+		public AppLogoArgs(long appID){
+			this.appID=appID;
+		}
+
+		@Override
+		protected void addToUriBuilder(UriBuilder builder){
+			builder.queryParam("type", "app_logo");
+			builder.queryParam("app_id", appID+"");
 		}
 	}
 

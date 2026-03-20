@@ -82,5 +82,9 @@
   "wall_pin_post": "Pin",
   "wall_unpin_post": "Unpin",
   "wall_pinned_post": "pinned post",
-  "wall_show_X_more_pinned": "Show {count, plural, one {# more pinned post} other {# more pinned posts}}"
+  "wall_show_X_more_pinned": "Show {count, plural, one {# more pinned post} other {# more pinned posts}}",
+  "post_time_via_app": "<a id=\"post\">{time}</a> via <a id=\"app\">{appName}</a>",
+  "comment_on_user_post": "Comment on {name}'s wall",
+  "comment_on_group_post": "Comment in group \"{name}\"",
+  "comment_on_event_post": "Comment in event \"{name}\""
 }

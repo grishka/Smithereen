@@ -14,7 +14,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -99,7 +98,7 @@ public class Lang{
 			fallbackLocale=null;
 		}
 		switch(localeID){
-			case "ru", "be" -> {
+			case "ru", "be", "uk" -> {
 				pluralRules=new SlavicPluralRules();
 				inflector=new RussianInflector();
 			}
@@ -107,7 +106,7 @@ public class Lang{
 				pluralRules=new SlavicPluralRules();
 				inflector=null;
 			}
-			case "tr" -> {
+			case "tr", "kk" -> {
 				pluralRules=new SingleFormPluralRules();
 				inflector=null;
 			}
@@ -159,6 +158,10 @@ public class Lang{
 		return fallback!=null ? fallback.get(key, formatArgs) : key.replace('_', ' ');
 	}
 
+	public boolean containsKey(String key){
+		return data.containsKey(key) || (fallback!=null && fallback.containsKey(key));
+	}
+
 	public void inflected(StringBuilder out, User.Gender gender, String first, String last, Inflector.Case _case){
 		if(inflector==null){
 			out.append(first);
@@ -178,6 +181,12 @@ public class Lang{
 			if(StringUtils.isNotEmpty(last))
 				out.append(' ').append(inflector.isInflectable(last) ? inflector.inflectNamePart(last, Inflector.NamePart.LAST, gender, _case) : last);
 		}
+	}
+
+	public String inflectNamePart(String part, Inflector.NamePart which, User.Gender gender, Inflector.Case _case){
+		if(part==null)
+			return null;
+		return inflector!=null && inflector.isInflectable(part) ? inflector.inflectNamePart(part, which, gender, _case) : part;
 	}
 
 	public User.Gender detectGenderForName(String first, String last, String middle){
@@ -329,25 +338,27 @@ public class Lang{
 		return pluralRules.getCategoryForQuantity(quantity);
 	}
 
-	public String formatDuration(Duration duration){
-		if(duration==null) return "-:--";
+	public String formatDuration(long duration){
 		String res="";
-		if(duration.isNegative()){
+		if(duration<0){
 			res+="-";
-			duration=duration.negated();
+			duration=-duration;
 		}
-		long t=duration.getSeconds();
-		long seconds=t%60;
-		t/=60;
-		long minutes=t%60;
-		t/=60;
-		long hours=t;
+		long seconds=duration%60;
+		duration/=60;
+		long minutes=duration%60;
+		duration/=60;
+		long hours=duration;
 		if(hours>0){
 			res+=String.format(locale, "%d:%02d:%02d", hours, minutes, seconds);
 		}else{
 			res+=String.format(locale, "%d:%02d", minutes, seconds);
 		}
 		return res;
+	}
+
+	public String invalidDuration(){
+		return "-:--";
 	}
 
 	private record IndexLanguage(String locale, String name, String fallback){}

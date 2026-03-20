@@ -6,15 +6,14 @@ import java.util.Objects;
 import smithereen.activitypub.ActivityForwardingUtils;
 import smithereen.activitypub.ActivityHandlerContext;
 import smithereen.activitypub.ActivityTypeHandler;
-import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.activitypub.objects.activities.Update;
-import smithereen.model.ForeignUser;
-import smithereen.model.OwnerAndAuthor;
-import smithereen.model.Post;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.model.ForeignUser;
+import smithereen.model.MailMessage;
+import smithereen.model.Post;
 import smithereen.model.comments.Comment;
-import smithereen.model.comments.CommentableContentObject;
+import smithereen.storage.MailStorage;
 import smithereen.storage.PostStorage;
 
 public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, NoteOrQuestion>{
@@ -60,6 +59,11 @@ public class UpdateNoteHandler extends ActivityTypeHandler<ForeignUser, Update, 
 			context.appContext.getWallController().loadAndPreprocessRemotePostMentions(updated, post);
 			context.appContext.getCommentsController().putOrUpdateForeignComment(updated);
 			ActivityForwardingUtils.forwardCommentInteraction(context, updated);
+		}else if(existing instanceof MailMessage existingMessage){
+			MailMessage updated=post.asNativeMessage(context.appContext);
+			if(updated.senderID!=existingMessage.senderID || actor.id!=existingMessage.senderID)
+				throw new IllegalArgumentException("No access to update this message");
+			MailStorage.updateForeignMessage(updated, true);
 		}
 	}
 }

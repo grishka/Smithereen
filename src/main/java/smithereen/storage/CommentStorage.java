@@ -72,6 +72,11 @@ public class CommentStorage{
 						.valueExpr("reply_count", "reply_count+1")
 						.whereIn("id", replyKey)
 						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("comments")
+						.value("immediate_reply_count", "immediate_reply_count+1")
+						.where("id=?", replyKey.getLast())
+						.executeNoResult();
 			}
 			CommentsNewsfeedObjectType mappedType=parentID.type().newsfeedType();
 			if(mappedType!=null){
@@ -315,6 +320,11 @@ public class CommentStorage{
 						.whereIn("id", comment.replyKey)
 						.andWhere("parent_object_type=? AND parent_object_id=?", comment.parentObjectID.type(), comment.parentObjectID.id())
 						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.update("comments")
+						.valueExpr("immediate_reply_count", "GREATEST(1, immediate_reply_count)-1")
+						.where("id=? AND parent_object_type=? AND parent_object_id=?", comment.replyKey.getLast(), comment.parentObjectID.type(), comment.parentObjectID.id())
+						.executeNoResult();
 			}
 
 			if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
@@ -478,7 +488,7 @@ public class CommentStorage{
 		}
 	}
 
-	public static void putOrUpdateForeignComment(Comment comment) throws SQLException{
+	public static void putOrUpdateForeignComment(Comment comment, boolean markAsUpdated) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			if(comment.id==0){
 				comment.id=new SQLQueryBuilder(conn)
@@ -503,6 +513,11 @@ public class CommentStorage{
 							.update("comments")
 							.valueExpr("reply_count", "reply_count+1")
 							.whereIn("id", comment.replyKey)
+							.executeNoResult();
+					new SQLQueryBuilder(conn)
+							.update("comments")
+							.valueExpr("immediate_reply_count", "immediate_reply_count+1")
+							.where("id=?", comment.replyKey.getLast())
 							.executeNoResult();
 				}
 				if(comment.parentObjectID.type()==CommentableObjectType.BOARD_TOPIC){
@@ -535,7 +550,7 @@ public class CommentStorage{
 						.value("attachments", comment.serializeAttachments())
 						.value("content_warning", comment.contentWarning)
 						.value("mentions", Utils.serializeIntList(comment.mentionedUserIDs))
-						.value("updated_at", comment.updatedAt==null ? Instant.now() : comment.updatedAt)
+						.value("updated_at", markAsUpdated && comment.updatedAt==null ? Instant.now() : comment.updatedAt)
 						.executeNoResult();
 			}
 		}
@@ -652,6 +667,20 @@ public class CommentStorage{
 						return Config.localURI("/comments/"+XTEA.encodeObjectID(p.first(), ObfuscatedObjectIDType.COMMENT));
 					return URI.create(apID);
 				}));
+	}
+
+	public static Map<Long, Comment> getFirstOrLastBoardTopicComments(Collection<Long> topicIDs, boolean first, boolean needAttachments) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			String order=first ? "ASC" : "DESC";
+			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "WITH tmp AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY parent_object_id ORDER BY created_at "+order+") AS _rownum" +
+					" FROM comments WHERE parent_object_id IN ("+topicIDs.stream().map(Object::toString).collect(Collectors.joining(","))+") AND parent_object_type=?)" +
+					" SELECT * FROM tmp WHERE _rownum=1", CommentableObjectType.BOARD_TOPIC);
+			ResultSet res=stmt.executeQuery();
+			Map<Long, Comment> comments=DatabaseUtils.resultSetToObjectStream(res, Comment::fromResultSet, null).collect(Collectors.toMap(c->c.parentObjectID.id(), Function.identity()));
+			if(needAttachments)
+				postprocessComments(comments.values());
+			return comments;
+		}
 	}
 
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{

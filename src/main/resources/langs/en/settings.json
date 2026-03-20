@@ -275,5 +275,17 @@
   "settings_exports_request": "Request an archive",
   "settings_exports_unavailable": "You have already recently requested an archive of your data. You will be able to request one again on <b>{date}</b>.",
   "settings_exports_empty": "You haven't yet requested any archives of your data.",
-  "settings_request_export_password_explanation": "To confirm that this is really you, please enter your password. You will receive a notification when your archive is ready."
+  "settings_request_export_password_explanation": "To confirm that this is really you, please enter your password. You will receive a notification when your archive is ready.",
+  "settings_apps_grants": "Authorized applications",
+  "settings_apps_grants_empty": "Applications that have received access to your account will appear here.",
+  "settings_apps_grants_summary": "You granted {count, plural, one {# application} other {# applications}} access to your account:",
+  "settings_apps_revoke": "revoke access",
+  "settings_apps_revoked": "access revoked",
+  "settings_apps_development": "Development",
+  "settings_apps_dev_explanation": "You can register your application on this server. To learn more about application identity and metadata, see the <a id=\"docs\">developer documentation</a>.",
+  "settings_apps_create": "Create an application",
+  "settings_apps_create_title": "Create an application",
+  "settings_apps_managed_summary": "You registered {count, plural, one {# application} other {# applications}}:",
+  "settings_activity_api": "App {appName}",
+  "settings_activity_api_short": "{time} ({ip}, {appName} application)"
 }

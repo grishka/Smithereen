@@ -1,4 +1,6 @@
 package smithereen.text;
 
-public record FormattedTextSource(String source, FormattedTextFormat format){
+import org.jetbrains.annotations.NotNull;
+
+public record FormattedTextSource(@NotNull String source, @NotNull FormattedTextFormat format){
 }

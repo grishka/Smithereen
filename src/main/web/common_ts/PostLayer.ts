@@ -53,17 +53,16 @@ class PostLayer extends BaseMediaViewerLayer{
 		this.updateHistory({layer: "Post", id: this.postID, commentID: this.commentID}, "/posts/"+this.postID);
 		if(this.commentID){
 			var commentEl=ge(`post${this.commentID}_${this.randomID}`);
-			console.log("comment: "+this.commentID, commentEl);
 			if(commentEl){
 				commentEl.classList.add("highlight");
 				commentEl.scrollIntoView();
 			}
 		}
-		AudioPlayer.getInstance().registerPlayerContainer(this.randomID, true);
+		AudioPlayer.getInstance().registerPlayerContainer(PlayerIDSuffix.LAYER, true);
 	}
 
 	onHidden(){
-		AudioPlayer.getInstance().deregisterPlayerContainer(this.randomID);
+		AudioPlayer.getInstance().deregisterPlayerContainer(PlayerIDSuffix.LAYER);
 		super.onHidden();
 	}
 }

@@ -39,14 +39,13 @@ import smithereen.lang.Lang;
 import smithereen.model.MailMessage;
 import smithereen.model.Post;
 import smithereen.model.User;
-import smithereen.model.board.BoardTopic;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentParentObjectID;
 import smithereen.model.comments.CommentReplyParent;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.photos.Photo;
-import smithereen.model.photos.PhotoAlbum;
 import smithereen.text.TextProcessor;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
@@ -65,6 +64,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 	public boolean canBeReposted;
 	public URI quoteRepostAuth;
 	public Set<URI> quotePolicy;
+	public URI instrumentApp;
 
 	public Post asNativePost(ApplicationContext context){
 		Post post=new Post();
@@ -177,6 +177,19 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		}
 
 		post.mastodonQuoteAuth=quoteRepostAuth;
+
+		if(instrumentApp!=null){
+			post.appApID=instrumentApp;
+			long appID=context.getAppsController().getAppIdByActivityPubID(instrumentApp);
+			if(appID==0){
+				try{
+					ClientApp app=context.getObjectLinkResolver().resolveNative(instrumentApp, ClientApp.class, true, true, false, null, false, false, false);
+					post.appID=app.id;
+				}catch(ObjectNotFoundException ignore){}
+			}else{
+				post.appID=appID;
+			}
+		}
 
 		return post;
 	}
@@ -350,6 +363,13 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 
 		noq.canBeReposted=post.isLocal() && post.privacy==Post.Privacy.PUBLIC && (!post.replyKey.isEmpty() || post.ownerID==post.authorID);
 
+		if(post.appID!=0){
+			try{
+				ClientApp app=context.getAppsController().getAppByID(post.appID);
+				noq.instrumentApp=app.getActivityPubID();
+			}catch(ObjectNotFoundException ignore){}
+		}
+
 		return noq;
 	}
 
@@ -397,7 +417,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		User sender=context.getObjectLinkResolver().resolve(attributedTo, User.class, true, true, false);
 		msg.senderID=sender.id;
 		msg.text=TextProcessor.sanitizeHTML(content);
-		msg.subject=StringUtils.isNotEmpty(name) ? name : summary;
+		msg.subject=StringUtils.isNotEmpty(name) ? name : (summary!=null ? summary : "");
 		msg.attachments=attachment;
 		msg.createdAt=published!=null ? published : Instant.now();
 		msg.updatedAt=updated;
@@ -420,13 +440,10 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 					msg.cc.add(user.id);
 				}catch(ObjectNotFoundException ignore){}
 			}
-		}else{
-			msg.cc=Set.of();
 		}
 
 		if(msg.to.isEmpty() && !msg.cc.isEmpty()){ // Some servers would omit `to` and put all recipients into `cc` instead.
 			msg.to.addAll(msg.cc);
-			msg.cc=Set.of();
 		}
 
 		return msg;
@@ -657,6 +674,12 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 			}
 		}
 
+		if(obj.get("instrument") instanceof JsonObject instrument){
+			if(instrument.get("type") instanceof JsonPrimitive type && "Application".equals(type.getAsString())){
+				instrumentApp=tryParseURL(optString(instrument, "id"));
+			}
+		}
+
 		return this;
 	}
 
@@ -696,6 +719,9 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 		if(quoteRepostAuth!=null){
 			serializerContext.addAlias("quoteAuthorization", JLD.MASTODON_QUOTES_FEP+"quoteAuthorization");
 			obj.addProperty("quoteAuthorization", quoteRepostAuth.toString());
+		}
+		if(instrumentApp!=null){
+			obj.add("instrument", new JsonObjectBuilder().add("type", "Application").add("id", instrumentApp.toString()).build());
 		}
 
 		return obj;

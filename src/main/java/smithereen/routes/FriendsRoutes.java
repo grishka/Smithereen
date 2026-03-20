@@ -411,7 +411,7 @@ public class FriendsRoutes{
 
 	public static Object incomingFriendRequests(Request req, Response resp, Account self, ApplicationContext ctx){
 		RenderedTemplateResponse model=new RenderedTemplateResponse("friend_requests", req);
-		PaginatedList<FriendRequest> requests=ctx.getFriendsController().getIncomingFriendRequests(self.user, offset(req), 20);
+		PaginatedList<FriendRequest> requests=ctx.getFriendsController().getIncomingFriendRequests(self.user, offset(req), 20, 4);
 		model.paginate(requests);
 		model.with("title", lang(req).get("friend_requests")).with("toolbarTitle", lang(req).get("friends")).with("owner", self.user);
 		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(requests.list.stream().map(r->r.from.id).toList()));
@@ -440,6 +440,8 @@ public class FriendsRoutes{
 			throw new BadRequestException();
 		}
 		if(isAjax(req)){
+			if("profile".equals(req.queryParams("from")))
+				return new WebDeltaResponse(resp).refresh();
 			Lang l=lang(req);
 			String content;
 			if(accept){

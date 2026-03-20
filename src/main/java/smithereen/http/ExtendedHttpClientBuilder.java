@@ -10,75 +10,81 @@ import java.util.concurrent.Executor;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 
-class ExtendedHttpClientBuilder implements HttpClient.Builder{
+public class ExtendedHttpClientBuilder implements HttpClient.Builder{
 	private final HttpClient.Builder realBuilder;
+	private boolean allowLocalNetworks=false;
 
 	public ExtendedHttpClientBuilder(HttpClient.Builder realBuilder){
 		this.realBuilder=realBuilder;
 	}
 
 	@Override
-	public HttpClient.Builder cookieHandler(CookieHandler cookieHandler){
+	public ExtendedHttpClientBuilder cookieHandler(CookieHandler cookieHandler){
 		realBuilder.cookieHandler(cookieHandler);
 		return this;
 	}
 
 	@Override
-	public HttpClient.Builder connectTimeout(Duration duration){
+	public ExtendedHttpClientBuilder connectTimeout(Duration duration){
 		realBuilder.connectTimeout(duration);
 		return this;
 	}
 
 	@Override
-	public HttpClient.Builder sslContext(SSLContext sslContext){
+	public ExtendedHttpClientBuilder sslContext(SSLContext sslContext){
 		realBuilder.sslContext(sslContext);
 		return this;
 	}
 
 	@Override
-	public HttpClient.Builder sslParameters(SSLParameters sslParameters){
+	public ExtendedHttpClientBuilder sslParameters(SSLParameters sslParameters){
 		realBuilder.sslParameters(sslParameters);
 		return this;
 	}
 
 	@Override
-	public HttpClient.Builder executor(Executor executor){
+	public ExtendedHttpClientBuilder executor(Executor executor){
 		realBuilder.executor(executor);
 		return this;
 	}
 
 	@Override
-	public HttpClient.Builder followRedirects(HttpClient.Redirect policy){
+	public ExtendedHttpClientBuilder followRedirects(HttpClient.Redirect policy){
 		realBuilder.followRedirects(policy);
 		return this;
 	}
 
 	@Override
-	public HttpClient.Builder version(HttpClient.Version version){
+	public ExtendedHttpClientBuilder version(HttpClient.Version version){
 		realBuilder.version(version);
 		return this;
 	}
 
 	@Override
-	public HttpClient.Builder priority(int priority){
+	public ExtendedHttpClientBuilder priority(int priority){
 		realBuilder.priority(priority);
 		return this;
 	}
 
 	@Override
-	public HttpClient.Builder proxy(ProxySelector proxySelector){
+	public ExtendedHttpClientBuilder proxy(ProxySelector proxySelector){
 		realBuilder.proxy(proxySelector);
 		return this;
 	}
 
 	@Override
-	public HttpClient.Builder authenticator(Authenticator authenticator){
+	public ExtendedHttpClientBuilder authenticator(Authenticator authenticator){
 		realBuilder.authenticator(authenticator);
+		return this;
+	}
+	
+	public ExtendedHttpClientBuilder allowLocalNetworks(boolean allow){
+		allowLocalNetworks=allow;
 		return this;
 	}
 
 	@Override
 	public HttpClient build(){
-		return new ExtendedHttpClient(realBuilder.build());
+		return new ExtendedHttpClient(realBuilder.build(), allowLocalNetworks);
 	}
 }

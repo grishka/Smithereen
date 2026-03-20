@@ -38,6 +38,7 @@ import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableContentObject;
 import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.notifications.Notification;
 import smithereen.model.photos.Photo;
@@ -94,7 +95,7 @@ public class CommentsRoutes{
 		}
 
 		Comment inReplyTo=replyTo!=0 ? ctx.getCommentsController().getCommentIgnoringPrivacy(replyTo) : null;
-		Comment comment=ctx.getCommentsController().createComment(self.user, parent, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts);
+		Comment comment=ctx.getCommentsController().createComment(self.user, parent, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, attachmentAltTexts, null);
 
 		if(isAjax(req)){
 			String rid=req.queryParams("rid");
@@ -209,7 +210,7 @@ public class CommentsRoutes{
 
 		model.with("preview", true)
 				.with("canComment", canComment)
-				.with("replyFormID", "wallPostForm_commentReply_"+elementID)
+				.with("replyFormID", "wallPostForm_"+(viewType==CommentViewType.FLAT ? "comment_" : "commentReply_")+elementID)
 				.with("commentViewType", viewType)
 				.with("parentObject", parent);
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
@@ -309,12 +310,12 @@ public class CommentsRoutes{
 		if(comment.attachments!=null && !comment.attachments.isEmpty()){
 			model.with("draftAttachments", comment.attachments);
 			model.with("attachAltTexts", comment.attachments.stream()
-					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.fileRecord.id().getIDForClient(), li.name) : null)
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), li.name) : null)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toMap(Pair::first, Pair::second))
 			);
 			Map<String, PhotoViewerInlineData> pvData=comment.attachments.stream()
-					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(), li.getURLsForPhotoViewer())) : null)
+					.map(att->att instanceof LocalImage li && li.photoID==0 ? new Pair<>(li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), new PhotoViewerInlineData(0, "rawFile/"+li.getLocalID(MediaFileUploadPurpose.ATTACHMENT, self.user.id), li.getURLsForPhotoViewer())) : null)
 					.filter(Objects::nonNull)
 					.collect(Collectors.toMap(Pair::first, Pair::second, (a, b)->b));
 			model.with("attachPvData", pvData);
@@ -362,11 +363,15 @@ public class CommentsRoutes{
 			if(req.attribute("mobile")!=null)
 				return new WebDeltaResponse(resp).replaceLocation(parent.getURL());
 
+			CommentViewType viewType=self.prefs.commentViewType;
+			if(parent instanceof BoardTopic)
+				viewType=CommentViewType.FLAT;
+
 			CommentViewModel cvm=new CommentViewModel(comment);
 			RenderedTemplateResponse model=new RenderedTemplateResponse("comment", req)
 					.with("post", cvm)
 					.with("parentObject", parent)
-					.with("replyFormID", "wallPostForm_commentReply_"+parent.getCommentParentID().getHtmlElementID())
+					.with("replyFormID", "wallPostForm_"+(viewType==CommentViewType.FLAT ? "comment_" : "commentReply_")+parent.getCommentParentID().getHtmlElementID())
 					.with("canComment", true);
 			model.with("users", Map.of(self.user.id, self.user));
 			model.with("commentInteractions", ctx.getUserInteractionsController().getUserInteractions(List.of(cvm.post), self.user));

@@ -23,4 +23,28 @@ public record AbsoluteImageRect(int x1, int y1, int x2, int y2, int fullWidth, i
 			case _270 -> new AbsoluteImageRect(y1, fullWidth-x2, y2, fullWidth-x1, fullHeight, fullWidth);
 		};
 	}
+
+	public int getCenterX(){
+		return x1+(x2-x1)/2;
+	}
+
+	public int getCenterY(){
+		return y1+(y2-y1)/2;
+	}
+
+	public AbsoluteImageRect withX(int x1, int x2){
+		return new AbsoluteImageRect(x1, y1, x2, y2, fullWidth, fullHeight);
+	}
+
+	public AbsoluteImageRect withY(int y1, int y2){
+		return new AbsoluteImageRect(x1, y1, x2, y2, fullWidth, fullHeight);
+	}
+
+	public AbsoluteImageRect offset(int dx, int dy){
+		return new AbsoluteImageRect(x1+dx, y1+dy, x2+dx, y2+dy, fullWidth, fullHeight);
+	}
+
+	public boolean fitsInsideFullSize(){
+		return x1>=0 && y1>=0 && x2<fullWidth && y2<fullHeight;
+	}
 }

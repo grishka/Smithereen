@@ -86,7 +86,7 @@ small{
 			margin: 0 8px 1px 4px;
 			vertical-align: middle;
 		}
-		a{
+		a, .logoInner{
 			display: inline-block;
 			width: 100%;
 			color: $textOnAccent;
@@ -119,6 +119,7 @@ small{
 			position: absolute;
 			left: 0;
 			top: 0;
+			max-width: 100%;
 		}
 	}
 	a.nav:hover, a.nav:visited:hover{
@@ -159,7 +160,6 @@ small{
 }
 
 #headerNav{
-	flex-grow: 1;
 	flex-shrink: 0;
 	display: flex;
 	justify-content: flex-end;
@@ -167,6 +167,7 @@ small{
 
 #headerLeftNavWrap{
 	position: relative;
+	flex-grow: 1;
 }
 
 .hasJS #qsearchWrap{
@@ -248,7 +249,7 @@ small{
 }
 
 .popupPage{
-	.headerWrap{
+	/*.headerWrap{
 		position: absolute;
 		left: 0;
 		top: 0;
@@ -256,7 +257,7 @@ small{
 	}
 	.header{
 		padding: 0;
-	}
+	}*/
 	.headerBG{
 		border-radius: 0;
 		border-left: none;
@@ -265,7 +266,16 @@ small{
 			border-radius: 0;
 		}
 	}
-	.popupContent{
+	#headerNav{
+		line-height: $headerHeight;
+		text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+		a{
+			color: #fff;
+			margin: 0 10px 0 15px;
+			text-transform: lowercase;
+		}
+	}
+	/*.popupContent{
 		min-height: 100vh;
 		display: flex;
 		align-items: center;
@@ -273,6 +283,14 @@ small{
 		center{
 			flex-grow: 1;
 		}
+	}*/
+	.popupContent{
+		padding: 30px 35px;
+		max-width: 600px;
+		margin: auto;
+	}
+	#headerNav{
+		flex-grow: 1;
 	}
 }
 
@@ -821,7 +839,7 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	margin-top: 10px;
 }
 
-.narrowForms form{
+.narrowForms{
 	h2{
 		width: 400px;
 		margin: auto;
@@ -1218,6 +1236,11 @@ select, .comboBoxW input{
 	}
 	.lists{
 		padding-top: 8px;
+		.friendListLabel{
+			line-height: 100%;
+			margin: 1px 0;
+			display: inline-block;
+		}
 	}
 	.onlineText+.lists{
 		padding-top: 5px;
@@ -1354,7 +1377,7 @@ select, .comboBoxW input{
 	justify-content: flex-end;
 	padding: 0 5px;
 	border-radius: 0 0 2px 2px;
-	>button{
+	>button, >input[type=submit], >.button{
 		margin: 0 5px;
 	}
 	>.buttonBarAux{
@@ -1576,25 +1599,6 @@ select, .comboBoxW input{
 		margin-bottom: 16px;
 		box-sizing: border-box;
 		vertical-align: top;
-	}
-}
-
-.externalInteractionLoginForm{
-	width: 100%;
-	max-width: 512px;
-	padding: 16px;
-	padding-top: 0;
-	box-sizing: border-box;
-	input[type=text], input[type=password]{
-		width: 100%;
-		margin-bottom: 8px;
-		box-sizing: border-box;
-	}
-	.label{
-		margin-bottom: 4px;
-	}
-	center{
-		margin-top: 8px;
 	}
 }
 
@@ -3155,7 +3159,7 @@ label.pretendLink{
 		height: 16px;
 		line-height: 16px;
 		padding: 0 18px 0 3px;
-		background: $wallPostSeparator;
+		background: $tokenBackgroundColor;
 		margin: 2px 0 0 2px;
 		position: relative;
 		max-width: calc(100% - 4px);
@@ -3166,7 +3170,7 @@ label.pretendLink{
 			display: block;
 			width: 16px;
 			height: 16px;
-			background: svg-load('img/tag_remove.svg') no-repeat center;
+			background: svg-load('img/tag_remove.svg', fill: $tagRemoveIconColor) no-repeat center;
 			position: absolute;
 			right: 2px;
 			top: 0;
@@ -3933,6 +3937,7 @@ label.largeAccented{
 #photoAlbumUploadW.sticky{
 	position: sticky;
 	top: 0;
+	z-index: 5;
 }
 
 #photoAlbumUploadW.isFloating{
@@ -4436,7 +4441,7 @@ label.largeAccented{
 	height: 12px;
 	margin-left: 2px;
 	vertical-align: middle;
-	background: svg-load('img/tag_remove.svg') center no-repeat;
+	background: svg-load('img/tag_remove.svg', fill: $tagRemoveIconColor) center no-repeat;
 }
 
 .pvConfirmTag{
@@ -4580,6 +4585,8 @@ label.largeAccented{
 			width: 50px;
 			max-height: 50px;
 			flex: none;
+			object-fit: cover;
+			object-position: top;
 		}
 		.ava{
 			height: 50px;
@@ -5370,6 +5377,83 @@ ol.largeNumbers{
 	margin-top: -10px;
 	a{
 		border-top: none;
+	}
+}
+
+.externalInteractionLoginForm{
+	display: grid;
+	grid-template-columns: max-content 200px;
+	justify-content: center;
+	grid-gap: 10px;
+	margin-top: 18px;
+	label{
+		color: $auxiliaryGrey;
+		align-self: center;
+		text-align: right;
+	}
+}
+
+#oauthPromptHeader{
+	a{
+		font-weight: bold;
+	}
+}
+
+#oauthPromptPermissions{
+	display: grid;
+	grid-template-columns: 32px 1fr;
+	grid-gap: 15px 10px;
+	clear: both;
+	margin: 20px 0 26px;
+	.permissionIcon{
+		height: 32px;
+		background-image: url(/res/oauth_icons.png);
+		background-size: 32px 352px;
+	}
+	.iconFriends{
+		background-position: 0 -32px;
+	}
+	.iconPhotos{
+		background-position: 0 -64px;
+	}
+	.iconAccount{
+		background-position: 0 -96px;
+	}
+	.iconWall{
+		background-position: 0 -128px;
+	}
+	.iconGroups{
+		background-position: 0 -160px;
+	}
+	.iconMessages{
+		background-position: 0 -192px;
+	}
+	.iconLikes{
+		background-position: 0 -224px;
+	}
+	.iconNewsfeed{
+		background-position: 0 -256px;
+	}
+	.iconNotifications{
+		background-position: 0 -288px;
+	}
+	.iconOffline{
+		background-position: 0 -320px;
+	}
+	h4{
+		margin-top: 0;
+	}
+}
+
+@media (min-resolution: 2x){
+	#oauthPromptPermissions .permissionIcon{
+		background-image: url(/res/oauth_icons_2x.png);
+	}
+}
+
+@media (min-resolution: 3x){
+	#oauthPromptPermissions .permissionIcon{
+		background-image: url(/res/oauth_icons_3x.png);
 	}
 }
 

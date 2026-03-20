@@ -29,6 +29,7 @@ import smithereen.model.admin.GroupActionLogEntry;
 import smithereen.model.admin.ViolationReport;
 import smithereen.model.groups.GroupBanInfo;
 import smithereen.model.groups.GroupBanStatus;
+import smithereen.routes.GroupsRoutes;
 import smithereen.templates.RenderedTemplateResponse;
 import spark.Request;
 import spark.Response;
@@ -295,5 +296,28 @@ public class AdminGroupsRoutes{
 		Lang l=lang(req);
 		String newUsername=(target.isEvent() ? "event" : "club")+target.id;
 		return wrapConfirmation(req, resp, l.get("admin_reset_username_title"), l.get("admin_reset_username_confirm", Map.of("newUsername", newUsername)), "/groups/"+target.id+"/adminChangeUsername?username="+newUsername);
+	}
+
+	public static Object syncRelationshipsCollections(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroup(req);
+		group.ensureRemote();
+		ctx.getActivityPubWorker().fetchActorRelationshipCollections(group);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_members"), l.get("sync_started"), l.get("ok"));
+	}
+
+	public static Object syncProfile(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroup(req);
+		group.ensureRemote();
+		ctx.getObjectLinkResolver().resolve(group.activityPubID, ForeignGroup.class, true, true, true);
+		return new WebDeltaResponse(resp).refresh();
+	}
+
+	public static Object syncContentCollections(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=getGroup(req);
+		group.ensureRemote();
+		ctx.getActivityPubWorker().fetchActorContentCollections(group);
+		Lang l=lang(req);
+		return new WebDeltaResponse(resp).messageBox(l.get("sync_content"), l.get("sync_started"), l.get("ok"));
 	}
 }

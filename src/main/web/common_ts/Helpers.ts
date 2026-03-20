@@ -349,6 +349,8 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 			if(onDone(resp))
 				return;
 		}
+		if(resp[0]=='[')
+			resp=JSON.parse(resp);
 		if(resp instanceof Array){
 			for(var i=0;i<resp.length;i++){
 				applyServerCommand(resp[i]);
@@ -364,7 +366,6 @@ function ajaxUpload(uri:string, fieldName:string, file:File, onDone:{(resp:any):
 		if(onProgress)
 			onProgress(ev.loaded/ev.total);
 	};
-	xhr.responseType="json";
 	xhr.send(formData);
 }
 
@@ -373,13 +374,37 @@ function isVisible(el:HTMLElement):boolean{
 	return el.style.display!="none";
 }
 
-function lang(key:string, args:{[key:string]:(string|number)}={}):string{
+function isEmptyObject(obj:Object):boolean{
+	for(var prop in obj)
+		return false;
+	return true;
+}
+
+function lang(key:string, args:{[key:string]:(string|number)}={}, links:{[key:string]:{[key:string]:string}}={}):string{
 	if(!langKeys[key])
 		return key.replace(/_/g, " ");
 	var v=langKeys[key];
+	var result;
 	if(typeof v==="function")
-		return (v as Function).apply(this, [args]);
-	return v as string;
+		result=(v as Function).apply(this, [args]);
+	else
+		result=v as string;
+	if(!isEmptyObject(links)){
+		var el=ce("span");
+		el.innerHTML=result;
+		for(var linkID in links){
+			var link=el.qs("a#"+linkID);
+			if(!link)
+				continue;
+			link.removeAttribute("id");
+			var linkAttrs=links[linkID];
+			for(var attr in linkAttrs){
+				(link as any)[attr]=linkAttrs[attr];
+			}
+		}
+		result=el.innerHTML;
+	}
+	return result;
 }
 
 function langFileSize(size:number):string{
@@ -1683,6 +1708,9 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 			}
 			eval(xhr.response.s);
 			initDynamicControls();
+			if(AudioPlayer.isInitialized()){
+				AudioPlayer.getInstance().updateAllControls();
+			}
 		};
 		var extraScripts=xhr.response.sc;
 		if(extraScripts){
@@ -1750,7 +1778,7 @@ function setMenuCounters(counters:{[key:string]:number}){
 function activateNotificationsPostForm(id:string, postID:string, type:PostFormReplyType, randomID:string){
 	var ev=window.event;
 	var target=ev.target as HTMLElement;
-	if(target.tagName=='A' || target.tagName=='LABEL' || target.tagName=='INPUT')
+	if((ev.target as HTMLElement).closest("a, label, input"))
 		return true;
 	var formEl=ge("wallPostForm_"+id);
 	if(!formEl)

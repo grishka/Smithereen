@@ -1,0 +1,14 @@
+{% extends "page" %}
+{% block content %}
+<div id="oauthPromptHeader">
+<h2>Validation test</h2>
+<noscript><p style="color: #f00">You have JavaScript disabled. It is strongly recommended to enable JavaScript in your web view for real validation to work.</p></noscript>
+<p>You are testing how your app handles the "validation required" error.</p>
+<p>Click one of the buttons below to proceed.</p>
+</div>
+<div class="boxButtonBar" style="position: fixed; bottom: 0; left: 0; right: 0;">
+	<a href="{{ successURL }}" class="button">Successful result</a>
+	<a href="{{ failureURL }}" class="button secondary">Unsuccessful result</a>
+</div>
+{% endblock %}
+
