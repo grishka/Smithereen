@@ -933,7 +933,8 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 
 .memberList{
 	display: grid;
-	grid-template-columns: 32px auto;
+	--avatar-size: 32px;
+	grid-template-columns: var(--avatar-size) auto;
 	padding: 10px 8px;
 	grid-gap: 8px 6px;
 	.nameAndInfo{
