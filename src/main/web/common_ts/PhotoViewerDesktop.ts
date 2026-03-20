@@ -272,13 +272,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 		var ph=this.photos[this.currentIndex];
 		if(ph.originalURL){
 			var err=document.createDocumentFragment();
-			err.appendChild(ce("span", {innerHTML: lang("photo_load_failed_remote")}));
-			var link=err.getElementById("direct") as HTMLAnchorElement;
-			if(link){
-				link.id="";
-				link.href=ph.originalURL;
-				link.target="_blank";
-			}
+			err.appendChild(ce("span", {innerHTML: lang("photo_load_failed_remote", {}, {direct: {href: ph.originalURL, target: "_blank"} })}));
 			this.errorOverlay.appendChild(err);
 		}else{
 			this.errorOverlay.innerHTML=lang("photo_load_failed_local");

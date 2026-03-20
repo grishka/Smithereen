@@ -18,7 +18,7 @@
   "oauth_scope_wall_write_info": "The app will be able to publish wall posts on your behalf",
   "oauth_scope_groups": "Groups",
   "oauth_scope_groups_info": "The app will receive access to your groups, including closed and private",
-  "oauth_scope_groups_write_info": "The all will be able to join, leave, and manage groups on your behalf, including closed and private",
+  "oauth_scope_groups_write_info": "The app will be able to join, leave, and manage groups on your behalf, including closed and private",
   "oauth_scope_messages": "Messages",
   "oauth_scope_messages_info": "The app will receive access to your private messages",
   "oauth_scope_messages_write_info": "The app will be able to send messages on your behalf",

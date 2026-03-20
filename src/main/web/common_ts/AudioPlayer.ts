@@ -17,40 +17,100 @@ const enum AudioPlayerState{
 	LOAD="load",
 }
 
+const enum PlayerIDSuffix{
+	EMPTY="",
+	LAYER="_layer",
+}
+
 interface BaseSongInfo{
-	id:string;
+	playerID:string;
 	duration:number|null;
 	title:string;
 	artist:string;
 }
 
-type SongInfo=BaseSongInfo&{url:string; unavailabilityReason?:never;}|BaseSongInfo&{url?:never; unavailabilityReason:string;};
-
-interface AudioControlContainer{
-	idSuffix:string,
-	isFixedPosition:boolean,
+const enum AudioUnavailabilityReason{
+	UNSUPPORTED_FORMAT=4, // MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
 }
 
-interface AudioControl{
-	audioID:string,
-	idSuffix:string,
-	isFixedPosition:boolean,
-	row:HTMLElement
-	play:HTMLElement
-	duration:HTMLElement
-	progressControl:HTMLElement
-	progressBackLine:HTMLElement,
-	loadLine:HTMLElement
-	progressLine:HTMLElement
-	volumeControl:HTMLElement
-	volumeBackLine:HTMLElement
-	volumeLine:HTMLElement
+type SongInfo=
+		BaseSongInfo&{url:string; unavailabilityReason?:AudioUnavailabilityReason;}
+		|BaseSongInfo&{url?:never; unavailabilityReason:AudioUnavailabilityReason;};
+
+class AudioControlContainer{
+	readonly idSuffix:PlayerIDSuffix;
+	readonly isFixedPosition:boolean;
+
+	constructor(idSuffix:PlayerIDSuffix, isFixedPosition:boolean){
+		this.idSuffix=idSuffix;
+		this.isFixedPosition=isFixedPosition;
+	}
+
+	getControl(playerID:string):AudioControl|null{
+		const row=ge("audio"+playerID+this.idSuffix);
+		if(!row) return null;
+		return new AudioControl(playerID, this.isFixedPosition, row);
+	}
+}
+
+class AudioControl{
+	/**
+	 * The player ID without any suffixes.
+	 * Not necessarily corresponds to an ID of an existing element.
+	 * For example, if the player is opened in a layer, but it's non-layer counterpart
+	 * doesn't exist anywhere on the page.
+	 */
+	readonly playerID:string;
+	readonly isFixedPosition:boolean;
+	readonly row:HTMLElement;
+
+	constructor(playerID:string, isFixedPosition:boolean, row:HTMLElement){
+		this.playerID=playerID;
+		this.isFixedPosition=isFixedPosition;
+		this.row=row;
+	}
+
+	play():HTMLElement{
+		return this.row.qs(".play");
+	}
+
+	duration():HTMLElement{
+		return this.row.qs(".duration");
+	}
+
+	progressControl():HTMLElement{
+		return this.row.qs(".audioProgress");
+	}
+
+	progressBackLine():HTMLElement{
+		return this.row.qs(".audioBackLine");
+	}
+
+	loadLine():HTMLElement{
+		return this.row.qs(".audioLoadLine");
+	}
+
+	progressLine():HTMLElement{
+		return this.row.qs(".audioProgressValue");
+	}
+
+	volumeControl():HTMLElement{
+		return this.row.qs(".audioVolume");
+	}
+
+	volumeBackLine():HTMLElement{
+		return this.row.qs(".audioVolumeBackLine");
+	}
+
+	volumeLine():HTMLElement{
+		return this.row.qs(".audioVolumeValue");
+	}
 }
 
 class AudioPlayer{
 	private mgr:AudioManager|null=null;
 	private eventsInitialized:boolean=false;
-	private curAudioID:string|null=null;
+	private curPlayerID:string|null=null;
 	private state:AudioPlayerState=AudioPlayerState.STOP;
 	private pausedByVideo:string|null=null;
 	private time:number|null|undefined;
@@ -61,93 +121,75 @@ class AudioPlayer{
 	private hideTipTimeout:number|undefined;
 	private cancelClick:boolean=false;
 
-	private controlsForCurrentAudio:AudioControl[]=[];
-	private containers:AudioControlContainer[]=[{idSuffix: '', isFixedPosition: false}];
+	private containers:AudioControlContainer[]=[new AudioControlContainer(PlayerIDSuffix.EMPTY, false)];
 
-	private static instance:AudioPlayer;
+	private static instance:AudioPlayer|undefined;
+
+	public static isInitialized():boolean{
+		return this.instance!==undefined;
+	}
 
 	public static getInstance():AudioPlayer{
-		if(!AudioPlayer.instance) AudioPlayer.instance=new AudioPlayer();
-		return AudioPlayer.instance;
+		if(!this.instance) this.instance=new AudioPlayer();
+		return this.instance;
 	}
 
 	public static playOrPause(id:string){
 		this.getInstance().playOrPause(id);
 	}
 
-	public registerPlayerContainer(containerRandomID:string, isFixedPosition:boolean){
-		if(!containerRandomID) return;
-		const idSuffix="_"+containerRandomID;
+	public registerPlayerContainer(idSuffix:PlayerIDSuffix, isFixedPosition:boolean){
+		if(!idSuffix) return;
 		for(const container of this.containers){
 			if(container.idSuffix===idSuffix) return;
 		}
-		const container:AudioControlContainer={idSuffix: idSuffix, isFixedPosition: isFixedPosition};
+		const container:AudioControlContainer=new AudioControlContainer(idSuffix, isFixedPosition);
 		this.containers.push(container);
-		const control=this.newAudioControl(this.curAudioID, container);
-		if(control){
-			this.controlsForCurrentAudio.push(control);
-			this.setGraphics(control);
-			if(this.mgr){
-				this.mgr.onPlayProgress(true);
+		if(this.curPlayerID!=null){
+			const control=container.getControl(this.curPlayerID);
+			if(control){
+				this.setGraphics(control);
 			}
+		}
+		if(this.mgr){
+			this.mgr.onPlayProgress(true);
 		}
 	}
 
-	public deregisterPlayerContainer(containerRandomID:string){
-		if(!containerRandomID) return;
-		const idSuffix="_"+containerRandomID;
+	public deregisterPlayerContainer(idSuffix:PlayerIDSuffix){
+		if(!idSuffix) return;
 		this.containers=this.containers.filter(v=>v.idSuffix!==idSuffix);
-		this.controlsForCurrentAudio=this.controlsForCurrentAudio.filter(control=>control.idSuffix!==idSuffix);
 	}
 
-	private newAudioControl(audioID:string|null, container:AudioControlContainer|null):AudioControl|null{
-		if(!container) return null;
-		const row=ge("audio"+audioID+container.idSuffix);
-		return row && {
-			audioID: audioID,
-			idSuffix: container.idSuffix,
-			isFixedPosition: container.isFixedPosition,
-			row: row,
-			play: row.qs(".play"),
-			duration: row.qs(".duration"),
-			progressControl: row.qs(".audioProgress"),
-			loadLine: row.qs(".audioLoadLine"),
-			progressBackLine: row.qs(".audioBackLine"),
-			progressLine: row.qs(".audioProgressValue"),
-			volumeControl: row.qs(".audioVolume"),
-			volumeBackLine: row.qs(".audioVolumeBackLine"),
-			volumeLine: row.qs(".audioVolumeValue"),
+	public updateAllControls(){
+		this.forEachControl(this.setGraphics.bind(this));
+		if(this.mgr){
+			this.mgr.onPlayProgress(true);
 		}
 	}
 
 	private forEachControl(callback:(control:AudioControl)=>any){
-		const id=this.curAudioID;
+		const id=this.curPlayerID;
 		if(id===null) return;
-		const controls=this.controlsForCurrentAudio;
-		if(controls.length==0){
-			// lazily populate the array of controls
-			for(const container of this.containers){
-				const control=this.newAudioControl(id, container);
-				if(control) controls.push(control);
-			}
-		}
-		for(const control of controls){
-			if(callback(control)===false) return
+		for(const container of this.containers){
+			const control=container.getControl(id);
+			if(!control) continue;
+			if(callback(control)===false) return;
 		}
 	}
 
 	private findControl(event:Event):AudioControl|null{
 		const t=event.target as HTMLElement;
-		const row=t.closest(".audio");
+		const row=t.closest<HTMLElement>(".audio");
 		if(!row) return null;
-		let control:AudioControl|null=null;
-		this.forEachControl(c=>{
-			if(c.row==row){
-				control=c;
-				return false;
-			}
-		});
-		return control;
+		let id=row.id;
+		id=id.substring(5); // remove the 'audio' prefix
+		let isFixedPosition=false;
+		if(id.endsWith(PlayerIDSuffix.LAYER)){
+			isFixedPosition=true;
+			id=id.substring(0, id.length-PlayerIDSuffix.LAYER.length);
+		}
+		return new AudioControl(id, isFixedPosition, row);
 	}
 
 	private getCurrentProgressPercentage(e:MouseEvent|TouchEvent, progressElement:HTMLElement):number{
@@ -160,10 +202,11 @@ class AudioPlayer{
 
 	private changeVolume(e:MouseEvent|TouchEvent, control:AudioControl){
 		if(e instanceof MouseEvent && e.button==2) return;
-		const val=this.getCurrentProgressPercentage(e, control.volumeBackLine);
+		const volumeBackLine=control.volumeBackLine();
+		const val=this.getCurrentProgressPercentage(e, volumeBackLine);
 		this.draggingVolumeLine=control;
-		this.showTip(e, Math.round(val)+"%", control.volumeBackLine, control.isFixedPosition);
-		control.volumeLine.style.width=val+"%";
+		this.showTip(e, Math.round(val)+"%", volumeBackLine, control.isFixedPosition);
+		control.volumeLine().style.width=val+"%";
 		if(this.mgr){
 			this.mgr.setVolume(val/100);
 		}
@@ -172,10 +215,10 @@ class AudioPlayer{
 	private changeProgress(e:MouseEvent|TouchEvent, control:AudioControl){
 		if(e instanceof MouseEvent && e.button==2) return;
 		this.draggingProgressLine=control;
-		const val=this.getCurrentProgressPercentage(e, control.progressBackLine);
-		this.showProgressTip(e, control.progressControl, val, control.isFixedPosition);
+		const val=this.getCurrentProgressPercentage(e, control.progressBackLine());
+		this.showProgressTip(e, control.progressControl(), val, control.isFixedPosition);
 		this.time=val/100*this.lastSong.duration;
-		control.progressLine.style.width=val+"%";
+		control.progressLine().style.width=val+"%";
 	}
 
 	private showTip(e:MouseEvent|TouchEvent, text:string, progressLine:HTMLElement, isFixedPosition:boolean){
@@ -298,15 +341,15 @@ class AudioPlayer{
 		const control=this.findControl(e);
 		if(!control) return;
 		if(t.matches(".audioProgress, .audioProgress *")){
-			control.progressControl.classList.add("dragging");
+			control.progressControl().classList.add("dragging");
 			this.changeProgress(e, control);
 			this.cancelClick=true;
 		}else if(t.matches(".audioVolume, .audioVolume *")){
-			control.volumeControl.classList.add("dragging");
+			control.volumeControl().classList.add("dragging");
 			this.changeVolume(e, control);
 			this.cancelClick=true;
 		}else if(t.matches(".duration") && e.type!="touchstart"){
-			this.switchTimeLeftFormat(control.audioID, e as MouseEvent);
+			this.switchTimeLeftFormat(control.playerID, e as MouseEvent);
 		}
 	}
 
@@ -321,13 +364,13 @@ class AudioPlayer{
 				}catch(e){}
 				this.mgr.onPlayProgress();
 			}
-			this.draggingProgressLine.progressControl.classList.remove("dragging");
+			this.draggingProgressLine.progressControl().classList.remove("dragging");
 			// Update other controls with the relevant value as soon as the mouse is released.
-			this.forEachControl(c=>c.progressLine.style.width=this.draggingProgressLine.progressLine.style.width);
+			this.forEachControl(c=>c.progressLine().style.width=this.draggingProgressLine.progressLine().style.width);
 		}else if(this.draggingVolumeLine){
-			this.draggingVolumeLine.volumeControl.classList.remove("dragging");
+			this.draggingVolumeLine.volumeControl().classList.remove("dragging");
 			// Update other controls with the relevant value as soon as the mouse is released.
-			this.forEachControl(c=>c.volumeLine.style.width=this.draggingVolumeLine.volumeLine.style.width);
+			this.forEachControl(c=>c.volumeLine().style.width=this.draggingVolumeLine.volumeLine().style.width);
 			if(this.mgr){
 				localStorage.setItem(AudioLocalStorageKey.VOLUME, Math.round(this.mgr.getVolume()*100).toString());
 			}
@@ -356,7 +399,7 @@ class AudioPlayer{
 			// show the timestamp tip anyway.
 			if((e.target as HTMLElement).matches(".audioProgress *")){
 				const control=this.findControl(e);
-				this.showProgressTip(e, control.progressControl, this.getCurrentProgressPercentage(e, control.progressBackLine), control.isFixedPosition);
+				this.showProgressTip(e, control.progressControl(), this.getCurrentProgressPercentage(e, control.progressBackLine()), control.isFixedPosition);
 			}
 		}
 	}
@@ -382,7 +425,7 @@ class AudioPlayer{
 			this.initPlayer(id);
 			return;
 		}
-		const curAudioID=this.curAudioID;
+		const curAudioID=this.curPlayerID;
 		if(id==curAudioID){
 			if(this.mgr.paused()){
 				// TODO: If a video is playing, actually pause the video.
@@ -404,12 +447,12 @@ class AudioPlayer{
 			// TODO: If a video is playing, actually pause the video.
 			if(this.pausedByVideo) this.pausedByVideo=null;
 			if(curAudioID) this.stop();
-			this.setAudioID(id);
-			if(!this.lastSong || this.lastSong.id!=id) this.setSongInfo();
+			this.setPlayerID(id);
+			if(!this.lastSong || this.lastSong.playerID!=id) this.setSongInfo();
 			if(!this.lastSong) return;
 			const lastSong=this.lastSong
 			if(lastSong.unavailabilityReason){
-				this.setAudioID(null);
+				this.setPlayerID(null);
 				this.showAudioUnavailableMessage(lastSong);
 				return;
 			}
@@ -429,7 +472,7 @@ class AudioPlayer{
 		if((!this.mgr.paused() || forceUpdateProgressBar) && !this.draggingProgressLine){
 			let percentage=curTime/totalTime*100;
 			percentage=Math.min(Math.max(percentage, 0), 100);
-			this.forEachControl(c=>c.progressLine.style.width=percentage+"%");
+			this.forEachControl(c=>c.progressLine().style.width=percentage+"%");
 		}
 	}
 
@@ -447,38 +490,54 @@ class AudioPlayer{
 		if(isNaN(total)) total=this.lastSong.duration;
 		let percentage=Math.ceil(loaded/total*100);
 		percentage=Math.min(Math.max(percentage, 0), 100);
-		this.forEachControl(c=>c.loadLine.style.width=percentage+"%")
+		this.forEachControl(c=>c.loadLine().style.width=percentage+"%");
 	}
 
-	onError(code:number){
-		// TODO
+	onError(error:MediaError){
+		if(error.code==AudioUnavailabilityReason.UNSUPPORTED_FORMAT && this.lastSong!=null){
+			this.lastSong.unavailabilityReason=AudioUnavailabilityReason.UNSUPPORTED_FORMAT;
+			this.forEachControl(c => {
+				c.row.classList.add("unavailable");
+				c.row.dataset.unavailable=AudioUnavailabilityReason.UNSUPPORTED_FORMAT.toString();
+			});
+			this.stop();
+			this.showAudioUnavailableMessage(this.lastSong);
+		}
 	}
 
 	private setGraphics(control:AudioControl){
-		const id=this.curAudioID;
+		const id=this.curPlayerID;
 		if(!id) return;
 		switch(this.state){
 			case AudioPlayerState.PLAY:
 				control.row.classList.add("current");
-				control.play.classList.add("playing");
+				control.play().classList.add("playing");
 				break;
 			case AudioPlayerState.PAUSE:
 				control.row.classList.add("current");
-				control.play.classList.remove("playing");
+				control.play().classList.remove("playing");
 				break;
 			case AudioPlayerState.STOP:
-				const formattedDuration=this.formatTime(Math.round(this.lastSong && this.lastSong.duration || this.parseAudioInfo(id).duration));
 				control.row.classList.remove("current");
-				control.play.classList.remove("playing");
-				control.duration.innerText=formattedDuration;
-				control.progressLine.style.width="0";
+				control.play().classList.remove("playing");
+				let duration=this.lastSong && this.lastSong.duration;
+				if(duration==null){
+					let audioInfo=this.parseAudioInfo(control);
+					if(audioInfo!=null){
+						duration=audioInfo.duration;
+					}
+				}
+				if(duration!=null){
+					control.duration().innerText=this.formatTime(duration);
+				}
+				control.progressLine().style.width="0";
 				break;
 			case AudioPlayerState.LOAD:
 				const volume=this.mgr.getVolume();
 				control.row.classList.add("current");
-				control.play.classList.add("playing");
-				if(mobile) control.volumeControl.hide();
-				control.volumeLine.style.width=volume*100+"%";
+				control.play().classList.add("playing");
+				if(mobile) control.volumeControl().hide();
+				control.volumeLine().style.width=volume*100+"%";
 				break;
 		}
 	}
@@ -491,10 +550,12 @@ class AudioPlayer{
 			case AudioPlayerState.PLAY:
 				session.playbackState="playing";
 			case AudioPlayerState.LOAD:
-				session.metadata=new MediaMetadata({
-					artist: this.lastSong.artist,
-					title: this.lastSong.title,
-				});
+				if(this.lastSong!=null){
+					session.metadata=new MediaMetadata({
+						artist: this.lastSong.artist,
+						title: this.lastSong.title,
+					});
+				}
 				break;
 			case AudioPlayerState.PAUSE:
 				session.playbackState="paused";
@@ -507,44 +568,58 @@ class AudioPlayer{
 	}
 
 	private stop(){
-		const id=this.curAudioID;
+		const id=this.curPlayerID;
 		if(!id) return;
 		if(this.mgr && !this.mgr.paused()) this.mgr.stopAudio();
 		this.state=AudioPlayerState.STOP;
 		this.setMediaSession();
 		this.forEachControl(this.setGraphics.bind(this));
-		this.setAudioID(null);
-		this.controlsForCurrentAudio=[];
+		this.setPlayerID(null);
 	}
 
-	private setAudioID(id:string|null){
-		this.curAudioID=id;
+	private setPlayerID(id:string|null){
+		this.curPlayerID=id;
 	}
 
-	private parseAudioInfo(id:string):SongInfo|null{
-		const audioEl=ge("audio"+id);
-		if(!audioEl) return null;
+	private parseAudioInfo(control:AudioControl):SongInfo|null{
+		const data=control.row.dataset;
 		return {
-			id: id,
-			url: audioEl.dataset.url,
-			duration: audioEl.dataset.duration ? parseInt(audioEl.dataset.duration) : null,
-			artist: audioEl.dataset.artist,
-			title: audioEl.dataset.title,
+			playerID: control.playerID,
+			url: data.url,
+			duration: data.duration ? parseInt(data.duration) : null,
+			artist: data.artist,
+			title: data.title,
+			unavailabilityReason: data.unavailable ? parseInt(data.unavailable) : undefined,
 		};
 	}
 
 	private setSongInfo(){
-		this.lastSong=this.parseAudioInfo(this.curAudioID);
+		this.forEachControl(c=>{
+			this.lastSong=this.parseAudioInfo(c);
+			return false;
+		});
 	}
 
 	private showAudioUnavailableMessage(lastSong:SongInfo){
-		// TODO: Currently the server cannot specify the unavailability reason.
+		let title:string;
+		let msg:string;
+		switch(lastSong.unavailabilityReason){
+			case AudioUnavailabilityReason.UNSUPPORTED_FORMAT:
+				title=lang("audio_missing_box_title");
+				msg=`<p>${lang("audio_missing_box_message_1", {artist: lastSong.artist, title: lastSong.title})}</p>`;
+				if(lastSong.url){
+					msg+=`<p>${lang("audio_missing_box_message_2", {}, {missingAudioLink: {href: lastSong.url, target: "_blank"}})}</p>`;
+				}
+				break;
+		}
+		const box=new MessageBox(title, msg, lang("close"));
+		box.show();
 	}
 
 	private setCurTime(curTime:number, totalTime:number){
 		let formatted=this.formatTime(this.timeFormatLeft ? totalTime-curTime : curTime);
 		if(this.timeFormatLeft) formatted="-"+formatted;
-		this.forEachControl(c=>c.duration.innerText=formatted);
+		this.forEachControl(c=>c.duration().innerText=formatted);
 	}
 
 	private formatTime(time:number):string{
@@ -562,10 +637,10 @@ class AudioPlayer{
 		return res;
 	}
 
-	private switchTimeLeftFormat(audioID:string, event:MouseEvent){
+	private switchTimeLeftFormat(playerID:string, event:MouseEvent){
 		// Only allow switching the time format on the currently playing audio.
 		// Otherwise, the user won't be able to spot the difference.
-		if(audioID && this.curAudioID!==audioID) return;
+		if(playerID && this.curPlayerID!==playerID) return;
 		this.timeFormatLeft= !this.timeFormatLeft;
 		if(this.mgr){
 			this.mgr.onPlayProgress();

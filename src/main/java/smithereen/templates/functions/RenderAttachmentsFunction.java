@@ -1,5 +1,6 @@
 package smithereen.templates.functions;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.unbescape.html.HtmlEscape;
@@ -7,7 +8,6 @@ import org.unbescape.html.HtmlEscape;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URI;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.pebbletemplates.pebble.extension.Function;
@@ -38,6 +39,7 @@ import smithereen.model.attachments.SizedAttachment;
 import smithereen.model.attachments.VideoAttachment;
 import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.viewmodel.AudioAttachmentViewModel;
+import smithereen.model.viewmodel.PostViewModel;
 import smithereen.templates.MediaLayoutHelper;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
@@ -193,6 +195,18 @@ public class RenderAttachmentsFunction implements Function{
 		}
 	}
 
+	// See https://en.wikipedia.org/w/index.php?title=HTML_audio&oldid=1331140055#Supported_audio_coding_formats
+	private final static Set<String> SUPPORTED_AUDIO_FORMATS=Set.of(
+			"audio/wav",
+			"audio/mpeg",
+			"audio/mp4",
+			"audio/aac",
+			"audio/aacp",
+			"audio/ogg",
+			"audio/webm",
+			"audio/flac"
+	);
+
 	private void renderAudioAttachments(List<Attachment> attachments, AttachmentHostContentObject obj, List<String> lines, EvaluationContext evaluationContext){
 		Lang l=Lang.get(evaluationContext.getLocale());
 
@@ -202,21 +216,25 @@ public class RenderAttachmentsFunction implements Function{
 		List<AudioAttachmentViewModel> viewModels=new ArrayList<>();
 		for(Attachment att: attachments){
 			if(att instanceof AudioAttachment audio){
-				long hostID;
-				switch(obj){
-					case PostLikeObject p -> hostID=p.getObjectID();
-					case MailMessage m -> hostID=m.id;
+				String artist=audio.artist!=null ? audio.artist : l.get("audio_unknown_artist");
+				String title=audio.title!=null ? audio.title : (StringUtils.isNotBlank(att.description) ? att.description : l.get("audio_unknown_title"));
+				long durationInSeconds=audio.duration/1000;
+
+				// If the audio format is not supported by the majority of modern browsers,
+				// render the audio as unavailable:
+				int unavailable=0;
+				if(att.mediaType!=null && !SUPPORTED_AUDIO_FORMATS.contains(att.mediaType)){
+					unavailable=4;
 				}
-				Duration duration=null; // TODO: Try to parse it from the activity object or from ID3 tags
-				String artist=l.get("audio_unknown_artist"); // TODO: Try to parse it from the activity object or from ID3 tags
-				String title=StringUtils.isNotBlank(att.description) ? att.description : l.get("audio_unknown_title"); // TODO: Try to parse it from the activity object or from ID3 tags
+
 				AudioAttachmentViewModel viewModel=new AudioAttachmentViewModel(
-						hostID+"_"+audioIndex++,
-						l.formatDuration(duration),
-						duration==null ? -1 : duration.getSeconds(),
+						getPlayerID(audioIndex++, obj, evaluationContext),
+						audio.duration>0 ? l.formatDuration(durationInSeconds) : l.invalidDuration(),
+						durationInSeconds,
 						artist,
 						title,
-						audio.url
+						audio.url,
+						unavailable
 				);
 				viewModels.add(viewModel);
 			}
@@ -226,7 +244,6 @@ public class RenderAttachmentsFunction implements Function{
 		StringWriter writer=new StringWriter();
 		var context=new HashMap<String, Object>();
 		context.put("audios", viewModels);
-		context.put("randomID", evaluationContext.getVariable("randomID"));
 		context.put("isPostInLayer", evaluationContext.getVariable("isPostInLayer"));
 		try{
 			template.evaluate(writer, context, evaluationContext.getLocale());
@@ -234,5 +251,31 @@ public class RenderAttachmentsFunction implements Function{
 			log.error("Failure while evaluating template", e);
 		}
 		lines.add(writer.toString());
+	}
+
+	private static @NotNull String getPlayerID(int audioID, AttachmentHostContentObject host, EvaluationContext evaluationContext){
+		// The audio player identifier MUST be unique within a page, but also MUST be deterministic.
+		// The former is just a DOM requirement.
+		// The latter allows us to restore players' state after AJAX navigations.
+		StringBuilder playerID=new StringBuilder(Integer.toString(audioID));
+		switch(host){
+			case PostLikeObject p -> {
+				playerID.append("_");
+				PostViewModel repostParent=(PostViewModel) evaluationContext.getVariable("repostParent");
+				Long repostDepth=(Long) evaluationContext.getVariable("repostDepth");
+				if(repostParent!=null && repostDepth!=null && repostDepth>0){
+					playerID.append(repostParent.post.getObjectID());
+					playerID.append("_");
+					playerID.append(repostDepth);
+				}else{
+					playerID.append(p.getObjectID());
+				}
+			}
+			case MailMessage m -> {
+				playerID.append("_");
+				playerID.append(m.getIdString());
+			}
+		}
+		return playerID.toString();
 	}
 }

@@ -104,6 +104,11 @@ public sealed class MailMessage implements AttachmentHostContentObject, Activity
 	}
 
 	@Override
+	public void setAttachments(@NotNull List<ActivityPubObject> attachments){
+		this.attachments=attachments;
+	}
+
+	@Override
 	public NonCachedRemoteImage.Args getPhotoArgs(int index){
 		return new NonCachedRemoteImage.MessagePhotoArgs(id, index);
 	}

@@ -138,6 +138,11 @@ public abstract sealed class PostLikeObject implements OwnedContentObject, Attac
 		return attachments==null ? List.of() : attachments;
 	}
 
+	@Override
+	public void setAttachments(@NotNull List<ActivityPubObject> attachments){
+		this.attachments=attachments;
+	}
+
 	public void setActivityPubID(URI activityPubID){
 		this.activityPubID=activityPubID;
 	}

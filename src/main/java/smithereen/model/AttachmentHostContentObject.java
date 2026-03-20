@@ -27,6 +27,9 @@ import spark.utils.StringUtils;
 public sealed interface AttachmentHostContentObject permits MailMessage, PostLikeObject{
 	@NotNull
 	List<ActivityPubObject> getAttachments();
+
+	void setAttachments(@NotNull List<ActivityPubObject> attachments);
+
 	NonCachedRemoteImage.Args getPhotoArgs(int index);
 	String getPhotoListID();
 
@@ -37,6 +40,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 			String mediaType=o.mediaType==null ? "" : o.mediaType;
 			if(o instanceof Image || mediaType.startsWith("image/")){
 				PhotoAttachment att=o instanceof Image img && img.isGraffiti ? new GraffitiAttachment() : new PhotoAttachment();
+				att.mediaType=o.mediaType;
 				if(StringUtils.isNotEmpty(o.name))
 					att.description=o.name;
 				if(o instanceof LocalImage li){
@@ -79,6 +83,7 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 				if(o.url==null)
 					continue;
 				VideoAttachment att=new VideoAttachment();
+				att.mediaType=o.mediaType;
 				att.url=o.url;
 				att.description=o.name;
 				if(o instanceof Document doc){
@@ -91,8 +96,14 @@ public sealed interface AttachmentHostContentObject permits MailMessage, PostLik
 				if(o.url==null)
 					continue;
 				AudioAttachment att=new AudioAttachment();
+				att.mediaType=o.mediaType;
 				att.description=o.name;
 				att.url=o.url;
+				if(o instanceof Audio audio){
+					att.artist=audio.artist;
+					att.title=audio.title;
+					att.duration=audio.duration;
+				}
 				result.add(att);
 			}
 			i++;

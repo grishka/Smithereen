@@ -44,25 +44,27 @@ import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UnsupportedRemoteObjectTypeException;
 import smithereen.model.ActorStatus;
+import smithereen.model.AttachmentHostContentObject;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
-import smithereen.model.apps.ClientApp;
-import smithereen.model.groups.GroupAdmin;
 import smithereen.model.MailMessage;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.Post;
 import smithereen.model.Server;
 import smithereen.model.User;
 import smithereen.model.UserBanStatus;
+import smithereen.model.apps.ClientApp;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.comments.Comment;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.storage.CommentStorage;
 import smithereen.storage.FederationStorage;
 import smithereen.storage.GroupStorage;
 import smithereen.storage.MailStorage;
+import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.PhotoStorage;
 import smithereen.storage.PostStorage;
 import smithereen.storage.UserStorage;
@@ -391,6 +393,9 @@ public class ObjectLinkResolver{
 
 	public void storeOrUpdateRemoteObject(Object o, ActivityPubObject origObj){
 		try{
+			if(o instanceof AttachmentHostContentObject attachmentHost){
+				MediaStorageUtils.fetchAudioMetadata(attachmentHost, context);
+			}
 			switch(o){
 				case ForeignUser fu -> {
 					if(fu.isServiceActor){

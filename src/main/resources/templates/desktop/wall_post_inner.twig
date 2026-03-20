@@ -5,9 +5,9 @@
 {# @pebvariable name="randomID" type="String" #}
 {% set realPost=post.post %}
 {% if realPost.hasContentWarning %}
-<input type="checkbox" id="postCW_{{ repostParent.post.id }}_{{ randomID }}" style="display: none"/>
+<input type="checkbox" id="postCW_{{ realPost.id }}_{{ randomID }}" style="display: none"/>
 <div class="postCWWrap">
-	<label for="postCW_{{ repostParent.post.id }}_{{ randomID }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
+	<label for="postCW_{{ realPost.id }}_{{ randomID }}" class="postCWButton ellipsize">{{ realPost.contentWarning | default(L('cw_default')) }}</label>
 {% endif %}
 {% if standalone %}
 <div class="postContent">{{ realPost.text | postprocessHTML }}</div>
