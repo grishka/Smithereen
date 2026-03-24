@@ -229,5 +229,6 @@
   "clear_selection": "Сбросить выбор",
   "announcement": "Объявление",
   "menu_apps": "Приложения",
-  "captcha_hint": "Введите код с картинки"
+  "captcha_hint": "Введите код с картинки",
+  "footer_developer_docs": "Разработчикам"
 }

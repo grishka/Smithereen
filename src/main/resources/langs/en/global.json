@@ -233,5 +233,6 @@
   "clear_selection": "Clear selection",
   "announcement": "Announcement",
   "menu_apps": "Applications",
-  "captcha_hint": "Enter the code from the image"
+  "captcha_hint": "Enter the code from the image",
+  "footer_developer_docs": "Developers"
 }
