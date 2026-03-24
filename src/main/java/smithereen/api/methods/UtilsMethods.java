@@ -51,6 +51,8 @@ public class UtilsMethods{
 				case NOT_FOUND -> ApiErrorType.REMOTE_FETCH_NOT_FOUND;
 				case OTHER_ERROR -> ApiErrorType.REMOTE_FETCH_OTHER_ERROR;
 			}, x.getCause()!=null ? x.getCause().getMessage() : x.getMessage());
+		}catch(IllegalArgumentException x){
+			throw actx.error(ApiErrorType.REMOTE_FETCH_OTHER_ERROR, "the object is local");
 		}
 	}
 
