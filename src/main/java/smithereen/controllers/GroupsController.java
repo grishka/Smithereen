@@ -1057,6 +1057,7 @@ public class GroupsController{
 		try{
 			context.getActivityPubWorker().sendGroupDeleteSelf(group);
 			GroupStorage.deleteGroup(group);
+			context.getNewsfeedController().clearGroupsFeedCache();
 			if(admin!=null)
 				ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.DELETE_GROUP, -group.id, 0, null, Map.of("name", group.name));
 		}catch(SQLException x){
@@ -1067,6 +1068,7 @@ public class GroupsController{
 	public void deleteForeignGroup(ForeignGroup group){
 		try{
 			GroupStorage.deleteGroup(group);
+			context.getNewsfeedController().clearGroupsFeedCache();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -383,6 +383,7 @@ public class UsersController{
 	public void deleteForeignUser(ForeignUser user){
 		try{
 			UserStorage.deleteForeignUser(user);
+			context.getNewsfeedController().clearFriendsFeedCache();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -402,6 +403,7 @@ public class UsersController{
 			SmithereenApplication.invalidateAllSessionsForAccount(acc.id);
 			if(admin!=null)
 				ModerationStorage.createAuditLogEntry(admin.id, AuditLogEntry.Action.DELETE_USER, user.id, 0, null, Map.of("name", user.getCompleteName()));
+			context.getNewsfeedController().clearFriendsFeedCache();
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

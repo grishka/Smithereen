@@ -40,7 +40,7 @@ import smithereen.util.Passwords;
 import smithereen.util.XTEA;
 
 public class DatabaseSchemaUpdater{
-	public static final int SCHEMA_VERSION=90;
+	public static final int SCHEMA_VERSION=91;
 	private static final Logger LOG=LoggerFactory.getLogger(DatabaseSchemaUpdater.class);
 
 	public static void maybeUpdate() throws SQLException{
@@ -1252,6 +1252,18 @@ public class DatabaseSchemaUpdater{
 						  CONSTRAINT `api_app_installs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
 						  CONSTRAINT `api_app_installs_ibfk_2` FOREIGN KEY (`app_id`) REFERENCES `api_applications` (`id`) ON DELETE CASCADE
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;""");
+			}
+			case 91 -> {
+				new SQLQueryBuilder(conn)
+						.deleteFrom("newsfeed")
+						.where("author_id NOT IN (SELECT id FROM `users`)")
+						.executeNoResult();
+				new SQLQueryBuilder(conn)
+						.deleteFrom("newsfeed_groups")
+						.where("group_id NOT IN (SELECT id FROM `groups`)")
+						.executeNoResult();
+				conn.createStatement().execute("ALTER TABLE newsfeed CHANGE author_id `author_id` int unsigned NOT NULL, ADD CONSTRAINT `newsfeed_users_fk` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE");
+				conn.createStatement().execute("ALTER TABLE newsfeed_groups ADD CONSTRAINT `newsfeed_groups_groups_fk` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE");
 			}
 		}
 	}
