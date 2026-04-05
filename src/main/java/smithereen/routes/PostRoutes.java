@@ -915,7 +915,7 @@ public class PostRoutes{
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+postID+ridSuffix, model.renderToString())
 				.hide("prevLoader"+postID+ridSuffix);
-		if(comments.total>comments.list.size()){
+		if(comments.total>comments.list.size() && !comments.list.isEmpty()){
 			rb.show("loadPrevBtn"+postID).setAttribute("loadPrevBtn"+postID+ridSuffix, "data-first-id", String.valueOf(comments.list.getFirst().post.id));
 			if(viewType==CommentViewType.FLAT){
 				rb.setContent("loadPrevBtn"+postID+ridSuffix, lang(req).get("comments_show_X_more_comments", Map.of("count", comments.total-comments.list.size())));
