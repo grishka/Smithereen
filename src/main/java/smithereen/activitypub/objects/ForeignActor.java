@@ -20,6 +20,7 @@ public interface ForeignActor{
 			"he/him",
 			"male",
 			"мужской",
+			"он",
 			"он/его"
 	);
 	Set<String> GENDER_FIELD_FEMALE_VALUES=Set.of(
@@ -27,6 +28,7 @@ public interface ForeignActor{
 			"she/her",
 			"female",
 			"женский",
+			"она",
 			"она/ее",
 			"она/её"
 	);
