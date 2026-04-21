@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
@@ -23,17 +24,19 @@ public class ProcessWallPostTask extends NoResultCallable{
 	protected NoteOrQuestion post;
 	protected final Actor owner;
 	private final HashMap<URI, Future<Post>> fetchingAllReplies;
+	private final Set<Integer> userIDs;
 
-	public ProcessWallPostTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, NoteOrQuestion post, Actor owner){
+	public ProcessWallPostTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, NoteOrQuestion post, Set<Integer> userIDs, Actor owner){
 		this.post=post;
 		this.owner=owner;
 		this.apw=apw;
 		this.context=context;
 		this.fetchingAllReplies=fetchingAllReplies;
+		this.userIDs=userIDs;
 	}
 
-	public ProcessWallPostTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Actor owner){
-		this(apw, context, fetchingAllReplies, null, owner);
+	public ProcessWallPostTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Set<Integer> userIDs, Actor owner){
+		this(apw, context, fetchingAllReplies, null, userIDs, owner);
 	}
 
 	@Override
@@ -48,6 +51,7 @@ public class ProcessWallPostTask extends NoResultCallable{
 			}
 			context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 			context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
+			userIDs.add(nativePost.authorID);
 			apw.submitTask(new FetchAllWallRepliesTask(apw, context, fetchingAllReplies, nativePost)).get();
 		}catch(Exception x){
 			LOG.debug("Error processing post {}", post.activityPubID, x);

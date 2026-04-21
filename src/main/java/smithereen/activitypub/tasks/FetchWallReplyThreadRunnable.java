@@ -57,13 +57,12 @@ public class FetchWallReplyThreadRunnable implements Callable<List<Post>>{
 				thread.addFirst(post);
 			}
 			NoteOrQuestion topLevel=thread.getFirst();
-			Post parent=null;
+			Set<Integer> userIDs=new HashSet<>();
 			for(NoteOrQuestion noq: thread){
 				Post p=noq.asNativePost(context);
 
 				if(p.id!=0){
 					realThread.add(p);
-					parent=p;
 					continue;
 				}
 				if(noq.inReplyTo==null && noq.getQuoteRepostID()!=null){
@@ -75,9 +74,10 @@ public class FetchWallReplyThreadRunnable implements Callable<List<Post>>{
 				context.getWallController().loadAndPreprocessRemotePostMentions(p, noq);
 				context.getObjectLinkResolver().storeOrUpdateRemoteObject(p, noq);
 				context.getNotificationsController().createNotificationsForObject(p);
+				userIDs.add(p.authorID);
 				realThread.add(p);
-				parent=p;
 			}
+			context.getActivityPubWorker().maybeRefreshUsers(userIDs);
 			LOG.debug("Done fetching parent thread for post {}", topLevel.activityPubID);
 			return realThread;
 		}finally{

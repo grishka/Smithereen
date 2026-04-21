@@ -2,6 +2,7 @@ package smithereen.activitypub.tasks;
 
 import java.net.URI;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
@@ -13,8 +14,8 @@ import smithereen.model.Post;
 public class FetchAndProcessWallPostTask extends ProcessWallPostTask{
 	private final URI postID;
 
-	public FetchAndProcessWallPostTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Actor owner, URI postID){
-		super(apw, context, fetchingAllReplies, owner);
+	public FetchAndProcessWallPostTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Set<Integer> userIDs, Actor owner, URI postID){
+		super(apw, context, fetchingAllReplies, userIDs, owner);
 		this.postID=postID;
 	}
 

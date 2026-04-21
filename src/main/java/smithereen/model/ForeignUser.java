@@ -470,7 +470,7 @@ public class ForeignUser extends User implements ForeignActor{
 
 	@Override
 	public boolean needUpdate(){
-		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.toEpochMilli()>24L*60*60*1000;
+		return lastUpdated!=null && System.currentTimeMillis()-lastUpdated.toEpochMilli()>UPDATE_INTERVAL_SECONDS*1000L;
 	}
 
 	@Override

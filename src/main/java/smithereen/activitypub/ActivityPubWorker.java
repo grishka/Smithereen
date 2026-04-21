@@ -80,6 +80,7 @@ import smithereen.activitypub.tasks.ForwardOneActivityRunnable;
 import smithereen.activitypub.tasks.RetryActivityRunnable;
 import smithereen.activitypub.tasks.SendActivitySequenceRunnable;
 import smithereen.activitypub.tasks.SendOneActivityRunnable;
+import smithereen.controllers.ObjectLinkResolver;
 import smithereen.exceptions.FederationException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -151,6 +152,7 @@ public class ActivityPubWorker{
 	private final HashMap<URI, Future<Void>> fetchingPhotoAlbums=new HashMap<>();
 	private final HashMap<URI, Future<Void>> fetchingBoardTopics=new HashMap<>();
 	private final HashMap<URI, Future<Void>> fetchingUserPinnedPosts=new HashMap<>();
+	private final HashSet<URI> refreshingUserIDs=new HashSet<>();
 
 	private final ApplicationContext context;
 
@@ -1371,6 +1373,42 @@ public class ActivityPubWorker{
 
 	public synchronized Future<Void> fetchUserPinnedPosts(ForeignUser user){
 		return fetchingUserPinnedPosts.computeIfAbsent(user.activityPubID, uri->executor.submit(new FetchUserPinnedPostsTask(context, user, fetchingUserPinnedPosts, this)));
+	}
+
+	public void maybeRefreshUsers(Set<Integer> ids){
+		if(ids.isEmpty())
+			return;
+		try{
+			Set<URI> toRefresh=UserStorage.getRemoteUserApIDsDueForRefresh(ids);
+			if(toRefresh.isEmpty())
+				return;
+			synchronized(refreshingUserIDs){
+				if(!refreshingUserIDs.isEmpty()){
+					if(!(toRefresh instanceof HashSet))
+						toRefresh=new HashSet<>(toRefresh);
+					toRefresh.removeAll(refreshingUserIDs);
+					if(toRefresh.isEmpty())
+						return;
+				}
+				refreshingUserIDs.addAll(toRefresh);
+			}
+			LOG.debug("Will refresh remote actors: {}", toRefresh);
+			for(URI apID:toRefresh){
+				executor.submit(()->{
+					try{
+						context.getObjectLinkResolver().resolve(apID, ForeignUser.class, true, true, true);
+					}catch(Exception x){
+						LOG.warn("Failed to refresh user {}: {}", apID, x.toString());
+					}finally{
+						synchronized(refreshingUserIDs){
+							refreshingUserIDs.remove(apID);
+						}
+					}
+				});
+			}
+		}catch(SQLException x){
+			LOG.error("Failed to refresh {} remote users", ids.size(), x);
+		}
 	}
 
 	public <R, T extends Callable<R>> List<Future<R>> invokeAll(Collection<T> tasks){

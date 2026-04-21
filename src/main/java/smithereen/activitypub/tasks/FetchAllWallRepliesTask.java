@@ -36,6 +36,7 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 	 * NB: used from multiple threads simultaneously
 	 */
 	protected final Set<URI> seenPosts;
+	protected final HashSet<Integer> userIDs=new HashSet<>();
 
 	public FetchAllWallRepliesTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Post post, Set<URI> seenPosts){
 		this.post=post;
@@ -106,6 +107,7 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 				}
 			}
 		}
+		context.getActivityPubWorker().maybeRefreshUsers(userIDs);
 		return post;
 	}
 
@@ -143,6 +145,7 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 				context.getWallController().loadAndPreprocessRemotePostMentions(post, noq);
 				PostStorage.putForeignWallPost(post);
 				LOG.trace("got post: {}", post);
+				userIDs.add(post.authorID);
 				FetchAllWallRepliesTask subtask=new FetchAllWallRepliesTask(apw, context, fetchingAllReplies, post, seenPosts);
 				subtasks.add(apw.submitTask(subtask));
 			}else{

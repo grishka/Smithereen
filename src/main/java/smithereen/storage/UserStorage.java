@@ -35,6 +35,7 @@ import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.controllers.FriendsController;
 import smithereen.model.Account;
@@ -1975,5 +1976,31 @@ public class UserStorage{
 				.valueExpr("num_friends", "(SELECT COUNT(*) FROM followings WHERE followee_id=? AND mutual=1)", user.id)
 				.executeNoResult();
 		removeFromCache(user);
+	}
+
+	public static Set<URI> getRemoteUserApIDsDueForRefresh(Set<Integer> ids) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			// First, get AP IDs of all remote users that haven't been updated in over 24h
+			HashMap<Integer, URI> apIdsById=new SQLQueryBuilder(conn)
+					.selectFrom("users")
+					.columns("id", "ap_id")
+					.whereIn("id", ids)
+					.andWhere("ap_id IS NOT NULL AND last_updated<DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL ? SECOND)", ForeignActor.UPDATE_INTERVAL_SECONDS)
+					.executeAsStream(r->new Pair<>(r.getInt("id"), URI.create(r.getString("ap_id"))))
+					.collect(Collectors.toMap(Pair::first, Pair::second, (a, b)->b, HashMap::new));
+			if(apIdsById.isEmpty())
+				return Set.of();
+			// Next, only keep those that have no local followers
+			new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.distinct()
+					.columns("followee_id")
+					.join("JOIN users ON follower_id=users.id")
+					.whereIn("followee_id", apIdsById.keySet())
+					.andWhere("users.ap_id IS NULL")
+					.executeAsStream(r->r.getInt(1))
+					.forEach(apIdsById::remove);
+			return apIdsById.isEmpty() ? Set.of() : new HashSet<>(apIdsById.values());
+		}
 	}
 }
