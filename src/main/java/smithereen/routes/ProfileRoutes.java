@@ -64,6 +64,8 @@ public class ProfileRoutes{
 	private static final Pattern ID_PATTERN=Pattern.compile("^(id|club|event|app)(\\d+)$");
 
 	public static Object profile(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		ApplicationContext ctx=context(req);
 		String username=req.params(":username");
 		ObjectLinkResolver.UsernameResolutionResult ur;

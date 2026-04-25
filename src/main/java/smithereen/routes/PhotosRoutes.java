@@ -19,6 +19,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
@@ -106,6 +107,8 @@ public class PhotosRoutes{
 	}
 
 	private static Object photoAlbums(Request req, Response resp, Actor owner, Account self, ApplicationContext ctx){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		List<PhotoAlbum> albums=ctx.getPhotosController().getAllAlbums(owner, self==null ? null : self.user, true, true);
 		Templates.addJsLangForPrivacySettings(req);
 		Set<Long> needPhotos=albums.stream().map(a->a.coverID).filter(id->id!=0).collect(Collectors.toSet());
@@ -179,6 +182,8 @@ public class PhotosRoutes{
 	}
 
 	public static Object album(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		SessionInfo session=sessionInfo(req);
 		User self=session!=null && session.account!=null ? session.account.user : null;
 		ApplicationContext ctx=context(req);
@@ -858,6 +863,8 @@ public class PhotosRoutes{
 	}
 
 	public static Object photo(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		ApplicationContext ctx=context(req);
 		Account self=sessionInfo(req) instanceof SessionInfo si ? si.account : null;
 		Photo photo=getPhotoForRequest(req);

@@ -120,6 +120,8 @@ public class PrivacyController{
 	}
 
 	public void enforceUserAccessToGroupProfile(@Nullable User self, @NotNull Group group){
+		if(Config.demoMode && self==null)
+			throw new InaccessibleGroupException(group);
 		switch(group.banStatus){
 			case NONE -> {}
 			case SUSPENDED -> {
@@ -468,6 +470,8 @@ public class PrivacyController{
 	}
 
 	public void enforceUserProfileAccess(@Nullable User self, User target){
+		if(Config.demoMode && self==null)
+			throw new InaccessibleProfileException(target);
 		switch(target.banStatus){
 			case NONE -> {}
 			case FROZEN, SUSPENDED -> {
