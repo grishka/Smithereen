@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.exceptions.InternalServerErrorException;
@@ -236,6 +237,8 @@ public class FriendsController{
 			if(user.id==self.id){
 				throw new UserErrorException("err_cant_friend_self");
 			}
+			if(Config.demoMode && user instanceof ForeignUser)
+				throw new UserActionNotAllowedException("err_unavailable_in_demo_mode");
 			Utils.ensureUserNotBlocked(self, user);
 			Utils.ensureUserNotBlocked(user, self);
 			FriendshipStatus status=getFriendshipStatus(self, user);
@@ -272,6 +275,8 @@ public class FriendsController{
 			if(user.id==self.id){
 				throw new UserErrorException("err_cant_friend_self");
 			}
+			if(Config.demoMode && user instanceof ForeignUser)
+				throw new UserActionNotAllowedException("err_unavailable_in_demo_mode");
 			Utils.ensureUserNotBlocked(self, user);
 			Utils.ensureUserNotBlocked(user, self);
 			FriendshipStatus status=getFriendshipStatus(self, user);

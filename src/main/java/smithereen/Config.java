@@ -80,6 +80,8 @@ public class Config{
 	public static StorageBackend storageBackend;
 	public static S3Configuration s3Configuration;
 
+	public static boolean demoMode;
+
 	// following fields are kept in the config table in database and some are configurable from /settings/admin
 
 	public static int dbSchemaVersion;
@@ -183,6 +185,8 @@ public class Config{
 					Boolean.parseBoolean(props.getProperty("upload.s3.override_path_style", "false"))
 			);
 		}
+
+		demoMode=Boolean.parseBoolean(props.getProperty("demo_mode", "false"));
 	}
 
 	public static void loadFromDatabase() throws SQLException{

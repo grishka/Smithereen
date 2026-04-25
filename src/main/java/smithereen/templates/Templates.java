@@ -13,7 +13,10 @@ import java.net.URI;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -152,6 +155,20 @@ public class Templates{
 							.toList());
 				}
 			}
+		}
+		if(Config.demoMode){
+			LocalDateTime now=LocalDateTime.now(ZoneId.of("UTC"));
+			LocalDateTime nextReset;
+			if(now.getMinute()>=30){
+				nextReset=now.truncatedTo(ChronoUnit.HOURS).plusHours(1);
+			}else{
+				nextReset=now.truncatedTo(ChronoUnit.HOURS).plusMinutes(30);
+			}
+			long nextResetMs=nextReset.toInstant(ZoneOffset.UTC).toEpochMilli();
+			long nextResetIn=(nextResetMs-System.currentTimeMillis())/1000;
+			model.with("serverDemoMode", true)
+					.with("demoNextReset", nextResetMs)
+					.with("demoNextResetIn", String.format(lang.getLocale(), "%d:%02d", nextResetIn/60, nextResetIn%60));
 		}
 		jsConfig.addProperty("timeZone", tz!=null ? tz.getId() : null);
 		ArrayList<String> jsLang=new ArrayList<>();

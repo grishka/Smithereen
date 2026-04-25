@@ -234,5 +234,9 @@
   "announcement": "Announcement",
   "menu_apps": "Applications",
   "captcha_hint": "Enter the code from the image",
-  "footer_developer_docs": "Developers"
+  "footer_developer_docs": "Developers",
+  "left_menu_demo": "Demo mode",
+  "left_menu_demo_timer": "This server will reset in:",
+  "err_unavailable_in_demo_mode": "This action is unavailable in demo mode.",
+  "err_interaction_demo_mode": "You can't interact with remote content in demo mode."
 }

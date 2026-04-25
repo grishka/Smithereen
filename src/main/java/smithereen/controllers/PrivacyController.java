@@ -198,7 +198,7 @@ public class PrivacyController{
 
 	public boolean checkUserPrivacy(@Nullable User self, @NotNull User owner, @NotNull UserPrivacySettingKey key){
 		// Unconditionally deny any active actions to blocked users
-		if(!key.isForViewing() && self!=null && isUserBlocked(self, owner))
+		if(!key.isForViewing() && self!=null && (isUserBlocked(self, owner) || (Config.demoMode && owner instanceof ForeignUser)))
 			return false;
 		boolean r=checkUserPrivacy(self, owner, owner.getPrivacySetting(key));
 		if(key==UserPrivacySettingKey.PRIVATE_MESSAGES && !r && self!=null){

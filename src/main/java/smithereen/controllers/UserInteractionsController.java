@@ -11,12 +11,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.Utils;
+import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
 import smithereen.model.LikeableContentObject;
@@ -86,6 +89,9 @@ public class UserInteractionsController{
 				Utils.ensureUserNotBlocked(self, u);
 			else if(oaa.owner() instanceof Group g)
 				Utils.ensureUserNotBlocked(self, g);
+
+			if(Config.demoMode && oaa.owner() instanceof ForeignActor)
+				throw new UserActionNotAllowedException("err_interaction_demo_mode");
 
 			LikeableContentObject syncedObject=null;
 			if(object instanceof Post post){
