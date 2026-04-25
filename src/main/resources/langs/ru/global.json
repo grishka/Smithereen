@@ -230,5 +230,9 @@
   "announcement": "Объявление",
   "menu_apps": "Приложения",
   "captcha_hint": "Введите код с картинки",
-  "footer_developer_docs": "Разработчикам"
+  "footer_developer_docs": "Разработчикам",
+  "left_menu_demo": "Демо-режим",
+  "left_menu_demo_timer": "Сброс сервера через:",
+  "err_unavailable_in_demo_mode": "Это действие недоступно в демонстрационном режиме.",
+  "err_interaction_demo_mode": "Вы не можете взаимодействовать с контентом с других серверов в демонстрационном режиме."
 }
