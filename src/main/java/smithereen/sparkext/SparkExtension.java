@@ -4,6 +4,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import smithereen.Config;
 import smithereen.model.admin.UserRole;
 import smithereen.model.fasp.FASPCapability;
 import spark.Route;
@@ -71,8 +72,10 @@ public class SparkExtension{
 	}
 
 	public static void getActivityPub(String path, Route route){
-		get(path, "application/activity+json", route);
-		get(path, "application/ld+json", route);
+		if(!Config.demoMode){
+			get(path, "application/activity+json", route);
+			get(path, "application/ld+json", route);
+		}
 	}
 
 	public static void getActivityPubCollection(String path, int perPage, ActivityPubCollectionRoute route){

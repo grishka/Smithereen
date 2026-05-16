@@ -3,6 +3,8 @@ package smithereen.activitypub.tasks;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Future;
 
 import smithereen.ApplicationContext;
@@ -17,6 +19,7 @@ public class FetchActorWallTask extends ForwardPaginatingCollectionTask{
 	private final Actor actor;
 	private final ActivityPubWorker apw;
 	private final HashMap<URI, Future<Post>> fetchingAllReplies;
+	private final HashSet<Integer> userIDs=new HashSet<>();
 
 	public FetchActorWallTask(ActivityPubWorker apw, ApplicationContext context, HashMap<URI, Future<Post>> fetchingAllReplies, Actor actor){
 		super(context, actor.getWallURL());
@@ -33,14 +36,20 @@ public class FetchActorWallTask extends ForwardPaginatingCollectionTask{
 			try{
 				if(lo.object instanceof NoteOrQuestion post){
 					if(post.inReplyTo==null)
-						tasks.add(new ProcessWallPostTask(apw, context, fetchingAllReplies, post, actor));
+						tasks.add(new ProcessWallPostTask(apw, context, fetchingAllReplies, post, userIDs, actor));
 				}else if(lo.link!=null){
-					tasks.add(new FetchAndProcessWallPostTask(apw, context, fetchingAllReplies, actor, lo.link));
+					tasks.add(new FetchAndProcessWallPostTask(apw, context, fetchingAllReplies, userIDs, actor, lo.link));
 				}
 			}catch(Exception x){
 				LOG.debug("Error processing post {}", lo, x);
 			}
 		}
 		apw.invokeAll(tasks);
+	}
+
+	@Override
+	protected void compute(){
+		super.compute();
+		context.getActivityPubWorker().maybeRefreshUsers(userIDs);
 	}
 }

@@ -120,6 +120,8 @@ public class PrivacyController{
 	}
 
 	public void enforceUserAccessToGroupProfile(@Nullable User self, @NotNull Group group){
+		if(Config.demoMode && self==null)
+			throw new InaccessibleGroupException(group);
 		switch(group.banStatus){
 			case NONE -> {}
 			case SUSPENDED -> {
@@ -198,7 +200,7 @@ public class PrivacyController{
 
 	public boolean checkUserPrivacy(@Nullable User self, @NotNull User owner, @NotNull UserPrivacySettingKey key){
 		// Unconditionally deny any active actions to blocked users
-		if(!key.isForViewing() && self!=null && isUserBlocked(self, owner))
+		if(!key.isForViewing() && self!=null && (isUserBlocked(self, owner) || (Config.demoMode && owner instanceof ForeignUser)))
 			return false;
 		boolean r=checkUserPrivacy(self, owner, owner.getPrivacySetting(key));
 		if(key==UserPrivacySettingKey.PRIVATE_MESSAGES && !r && self!=null){
@@ -468,6 +470,8 @@ public class PrivacyController{
 	}
 
 	public void enforceUserProfileAccess(@Nullable User self, User target){
+		if(Config.demoMode && self==null)
+			throw new InaccessibleProfileException(target);
 		switch(target.banStatus){
 			case NONE -> {}
 			case FROZEN, SUSPENDED -> {

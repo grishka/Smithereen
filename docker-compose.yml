@@ -2,10 +2,14 @@ services:
  web:
   image: grishkaa/smithereen:latest
   ports:
-   - '4567:4567'
+   - '127.0.0.1:4567:4567'
   networks:
    - external_network
    - internal_network
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:4567/healthz"]
+    start_interval: 1s
+    start_period: 20s
   depends_on:
     mysql:
       condition: service_healthy
@@ -23,6 +27,8 @@ services:
    - internal_network
   healthcheck:
    test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+   start_interval: 1s
+   start_period: 60s
   volumes:
    - smithereen-mysql-data:/var/lib/mysql
    - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
@@ -30,7 +36,7 @@ services:
  imgproxy:
   image: ghcr.io/imgproxy/imgproxy:latest
   ports:
-   - '4560:8080'
+   - '127.0.0.1:4560:8080'
   environment:
    IMGPROXY_PATH_PREFIX: "/i"
    IMGPROXY_ALLOWED_SOURCES: "local://"

@@ -35,6 +35,31 @@
 	<li><a href="/account/logout?csrf={{ csrf }}">{{ L('log_out') }}</a></li>
 	{% endif %}
 </ul>
+{% if serverDemoMode %}
+<div class="leftReminder">
+	<h3>{{ L('left_menu_demo') }}</h3>
+	{{ L('left_menu_demo_timer') }}
+	<div style="font-size: 1.1818em; font-weight: bold" class="smallMarginBefore" id="demoTimer">{{ demoNextResetIn }}</div>
+</div>
+{% script %}
+if(!window.demoTimerRunning){
+	window.demoTimerRunning=true;
+	var interval;
+	function updateDemoTimer(){
+		var secondsUntilReset=Math.max(0, Math.floor(({{ demoNextReset }}-new Date().getTime())/1000));
+		var minutes=Math.floor(secondsUntilReset/60);
+		var seconds=secondsUntilReset%60;
+		ge("demoTimer").innerText=minutes+":"+(seconds>=10 ? "" : "0")+seconds;
+		if(secondsUntilReset==0){
+			clearInterval(interval);
+			setTimeout(function(){location.reload();}, 10000);
+		}
+	}
+	updateDemoTimer();
+	interval=setInterval(function(){updateDemoTimer();}, 500);
+}
+{% endscript %}
+{% endif %}
 {% if announcements is not empty %}
 {% for announcement in announcements %}
 <div class="leftReminder">

@@ -209,7 +209,8 @@ public class ActivityPub{
 			builder.header("Authorization", "Bearer "+token);
 		else if(actorToken!=null)
 			builder.header("Authorization", "ActivityPubActorToken "+actorToken);
-		signRequest(builder, uri, signer==null ? ServiceActor.getInstance() : signer, null, "get");
+		if(!Config.demoMode)
+			signRequest(builder, uri, signer==null ? ServiceActor.getInstance() : signer, null, "get");
 		HttpResponse<InputStream> resp;
 		try{
 			resp=httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
@@ -394,6 +395,8 @@ public class ActivityPub{
 	}
 
 	private static void postActivityInternal(URI inboxUrl, String activityJson, Actor actor, Server server, ApplicationContext ctx, boolean isRetry, boolean throwFor403) throws IOException{
+		if(Config.demoMode)
+			return;
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 

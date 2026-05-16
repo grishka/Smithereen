@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
@@ -79,6 +80,9 @@ public class Config{
 
 	public static StorageBackend storageBackend;
 	public static S3Configuration s3Configuration;
+
+	public static boolean demoMode;
+	public static List<Integer> demoAddFriends;
 
 	// following fields are kept in the config table in database and some are configurable from /settings/admin
 
@@ -182,6 +186,16 @@ public class Config{
 					props.getProperty("upload.s3.alias_host"),
 					Boolean.parseBoolean(props.getProperty("upload.s3.override_path_style", "false"))
 			);
+		}
+
+		demoMode=Boolean.parseBoolean(props.getProperty("demo_mode", "false"));
+		if(demoMode){
+			String addFriends=props.getProperty("demo_mode.add_friends");
+			if(StringUtils.isNotEmpty(addFriends)){
+				demoAddFriends=Arrays.stream(addFriends.split(",")).map(Integer::parseInt).toList();
+			}else{
+				demoAddFriends=List.of();
+			}
 		}
 	}
 

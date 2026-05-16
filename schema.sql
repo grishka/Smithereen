@@ -772,13 +772,14 @@ CREATE TABLE `media_files` (
 CREATE TABLE `newsfeed` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `type` int unsigned NOT NULL,
-  `author_id` int NOT NULL,
+  `author_id` int unsigned NOT NULL,
   `object_id` bigint unsigned DEFAULT NULL,
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `type` (`type`,`object_id`,`author_id`),
   KEY `time` (`time`),
-  KEY `author_id` (`author_id`)
+  KEY `author_id` (`author_id`),
+  CONSTRAINT `newsfeed_users_fk` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -809,7 +810,8 @@ CREATE TABLE `newsfeed_groups` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `type` (`type`,`group_id`,`object_id`),
   KEY `time` (`time`),
-  KEY `group_id` (`group_id`)
+  KEY `group_id` (`group_id`),
+  CONSTRAINT `newsfeed_groups_groups_fk` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -1315,4 +1317,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2025-11-17  2:28:45
+-- Dump completed on 2026-04-05  3:40:04

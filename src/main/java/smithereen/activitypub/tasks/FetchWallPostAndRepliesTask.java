@@ -28,6 +28,7 @@ public class FetchWallPostAndRepliesTask extends FetchAllWallRepliesTask{
 		post=noq.asNativePost(context);
 		context.getWallController().loadAndPreprocessRemotePostMentions(post, noq);
 		PostStorage.putForeignWallPost(post);
+		userIDs.add(post.authorID);
 		return super.call();
 	}
 }

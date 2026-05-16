@@ -238,6 +238,7 @@ $imgproxyKey
 IMGPROXY_SALT=$imgproxySalt
 IMGPROXY_PATH_PREFIX=/i
 IMGPROXY_LOCAL_FILESYSTEM_ROOT=$webRoot/s
+IMGPROXY_BIND=:4560
 EOF
 echo "$useS3" | grep -q '[yY]'
 if [ "$?" ]; then

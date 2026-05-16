@@ -21,7 +21,7 @@
 		{% set fieldPlaceholder=L('write_on_own_wall') %}
 	{% endif %}
 	{% if showOwnAvatar %}<div class="ownAvaW">{{ currentUser | pictureForAvatar('a') }}<div class="formContent">{% endif %}
-		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="3" maxlength="65000" placeholder="{{ fieldPlaceholder }}">{{prefilledPostText}}</textarea>
+		<textarea name="text" id="postFormText_{{id}}" cols="100" rows="3" maxlength="65000" placeholder="{{ fieldPlaceholder }}" autocomplete="off">{{prefilledPostText}}</textarea>
 		<div class="completionsContainer"></div>
 		<input type="hidden" name="csrf" value="{{csrf}}"/>
 		<input type="hidden" name="replyTo" id="postFormReplyTo_{{id}}"{% if replyTo is not null %} value="{{replyTo.id}}"{% endif %}/>

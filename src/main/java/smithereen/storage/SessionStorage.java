@@ -324,6 +324,13 @@ public class SessionStorage{
 						.value("user_id", userID)
 						.value("string", UserStorage.getQSearchStringForUser(Objects.requireNonNull(UserStorage.getById(userID))))
 						.executeNoResult();
+
+				if(Config.demoMode && !Config.demoAddFriends.isEmpty()){
+					for(int friendID:Config.demoAddFriends){
+						UserStorage.followUser(friendID, userID, true, false, true);
+						UserStorage.followUser(userID, friendID, true, false, true);
+					}
+				}
 			});
 		}
 		return SignupResult.SUCCESS;

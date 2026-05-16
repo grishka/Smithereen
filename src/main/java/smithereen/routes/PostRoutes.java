@@ -419,6 +419,8 @@ public class PostRoutes{
 	}
 
 	public static Object standalonePost(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		ApplicationContext ctx=context(req);
 		int postID=parseIntOrDefault(req.params(":postID"), 0);
 		PostViewModel post=new PostViewModel(ctx.getWallController().getPostOrThrow(postID));
@@ -694,12 +696,16 @@ public class PostRoutes{
 	}
 
 	public static Object likePopover(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		req.attribute("noHistory", true);
 		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
 		return UserInteractionsRoutes.likePopover(req, resp, post);
 	}
 
 	public static Object sharePopover(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		ApplicationContext ctx=context(req);
 		req.attribute("noHistory", true);
 		Post post=context(req).getWallController().getPostOrThrow(safeParseInt(req.params("postID")));
@@ -765,6 +771,8 @@ public class PostRoutes{
 	}
 
 	private static Object wall(Request req, Response resp, Actor owner, boolean ownOnly){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
@@ -840,6 +848,8 @@ public class PostRoutes{
 	}
 
 	public static Object wallToWall(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		ApplicationContext ctx=context(req);
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		User otherUser=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":otherUserID")));
@@ -870,6 +880,8 @@ public class PostRoutes{
 	}
 
 	public static Object ajaxCommentPreview(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
@@ -915,7 +927,7 @@ public class PostRoutes{
 		WebDeltaResponse rb=new WebDeltaResponse(resp)
 				.insertHTML(WebDeltaResponse.ElementInsertionMode.AFTER_BEGIN, "postReplies"+postID+ridSuffix, model.renderToString())
 				.hide("prevLoader"+postID+ridSuffix);
-		if(comments.total>comments.list.size()){
+		if(comments.total>comments.list.size() && !comments.list.isEmpty()){
 			rb.show("loadPrevBtn"+postID).setAttribute("loadPrevBtn"+postID+ridSuffix, "data-first-id", String.valueOf(comments.list.getFirst().post.id));
 			if(viewType==CommentViewType.FLAT){
 				rb.setContent("loadPrevBtn"+postID+ridSuffix, lang(req).get("comments_show_X_more_comments", Map.of("count", comments.total-comments.list.size())));
@@ -927,6 +939,8 @@ public class PostRoutes{
 	}
 
 	public static Object ajaxCommentBranch(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;
 		ApplicationContext ctx=context(req);
@@ -984,6 +998,8 @@ public class PostRoutes{
 	}
 
 	public static Object pollOptionVoters(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		int postID=parseIntOrDefault(req.params(":postID"), 0);
 		int optionID=parseIntOrDefault(req.params(":optionID"), 0);
 		int offset=parseIntOrDefault(req.queryParams("offset"), 0);
@@ -1099,6 +1115,8 @@ public class PostRoutes{
 	}
 
 	public static Object repostList(Request req, Response resp){
+		if(Config.demoMode && !requireAccount(req, resp))
+			return "";
 		ApplicationContext ctx=context(req);
 		SessionInfo info=sessionInfo(req);
 		@Nullable Account self=info!=null ? info.account : null;

@@ -33,6 +33,7 @@ node_modules/
 .idea/compiler.xml
 .idea/jarRepositories.xml
 .idea/modules.xml
+.idea/dataSources.xml
 .idea/*.iml
 .idea/modules
 *.iml

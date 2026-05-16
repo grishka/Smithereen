@@ -1351,6 +1351,9 @@ public class PhotosController{
 		// maybe reconsider this in the future (VK allows one's friends to add tags to their photos)
 		enforcePhotoManagementPermission(self, photo);
 
+		if(Config.demoMode && user instanceof ForeignUser)
+			throw new UserActionNotAllowedException("err_unavailable_in_demo_mode");
+
 		try{
 			if(user!=null){
 				if(user.id!=self.id){

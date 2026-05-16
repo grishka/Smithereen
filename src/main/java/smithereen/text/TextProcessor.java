@@ -481,6 +481,9 @@ public class TextProcessor{
 			}
 		}
 
+		// Limit <blockquote>s to 5 levels of nesting
+		doc.select("blockquote blockquote blockquote blockquote blockquote blockquote").unwrap();
+
 		return doc.body().html();
 	}
 
