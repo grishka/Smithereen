@@ -1,5 +1,7 @@
 package smithereen.routes;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -840,6 +842,20 @@ public class ActivityPubRoutes{
 		return dispatchActivity(body, req, resp, true);
 	}
 
+	private static void traverseAndRejectAtReverse(JsonElement el){
+		if(el instanceof JsonObject obj){
+			if(obj.has("@reverse"))
+				throw new BadRequestException("@reverse is not allowed in incoming activities");
+			for(JsonElement objEl:obj.asMap().values()){
+				traverseAndRejectAtReverse(objEl);
+			}
+		}else if(el instanceof JsonArray arr){
+			for(JsonElement arrEl:arr){
+				traverseAndRejectAtReverse(arrEl);
+			}
+		}
+	}
+
 	public static Object dispatchActivity(String body, Request req, Response resp, boolean verifySignatures){
 		ApplicationContext ctx=context(req);
 		LOG.debug("Incoming activity: {}", body);
@@ -850,6 +866,10 @@ public class ActivityPubRoutes{
 			throw new BadRequestException("Failed to parse request body as JSON", x);
 		}
 		JsonObject obj=JLDProcessor.convertToLocalContext(rawActivity);
+		if(obj.has("@graph")){
+			throw new BadRequestException("@graph is not allowed in incoming activities");
+		}
+		traverseAndRejectAtReverse(obj);
 
 		Activity activity;
 		ActivityPubObject o;
