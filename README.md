@@ -113,6 +113,10 @@ If you would like to add a feature, please ask first before starting to work on 
 
 If you disagree, feel free to fork this project, but please change the name if you do.
 
+## Building an app for Smithereen
+
+Please [see the API documentation](https://smithereen.software/docs/api).
+
 ## Federating with Smithereen
 
-Smithereen supports various features not found in most other ActivityPub server software. [See the federation document](/FEDERATION.md) if you would like to implement these ActivityPub extensions in your project.
+Smithereen supports various features not found in most other ActivityPub server software. [See the federation section in the docs](https://smithereen.software/docs/federation) if you would like to implement these ActivityPub extensions in your project.
