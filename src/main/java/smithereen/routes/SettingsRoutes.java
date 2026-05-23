@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.time.zone.ZoneRulesException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -269,11 +270,15 @@ public class SettingsRoutes{
 		if(info==null){
 			req.session().attribute("info", info=new SessionInfo());
 		}
-		if(info.account!=null){
-			info.account.prefs.timeZone=ZoneId.of(tz);
-			SessionStorage.updatePreferences(info.account.id, info.account.prefs);
-		}else{
-			info.timeZone=ZoneId.of(tz);
+		try{
+			if(info.account!=null){
+				info.account.prefs.timeZone=ZoneId.of(tz);
+				SessionStorage.updatePreferences(info.account.id, info.account.prefs);
+			}else{
+				info.timeZone=ZoneId.of(tz);
+			}
+		}catch(ZoneRulesException x){
+			// ¯\_(ツ)_/¯
 		}
 		if(req.queryParams("_ajax")!=null)
 			return "";

@@ -20,7 +20,7 @@ Name: vips
 Version: 2.0
 Description: adsf
 Libs: -L${PWD}/libvips/lib -lvips -Wl,-rpath,.
-Cflags: -I${PWD}/libvips/include -I${PWD}/libvips/include/glib-2.0 -I${PWD}/libvips/lib/glib-2.0/include
+Cflags: -I${PWD}/libvips/include -I${PWD}/libvips/include/glib-2.0 -I${PWD}/libvips/lib/glib-2.0/include -DVIPS_SAVEABLE_MONO=VIPS_FOREIGN_SAVEABLE_MONO -DVIPS_SAVEABLE_RGB=VIPS_FOREIGN_SAVEABLE_RGB -DVIPS_SAVEABLE_RGBA=VIPS_FOREIGN_SAVEABLE_ALPHA
 EOF
 cat > pkgconfig/glib-2.0.pc <<- EOF
 Name: glib
@@ -29,6 +29,20 @@ Description: adsf
 Libs:
 Cflags: -I${PWD}/libvips/include/glib-2.0 -I${PWD}/libvips/lib/glib-2.0/include
 EOF
+
+echo "Installing go"
+
+goArch="$(uname -m)"
+if [ "$goArch" == "x86_64" ]; then
+	goArch="amd64"
+fi
+if [ "$goArch" == "aarch64" ]; then
+	goArch="arm64"
+fi
+
+curl --output go.tar.gz --location "https://go.dev/dl/go1.26.3.linux-$goArch.tar.gz"
+tar -C /usr/local -xzf go.tar.gz
+PATH=$PATH:/usr/local/go/bin
 
 echo "Building imgproxy"
 cd src
