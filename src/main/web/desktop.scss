@@ -4351,13 +4351,17 @@ label.largeAccented{
 		right: 5px;
 		bottom: 5px;
 		display: flex;
-		a{
+		button{
 			width: 20px;
 			height: 20px;
 			background: svg-load("img/photorot.svg", fill: #fff);
 			filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
 			opacity: 0.5;
 			transition: opacity 0.2s ease;
+			box-shadow: none;
+			border: none;
+			line-height: normal;
+			padding: 0;
 			&.rotateCCW{
 				background-position: -20px 0;
 			}
