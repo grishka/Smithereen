@@ -32,14 +32,15 @@ import smithereen.activitypub.objects.PropertyValue;
 import smithereen.controllers.GroupsController;
 import smithereen.controllers.ObjectLinkResolver;
 import smithereen.controllers.WallController;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.exceptions.UserErrorException;
+import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.ActorWithDescription;
 import smithereen.model.CommentViewType;
 import smithereen.model.ForeignGroup;
 import smithereen.model.Group;
-import smithereen.model.groups.GroupAdmin;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.SessionInfo;
@@ -49,6 +50,7 @@ import smithereen.model.UserInteractions;
 import smithereen.model.WebDeltaResponse;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.board.BoardTopicsSortOrder;
+import smithereen.model.groups.GroupAdmin;
 import smithereen.model.groups.GroupBanInfo;
 import smithereen.model.groups.GroupBanStatus;
 import smithereen.model.groups.GroupFeatureState;
@@ -58,8 +60,6 @@ import smithereen.model.media.PhotoViewerInlineData;
 import smithereen.model.photos.Photo;
 import smithereen.model.photos.PhotoAlbum;
 import smithereen.model.viewmodel.PostViewModel;
-import smithereen.exceptions.BadRequestException;
-import smithereen.lang.Lang;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
@@ -156,7 +156,8 @@ public class GroupsRoutes{
 	}
 
 	public static Object createEvent(Request req, Response resp, Account self, ApplicationContext ctx){
-		RenderedTemplateResponse model=new RenderedTemplateResponse("create_event", req);
+		RenderedTemplateResponse model=new RenderedTemplateResponse("create_event", req)
+				.with("minDate", LocalDate.now(timeZoneForRequest(req)));
 		return wrapForm(req, resp, "create_event", "/my/groups/create?type=event", lang(req).get("create_event_title"), "create", model);
 	}
 
@@ -181,7 +182,8 @@ public class GroupsRoutes{
 
 			try{
 				Instant eventStart=instantFromDateAndTime(req, eventDate, eventTime);
-				if(eventStart.isBefore(Instant.now()) || !isWithinDatabaseLimits(eventStart))
+				Instant minStart=LocalDate.now(timeZoneForRequest(req)).atStartOfDay(timeZoneForRequest(req)).toInstant();
+				if(eventStart.isBefore(minStart) || !isWithinDatabaseLimits(eventStart))
 					throw new BadRequestException();
 				group=ctx.getGroupsController().createEvent(self.user, name, description, eventStart, null);
 			}catch(DateTimeParseException x){
@@ -440,6 +442,9 @@ public class GroupsRoutes{
 		Group group=getGroupAndRequireLevel(req, self, Group.AdminLevel.ADMIN);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("group_edit_general", req);
 		model.with("group", group).with("title", group.name);
+		if(group.isEvent()){
+			model.with("minDate", LocalDate.now(timeZoneForRequest(req)));
+		}
 		Session s=req.session();
 		if(s.attribute("settings.groupEditMessage")!=null){
 			model.with("groupEditMessage", s.attribute("settings.groupEditMessage"));
@@ -473,10 +478,11 @@ public class GroupsRoutes{
 				}
 				if(eventEnd!=null && eventStart.isAfter(eventEnd))
 					throw new BadRequestException(lang(req).get("err_event_end_time_before_start"));
-				if(!eventStart.equals(group.eventStartTime) && (eventStart.isBefore(Instant.now()) || !isWithinDatabaseLimits(eventStart)))
-					throw new BadRequestException();
+				Instant minStart=LocalDate.now(timeZoneForRequest(req)).atStartOfDay(timeZoneForRequest(req)).toInstant();
+				if(!eventStart.equals(group.eventStartTime) && (eventStart.isBefore(minStart) || !isWithinDatabaseLimits(eventStart)))
+					throw new BadRequestException("err_event_time_in_past");
 				if(eventEnd!=null && !isWithinDatabaseLimits(eventEnd))
-					throw new BadRequestException();
+					throw new BadRequestException("err_event_time_in_past");
 			}
 
 			if(StringUtils.isEmpty(about))

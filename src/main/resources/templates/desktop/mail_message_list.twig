@@ -1,6 +1,7 @@
 {% extends "page" %}
 {% block content %}
 {% if recentlySentMessage is not null %}
+<div class="marginsAreMessy"></div>
 <div class="settingsMessage">
 	{%- if (recentlySentMessage.to | length)>1 %}
 	{{- L('mail_message_sent_multi', {'name': users[recentlySentMessage.firstRecipientID].firstLastAndGender, 'moreCount': (recentlySentMessage.to | length)-1}, {'message': {'href': "/my/mail/messages/#{recentlySentMessage.idString}"} }) }}

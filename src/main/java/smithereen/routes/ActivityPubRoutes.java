@@ -787,6 +787,7 @@ public class ActivityPubRoutes{
 		if(ver.equals("2.1")){
 			nodeInfo.software.repository="https://github.com/grishka/Smithereen";
 			nodeInfo.software.homepage="https://smithereen.software";
+			nodeInfo.services=new NodeInfo.Services();
 		}
 		nodeInfo.usage=new NodeInfo.Usage();
 		nodeInfo.usage.localPosts=PostStorage.getLocalPostCount(false);

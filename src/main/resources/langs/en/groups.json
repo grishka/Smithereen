@@ -198,5 +198,6 @@
   "group_no_members": "There are no members in this group",
   "event_no_members": "There are no members in this event",
   "group_no_admins": "This group doesn't have any managers",
-  "event_no_admins": "This event doesn't have any organizers"
+  "event_no_admins": "This event doesn't have any organizers",
+  "err_event_time_in_past": "New event time must not be in the past."
 }

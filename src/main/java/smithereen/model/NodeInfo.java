@@ -10,6 +10,7 @@ public class NodeInfo{
 	public Software software;
 	public Usage usage;
 	public Map<String, Object> metadata;
+	public Services services;
 
 	public static class Software{
 		public String name;
@@ -28,5 +29,9 @@ public class NodeInfo{
 			public int activeMonth;
 			public int activeHalfyear;
 		}
+	}
+
+	public static class Services{
+		public List<String> inbound=List.of(), outbound=List.of();
 	}
 }

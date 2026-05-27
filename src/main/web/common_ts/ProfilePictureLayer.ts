@@ -127,7 +127,7 @@ class ProfilePictureLayer extends FileUploadLayer{
 		}
 		this.updateTopOffset();
 		imgWrap.appendChild(ce("div", {className: "rotateButtons"}, [
-			ce("a", {href: "#", className: "rotateCW", onclick: ()=>{
+			ce("button", {className: "rotateCW", onclick: ()=>{
 				if(this.rotation==270)
 					this.rotation=0;
 				else
@@ -138,7 +138,7 @@ class ProfilePictureLayer extends FileUploadLayer{
 				this.areaSelector.setSelectedArea(20, 20, w-40, h-40);
 				this.updateTopOffset();
 			}}),
-			ce("a", {href: "#", className: "rotateCCW", onclick: ()=>{
+			ce("button", {className: "rotateCCW", onclick: ()=>{
 				if(this.rotation==0)
 					this.rotation=270;
 				else
