@@ -1299,7 +1299,7 @@ function showMailFormBox(el:HTMLAnchorElement){
 		button.id="mailMessageFormSubmit";
 		var formEl=ge("wallPostForm_mailMessage");
 		postForm=new PostForm(formEl);
-		formEl.customData={postForm: postForm};
+		formEl.customData={postFormObj: postForm};
 		postForm.onSendDone=(success)=>{
 			if(success)
 				box.dismiss();
