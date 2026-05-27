@@ -12,7 +12,7 @@
 			{{ form.textInput('website', L('group_website'), group.website) }}
 			{% if group.event %}
 			{{ form.dateTimeInput('event_start', L('event_start_time'), group.eventStartTime, {'required': true}) }}
-			{{ form.dateTimeInput('event_end', L('event_end_time'), group.eventEndTime) }}
+			{{ form.dateTimeInput('event_end', L('event_end_time'), group.eventEndTime, {'minDate': group.eventEndTime==null ? minDate : null}) }}
 			{{ form.textInput('location', L('event_location'), group.location, {'placeholder': L('event_location_hint')}) }}
 			{% endif %}
 			{{ form.radioGroup(
