@@ -342,6 +342,13 @@ public class PhotosRoutes{
 
 	public static Object deletePhoto(Request req, Response resp, Account self, ApplicationContext ctx){
 		Photo photo=getPhotoForRequest(req);
+		boolean isCurrentAva=false;
+		PhotoAlbum album=ctx.getPhotosController().getAlbumIgnoringPrivacy(photo.albumID);
+		if(album.systemType==PhotoAlbum.SystemAlbumType.AVATARS){
+			Actor owner=ctx.getWallController().getContentAuthorAndOwner(album).owner();
+			SizedImage ava=owner.getAvatar();
+			isCurrentAva=ava instanceof LocalImage li && li.photoID==photo.id;
+		}
 		PhotosController.PhotoDeletionResult deletionResult=ctx.getPhotosController().deletePhoto(self.user, photo);
 		if(isAjax(req)){
 			String from=req.queryParams("from");
@@ -361,9 +368,12 @@ public class PhotosRoutes{
 				}
 				return response;
 			}else if("viewer".equals(from)){
-				return new WebDeltaResponse(resp)
+				WebDeltaResponse wdr=new WebDeltaResponse(resp)
 						.runScript("LayerManager.getMediaInstance().getTopLayer().dismiss();")
 						.remove("photo"+photo.getIdString());
+				if(isCurrentAva)
+					wdr.refresh();
+				return wdr;
 			}
 		}
 		return ajaxAwareRedirect(req, resp, "/albums/"+XTEA.encodeObjectID(photo.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM));

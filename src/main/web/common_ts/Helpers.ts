@@ -790,10 +790,14 @@ function applyServerCommand(cmd:any){
 		break;
 		case "refresh":
 		{
-			if(mobile)
-				location.reload();
-			else
-				ajaxNavigate(location.href, false);
+			// The timeout is needed to correctly handle the case when a layer that uses the history API is dismissed in the same action array.
+			// BaseMediaViewerLayer calls history.back() which doesn't take effect immediately
+			setTimeout(()=>{
+				if(mobile)
+					location.reload();
+				else
+					ajaxNavigate(location.href, false);
+			}, 10);
 		}
 			break;
 		case "location":
