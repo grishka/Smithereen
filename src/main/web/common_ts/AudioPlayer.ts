@@ -405,7 +405,7 @@ class AudioPlayer{
 	}
 
 	private showProgressTip(e:MouseEvent|TouchEvent, progress:HTMLElement, progressPercentage:number, isFixedPosition:boolean){
-		const formattedTime=this.formatTime(Math.round(progressPercentage/100*this.lastSong.duration));
+		const formattedTime=this.formatTime(progressPercentage/100*this.lastSong.duration);
 		this.showTip(e, formattedTime, progress, isFixedPosition);
 	}
 
@@ -468,7 +468,7 @@ class AudioPlayer{
 	public onPlayProgress(curTime:number, totalTime:number, forceUpdateProgressBar?:boolean){
 		if(isNaN(totalTime) || Math.abs(totalTime-this.lastSong.duration)>1) totalTime=this.lastSong.duration;
 		if(this.time && this.mgr.paused()) curTime=this.time;
-		this.setCurTime(Math.round(curTime), Math.round(totalTime));
+		this.setCurTime(curTime, totalTime);
 		if((!this.mgr.paused() || forceUpdateProgressBar) && !this.draggingProgressLine){
 			let percentage=curTime/totalTime*100;
 			percentage=Math.min(Math.max(percentage, 0), 100);
@@ -623,7 +623,7 @@ class AudioPlayer{
 	}
 
 	private formatTime(time:number):string{
-		time=Math.max(time, 0);
+		time=Math.max(Math.round(time), 0);
 		const sec=time%60;
 		let res=(sec<10) ? '0'+sec : sec;
 		time=Math.floor(time/60);
