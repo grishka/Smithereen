@@ -74,6 +74,14 @@ class AudioControl{
 		return this.row.qs(".play");
 	}
 
+	artist():HTMLElement{
+		return this.row.qs(".artist");
+	}
+
+	title():HTMLElement{
+		return this.row.qs(".title");
+	}
+
 	duration():HTMLElement{
 		return this.row.qs(".duration");
 	}
@@ -589,8 +597,8 @@ class AudioPlayer{
 			playerID: control.playerID,
 			url: data.url,
 			duration: data.duration ? parseInt(data.duration) : null,
-			artist: data.artist,
-			title: data.title,
+			artist: control.artist().innerText,
+			title: control.title().innerText,
 			unavailabilityReason: data.unavailable ? parseInt(data.unavailable) : undefined,
 		};
 	}
