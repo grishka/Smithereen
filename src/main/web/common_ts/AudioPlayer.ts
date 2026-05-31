@@ -328,8 +328,10 @@ class AudioPlayer{
 	}
 
 	public static maybeShowToolTip(t:HTMLElement){
-		// If the song title is truncated, show a tooltip with the full title.
-		if(t.offsetWidth<t.scrollWidth){
+		// If the song title is truncated, show a tooltip with the full title
+		const artist=t.qs(".artist");
+		const title=t.qs(".title");
+		if(artist.offsetWidth<artist.scrollWidth || title.offsetWidth<title.scrollWidth){
 			t.setAttribute("title", t.innerText);
 		}else{
 			t.removeAttribute("title");

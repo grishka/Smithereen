@@ -6,49 +6,35 @@
 <div id="audio{{ playerID }}" class="audio{% if audio.unavailable() > 0 %} unavailable{% endif %}" data-artist="{{ audio.artist }}" data-title="{{ audio.title }}"
      {% if audio.durationSeconds > 0 %}data-duration="{{ audio.durationSeconds }}"{% endif %}{% if audio.url is not null %} data-url="{{ audio.url }}"{% endif %}{% if audio.unavailable() > 0 %} data-unavailable="{{ audio.unavailable() }}"{% endif %}>
 	<div class="area" onclick="AudioPlayer.playOrPause('{{ audio.playerID }}')">
-		<table>
-			<tr>
-				<td>
-					<div class="playBtnWrap">
-						<div class="play"></div>
-					</div>
-				</td>
-				<td class="info">
-					<div class="duration flR" onclick="event.stopPropagation();">{{ audio.formattedDuration }}</div>
-					<div class="titleWrap" onmouseenter="AudioPlayer.maybeShowToolTip(this)">
-						<b>{{ audio.artist }}</b>
-						&ndash;
-                        {{ audio.title }}
-					</div>
-				</td>
-			</tr>
-		</table>
+		<div class="infoRow">
+			<div class="playBtnWrap">
+				<div class="play"></div>
+			</div>
+			<div class="info">
+				<div class="duration flR" onclick="event.stopPropagation();">{{ audio.formattedDuration }}</div>
+				<div class="titleWrap" onmouseenter="AudioPlayer.maybeShowToolTip(this)">
+					<div class="artist"><b>{{ audio.artist }}</b></div>
+					<div>&nbsp;&ndash;&nbsp;</div>
+					<div class="title">{{ audio.title }}</div>
+				</div>
+			</div>
+		</div>
 		<div class="player" onclick="event.stopPropagation();" ondragstart="return false;" onselectstart="return false;" {# ondragstart and onselectstart are necessary to prevent text selection in Safari #}>
-			<table>
-				<tbody>
-				<tr>
-					<td style="width: 100%;">
-						<div class="audioProgress">
-							<div class="audioWhiteLine"></div>
-							<div class="audioBackLine"></div>
-							<div class="audioLoadLine"></div>
-							<div class="audioProgressLine audioProgressValue">
-								<div class="audioSlider"></div>
-							</div>
-						</div>
-					</td>
-					<td>
-						<div class="audioVolume">
-							<div class="audioVolumeWhiteLine"></div>
-							<div class="audioLoadLine audioVolumeBackLine"></div>
-							<div class="audioProgressLine audioVolumeValue">
-								<div class="audioSlider"></div>
-							</div>
-						</div>
-					</td>
-				</tr>
-				</tbody>
-			</table>
+			<div class="audioProgress">
+				<div class="audioWhiteLine"></div>
+				<div class="audioBackLine"></div>
+				<div class="audioLoadLine"></div>
+				<div class="audioProgressLine audioProgressValue">
+					<div class="audioSlider"></div>
+				</div>
+			</div>
+			<div class="audioVolume">
+				<div class="audioVolumeWhiteLine"></div>
+				<div class="audioLoadLine audioVolumeBackLine"></div>
+				<div class="audioProgressLine audioVolumeValue">
+					<div class="audioSlider"></div>
+				</div>
+			</div>
 		</div>
 	</div>
 </div>

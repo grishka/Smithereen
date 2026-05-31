@@ -1,12 +1,16 @@
 @import "audioplayer_common.scss";
 
 .audioAttachmentList{
-	padding: 6px 0 0 6px;
+	padding-top: 6px;
 }
 
 .audio{
+	.area {
+		padding: 0 6px;
+	}
 	.playBtnWrap{
 		padding: 7px;
+		min-width: auto;
 		.mailMessageView &{
 			padding-left: 8px;
 		}
@@ -24,21 +28,23 @@
 	.titleWrap{
 		overflow: visible;
 		padding: 9px 7px 7px 6px;
+
+		& > * {
+			display: inline;
+		}
 	}
 	.duration{
-		padding: 10px 7px 7px 0;
+		padding: 10px 7px 7px 4px;
 	}
 	.player{
-		padding: 0 7px;
+		padding: 0 9px;
 		.mailMessageView &{
 			padding-left: 8px;
-		}
-		table{
-			width: 100%;
 		}
 	}
 	&.current{
 		.area{
+			margin-bottom: -8px;
 			background-color: $audioAreaOnHover;
 			.duration{
 				color: $audioDurationOnHover;
