@@ -195,8 +195,8 @@ class DrawingArea{
 	private wrap:HTMLDivElement;
 	private svg:SVGSVGElement;
 	private canvas:HTMLCanvasElement;
-	private mouseUpListener=this.onMouseUp.bind(this);
-	private mouseMoveListener=this.onMouseMove.bind(this);
+	private mouseUpListener:(this:DrawingArea, ev:MouseEvent|TouchEvent)=>void=this.onMouseUp.bind(this);
+	private mouseMoveListener:(this:DrawingArea, ev:MouseEvent|TouchEvent)=>void=this.onMouseMove.bind(this);
 
 	private xs:number[];
 	private ys:number[];
@@ -225,6 +225,7 @@ class DrawingArea{
 		this.wrap.appendChild(this.svg);
 
 		this.wrap.addEventListener("mousedown", this.onMouseDown.bind(this));
+		this.wrap.addEventListener("touchstart", this.onMouseDown.bind(this), {passive: false});
 		this.ctx=this.canvas.getContext("2d");
 		this.ctx.lineCap="round";
 		this.ctx.lineJoin="round";
@@ -261,9 +262,16 @@ class DrawingArea{
 		path.addEventListener("animationend", ev=>path.remove());
 	}
 
-	private onMouseDown(ev:MouseEvent){
+	private onMouseDown(ev:MouseEvent|TouchEvent){
+		if(!(ev instanceof MouseEvent)){
+			// Disable scrolling when drawing on a touchscreen
+			ev.preventDefault();
+		}
 		window.addEventListener("mousemove", this.mouseMoveListener);
+		window.addEventListener("touchmove", this.mouseMoveListener, {passive: false});
 		window.addEventListener("mouseup", this.mouseUpListener);
+		window.addEventListener("touchend", this.mouseUpListener);
+		window.addEventListener("touchcancel", this.mouseUpListener);
 		this.xs=[];
 		this.ys=[];
 		this.currentPath=document.createElementNS(SVG_XMLNS, "path");
@@ -274,10 +282,13 @@ class DrawingArea{
 		this.addEvent(ev);
 	}
 
-	private onMouseUp(ev:MouseEvent){
+	private onMouseUp(ev:MouseEvent|TouchEvent){
 		window.removeEventListener("mousemove", this.mouseMoveListener);
+		window.removeEventListener("touchmove", this.mouseMoveListener);
 		window.removeEventListener("mouseup", this.mouseUpListener);
-		this.addEvent(ev, true);
+		window.removeEventListener("touchend", this.mouseUpListener);
+		window.removeEventListener("touchcancel", this.mouseUpListener);
+		this.addEvent(ev, ev instanceof MouseEvent);
 		this.paths.push(this.currentPath);
 		this.currentPath=null;
 		if(this.paths.length%GRAFFITI_BITMAP_FLUSH_PERIOD==0){
@@ -285,14 +296,19 @@ class DrawingArea{
 		}
 	}
 
-	private onMouseMove(ev:MouseEvent){
+	private onMouseMove(ev:MouseEvent|TouchEvent){
+		if(!(ev instanceof MouseEvent)){
+			// Disable scrolling when drawing on a touchscreen
+			ev.preventDefault();
+		}
 		this.addEvent(ev);
 	}
 
-	private addEvent(ev:MouseEvent, adjust:boolean=false){
+	private addEvent(ev:MouseEvent|TouchEvent, adjust:boolean=false){
 		var rect=this.svg.getBoundingClientRect();
-		var x=ev.clientX-rect.left;
-		var y=ev.clientY-rect.top;
+		var coords=ev instanceof MouseEvent ? ev : ev.changedTouches[0];
+		var x=coords.clientX-rect.left;
+		var y=coords.clientY-rect.top;
 		if(adjust){
 			// Firefox draws nothing if all points have the same coordinates
 			var allSame=true;
