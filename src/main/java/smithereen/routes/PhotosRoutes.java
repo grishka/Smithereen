@@ -410,7 +410,7 @@ public class PhotosRoutes{
 			html=StringUtils.isNotEmpty(pa.description) ? TextProcessor.escapeHTML(pa.description).replace("\n", "<br/>") : "";
 		}else{
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_viewer_info_comments", req);
-			model.with("description", pa.description==null ? null : pa.description.replace("\n", "<br/>"))
+			model.with("description", pa.description==null ? null : TextProcessor.escapeHTML(pa.description).replace("\n", "<br/>"))
 					.with("author", author)
 					.with("createdAt", createdAt)
 					.with("originalImageURL", pa.image.getOriginalURI())
