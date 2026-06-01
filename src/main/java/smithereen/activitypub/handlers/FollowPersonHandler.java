@@ -1,6 +1,7 @@
 package smithereen.activitypub.handlers;
 
 import java.sql.SQLException;
+import java.util.concurrent.TimeUnit;
 
 import smithereen.Utils;
 import smithereen.activitypub.ActivityHandlerContext;
@@ -14,6 +15,7 @@ import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.notifications.Notification;
 import smithereen.exceptions.BadRequestException;
 import smithereen.storage.UserStorage;
+import smithereen.util.BackgroundTaskRunner;
 
 public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow, User>{
 	@Override
@@ -33,7 +35,17 @@ public class FollowPersonHandler extends ActivityTypeHandler<ForeignUser, Follow
 		FollowRelationship relationship=UserStorage.getFollowRelationship(actor.id, user.id);
 		context.appContext.getActivityPubWorker().sendAcceptFollowActivity(actor, user, activity, relationship);
 
-		context.appContext.getNotificationsController().createNotification(user, status==FriendshipStatus.REQUEST_RECVD ? Notification.Type.FRIEND_REQ_ACCEPT : Notification.Type.FOLLOW, null, null, actor);
+		if(actor.supportsFriendRequests() && status==FriendshipStatus.NONE){
+			// Friend requests are federated by sending TWO activities in sequence, first a Follow, and then an Offer{Follow}.
+			// We just received the Follow. Let's wait for 10 seconds to see if Offer{Follow} comes next, and only create a "followed you" notification if it doesn't.
+			BackgroundTaskRunner.getInstance().submitDelayed(()->{
+				FriendshipStatus newStatus=context.appContext.getFriendsController().getFriendshipStatus(user, actor);
+				if(newStatus==FriendshipStatus.FOLLOWED_BY)
+					context.appContext.getNotificationsController().createNotification(user, Notification.Type.FOLLOW, null, null, actor);
+			}, 10, TimeUnit.SECONDS);
+		}else{
+			context.appContext.getNotificationsController().createNotification(user, status==FriendshipStatus.REQUEST_RECVD ? Notification.Type.FRIEND_REQ_ACCEPT : Notification.Type.FOLLOW, null, null, actor);
+		}
 
 		if(status==FriendshipStatus.REQUEST_RECVD || status==FriendshipStatus.FOLLOWED_BY){
 			context.appContext.getActivityPubWorker().sendAddToFriendsCollectionActivity(user, actor, relationship);
