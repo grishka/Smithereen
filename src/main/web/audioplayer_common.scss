@@ -10,25 +10,16 @@
 .audio{
 	text-align: left;
 	position: relative;
-	div& td{
-		border: 0;
-		vertical-align: top;
-		padding: 0;
-	}
-	.audioAttachmentList &{
-		margin-left: -4px;
+	.infoRow {
+		display: flex;
+		.info {
+			flex: 1;
+		}
 	}
 	.area{
 		cursor: pointer;
 		margin-bottom: 10px;
 		line-height: normal;
-	}
-	table{
-		border-spacing: 0;
-	}
-	.info{
-		width: 100%;
-		position: relative;
 	}
 	.titleWrap{
 		overflow: hidden;
@@ -52,11 +43,13 @@
 		height: 10px;
 	}
 	&.current{
-		.area{
-			margin-bottom: 0;
-		}
 		.player{
-			display: block;
+			display: flex;
+			gap: 11px;
+
+			.audioProgress {
+				flex: 1;
+			}
 		}
 	}
 	&.unavailable{
@@ -141,7 +134,6 @@
 
 .audioVolume{
 	touch-action: none;
-	margin-left: 11px;
 	.audioLoadLine{
 		width: 100%;
 		top: -15px;

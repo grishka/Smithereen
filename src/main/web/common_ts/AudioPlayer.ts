@@ -74,6 +74,14 @@ class AudioControl{
 		return this.row.qs(".play");
 	}
 
+	artist():HTMLElement{
+		return this.row.qs(".artist");
+	}
+
+	title():HTMLElement{
+		return this.row.qs(".title");
+	}
+
 	duration():HTMLElement{
 		return this.row.qs(".duration");
 	}
@@ -328,8 +336,10 @@ class AudioPlayer{
 	}
 
 	public static maybeShowToolTip(t:HTMLElement){
-		// If the song title is truncated, show a tooltip with the full title.
-		if(t.offsetWidth<t.scrollWidth){
+		// If the song title is truncated, show a tooltip with the full title
+		const artist=t.qs(".artist");
+		const title=t.qs(".title");
+		if(artist.offsetWidth<artist.scrollWidth || title.offsetWidth<title.scrollWidth){
 			t.setAttribute("title", t.innerText);
 		}else{
 			t.removeAttribute("title");
@@ -405,7 +415,7 @@ class AudioPlayer{
 	}
 
 	private showProgressTip(e:MouseEvent|TouchEvent, progress:HTMLElement, progressPercentage:number, isFixedPosition:boolean){
-		const formattedTime=this.formatTime(Math.round(progressPercentage/100*this.lastSong.duration));
+		const formattedTime=this.formatTime(progressPercentage/100*this.lastSong.duration);
 		this.showTip(e, formattedTime, progress, isFixedPosition);
 	}
 
@@ -468,7 +478,7 @@ class AudioPlayer{
 	public onPlayProgress(curTime:number, totalTime:number, forceUpdateProgressBar?:boolean){
 		if(isNaN(totalTime) || Math.abs(totalTime-this.lastSong.duration)>1) totalTime=this.lastSong.duration;
 		if(this.time && this.mgr.paused()) curTime=this.time;
-		this.setCurTime(Math.round(curTime), Math.round(totalTime));
+		this.setCurTime(curTime, totalTime);
 		if((!this.mgr.paused() || forceUpdateProgressBar) && !this.draggingProgressLine){
 			let percentage=curTime/totalTime*100;
 			percentage=Math.min(Math.max(percentage, 0), 100);
@@ -587,8 +597,8 @@ class AudioPlayer{
 			playerID: control.playerID,
 			url: data.url,
 			duration: data.duration ? parseInt(data.duration) : null,
-			artist: data.artist,
-			title: data.title,
+			artist: control.artist().innerText,
+			title: control.title().innerText,
 			unavailabilityReason: data.unavailable ? parseInt(data.unavailable) : undefined,
 		};
 	}
@@ -623,7 +633,7 @@ class AudioPlayer{
 	}
 
 	private formatTime(time:number):string{
-		time=Math.max(time, 0);
+		time=Math.max(Math.round(time), 0);
 		const sec=time%60;
 		let res=(sec<10) ? '0'+sec : sec;
 		time=Math.floor(time/60);

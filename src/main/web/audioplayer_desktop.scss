@@ -7,6 +7,9 @@
 }
 
 .audio{
+	.audioAttachmentList & {
+		margin-left: -4px;
+	}
 	.area{
 		&:hover{
 			background-color: $audioAreaOnHover;
@@ -16,6 +19,7 @@
 		}
 	}
 	.playBtnWrap{
+		min-width: auto;
 		padding: 6px;
 		#content &{
 			/* For embedded posts */
@@ -40,42 +44,24 @@
 		}
 	}
 	.titleWrap{
-		float: left;
+		display: flex;
 		padding: 7px 0 6px;
 		white-space: nowrap;
-		width: var(--audio-title-width, 260px);
-		b{
-			display: inline-block;
-			max-width: calc(var(--audio-title-width, 260px) * 0.7);
+		& > * {
+			min-width: auto;
 		}
-		.postLayer .post &{
-			--audio-title-width: 530px;
+		.artist {
+			text-overflow: ellipsis;
+			overflow: hidden;
 		}
-		.postLayer .post.comment &{
-			--audio-title-width: 470px;
-		}
-		.post &{
-			--audio-title-width: 470px;
-		}
-		.post.comment &{
-			--audio-title-width: 430px;
-		}
-		.post.comment .commentHoverCard & {
-			--audio-title-width: 311px;
-		}
-		.columnLayout:not(.expanded) .post &{
-			--audio-title-width: 260px;
-		}
-		.columnLayout:not(.expanded) .post.comment &{
-			--audio-title-width: 220px;
-		}
-		.mailMessageView &{
-			--audio-title-width: 350px;
+		.title {
+			text-overflow: ellipsis;
+			overflow: hidden;
 		}
 	}
 	.duration{
 		font-size: 0.9em;
-		padding: 8px 7px 7px 0;
+		padding: 8px 7px 7px 4px;
 		max-width: 50px;
 	}
 	.player{
@@ -83,6 +69,12 @@
 		#content &{
 			/* For embedded posts */
 			padding-left: 16px;
+		}
+	}
+
+	&.current {
+		.area {
+			margin-bottom: 0;
 		}
 	}
 }
