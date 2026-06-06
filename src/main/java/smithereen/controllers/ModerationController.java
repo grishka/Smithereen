@@ -294,7 +294,7 @@ public class ModerationController{
 	private void updateReportsCounter(){
 		AdminNotifications an=AdminNotifications.getInstance(null);
 		if(an!=null){
-			an.openReportsCount=getViolationReportsCount(true);
+			an.setOpenReportsCount(getViolationReportsCount(true));
 		}
 	}
 
