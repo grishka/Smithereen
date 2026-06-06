@@ -277,6 +277,7 @@ public class UsersController{
 				throw new UserErrorException("err_reg_email_taken");
 			FloodControl.OPEN_SIGNUP_OR_INVITE_REQUEST.incrementOrThrow(Utils.getRequestIP(req));
 			SessionStorage.putInviteRequest(email, firstName, lastName, reason);
+			context.getNotificationsController().sendRealtimeCountersUpdates(UserStorage.getAdminsWithPermission(UserRole.Permission.MANAGE_INVITES));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -301,6 +302,7 @@ public class UsersController{
 	public void deleteSignupInviteRequest(int id){
 		try{
 			SessionStorage.deleteInviteRequest(id);
+			context.getNotificationsController().sendRealtimeCountersUpdates(UserStorage.getAdminsWithPermission(UserRole.Permission.MANAGE_INVITES));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -14,12 +14,15 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import smithereen.ApplicationContext;
+import smithereen.Config;
 import smithereen.Mailer;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
@@ -41,6 +44,8 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserDataExport;
 import smithereen.model.UserPresence;
+import smithereen.model.admin.AdminNotifications;
+import smithereen.model.admin.UserRole;
 import smithereen.model.attachments.Attachment;
 import smithereen.model.attachments.PhotoAttachment;
 import smithereen.model.board.BoardTopic;
@@ -599,14 +604,27 @@ public class NotificationsController{
 
 	public JsonObject getUserCountersJson(Account self){
 		UserNotifications un=getUserCounters(self);
-		return new JsonObjectBuilder()
+		JsonObjectBuilder json=new JsonObjectBuilder()
 				.add("friends", un.getNewFriendRequestCount())
 				.add("photos", un.getNewPhotoTagCount())
 				.add("mail", un.getUnreadMailCount())
 				.add("groups", un.getNewGroupInvitationsCount())
 				.add("events", un.getNewEventInvitationsCount())
-				.add("notifications", un.getNewNotificationsCount())
-				.build();
+				.add("notifications", un.getNewNotificationsCount());
+
+		AdminNotifications an=AdminNotifications.getInstance(null);
+		if(an!=null) {
+			UserRole role=Config.userRoles.get(self.roleID);
+			if(role!=null) {
+				if(role.hasPermission(UserRole.Permission.MANAGE_REPORTS)){
+					json.add("adminReports", an.getOpenReportsCount());
+				}
+				if(role.hasPermission(UserRole.Permission.MANAGE_INVITES)){
+					json.add("adminSignupRequests", an.getSignupRequestsCount());
+				}
+			}
+		}
+		return json.build();
 	}
 
 	private String makeCountersWebsocketMessage(Account self){
@@ -617,16 +635,20 @@ public class NotificationsController{
 				.toString();
 	}
 
-	public void sendRealtimeCountersUpdates(User user){
-		List<WebSocketConnection> connections=null;
-		synchronized(wsMapsLock){
-			List<WebSocketConnection> actualConnections=wsConnectionsByUserID.get(user.id);
-			if(actualConnections!=null)
-				connections=new ArrayList<>(actualConnections);
-		}
+	public void sendRealtimeCountersUpdates(@NotNull User user){
+		sendRealtimeCountersUpdates(Collections.singletonList(user.id));
+	}
 
-		if(connections==null)
-			return;
+	public void sendRealtimeCountersUpdates(@NotNull Collection<Integer> userIDs){
+		if(userIDs.isEmpty()) return;
+		var connections=new ArrayList<WebSocketConnection>();
+		synchronized(wsMapsLock){
+			for(int userID : userIDs){
+				List<WebSocketConnection> actualConnections=wsConnectionsByUserID.get(userID);
+				if(actualConnections!=null)
+					connections.addAll(actualConnections);
+			}
+		}
 
 		for(WebSocketConnection conn:connections){
 			Thread.ofVirtual().start(()->conn.sendRaw(makeCountersWebsocketMessage(conn.session.account)));
