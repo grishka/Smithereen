@@ -1231,19 +1231,19 @@ public class UserStorage{
 		accountCache.evictAll();
 	}
 
-	public static List<User> getAdmins() throws SQLException{
+	public static List<Integer> getAdminsWithPermission(UserRole.Permission permission) throws SQLException{
 		Set<Integer> rolesToShow=Config.userRoles.values()
 				.stream()
-				.filter(r->r.permissions().contains(UserRole.Permission.VISIBLE_IN_STAFF))
+				.filter(r->r.hasPermission(permission))
 				.map(UserRole::id)
 				.collect(Collectors.toSet());
 		if(rolesToShow.isEmpty())
 			return List.of();
-		return getByIdAsList(new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("accounts")
 				.columns("user_id")
 				.whereIn("role", rolesToShow)
-				.executeAndGetIntList());
+				.executeAndGetIntList();
 	}
 
 	public static int getPeerDomainCount() throws SQLException{
