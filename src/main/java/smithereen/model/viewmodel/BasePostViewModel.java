@@ -3,6 +3,8 @@ package smithereen.model.viewmodel;
 import java.util.ArrayList;
 import java.util.List;
 
+import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Audio;
 import smithereen.model.PostLikeObject;
 
 public abstract class BasePostViewModel<T extends PostLikeObject, S extends BasePostViewModel<T, S>>{
@@ -41,5 +43,13 @@ public abstract class BasePostViewModel<T extends PostLikeObject, S extends Base
 		for(S reply:repliesObjects){
 			reply.getAllReplies(replies);
 		}
+	}
+
+	public boolean hasAudioAttachments(){
+		for(ActivityPubObject o: post.getAttachments()){
+			if(o instanceof Audio)
+				return true;
+		}
+		return false;
 	}
 }
