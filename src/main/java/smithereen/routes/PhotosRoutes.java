@@ -131,13 +131,7 @@ public class PhotosRoutes{
 				addFriendLists(self.user, l, ctx, model);
 			PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(owner, self==null ? null : self.user, 0, 100);
 			model.paginate(photos, owner.getTypeAndIdForURL()+"/allPhotos?offset=", owner.getTypeAndIdForURL()+"/albums");
-			Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-			int i=0;
-			for(Photo p:photos.list){
-				pvData.put(p.id, new PhotoViewerInlineData(i, "all/"+owner.getOwnerID(), p.image.getURLsForPhotoViewer()));
-				i++;
-			}
-			model.with("photoViewerData", pvData);
+			model.with("photoViewerData", photoViewerData(photos, 0, "all/"+owner.getOwnerID()));
 		}
 		return model;
 	}
@@ -202,13 +196,7 @@ public class PhotosRoutes{
 		model.paginate(photos)
 				.with("reverseOrder", reverse);
 
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString()+(reverse ? "/rev" : ""), p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("photoViewerData", photoViewerData(photos, offset, "albums/"+album.getIdString()+(reverse ? "/rev" : "")));
 
 		if(isAjax(req)){
 			String paginationID=req.queryParams("pagination");
@@ -228,6 +216,16 @@ public class PhotosRoutes{
 		jsLangKey(req, "drop_files_here", "release_files_to_upload", "uploading_photo_X_of_Y", "add_more_photos", "photo_description", "photo_description_saved", "uploading_photos", "you_uploaded_X_photos",
 				"delete", "delete_photo", "delete_photo_confirm");
 		return model;
+	}
+
+	private static Map<Long, PhotoViewerInlineData> photoViewerData(PaginatedList<Photo> photos, int offset, String list){
+		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
+		int i=0;
+		for(Photo p: photos.list){
+			pvData.put(p.id, new PhotoViewerInlineData(offset+i, list, p.image.getURLsForPhotoViewer()));
+			i++;
+		}
+		return pvData;
 	}
 
 	public static Object uploadPhoto(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
@@ -956,13 +954,7 @@ public class PhotosRoutes{
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, offset, 100, false);
 		model.paginate(photos, album.getURL(), album.getURL());
 
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString(), p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("photoViewerData", photoViewerData(photos, offset, "albums/"+album.getIdString()));
 		model.with("photoDataToOpenViewer", new PhotoViewerInlineData(index, "albums/"+album.getIdString(), photo.image.getURLsForPhotoViewer()));
 		jsLangKey(req, "drop_files_here", "release_files_to_upload", "uploading_photo_X_of_Y", "add_more_photos", "photo_description", "photo_description_saved", "uploading_photos", "you_uploaded_X_photos",
 				"delete", "delete_photo", "delete_photo_confirm");
@@ -1065,13 +1057,7 @@ public class PhotosRoutes{
 		int offset=offset(req);
 
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(owner, self, offset, 100);
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(i+offset, "all/"+owner.getOwnerID(), p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("photoViewerData", photoViewerData(photos, offset, "all/"+owner.getOwnerID()));
 		model.paginate(photos);
 
 		WebDeltaResponse r=new WebDeltaResponse(resp)
@@ -1306,13 +1292,7 @@ public class PhotosRoutes{
 				.pageTitle(lang(req).get("new_photos_of_me"))
 				.paginate(photos);
 
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "newTags/1", p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("photoViewerData", photoViewerData(photos, offset, "newTags/1"));
 
 		if(isAjax(req)){
 			String paginationID=req.queryParams("pagination");
@@ -1374,13 +1354,7 @@ public class PhotosRoutes{
 		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset, 100, false);
 		model.paginate(photos);
 
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "tagged/"+user.id, p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("photoViewerData", photoViewerData(photos, offset, "tagged/"+user.id));
 
 		if(isAjax(req)){
 			String paginationID=req.queryParams("pagination");
