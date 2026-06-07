@@ -54,8 +54,8 @@ import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserDataExport;
 import smithereen.model.UserPrivacySettingKey;
-import smithereen.model.admin.UserRole;
 import smithereen.model.WebDeltaResponse;
+import smithereen.model.admin.UserRole;
 import smithereen.model.apps.AppAccessGrant;
 import smithereen.model.apps.ClientApp;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
@@ -848,20 +848,20 @@ public class SettingsRoutes{
 		return "";
 	}
 
-	public static Object notificationsSettings(Request req, Response resp, Account self, ApplicationContext ctx){
-		RenderedTemplateResponse model=new RenderedTemplateResponse("settings_notifications", req)
+	public static Object notificationsSettings(Request req, Response ignoredResponse, SessionInfo info, ApplicationContext ignoredCtx){
+		Account self=info.account;
+		return new RenderedTemplateResponse("settings_notifications", req)
 				.pageTitle(lang(req).get("notifications"))
 				.with("notifierTypes", self.prefs.notifierTypes)
 				.with("notifierEnableSound", self.prefs.notifierEnableSound)
 				.with("notifierShowMessageText", self.prefs.notifierShowMessageText)
-				.with("allNotifierTypes", RealtimeNotificationSettingType.values())
+				.with("allNotifierTypes", Arrays.stream(RealtimeNotificationSettingType.values()).filter(v->v.isAvailable(info.permissions)).toArray())
 				.with("emailNotificationTypes", self.prefs.emailNotificationTypes)
 				.with("emailNotificationFreq", self.prefs.emailNotificationFrequency)
 				.with("allEmailNotificationFreqOptions", EmailNotificationFrequency.values())
-				.with("allEmailNotificationTypes", EmailNotificationType.values())
+				.with("allEmailNotificationTypes", Arrays.stream(EmailNotificationType.values()).filter(v->v.isAvailable(info.permissions)).toArray())
 				.addMessage(req, "settings.notifierMessage", "notificationsMessage")
 				.addMessage(req, "settings.emailNotificationsMessage", "emailNotificationsMessage");
-		return model;
 	}
 
 	public static Object updateNotifierSettings(Request req, Response resp, Account self, ApplicationContext ctx){

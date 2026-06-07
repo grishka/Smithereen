@@ -1,0 +1,34 @@
+{# @pebvariable name="req" type="smithereen.model.SignupRequest" #}
+	{% extends "page" %}
+{% block content %}
+<h1>{{ L('notification_title_signup_request') }}</h1>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+	<tr>
+		<td valign="top" width="100">{% include 'actor_avatar' with {'size': 'b'} %}</td>
+		<td valign="top" style="padding-left: 10px">
+			<table width="100%" cellpadding="0" cellspacing="5" border="0">
+				<tr>
+					<td class="grayText">{{ L('name') }}:</td>
+					<td width="99%">{{ req | name('full') }}</td>
+				</tr>
+				<tr>
+					<td class="grayText">{{ L('email') }}:</td>
+					<td>{{ req.email }}</td>
+				</tr>
+				<tr>
+					<td class="grayText">{{ L('signup_request_sent_at') }}:</td>
+					<td>{{ LD(req.createdAt) }}</td>
+				</tr>
+				<tr>
+					<td class="grayText">{{ L('message') }}:</td>
+					<td>{{ req.reason }}</td>
+				</tr>
+				<tr>
+					<td></td>
+					<td style="padding-top: 10px"><a class="button" href="https://{{ domain }}/settings/admin/signupRequests">{{ L('email_go_to_signup_requests') }}</a></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+{% endblock %}

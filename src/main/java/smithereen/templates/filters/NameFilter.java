@@ -8,6 +8,7 @@ import io.pebbletemplates.pebble.extension.Filter;
 import io.pebbletemplates.pebble.template.EvaluationContext;
 import io.pebbletemplates.pebble.template.PebbleTemplate;
 import smithereen.model.Group;
+import smithereen.model.SignupRequest;
 import smithereen.model.User;
 
 public class NameFilter implements Filter{
@@ -28,6 +29,14 @@ public class NameFilter implements Filter{
 			};
 		}else if(input instanceof Group group){
 			return group.name;
+		}else if(input instanceof SignupRequest req){
+			String format=(String) args.getOrDefault("format", "full");
+			return switch(format){
+				case "first" -> req.firstName;
+				case "last" -> req.lastName;
+				case "full", "complete" -> req.getFullName();
+				default -> throw new IllegalStateException("Unexpected value: "+format);
+			};
 		}
 		return "DELETED";
 	}

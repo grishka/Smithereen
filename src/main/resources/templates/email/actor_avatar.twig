@@ -1,5 +1,5 @@
 {# @pebvariable name="actor" type="smithereen.activitypub.objects.Actor" #}
-{% if actor.hasAvatar() %}
+{% if actor is not null and actor.hasAvatar() %}
 {{ actor | pictureForAvatar(size) }}
 {% else %}
 {% if size=='a' %}

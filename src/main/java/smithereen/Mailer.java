@@ -43,6 +43,7 @@ import smithereen.model.OwnedContentObject;
 import smithereen.model.Post;
 import smithereen.model.PostLikeObject;
 import smithereen.model.ServerRule;
+import smithereen.model.SignupRequest;
 import smithereen.model.User;
 import smithereen.model.UserBanInfo;
 import smithereen.model.UserBanStatus;
@@ -519,6 +520,19 @@ public class Mailer{
 						"gender", actor.gender,
 						"groupName", group.name,
 						"url", Config.localURI(group.isEvent() ? "/my/events/invites" : "/my/groups/invites").toString()
+				));
+			}
+			case SIGNUP_REQUEST -> {
+				SignupRequest req=(SignupRequest) object;
+				params.put("req", req);
+				templateName="signup_request";
+				User.Gender gender=req.detectGender(l);
+				String fullName=req.getFullName();
+				subject=TextProcessor.stripHTML(l.get("notification_content_signup_request", Map.of("name", fullName, "gender", gender)), false);
+				plaintext+=l.get("email_signup_request_plaintext", Map.of(
+						"name", fullName,
+						"gender", gender,
+						"url", Config.localURI("/settings/admin/signupRequests").toString()
 				));
 			}
 			default -> throw new IllegalStateException(type.toString());
