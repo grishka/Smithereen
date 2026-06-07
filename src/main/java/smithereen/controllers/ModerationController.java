@@ -291,10 +291,11 @@ public class ModerationController{
 		}
 	}
 
-	private void updateReportsCounter(){
+	private void updateReportsCounter() throws SQLException{
 		AdminNotifications an=AdminNotifications.getInstance(null);
 		if(an!=null){
-			an.openReportsCount=getViolationReportsCount(true);
+			an.setOpenReportsCount(getViolationReportsCount(true));
+			context.getNotificationsController().sendRealtimeCountersUpdates(UserStorage.getAdminsWithPermission(UserRole.Permission.MANAGE_REPORTS));
 		}
 	}
 
@@ -769,7 +770,7 @@ public class ModerationController{
 
 	public List<User> getPublicServerAdmins(){
 		try{
-			return UserStorage.getAdmins();
+			return UserStorage.getByIdAsList(UserStorage.getAdminsWithPermission(UserRole.Permission.VISIBLE_IN_STAFF));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -637,7 +637,7 @@ public class SessionStorage{
 				.executeNoResult();
 		AdminNotifications an=AdminNotifications.getInstance(null);
 		if(an!=null){
-			an.signupRequestsCount=getInviteRequestCount();
+			an.setSignupRequestsCount(getInviteRequestCount());
 		}
 	}
 
@@ -668,7 +668,7 @@ public class SessionStorage{
 				.executeUpdate();
 		AdminNotifications an=AdminNotifications.getInstance(null);
 		if(an!=null)
-			an.signupRequestsCount=Math.max(0, an.signupRequestsCount-numRows);
+			an.updateSignupRequestsCount(x -> Math.max(0, x-numRows));
 	}
 
 	public static SignupRequest getInviteRequest(int id) throws SQLException{
