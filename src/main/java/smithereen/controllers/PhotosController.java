@@ -1063,9 +1063,9 @@ public class PhotosController{
 		}
 	}
 
-	public int getPhotoIndexInAlbum(PhotoAlbum album, Photo photo){
+	public int getPhotoIndexInAlbum(long albumID, long photoID){
 		try{
-			int index=PhotoStorage.getPhotoIndexInAlbum(album.id, photo.id);
+			int index=PhotoStorage.getPhotoIndexInAlbum(albumID, photoID);
 			if(index==-1)
 				throw new ObjectNotFoundException();
 			return index;

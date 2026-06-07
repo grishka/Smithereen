@@ -235,12 +235,23 @@ public class PhotosRoutes{
 
 		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, info.account, false, "file");
 		long photoID=ctx.getPhotosController().createPhoto(info.account.user, album, photo.fileID, null, null);
+		int index=ctx.getPhotosController().getPhotoIndexInAlbum(album.id, photoID);
 		SizedImage.Type sizeType=SizedImage.Type.PHOTO_THUMB_SMALL;
 		SizedImage.Dimensions size=photo.getDimensionsForSize(sizeType);
-
+		String obfuscatedID=encodeLong(XTEA.obfuscateObjectID(photoID, ObfuscatedObjectIDType.PHOTO));
+		StringBuilder html=new StringBuilder("<a href=\"");
+		html.append("/photos/");
+		html.append(obfuscatedID);
+		html.append("\" class=\"photo\" id=\"photo");
+		html.append(obfuscatedID);
+		html.append("\" onclick=\"return openPhotoViewer(this)\" data-pv=\"");
+		html.append(TextProcessor.escapeHTML(gson.toJson(new PhotoViewerInlineData(index, "albums/"+album.getIdString(), photo.getURLsForPhotoViewer()))));
+		html.append("\">");
+		html.append(photo.generateHTML(SizedImage.Type.PHOTO_THUMB_MEDIUM, null, null, size.width, size.height, true, null));
+		html.append("</a>");
 		return new JsonObjectBuilder()
-				.add("id", encodeLong(XTEA.obfuscateObjectID(photoID, ObfuscatedObjectIDType.PHOTO)))
-				.add("html", photo.generateHTML(SizedImage.Type.PHOTO_THUMB_MEDIUM, null, null, size.width, size.height, true, null))
+				.add("id", obfuscatedID)
+				.add("html", html.toString())
 				.build();
 	}
 
@@ -287,8 +298,10 @@ public class PhotosRoutes{
 		Templates.addJsLangForPrivacySettings(req);
 		jsLangKey(req, "photo_description", "photo_description_saved");
 
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(info.account.user, album, offset(req), 100, false);
+		int offset=offset(req);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(info.account.user, album, offset, 100, false);
 		model.paginate(photos);
+		model.with("photoViewerData", photoViewerData(photos, offset, "albums/"+album.getIdString()));
 		model.with("descriptionSources", ctx.getPhotosController().getPhotoDescriptionSources(photos.list.stream().map(p->p.id).collect(Collectors.toSet())));
 
 		Set<Integer> needUsers=new HashSet<>();
@@ -347,11 +360,15 @@ public class PhotosRoutes{
 			SizedImage ava=owner.getAvatar();
 			isCurrentAva=ava instanceof LocalImage li && li.photoID==photo.id;
 		}
+		int photoIndexInAlbum=ctx.getPhotosController().getPhotoIndexInAlbum(album.id, photo.id);
 		PhotosController.PhotoDeletionResult deletionResult=ctx.getPhotosController().deletePhoto(self.user, photo);
 		if(isAjax(req)){
 			String from=req.queryParams("from");
+			String photoIdString=photo.getIdString();
 			if("edit".equals(from)){
-				WebDeltaResponse response=new WebDeltaResponse(resp).remove("photoEditRow_"+photo.getIdString());
+				WebDeltaResponse response=new WebDeltaResponse(resp)
+						.runScript("updatePhotoIndicesAfterDeletion("+photoIndexInAlbum+");")
+						.remove("photoEditRow_"+photoIdString);
 				if(deletionResult.noPhotosRemainingInAlbum()){
 					response.remove("editPhotosBlock");
 				}
@@ -368,7 +385,9 @@ public class PhotosRoutes{
 			}else if("viewer".equals(from)){
 				WebDeltaResponse wdr=new WebDeltaResponse(resp)
 						.runScript("LayerManager.getMediaInstance().getTopLayer().dismiss();")
-						.remove("photo"+photo.getIdString());
+						.runScript("updatePhotoIndicesAfterDeletion("+photoIndexInAlbum+");")
+						.remove("photoEditRow_"+photoIdString) // In case the viewer is opened from the album editing page (by clicking on the photo thumbnail).
+						.remove("photo"+photoIdString);
 				if(isCurrentAva)
 					wdr.refresh();
 				return wdr;
@@ -877,7 +896,7 @@ public class PhotosRoutes{
 		Account self=sessionInfo(req) instanceof SessionInfo si ? si.account : null;
 		Photo photo=getPhotoForRequest(req);
 		PhotoAlbum album=ctx.getPhotosController().getAlbum(photo.albumID, self!=null ? self.user : null);
-		int index=ctx.getPhotosController().getPhotoIndexInAlbum(album, photo);
+		int index=ctx.getPhotosController().getPhotoIndexInAlbum(album.id, photo.id);
 		if(req.queryParams("nojs")!=null || isMobile(req)){
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_view", req);
 			EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=getAllowedActionsForPhoto(ctx, self==null ? null : self.user, photo, album);
