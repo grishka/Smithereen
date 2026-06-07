@@ -195,7 +195,7 @@ public class PhotosRoutes{
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100, reverse);
 		model.paginate(photos)
 				.with("reverseOrder", reverse);
-
+		model.with("summary", photoAlbumSummary(album, photos.total, self, owner, lang(req)));
 		model.with("photoViewerData", photoViewerData(photos, offset, "albums/"+album.getIdString()+(reverse ? "/rev" : "")));
 
 		if(isAjax(req)){
@@ -383,17 +383,36 @@ public class PhotosRoutes{
 				}
 				return response;
 			}else if("viewer".equals(from)){
+				Lang l=lang(req);
 				WebDeltaResponse wdr=new WebDeltaResponse(resp)
 						.runScript("LayerManager.getMediaInstance().getTopLayer().dismiss();")
 						.runScript("updatePhotoIndicesAfterDeletion("+photoIndexInAlbum+");")
 						.remove("photoEditRow_"+photoIdString) // In case the viewer is opened from the album editing page (by clicking on the photo thumbnail).
-						.remove("photo"+photoIdString);
+						.remove("photo"+photoIdString)
+						.setContent("photoAlbumSummary", photoAlbumSummary(album, album.numPhotos, self.user, null, l));
+				if(deletionResult.noPhotosRemainingInAlbum()){
+					wdr.removeClass("photoGrid", "photoGrid")
+							.addClass("photoGrid", "singleColumn")
+							.setContent("photoGrid", "<div class=\"emptyState\">"+l.get("no_photos_in_album")+"</div>");
+				}
 				if(isCurrentAva)
 					wdr.refresh();
 				return wdr;
 			}
 		}
 		return ajaxAwareRedirect(req, resp, "/albums/"+XTEA.encodeObjectID(photo.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM));
+	}
+
+	private static String photoAlbumSummary(PhotoAlbum album, int total, User self, Actor owner, Lang l){
+		if(album.systemType==PhotoAlbum.SystemAlbumType.TAGGED){
+			if(self!=null && self.id==album.ownerID){
+				return l.get("summary_X_photos_of_me", Map.of("count", total));
+			}else{
+				return l.get("summary_X_photos_of_user", Map.of("count", total, "name", ((User) owner).getFirstAndGender()));
+			}
+		}else{
+			return l.get("summary_album_X_photos", Map.of("count", total));
+		}
 	}
 
 	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User self, User author, Instant createdAt, AttachmentHostContentObject parent, int index, EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions){
@@ -972,7 +991,7 @@ public class PhotosRoutes{
 		int offset=offset(req);
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, offset, 100, false);
 		model.paginate(photos, album.getURL(), album.getURL());
-
+		model.with("summary", photoAlbumSummary(album, photos.total, self==null ? null : self.user, owner, lang(req)));
 		model.with("photoViewerData", photoViewerData(photos, offset, "albums/"+album.getIdString()));
 		model.with("photoDataToOpenViewer", new PhotoViewerInlineData(index, "albums/"+album.getIdString(), photo.image.getURLsForPhotoViewer()));
 		jsLangKey(req, "drop_files_here", "release_files_to_upload", "uploading_photo_X_of_Y", "add_more_photos", "photo_description", "photo_description_saved", "uploading_photos", "you_uploaded_X_photos",
@@ -1372,7 +1391,7 @@ public class PhotosRoutes{
 		int offset=offset(req);
 		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset, 100, false);
 		model.paginate(photos);
-
+		model.with("summary", photoAlbumSummary(album, photos.total, self, owner, lang(req)));
 		model.with("photoViewerData", photoViewerData(photos, offset, "tagged/"+user.id));
 
 		if(isAjax(req)){
