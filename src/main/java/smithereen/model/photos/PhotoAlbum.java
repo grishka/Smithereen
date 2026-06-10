@@ -2,6 +2,8 @@ package smithereen.model.photos;
 
 import com.google.gson.reflect.TypeToken;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,7 +15,6 @@ import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.lang.Lang;
 import smithereen.model.ActivityPubRepresentable;
-import smithereen.model.Group;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.OwnedContentObject;
 import smithereen.model.PrivacySetting;
@@ -31,6 +32,7 @@ public class PhotoAlbum implements ActivityPubRepresentable, OwnedContentObject{
 	public PrivacySetting viewPrivacy, commentPrivacy;
 	public int numPhotos;
 	public Instant createdAt, updatedAt;
+	@Nullable
 	public SystemAlbumType systemType;
 	public long coverID;
 	public EnumSet<Flag> flags;

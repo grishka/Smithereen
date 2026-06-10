@@ -1,5 +1,7 @@
 package smithereen.model;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -70,9 +72,15 @@ public class UserPermissions{
 		};
 	}
 
-	public boolean canEditPhotoAlbum(PhotoAlbum album){
-		if(album.ownerID>0)
-			return userID==album.ownerID && album.systemType!=PhotoAlbum.SystemAlbumType.TAGGED;
+	public boolean canEditPhotoAlbum(@NotNull PhotoAlbum album){
+		if(album.ownerID>0){
+			if(userID!=album.ownerID) return false;
+			return switch(album.systemType){
+				case AVATARS, SAVED -> album.numPhotos>0;
+				case TAGGED -> false;
+				case null -> true;
+			};
+		}
 		return managedGroups.getOrDefault(-album.ownerID, Group.AdminLevel.REGULAR).isAtLeast(Group.AdminLevel.MODERATOR);
 	}
 
