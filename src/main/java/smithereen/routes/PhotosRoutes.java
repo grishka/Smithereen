@@ -131,13 +131,7 @@ public class PhotosRoutes{
 				addFriendLists(self.user, l, ctx, model);
 			PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(owner, self==null ? null : self.user, 0, 100);
 			model.paginate(photos, owner.getTypeAndIdForURL()+"/allPhotos?offset=", owner.getTypeAndIdForURL()+"/albums");
-			Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-			int i=0;
-			for(Photo p:photos.list){
-				pvData.put(p.id, new PhotoViewerInlineData(i, "all/"+owner.getOwnerID(), p.image.getURLsForPhotoViewer()));
-				i++;
-			}
-			model.with("photoViewerData", pvData);
+			model.with("photoViewerData", photoViewerData(photos, 0, "all/"+owner.getOwnerID()));
 		}
 		return model;
 	}
@@ -201,14 +195,8 @@ public class PhotosRoutes{
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self, album, offset, 100, reverse);
 		model.paginate(photos)
 				.with("reverseOrder", reverse);
-
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString()+(reverse ? "/rev" : ""), p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("summary", photoAlbumSummary(album, photos.total, self, owner, lang(req)));
+		model.with("photoViewerData", photoViewerData(photos, offset, "albums/"+album.getIdString()+(reverse ? "/rev" : "")));
 
 		if(isAjax(req)){
 			String paginationID=req.queryParams("pagination");
@@ -230,6 +218,16 @@ public class PhotosRoutes{
 		return model;
 	}
 
+	private static Map<Long, PhotoViewerInlineData> photoViewerData(PaginatedList<Photo> photos, int offset, String list){
+		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
+		int i=0;
+		for(Photo p: photos.list){
+			pvData.put(p.id, new PhotoViewerInlineData(offset+i, list, p.image.getURLsForPhotoViewer()));
+			i++;
+		}
+		return pvData;
+	}
+
 	public static Object uploadPhoto(Request req, Response resp, SessionInfo info, ApplicationContext ctx){
 		PhotoAlbum album=ctx.getPhotosController().getAlbum(XTEA.deobfuscateObjectID(decodeLong(req.params(":id")), ObfuscatedObjectIDType.PHOTO_ALBUM), info.account.user);
 		if(album.systemType!=null || !info.permissions.canUploadToPhotoAlbum(album))
@@ -237,12 +235,23 @@ public class PhotosRoutes{
 
 		LocalImage photo=MediaStorageUtils.saveUploadedImage(req, resp, info.account, false, "file");
 		long photoID=ctx.getPhotosController().createPhoto(info.account.user, album, photo.fileID, null, null);
+		int index=ctx.getPhotosController().getPhotoIndexInAlbum(album.id, photoID);
 		SizedImage.Type sizeType=SizedImage.Type.PHOTO_THUMB_SMALL;
 		SizedImage.Dimensions size=photo.getDimensionsForSize(sizeType);
-
+		String obfuscatedID=encodeLong(XTEA.obfuscateObjectID(photoID, ObfuscatedObjectIDType.PHOTO));
+		StringBuilder html=new StringBuilder("<a href=\"");
+		html.append("/photos/");
+		html.append(obfuscatedID);
+		html.append("\" class=\"photo\" id=\"photo");
+		html.append(obfuscatedID);
+		html.append("\" onclick=\"return openPhotoViewer(this)\" data-pv=\"");
+		html.append(TextProcessor.escapeHTML(gson.toJson(new PhotoViewerInlineData(index, "albums/"+album.getIdString(), photo.getURLsForPhotoViewer()))));
+		html.append("\">");
+		html.append(photo.generateHTML(SizedImage.Type.PHOTO_THUMB_MEDIUM, null, null, size.width, size.height, true, null));
+		html.append("</a>");
 		return new JsonObjectBuilder()
-				.add("id", encodeLong(XTEA.obfuscateObjectID(photoID, ObfuscatedObjectIDType.PHOTO)))
-				.add("html", photo.generateHTML(SizedImage.Type.PHOTO_THUMB_MEDIUM, null, null, size.width, size.height, true, null))
+				.add("id", obfuscatedID)
+				.add("html", html.toString())
 				.build();
 	}
 
@@ -289,8 +298,10 @@ public class PhotosRoutes{
 		Templates.addJsLangForPrivacySettings(req);
 		jsLangKey(req, "photo_description", "photo_description_saved");
 
-		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(info.account.user, album, offset(req), 100, false);
+		int offset=offset(req);
+		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(info.account.user, album, offset, 100, false);
 		model.paginate(photos);
+		model.with("photoViewerData", photoViewerData(photos, offset, "albums/"+album.getIdString()));
 		model.with("descriptionSources", ctx.getPhotosController().getPhotoDescriptionSources(photos.list.stream().map(p->p.id).collect(Collectors.toSet())));
 
 		Set<Integer> needUsers=new HashSet<>();
@@ -349,11 +360,15 @@ public class PhotosRoutes{
 			SizedImage ava=owner.getAvatar();
 			isCurrentAva=ava instanceof LocalImage li && li.photoID==photo.id;
 		}
+		int photoIndexInAlbum=ctx.getPhotosController().getPhotoIndexInAlbum(album.id, photo.id);
 		PhotosController.PhotoDeletionResult deletionResult=ctx.getPhotosController().deletePhoto(self.user, photo);
 		if(isAjax(req)){
 			String from=req.queryParams("from");
+			String photoIdString=photo.getIdString();
 			if("edit".equals(from)){
-				WebDeltaResponse response=new WebDeltaResponse(resp).remove("photoEditRow_"+photo.getIdString());
+				WebDeltaResponse response=new WebDeltaResponse(resp)
+						.runScript("updatePhotoIndicesAfterDeletion("+photoIndexInAlbum+");")
+						.remove("photoEditRow_"+photoIdString);
 				if(deletionResult.noPhotosRemainingInAlbum()){
 					response.remove("editPhotosBlock");
 				}
@@ -368,15 +383,36 @@ public class PhotosRoutes{
 				}
 				return response;
 			}else if("viewer".equals(from)){
+				Lang l=lang(req);
 				WebDeltaResponse wdr=new WebDeltaResponse(resp)
 						.runScript("LayerManager.getMediaInstance().getTopLayer().dismiss();")
-						.remove("photo"+photo.getIdString());
+						.runScript("updatePhotoIndicesAfterDeletion("+photoIndexInAlbum+");")
+						.remove("photoEditRow_"+photoIdString) // In case the viewer is opened from the album editing page (by clicking on the photo thumbnail).
+						.remove("photo"+photoIdString)
+						.setContent("photoAlbumSummary", photoAlbumSummary(album, album.numPhotos, self.user, null, l));
+				if(deletionResult.noPhotosRemainingInAlbum()){
+					wdr.removeClass("photoGrid", "photoGrid")
+							.addClass("photoGrid", "singleColumn")
+							.setContent("photoGrid", "<div class=\"emptyState\">"+l.get("no_photos_in_album")+"</div>");
+				}
 				if(isCurrentAva)
 					wdr.refresh();
 				return wdr;
 			}
 		}
 		return ajaxAwareRedirect(req, resp, "/albums/"+XTEA.encodeObjectID(photo.albumID, ObfuscatedObjectIDType.PHOTO_ALBUM));
+	}
+
+	private static String photoAlbumSummary(PhotoAlbum album, int total, User self, Actor owner, Lang l){
+		if(album.systemType==PhotoAlbum.SystemAlbumType.TAGGED){
+			if(self!=null && self.id==album.ownerID){
+				return l.get("summary_X_photos_of_me", Map.of("count", total));
+			}else{
+				return l.get("summary_X_photos_of_user", Map.of("count", total, "name", ((User) owner).getFirstAndGender()));
+			}
+		}else{
+			return l.get("summary_album_X_photos", Map.of("count", total));
+		}
 	}
 
 	private static PhotoViewerPhotoInfo makePhotoInfoForAttachment(Request req, PhotoAttachment pa, User self, User author, Instant createdAt, AttachmentHostContentObject parent, int index, EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions){
@@ -879,7 +915,7 @@ public class PhotosRoutes{
 		Account self=sessionInfo(req) instanceof SessionInfo si ? si.account : null;
 		Photo photo=getPhotoForRequest(req);
 		PhotoAlbum album=ctx.getPhotosController().getAlbum(photo.albumID, self!=null ? self.user : null);
-		int index=ctx.getPhotosController().getPhotoIndexInAlbum(album, photo);
+		int index=ctx.getPhotosController().getPhotoIndexInAlbum(album.id, photo.id);
 		if(req.queryParams("nojs")!=null || isMobile(req)){
 			RenderedTemplateResponse model=new RenderedTemplateResponse("photo_view", req);
 			EnumSet<PhotoViewerPhotoInfo.AllowedAction> allowedActions=getAllowedActionsForPhoto(ctx, self==null ? null : self.user, photo, album);
@@ -955,14 +991,8 @@ public class PhotosRoutes{
 		int offset=offset(req);
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAlbumPhotos(self==null ? null : self.user, album, offset, 100, false);
 		model.paginate(photos, album.getURL(), album.getURL());
-
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "albums/"+album.getIdString(), p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("summary", photoAlbumSummary(album, photos.total, self==null ? null : self.user, owner, lang(req)));
+		model.with("photoViewerData", photoViewerData(photos, offset, "albums/"+album.getIdString()));
 		model.with("photoDataToOpenViewer", new PhotoViewerInlineData(index, "albums/"+album.getIdString(), photo.image.getURLsForPhotoViewer()));
 		jsLangKey(req, "drop_files_here", "release_files_to_upload", "uploading_photo_X_of_Y", "add_more_photos", "photo_description", "photo_description_saved", "uploading_photos", "you_uploaded_X_photos",
 				"delete", "delete_photo", "delete_photo_confirm");
@@ -1065,13 +1095,7 @@ public class PhotosRoutes{
 		int offset=offset(req);
 
 		PaginatedList<Photo> photos=ctx.getPhotosController().getAllPhotos(owner, self, offset, 100);
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(i+offset, "all/"+owner.getOwnerID(), p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("photoViewerData", photoViewerData(photos, offset, "all/"+owner.getOwnerID()));
 		model.paginate(photos);
 
 		WebDeltaResponse r=new WebDeltaResponse(resp)
@@ -1306,13 +1330,7 @@ public class PhotosRoutes{
 				.pageTitle(lang(req).get("new_photos_of_me"))
 				.paginate(photos);
 
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "newTags/1", p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("photoViewerData", photoViewerData(photos, offset, "newTags/1"));
 
 		if(isAjax(req)){
 			String paginationID=req.queryParams("pagination");
@@ -1373,14 +1391,8 @@ public class PhotosRoutes{
 		int offset=offset(req);
 		PaginatedList<Photo> photos=ctx.getPhotosController().getUserTaggedPhotos(self, user, offset, 100, false);
 		model.paginate(photos);
-
-		Map<Long, PhotoViewerInlineData> pvData=new HashMap<>();
-		int i=0;
-		for(Photo p:photos.list){
-			pvData.put(p.id, new PhotoViewerInlineData(offset+i, "tagged/"+user.id, p.image.getURLsForPhotoViewer()));
-			i++;
-		}
-		model.with("photoViewerData", pvData);
+		model.with("summary", photoAlbumSummary(album, photos.total, self, owner, lang(req)));
+		model.with("photoViewerData", photoViewerData(photos, offset, "tagged/"+user.id));
 
 		if(isAjax(req)){
 			String paginationID=req.queryParams("pagination");
