@@ -1,5 +1,7 @@
 package smithereen.model.notifications;
 
+import smithereen.model.UserPermissions;
+import smithereen.model.admin.UserRole;
 import smithereen.util.TranslatableEnum;
 
 // This exists separately from RealtimeNotification.Type because some finer-grained notification types
@@ -13,10 +15,20 @@ public enum RealtimeNotificationSettingType implements TranslatableEnum<Realtime
 	WALL,
 	MENTIONS,
 	PHOTO_TAGS,
-	GROUP_INVITES;
+	GROUP_INVITES,
+
+	// Admin-only
+	SIGNUP_REQUESTS;
 
 	@Override
 	public String getLangKey(){
 		return "settings_notifications_"+toString().toLowerCase();
+	}
+
+	public boolean isAvailable(UserPermissions permissions){
+		if(this==SIGNUP_REQUESTS){
+			return permissions.hasPermission(UserRole.Permission.MANAGE_INVITES);
+		}
+		return true;
 	}
 }

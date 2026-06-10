@@ -32,7 +32,6 @@ import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
 import smithereen.model.Account;
-import smithereen.model.admin.AdminNotifications;
 import smithereen.model.EmailCode;
 import smithereen.model.Group;
 import smithereen.model.OtherSession;
@@ -44,6 +43,7 @@ import smithereen.model.User;
 import smithereen.model.UserBanStatus;
 import smithereen.model.UserPermissions;
 import smithereen.model.UserPreferences;
+import smithereen.model.admin.AdminNotifications;
 import smithereen.model.admin.UserRole;
 import smithereen.model.notifications.Notification;
 import smithereen.storage.sql.DatabaseConnection;
@@ -627,17 +627,26 @@ public class SessionStorage{
 				.executeAndGetInt()>0;
 	}
 
-	public static void putInviteRequest(String email, String firstName, String lastName, String reason) throws SQLException{
-		new SQLQueryBuilder()
-				.insertInto("signup_requests")
-				.value("email", email)
-				.value("first_name", firstName)
-				.value("last_name", lastName)
-				.value("reason", reason)
-				.executeNoResult();
-		AdminNotifications an=AdminNotifications.getInstance(null);
-		if(an!=null){
-			an.setSignupRequestsCount(getInviteRequestCount());
+	public static SignupRequest putInviteRequest(String email, String firstName, String lastName, String reason) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			return DatabaseUtils.doWithTransaction(conn, ()->{
+				new SQLQueryBuilder(conn)
+						.insertInto("signup_requests")
+						.value("email", email)
+						.value("first_name", firstName)
+						.value("last_name", lastName)
+						.value("reason", reason)
+						.executeNoResult();
+				AdminNotifications an=AdminNotifications.getInstance(null);
+				if(an!=null){
+					an.setSignupRequestsCount(getInviteRequestCount());
+				}
+				return new SQLQueryBuilder(conn)
+						.selectFrom("signup_requests")
+						.allColumns()
+						.where("id=LAST_INSERT_ID()")
+						.executeAndGetSingleObject(SignupRequest::fromResultSet);
+			});
 		}
 	}
 

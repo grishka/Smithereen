@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 
+import smithereen.lang.Lang;
 import smithereen.storage.DatabaseUtils;
 import spark.utils.StringUtils;
 
@@ -25,5 +26,9 @@ public class SignupRequest{
 
 	public String getFullName(){
 		return StringUtils.isEmpty(lastName) ? firstName : (firstName+" "+lastName);
+	}
+
+	public User.Gender detectGender(Lang l){
+		return l.detectGenderForName(firstName, lastName, null);
 	}
 }

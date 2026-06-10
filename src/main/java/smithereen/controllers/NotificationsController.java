@@ -40,6 +40,7 @@ import smithereen.model.PaginatedList;
 import smithereen.model.Post;
 import smithereen.model.PostLikeObject;
 import smithereen.model.SessionInfo;
+import smithereen.model.SignupRequest;
 import smithereen.model.SizedImage;
 import smithereen.model.User;
 import smithereen.model.UserDataExport;
@@ -311,6 +312,7 @@ public class NotificationsController{
 					}
 					case MENTION -> EmailNotificationType.MENTION;
 					case GROUP_INVITE, EVENT_INVITE -> EmailNotificationType.GROUP_INVITE;
+					case SIGNUP_REQUEST -> EmailNotificationType.SIGNUP_REQUEST;
 					default -> null;
 				};
 				if(emailType!=null && account.prefs.emailNotificationTypes.contains(emailType)){
@@ -359,6 +361,7 @@ public class NotificationsController{
 					case GROUP_REQUEST_ACCEPTED -> "notification_title_group_request_accepted";
 					case PHOTO_TAG -> "notification_title_photo_tag";
 					case EXPORT_READY -> "settings_data_export_title";
+					case SIGNUP_REQUEST -> "notification_title_signup_request";
 				});
 				String content=switch(type){
 					case REPLY -> {
@@ -474,13 +477,18 @@ public class NotificationsController{
 						yield TextProcessor.substituteLinks(text, Map.of("actor", Map.of("href", actor.getProfileURL())));
 					}
 					case EXPORT_READY -> l.get("notification_content_export_ready", Map.of("time", l.formatDate(((UserDataExport)object).requestedAt, tz, false)));
+					case SIGNUP_REQUEST -> {
+						SignupRequest r=(SignupRequest) object;
+						yield l.get("notification_content_signup_request", Map.of("name", r.getFullName(), "gender", r.detectGender(l)));
+					}
 				};
 				String url=switch(object){
 					case Post post -> post.getReplyLevel()>0 && relatedObject instanceof Post parentPost ? parentPost.getInternalURL().toString()+"#comment"+post.id : post.getInternalURL().toString();
 					case Photo photo -> photo.getURL();
 					case Comment comment when relatedObject instanceof CommentableContentObject parent -> parent.getURL()+"#comment"+comment.getIDString();
 					case MailMessage msg -> "/my/mail/messages/"+msg.getIdString();
-					case UserDataExport ude -> "/settings/export";
+					case UserDataExport ignored -> "/settings/export";
+					case SignupRequest ignored -> "/settings/admin/signupRequests";
 					case null, default -> actor.getProfileURL();
 				};
 				String objID=switch(object){
@@ -494,6 +502,8 @@ public class NotificationsController{
 				RealtimeNotification.ImageURLs ava;
 				if(type==RealtimeNotification.Type.EXPORT_READY){
 					ava=RealtimeNotification.ImageURLs.ofSingle("/res/notification_export_ready.png");
+				}else if(type==RealtimeNotification.Type.SIGNUP_REQUEST){
+					ava=null;
 				}else if(actor.hasAvatar()){
 					SizedImage actorAva=actor.getAvatar();
 					ava=new RealtimeNotification.ImageURLs(
@@ -661,7 +671,8 @@ public class NotificationsController{
 	}
 
 	private void sendEmailNotification(Account account, EmailNotificationType type, Object object, OwnedContentObject relatedObject, Actor actor){
-		if(!(actor instanceof User user)){
+		User user=actor instanceof User ? (User) actor : null;
+		if(user==null && actor!=null){
 			LOG.warn("Expected actor to be user here but got {} ({}, {}) instead", actor.getClass(), actor.getLocalID(), actor.activityPubID);
 			return;
 		}
