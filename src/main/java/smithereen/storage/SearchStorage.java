@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import smithereen.model.Group;
@@ -22,6 +24,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.text.TextProcessor;
 
 public class SearchStorage{
+	private static final Pattern TEXT_SEARCH_WORD_PATTERN=Pattern.compile("\\w[\\w-]*", Pattern.UNICODE_CHARACTER_CLASS);
 
 	private static void addResults(ResultSet res, ArrayList<SearchResult> results, Set<Integer> users, Set<Integer> groups) throws SQLException{
 		while(res.next()){
@@ -45,12 +48,51 @@ public class SearchStorage{
 		}
 	}
 
-	private static String prepareQuery(String query){
+	public static String prepareNameQuery(String query){
 		return Arrays.stream(TextProcessor.transliterate(query).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("\\s+")).filter(Predicate.not(String::isBlank)).map(s->"+(>"+s+" <("+s+"*))").collect(Collectors.joining(" "));
 	}
 
+	public static String prepareTextQuery(String query){
+		query=query.strip();
+		if(query.isEmpty())
+			return "";
+		if(query.length()>3 && query.startsWith("\"") && query.endsWith("\"")){
+			// User wants exact matches only. Make sure there are no "s in the middle of the string.
+			query=query.replace("\"", "");
+			if(query.isEmpty()) // Something like """"" is not valid
+				return "";
+			return '"'+query+'"';
+		}
+		// Put a + before every word in the search query to make sure all words are included in every search result, and remove non-word characters.
+		Matcher matcher=TEXT_SEARCH_WORD_PATTERN.matcher(query);
+		ArrayList<String> words=new ArrayList<>();
+		String prevShortWord=null;
+		while(matcher.find()){
+			String word=matcher.group();
+			if(word.contains("-")){
+				words.add('"'+word+'"');
+			}else if(word.length()<3){
+				if(!words.isEmpty()){
+					String prev=words.getLast();
+					if(prev.startsWith("\""))
+						prev=prev.substring(1, prev.length()-1);
+					words.set(words.size()-1, '"'+prev+' '+word+'"');
+				}else{
+					prevShortWord=word;
+				}
+			}else{
+				if(prevShortWord!=null){
+					word=prevShortWord+' '+word;
+					prevShortWord=null;
+				}
+				words.add(word);
+			}
+		}
+		return '+'+String.join(" +", words);
+	}
+
 	public static List<SearchResult> search(String query, int selfID, int maxCount) throws SQLException{
-		query=prepareQuery(query);
+		query=prepareNameQuery(query);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			ArrayList<SearchResult> results=new ArrayList<>();
 			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
@@ -84,7 +126,7 @@ public class SearchStorage{
 	}
 
 	public static PaginatedList<Integer> searchUsers(String query, int selfID, int count) throws SQLException{
-		query=prepareQuery(query);
+		query=prepareNameQuery(query);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
 					"SELECT COUNT(*) FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IS NOT NULL", query).executeQuery());
@@ -112,7 +154,7 @@ public class SearchStorage{
 
 	public static PaginatedList<Integer> searchFriends(String query, int selfID, int offset, int count, boolean useHints) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			query=prepareQuery(query);
+			query=prepareNameQuery(query);
 			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
 					"SELECT COUNT(*) FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IN (SELECT followee_id FROM followings WHERE follower_id=? AND mutual=1 AND accepted=1)",
 					query, selfID).executeQuery());
@@ -130,7 +172,7 @@ public class SearchStorage{
 
 	public static PaginatedList<Integer> searchGroups(String query, boolean events, int selfID, int offset, int count, boolean includePrivate) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			query=prepareQuery(query);
+			query=prepareNameQuery(query);
 			String privateWhere=includePrivate ? "" : " AND groups.access_type<>2";
 			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
 					"SELECT COUNT(*) FROM qsearch_index JOIN `groups` ON group_id=`groups`.id WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND `groups`.`type`=?"+privateWhere+" AND group_id IN (SELECT group_id FROM group_memberships WHERE user_id=? AND accepted=1)",
@@ -150,7 +192,7 @@ public class SearchStorage{
 
 	public static PaginatedList<Integer> searchAllGroups(String query, boolean events, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			query=prepareQuery(query);
+			query=prepareNameQuery(query);
 			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
 					"SELECT COUNT(*) FROM qsearch_index JOIN `groups` ON group_id=`groups`.id WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND `groups`.`type`=? AND groups.access_type<>2",
 					query, events ? Group.Type.EVENT : Group.Type.GROUP).executeQuery());
@@ -167,7 +209,7 @@ public class SearchStorage{
 
 	public static PaginatedList<Integer> searchBookmarkedUsers(String query, int selfID, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			query=prepareQuery(query);
+			query=prepareNameQuery(query);
 			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
 					"SELECT COUNT(*) FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND user_id IN (SELECT user_id FROM bookmarks_user WHERE owner_id=?)",
 					query, selfID).executeQuery());
@@ -182,7 +224,7 @@ public class SearchStorage{
 
 	public static PaginatedList<Integer> searchBookmarkedGroups(String query, int selfID, int offset, int count) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			query=prepareQuery(query);
+			query=prepareNameQuery(query);
 			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,
 					"SELECT COUNT(*) FROM qsearch_index WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND group_id IN (SELECT group_id FROM bookmarks_group WHERE owner_id=?)",
 					query, selfID).executeQuery());

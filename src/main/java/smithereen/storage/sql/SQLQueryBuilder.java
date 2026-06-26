@@ -97,6 +97,7 @@ public class SQLQueryBuilder{
 	}
 
 	public SQLQueryBuilder allColumns(){
+		selectCount=false;
 		selectColumns=null;
 		selectEverything=true;
 		return this;

@@ -1426,6 +1426,35 @@ public class PostStorage{
 		}
 	}
 
+	public static PaginatedList<Post> searchOwnerPosts(int ownerID, String rawQuery, int offset, int count, boolean ownerOnly, boolean includeComments) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			SQLQueryBuilder b=new SQLQueryBuilder(conn)
+					.selectFrom("wall_posts")
+					.count()
+					.where("MATCH(searchable_text) AGAINST (? IN BOOLEAN MODE) AND privacy=0", rawQuery);
+			if(ownerID>0)
+				b.andWhere("owner_user_id=?", ownerID);
+			else
+				b.andWhere("owner_group_id=?", -ownerID);
+			if(ownerOnly)
+				b.andWhere("author_id=owner_user_id");
+			if(!includeComments)
+				b.andWhere("reply_key IS NULL");
+
+			int total=b.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+
+			List<Post> posts=b.allColumns()
+					.limit(count, offset)
+					.orderBy("created_at DESC")
+					.executeAsStream(Post::fromResultSet)
+					.toList();
+			postprocessPosts(posts);
+			return new PaginatedList<>(posts, total, offset, count);
+		}
+	}
+
 	// region Pinned posts
 
 	public static void pinPost(int ownerID, int postID, boolean keepPrevious) throws SQLException{

@@ -362,6 +362,28 @@ public class MailStorage{
 		return msgs;
 	}
 
+	public static PaginatedList<MailMessage> searchMessages(int ownerID, String rawQuery, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("mail_messages")
+					.count()
+					.where("owner_id=? AND deleted_at IS NULL AND MATCH(searchable_text, subject) AGAINST (? IN BOOLEAN MODE)", ownerID, rawQuery)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<MailMessage> msgs=new SQLQueryBuilder(conn)
+					.selectFrom("mail_messages")
+					.allColumns()
+					.where("owner_id=? AND deleted_at IS NULL AND MATCH(searchable_text, subject) AGAINST (? IN BOOLEAN MODE)", ownerID, rawQuery)
+					.limit(count, offset)
+					.orderBy("created_at DESC")
+					.executeAsStream(MailMessage::fromResultSet)
+					.toList();
+			postprocessMessages(msgs);
+			return new PaginatedList<>(msgs, total, offset, count);
+		}
+	}
+
 	private static void postprocessMessages(Collection<MailMessage> messages) throws SQLException{
 		Set<Long> needFileIDs=messages.stream()
 				.filter(p->p.attachments!=null && !p.attachments.isEmpty())

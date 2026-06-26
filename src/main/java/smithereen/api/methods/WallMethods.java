@@ -298,4 +298,33 @@ public class WallMethods{
 			throw actx.error(ApiErrorType.ACCESS_DENIED, "no access to edit this post");
 		return createOrUpdatePost(ctx, actx, ctx.getWallController().getContentAuthorAndOwner(post).owner(), null, null, post);
 	}
+
+	public static Object search(ApplicationContext ctx, ApiCallContext actx){
+		Actor owner=ApiUtils.getOwner(ctx, actx, "owner_id");
+		User self=actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
+		String query=actx.requireParamString("q");
+		boolean canSeeAllPosts;
+		if(owner instanceof User u){
+			ctx.getPrivacyController().enforceUserProfileAccess(self, u);
+			canSeeAllPosts=ctx.getPrivacyController().checkUserPrivacy(self, u, UserPrivacySettingKey.WALL_OTHERS_POSTS);
+		}else if(owner instanceof Group g){
+			ctx.getPrivacyController().enforceUserAccessToGroupContent(self, g);
+			canSeeAllPosts=true;
+		}else{
+			throw new InternalServerErrorException();
+		}
+
+		int offset=actx.getOffset();
+		int count=actx.getCount(20, 100);
+		PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getWallController().searchOwnerPosts(owner, query, actx.optParamBoolean("include_comments"),
+				!canSeeAllPosts || actx.optParamBoolean("owner_only"), offset, count));
+		ApiPaginatedListWithActors<ApiWallPost> res=new ApiPaginatedListWithActors<>(posts.total, ApiUtils.getPosts(posts.list, ctx, actx, true, true, true));
+		if(actx.optParamBoolean("extended")){
+			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+			PostViewModel.collectActorIDs(posts.list, needUsers, needGroups);
+			res.profiles=ApiUtils.getUsers(needUsers, ctx, actx);
+			res.groups=ApiUtils.getGroups(needGroups, ctx, actx);
+		}
+		return res;
+	}
 }

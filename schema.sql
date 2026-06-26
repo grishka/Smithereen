@@ -337,6 +337,7 @@ CREATE TABLE `comments` (
   `federation_state` tinyint unsigned NOT NULL DEFAULT '0',
   `source` text,
   `source_format` tinyint unsigned DEFAULT NULL,
+  `searchable_text` text GENERATED ALWAYS AS (regexp_replace(`text`,_utf8mb4'(<[^>]*>|&[^;]*;)',_utf8mb4'')) STORED,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -344,6 +345,7 @@ CREATE TABLE `comments` (
   KEY `reply_key` (`reply_key`),
   KEY `owner_group_id` (`owner_group_id`),
   KEY `parent_object_type` (`parent_object_type`,`parent_object_id`),
+  FULLTEXT KEY `text` (`searchable_text`),
   CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `comments_ibfk_2` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -675,13 +677,14 @@ CREATE TABLE `mail_messages` (
   `ap_id` varchar(300) CHARACTER SET ascii COLLATE ascii_general_ci DEFAULT NULL,
   `reply_info` json DEFAULT NULL,
   `related_message_ids` varbinary(1024) DEFAULT NULL,
+  `searchable_text` text GENERATED ALWAYS AS (regexp_replace(`text`,_utf8mb4'(<[^>]*>|&[^;]*;)',_utf8mb4'')) STORED,
   PRIMARY KEY (`id`),
   KEY `owner_id` (`owner_id`),
   KEY `sender_id` (`sender_id`),
   KEY `ap_id` (`ap_id`),
   KEY `deleted_at` (`deleted_at`),
   KEY `read_receipts` (`read_receipts`),
-  FULLTEXT KEY `text` (`text`,`subject`),
+  FULLTEXT KEY `text` (`searchable_text`,`subject`),
   CONSTRAINT `mail_messages_ibfk_1` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -1284,6 +1287,7 @@ CREATE TABLE `wall_posts` (
   `action` tinyint unsigned DEFAULT NULL,
   `top_parent_is_wall_to_wall` tinyint(1) GENERATED ALWAYS AS (((`flags` & 2) = 2)) VIRTUAL,
   `extra` json DEFAULT NULL,
+  `searchable_text` text GENERATED ALWAYS AS (regexp_replace(`text`,_utf8mb4'(<[^>]*>|&[^;]*;)',_utf8mb4'')) STORED,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ap_id` (`ap_id`),
   KEY `owner_user_id` (`owner_user_id`),
@@ -1293,6 +1297,7 @@ CREATE TABLE `wall_posts` (
   KEY `owner_group_id` (`owner_group_id`),
   KEY `poll_id` (`poll_id`),
   KEY `top_parent_is_wall_to_wall` (`top_parent_is_wall_to_wall`),
+  FULLTEXT KEY `text` (`searchable_text`),
   CONSTRAINT `wall_posts_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wall_posts_ibfk_4` FOREIGN KEY (`owner_group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -1317,4 +1322,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2026-04-05  3:40:04
+-- Dump completed on 2026-06-14 12:30:06
