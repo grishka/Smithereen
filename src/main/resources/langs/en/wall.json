@@ -86,5 +86,16 @@
   "post_time_via_app": "<a id=\"post\">{time}</a> via <a id=\"app\">{appName}</a>",
   "comment_on_user_post": "Comment on {name}'s wall",
   "comment_on_group_post": "Comment in group \"{name}\"",
-  "comment_on_event_post": "Comment in event \"{name}\""
+  "comment_on_event_post": "Comment in event \"{name}\"",
+  "wall_go_to_search": "Go to search",
+  "wall_back_to_all_posts": "Back to all posts",
+  "wall_search_hint": "Enter a phrase or a word",
+  "wall_search_title": "Search posts",
+  "wall_search_empty": "Enter a query to start your search.",
+  "wall_search_posts_only": "Search posts only",
+  "wall_search_all": "Search posts and comments",
+  "wall_search_title_user": "Search {name}'s wall",
+  "wall_search_title_group": "Search \"{name}\" wall",
+  "wall_search_posts_only_short": "Posts only",
+  "wall_search_all_short": "Posts & comments"
 }

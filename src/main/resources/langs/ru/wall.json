@@ -86,5 +86,16 @@
   "post_time_via_app": "<a id=\"post\">{time}</a> через <a id=\"app\">{appName}</a>",
   "comment_on_user_post": "Комментарий на стене {name, inflect, genitive}",
   "comment_on_group_post": "Комментарий в группе \"{name}\"",
-  "comment_on_event_post": "Комментарий во встрече \"{name}\""
+  "comment_on_event_post": "Комментарий во встрече \"{name}\"",
+  "wall_go_to_search": "Перейти к поиску",
+  "wall_back_to_all_posts": "Вернуться ко всем записям",
+  "wall_search_hint": "Введите фразу или слово",
+  "wall_search_title": "Поиск записей",
+  "wall_search_empty": "Введите запрос, чтобы начать поиск.",
+  "wall_search_posts_only": "Искать только в записях",
+  "wall_search_all": "Искать в записях и комментариях",
+  "wall_search_title_user": "Поиск по стене {name, inflect, genitive}",
+  "wall_search_title_group": "Поиск по стене \"{name}\"",
+  "wall_search_posts_only_short": "Только записи",
+  "wall_search_all_short": "Записи и комментарии"
 }

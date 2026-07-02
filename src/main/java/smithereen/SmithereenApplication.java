@@ -663,6 +663,7 @@ public class SmithereenApplication{
 				get("", PostRoutes::userWallAll);
 				get("/own", PostRoutes::userWallOwn);
 				get("/with/:otherUserID", PostRoutes::wallToWall);
+				getLoggedIn("/search", PostRoutes::userWallSearch);
 			});
 			get("/followers", FriendsRoutes::followers);
 			get("/following", FriendsRoutes::following);
@@ -790,6 +791,7 @@ public class SmithereenApplication{
 			get("/admins", GroupsRoutes::admins);
 			path("/wall", ()->{
 				get("", PostRoutes::groupWall);
+				getLoggedIn("/search", PostRoutes::groupWallSearch);
 			});
 			getWithCSRF("/invite", GroupsRoutes::inviteFriend);
 			postWithCSRF("/respondToInvite", GroupsRoutes::respondToInvite);

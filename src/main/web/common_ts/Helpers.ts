@@ -543,13 +543,23 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 	if(extra.additionalInputs){
 		Object.assign(data, extra.additionalInputs);
 	}
-	data.csrf=userConfig.csrf;
 	if(location.search){
 		var params=new URLSearchParams(location.search);
 		if(params.has("lang")){
 			data.lang=params.get("lang");
 		}
 	}
+	if(form.method=="get"){
+		submittingForm=null;
+		var url=new URL(form.action);
+		url.search="";
+		for(var k in data){
+			url.searchParams.append(k, data[k]);
+		}
+		ajaxNavigate(url.toString(), true);
+		return;
+	}
+	data.csrf=userConfig.csrf;
 	ajaxPost(form.action, data, function(resp:any){
 		if(extra.onResponseReceived){
 			extra.onResponseReceived(resp);

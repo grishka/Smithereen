@@ -1365,4 +1365,62 @@ public class PostRoutes{
 		resp.redirect(back(req));
 		return "";
 	}
+
+	public static Object userWallSearch(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		return search(req, resp, self, ctx, user);
+	}
+
+	public static Object groupWallSearch(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.params(":id")));
+		if(group.wallState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("err_access_content");
+		return search(req, resp, self, ctx, group);
+	}
+
+	private static Object search(Request req, Response resp, Account self, ApplicationContext ctx, Actor owner){
+		if(owner instanceof Group group)
+			ctx.getPrivacyController().enforceUserAccessToGroupContent(self.user, group);
+		boolean ownOnly="1".equals(req.queryParams("own"));
+		boolean postsOnly="1".equals(req.queryParams("postsOnly"));
+		CommentViewType viewType=self.prefs.commentViewType;
+		String query=req.queryParams("q");
+		if(query!=null)
+			query=query.strip();
+
+		boolean canSeeAllPosts=!(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self.user, u, UserPrivacySettingKey.WALL_OTHERS_POSTS);
+		if(!canSeeAllPosts || !owner.hasWall())
+			ownOnly=true;
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_search", req)
+				.with("owner", owner)
+				.with("isSearch", true)
+				.with("isGroup", owner instanceof Group)
+				.with("ownOnly", ownOnly)
+				.with("postsOnly", postsOnly)
+				.with("canSeeOthersPosts", canSeeAllPosts)
+				.with("tab", ownOnly ? "own" : "all")
+				.with("commentViewType", viewType)
+				.with("query", query)
+				.with("url", getRequestPathAndQuery(req))
+				.headerBack(owner);
+		if(owner instanceof User u)
+			model.pageTitle(lang(req).get("wall_search_title_user", Map.of("name", u.getFirstLastAndGender())));
+		else if(owner instanceof Group g)
+			model.pageTitle(lang(req).get("wall_search_title_group", Map.of("name", g.name)));
+
+		if(StringUtils.isNotEmpty(query)){
+			PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getWallController().searchOwnerPosts(owner, query, !postsOnly, ownOnly, offset(req), 20));
+			model.paginate(posts);
+			ctx.getWallController().populateReposts(self.user, posts.list, 2);
+			if(req.attribute("mobile")==null){
+				ctx.getWallController().populateCommentPreviews(self.user, posts.list, viewType);
+			}
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(posts.list, self.user);
+			model.with("postInteractions", interactions);
+			preparePostList(ctx, posts.list, model, self);
+		}else{
+			model.paginate(new PaginatedList<>(List.of(), 0, 0, 20));
+		}
+		return model;
+	}
 }

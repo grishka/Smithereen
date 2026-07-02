@@ -1,0 +1,26 @@
+{% extends 'page' %}
+{% block content %}
+{% include 'wall_tabbar' with {'search': true} %}
+<form method="get" action="{{ owner.typeAndIdForURL }}/wall/search" data-ajax class="gray searchWithTabs">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('wall_search_hint') }}" value="{{ query }}" name="q" id="wallSearchQuery"/>
+	</div>
+	<div class="buttonW">
+		{% if ownOnly %}<input type="hidden" name="own" value="1"/>{% endif %}
+		{% if postsOnly %}<input type="hidden" name="postsOnly" value="1"/>{% endif %}
+		<input type="submit" value="{{ L('search_submit') }}"/>
+	</div>
+</form>
+<div class="gray borderBottom secondaryTabBar">
+	<a href="{{ addQueryParams(owner.typeAndIdForURL+"/wall/search", {'q': query, 'own': ownOnly ? '1' : null}) }}" class="{{ postsOnly ? '' : 'selected' }}">{{ L('wall_search_all_short') }}</a>
+	<a href="{{ addQueryParams(owner.typeAndIdForURL+"/wall/search", {'q': query, 'own': ownOnly ? '1' : null, 'postsOnly': '1'}) }}" class="{{ postsOnly ? 'selected' : '' }}">{{ L('wall_search_posts_only_short') }}</a>
+</div>
+<div class="cardsBackdrop">
+{% for post in items %}
+	<div class="card">{% include 'wall_post' %}</div>
+{% else %}
+	<div class="emptyState">{{ query is empty ? L('wall_search_empty') : L('nothing_found') }}</div>
+{% endfor %}
+{% include "pagination" %}
+</div>
+{% endblock %}
