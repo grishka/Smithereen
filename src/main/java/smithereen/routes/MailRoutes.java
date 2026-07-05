@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
@@ -37,6 +38,8 @@ import static smithereen.Utils.*;
 
 public class MailRoutes{
 	public static Object inbox(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(StringUtils.isNotEmpty(req.queryParams("q")))
+			return search(req, resp, self, ctx, true);
 		PaginatedList<MailMessage> list=ctx.getMailController().getInbox(self.user, offset(req), 20);
 		RenderedTemplateResponse model=new RenderedTemplateResponse("mail_message_list", req);
 		Set<Integer> needUsers=list.list.stream().map(m->m.senderID).collect(Collectors.toSet());
@@ -52,16 +55,52 @@ public class MailRoutes{
 		model.with("tab", "inbox").pageTitle(lang(req).get("mail_inbox_title")).paginate(list).with("users", ctx.getUsersController().getUsers(needUsers));
 		model.with("toolbarTitle", lang(req).get("messages_title"));
 		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(needUsers));
+		if(isAjax(req)){
+			String baseURL="/my/mail";
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"))
+					.setAttribute("mailSearch", "data-base-url", baseURL)
+					.setURL(baseURL);
+		}
 		return model;
 	}
 
 	public static Object outbox(Request req, Response resp, Account self, ApplicationContext ctx){
+		if(StringUtils.isNotEmpty(req.queryParams("q")))
+			return search(req, resp, self, ctx, false);
 		PaginatedList<MailMessage> list=ctx.getMailController().getOutbox(self.user, offset(req), 20);
 		Set<Integer> needUsers=list.list.stream().flatMap(m->m.to.stream()).collect(Collectors.toSet());
 		RenderedTemplateResponse model=new RenderedTemplateResponse("mail_message_list", req);
 		model.with("tab", "outbox").pageTitle(lang(req).get("mail_outbox_title")).paginate(list).with("users", ctx.getUsersController().getUsers(needUsers));
 		model.with("toolbarTitle", lang(req).get("messages_title"));
 		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(needUsers));
+		if(isAjax(req)){
+			String baseURL="/my/mail/outbox";
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"))
+					.setAttribute("mailSearch", "data-base-url", baseURL)
+					.setURL(baseURL);
+		}
+		return model;
+	}
+
+	private static Object search(Request req, Response resp, Account self, ApplicationContext ctx, boolean inbox){
+		String query=req.queryParams("q");
+		PaginatedList<MailMessage> list=ctx.getMailController().searchMessages(self.user, query, offset(req), 20);
+		Set<Integer> needUsers=list.list.stream().flatMap(m->Stream.concat(Stream.of(m.senderID), m.to.stream())).collect(Collectors.toSet());
+		RenderedTemplateResponse model=new RenderedTemplateResponse("mail_message_list", req);
+		model.with("tab", inbox ? "inbox" : "outbox").pageTitle(lang(req).get(inbox ? "main_inbox_title" : "mail_outbox_title")).paginate(list).with("users", ctx.getUsersController().getUsers(needUsers));
+		model.with("toolbarTitle", lang(req).get("messages_title"));
+		model.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(needUsers))
+				.with("isSearch", true)
+				.with("query", query);
+		if(isAjax(req)){
+			String baseURL=getRequestPathAndQuery(req);
+			return new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"))
+					.setAttribute("mailSearch", "data-base-url", baseURL)
+					.setURL(baseURL);
+		}
 		return model;
 	}
 

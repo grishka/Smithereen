@@ -36,5 +36,9 @@
   "profile_write_message_short": "Сообщение",
   "messages_title": "Сообщения",
   "mail_conversation_history": "История сообщений",
-  "mail_privacy_forbidden": "Вы не можете написать этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения"
+  "mail_privacy_forbidden": "Вы не можете написать этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения",
+  "mail_search_placeholder": "Поиск по сообщениям",
+  "mail_X_messages_found": "Найдено {count, plural, one {# сообщение} few {# сообщения} other {# сообщений}}",
+  "mail_no_messages": "Нет сообщений",
+  "mail_search_no_results": "Не найдено ни одного сообщения"
 }
