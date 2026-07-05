@@ -88,6 +88,8 @@ public class SearchStorage{
 				words.add(word);
 			}
 		}
+		if(words.isEmpty()) // Query too short
+			return "";
 		return '+'+String.join(" +", words);
 	}
 
