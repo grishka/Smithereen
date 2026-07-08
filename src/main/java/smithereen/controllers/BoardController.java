@@ -36,10 +36,12 @@ import smithereen.model.User;
 import smithereen.model.board.BoardTopic;
 import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.comments.Comment;
+import smithereen.model.comments.CommentableObjectType;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.groups.GroupFeatureState;
 import smithereen.storage.BoardStorage;
 import smithereen.storage.CommentStorage;
+import smithereen.storage.SearchStorage;
 import smithereen.text.FormattedTextFormat;
 import spark.utils.StringUtils;
 
@@ -379,6 +381,20 @@ public class BoardController{
 	public Map<Long, Comment> getFirstOrLastComments(Collection<Long> topicIDs, boolean first, boolean needAttachments){
 		try{
 			return CommentStorage.getFirstOrLastBoardTopicComments(topicIDs, first, needAttachments);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Comment> searchComments(Group group, User self, String query, int offset, int count){
+		context.getPrivacyController().enforceUserAccessToGroupContent(self, group);
+		if(group.boardState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("err_access_content");
+		query=SearchStorage.prepareTextQuery(query);
+		if(query.isEmpty())
+			return PaginatedList.emptyList(count);
+		try{
+			return CommentStorage.searchComments(-group.id, CommentableObjectType.BOARD_TOPIC, query, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

@@ -176,6 +176,7 @@ public class ApiDispatcher{
 		registerMethod("board.closeTopic", BoardMethods::closeTopic, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("board.pinTopic", BoardMethods::pinTopic, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("board.unpinTopic", BoardMethods::unpinTopic, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.search", BoardMethods::search, true);
 
 		registerMethod("account.getCounters", AccountMethods::getCounters, true);
 		registerMethod("account.setOnline", AccountMethods::setOnline, true);
