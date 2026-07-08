@@ -177,7 +177,87 @@ public class SessionStorage{
 				.executeNoResult();
 	}
 
-	public static SignupResult registerNewAccount(@Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite, ApplicationContext ctx) throws SQLException{
+	private static int createAccountInDatabase(@NotNull DatabaseConnection conn, @Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @Nullable SignupInvitation inv, @Nullable ApplicationContext ctx) throws SQLException{
+		new SQLQueryBuilder(conn)
+				.deleteFrom("signup_requests")
+				.where("email=?", email)
+				.executeNoResult();
+
+		int inviterAccountID=inv!=null ? inv.ownerID : 0;
+
+		KeyPairGenerator kpg;
+		try{
+			kpg=KeyPairGenerator.getInstance("RSA");
+		}catch(NoSuchAlgorithmException x){
+			throw new RuntimeException(x);
+		}
+		kpg.initialize(2048);
+		KeyPair pair=kpg.generateKeyPair();
+		PreparedStatement stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`, gender) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+		stmt.setString(1, firstName);
+		stmt.setString(2, lastName);
+		stmt.setString(3, username==null ? Utils.randomAlphanumericString(50) : username);
+		stmt.setBytes(4, pair.getPublic().getEncoded());
+		stmt.setBytes(5, pair.getPrivate().getEncoded());
+		stmt.setInt(6, gender.ordinal());
+		stmt.execute();
+		int userID;
+		try(ResultSet res=stmt.getGeneratedKeys()){
+			res.next();
+			userID=res.getInt(1);
+		}
+		if(username==null){
+			new SQLQueryBuilder(conn)
+					.update("users")
+					.value("username", "id"+userID)
+					.where("id=?", userID)
+					.executeNoResult();
+		}
+
+		byte[] salt=Passwords.randomSalt();
+		byte[] hashedPassword=Passwords.hashPasswordWithSalt(password, salt);
+		stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `salt`, `invited_by`) VALUES (?, ?, ?, ?, ?)");
+		stmt.setInt(1, userID);
+		stmt.setString(2, email);
+		stmt.setBytes(3, hashedPassword);
+		stmt.setBytes(4, salt);
+		if(inviterAccountID!=0)
+			stmt.setInt(5, inviterAccountID);
+		else
+			stmt.setNull(5, Types.INTEGER);
+		stmt.execute();
+
+		int inviterUserID=0;
+		if(inviterAccountID!=0){
+			stmt=conn.prepareStatement("SELECT `user_id` FROM `accounts` WHERE `id`=?");
+			stmt.setInt(1, inviterAccountID);
+			try(ResultSet res=stmt.executeQuery()){
+				res.next();
+				inviterUserID=res.getInt(1);
+			}
+
+			if(!inv.noAddFriend){
+				UserStorage.followUser(inviterUserID, userID, true, false, true);
+				UserStorage.followUser(userID, inviterUserID, true, false, true);
+			}
+		}
+
+		conn.createStatement().execute("COMMIT");
+
+		if(inviterUserID!=0 && ctx!=null){
+			ctx.getNotificationsController().createNotification(UserStorage.getById(inviterUserID), Notification.Type.INVITE_SIGNUP, null, null, UserStorage.getById(userID));
+		}
+
+		new SQLQueryBuilder(conn)
+				.insertInto("qsearch_index")
+				.value("user_id", userID)
+				.value("string", UserStorage.getQSearchStringForUser(Objects.requireNonNull(UserStorage.getById(userID))))
+				.executeNoResult();
+
+		return userID;
+	}
+
+	public static SignupResult registerNewAccountFromInvite(@Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender, @NotNull String invite, ApplicationContext ctx) throws SQLException{
 		SignupResult[] result={SignupResult.SUCCESS};
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			DatabaseUtils.doWithTransaction(conn, ()->{
@@ -189,82 +269,7 @@ public class SessionStorage{
 					return;
 				}
 
-				new SQLQueryBuilder(conn)
-						.deleteFrom("signup_requests")
-						.where("email=?", email)
-						.executeNoResult();
-
-				int inviterAccountID=inv.ownerID;
-
-				KeyPairGenerator kpg;
-				try{
-					kpg=KeyPairGenerator.getInstance("RSA");
-				}catch(NoSuchAlgorithmException x){
-					throw new RuntimeException(x);
-				}
-				kpg.initialize(2048);
-				KeyPair pair=kpg.generateKeyPair();
-
-				stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`, gender) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
-				stmt.setString(1, firstName);
-				stmt.setString(2, lastName);
-				stmt.setString(3, username==null ? Utils.randomAlphanumericString(50) : username);
-				stmt.setBytes(4, pair.getPublic().getEncoded());
-				stmt.setBytes(5, pair.getPrivate().getEncoded());
-				stmt.setInt(6, gender.ordinal());
-				stmt.execute();
-				int userID;
-				try(ResultSet res=stmt.getGeneratedKeys()){
-					res.next();
-					userID=res.getInt(1);
-				}
-				if(username==null){
-					new SQLQueryBuilder(conn)
-							.update("users")
-							.value("username", "id"+userID)
-							.where("id=?", userID)
-							.executeNoResult();
-				}
-
-				byte[] salt=Passwords.randomSalt();
-				byte[] hashedPassword=Passwords.hashPasswordWithSalt(password, salt);
-				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `salt`, `invited_by`) VALUES (?, ?, ?, ?, ?)");
-				stmt.setInt(1, userID);
-				stmt.setString(2, email);
-				stmt.setBytes(3, hashedPassword);
-				stmt.setBytes(4, salt);
-				if(inviterAccountID!=0)
-					stmt.setInt(5, inviterAccountID);
-				else
-					stmt.setNull(5, Types.INTEGER);
-				stmt.execute();
-
-				int inviterUserID=0;
-				if(inviterAccountID!=0){
-					stmt=conn.prepareStatement("SELECT `user_id` FROM `accounts` WHERE `id`=?");
-					stmt.setInt(1, inviterAccountID);
-					try(ResultSet res=stmt.executeQuery()){
-						res.next();
-						inviterUserID=res.getInt(1);
-					}
-
-					if(!inv.noAddFriend){
-						UserStorage.followUser(inviterUserID, userID, true, false, true);
-						UserStorage.followUser(userID, inviterUserID, true, false, true);
-					}
-				}
-
-				conn.createStatement().execute("COMMIT");
-
-				if(inviterUserID!=0){
-					ctx.getNotificationsController().createNotification(UserStorage.getById(inviterUserID), Notification.Type.INVITE_SIGNUP, null, null, UserStorage.getById(userID));
-				}
-
-				new SQLQueryBuilder(conn)
-						.insertInto("qsearch_index")
-						.value("user_id", userID)
-						.value("string", UserStorage.getQSearchStringForUser(Objects.requireNonNull(UserStorage.getById(userID))))
-						.executeNoResult();
+				createAccountInDatabase(conn, username, password, email, firstName, lastName, gender, inv, ctx);
 			});
 		}
 		return result[0];
@@ -273,58 +278,7 @@ public class SessionStorage{
 	public static SignupResult registerNewAccount(@Nullable String username, @NotNull String password, @NotNull String email, @NotNull String firstName, @NotNull String lastName, @NotNull User.Gender gender) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			DatabaseUtils.doWithTransaction(conn, ()->{
-				new SQLQueryBuilder(conn)
-						.deleteFrom("signup_requests")
-						.where("email=?", email)
-						.executeNoResult();
-
-				KeyPairGenerator kpg;
-				try{
-					kpg=KeyPairGenerator.getInstance("RSA");
-				}catch(NoSuchAlgorithmException x){
-					throw new RuntimeException(x);
-				}
-				kpg.initialize(2048);
-				KeyPair pair=kpg.generateKeyPair();
-
-				PreparedStatement stmt=conn.prepareStatement("INSERT INTO `users` (`fname`, `lname`, `username`, `public_key`, `private_key`, gender) VALUES (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
-				stmt.setString(1, firstName);
-				stmt.setString(2, lastName);
-				stmt.setString(3, username==null ? Utils.randomAlphanumericString(50) : username);
-				stmt.setBytes(4, pair.getPublic().getEncoded());
-				stmt.setBytes(5, pair.getPrivate().getEncoded());
-				stmt.setInt(6, gender.ordinal());
-				stmt.execute();
-				int userID;
-				try(ResultSet res=stmt.getGeneratedKeys()){
-					res.next();
-					userID=res.getInt(1);
-				}
-				if(username==null){
-					new SQLQueryBuilder(conn)
-							.update("users")
-							.value("username", "id"+userID)
-							.where("id=?", userID)
-							.executeNoResult();
-				}
-
-				byte[] salt=Passwords.randomSalt();
-				byte[] hashedPassword=Passwords.hashPasswordWithSalt(password, salt);
-				stmt=conn.prepareStatement("INSERT INTO `accounts` (`user_id`, `email`, `password`, `salt`, `invited_by`) VALUES (?, ?, ?, ?, ?)");
-				stmt.setInt(1, userID);
-				stmt.setString(2, email);
-				stmt.setBytes(3, hashedPassword);
-				stmt.setBytes(4, salt);
-				stmt.setNull(5, Types.INTEGER);
-				stmt.execute();
-
-				conn.createStatement().execute("COMMIT");
-				new SQLQueryBuilder(conn)
-						.insertInto("qsearch_index")
-						.value("user_id", userID)
-						.value("string", UserStorage.getQSearchStringForUser(Objects.requireNonNull(UserStorage.getById(userID))))
-						.executeNoResult();
-
+				int userID=createAccountInDatabase(conn, username, password, email, firstName, lastName, gender, null, null);
 				if(Config.demoMode && !Config.demoAddFriends.isEmpty()){
 					for(int friendID:Config.demoAddFriends){
 						UserStorage.followUser(friendID, userID, true, false, true);
