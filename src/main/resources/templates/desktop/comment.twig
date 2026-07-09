@@ -55,7 +55,9 @@
 		</div>
 		{% endif %}
 		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.idString }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
-		{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer" id="inReplyTo{{ realPost.idString }}"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyParentID, 'data-parent-type': 'comment'} }) }}</span>{% endif %}<br/>
+		{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer" id="inReplyTo{{ realPost.idString }}"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyParentID, 'data-parent-type': 'comment'} }) }}</span>{% endif %}
+		{% if board and searchResultTopic is not null %}{{ L('board_search_result_in_topic', {'topicName': searchResultTopic.title}, {'topic': {'href': searchResultTopic.url} }) }}{% endif %}
+		<br/>
 		<div id="postInner{{ realPost.idString }}">
 			{% block postInner %}
 			{% if realPost.hasContentWarning %}

@@ -2,6 +2,8 @@ package smithereen.routes;
 
 import com.google.gson.reflect.TypeToken;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -25,6 +27,7 @@ import smithereen.model.groups.GroupFeatureState;
 import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
+import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
@@ -143,14 +146,39 @@ public class BoardRoutes{
 		if(self!=null)
 			adminLevel=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
 		Lang l=lang(req);
-		RenderedTemplateResponse model=new RenderedTemplateResponse("board_topic_list", req)
-				.pageTitle(l.get("group_board")+" | "+group.name)
+		String searchQuery=req.queryParams("q");
+		RenderedTemplateResponse model;
+		boolean isSearch;
+		if(self!=null && StringUtils.isNotEmpty(searchQuery)){
+			isSearch=true;
+			PaginatedList<CommentViewModel> comments=CommentViewModel.wrap(ctx.getBoardController().searchComments(group, self.user, searchQuery, offset(req), 20));
+			HashSet<Integer> needUsers=new HashSet<>();
+			CommentViewModel.collectUserIDs(comments.list, needUsers);
+			Map<Long, UserInteractions> commentsInteractions=ctx.getUserInteractionsController().getUserInteractions(comments.list.stream().map(vm->vm.post).toList(), self.user);
+			HashSet<Long> needTopics=new HashSet<>();
+			for(CommentViewModel c:comments.list){
+				needTopics.add(c.post.parentObjectID.id());
+			}
+			model=new RenderedTemplateResponse("board_search_results", req)
+					.with("users", ctx.getUsersController().getUsers(needUsers))
+					.with("onlines", ctx.getUsersController().getUserPresencesOnlineOnly(needUsers))
+					.paginate(comments)
+					.with("commentInteractions", commentsInteractions)
+					.with("commentViewType", CommentViewType.FLAT)
+					.with("maxReplyDepth", 0)
+					.with("query", searchQuery)
+					.with("topics", ctx.getBoardController().getTopicsIgnoringPrivacy(needTopics));
+		}else{
+			isSearch=false;
+			model=new RenderedTemplateResponse("board_topic_list", req)
+					.paginate(topics)
+					.with("users", ctx.getUsersController().getUsers(topics.list.stream().map(t->t.lastCommentAuthorID).collect(Collectors.toSet())));
+		}
+		model.pageTitle(l.get("group_board")+" | "+group.name)
 				.mobileToolbarTitle(l.get("group_board"))
 				.headerBack(group)
-				.paginate(topics)
 				.with("sortOrder", order)
 				.with("group", group)
-				.with("users", ctx.getUsersController().getUsers(topics.list.stream().map(t->t.lastCommentAuthorID).collect(Collectors.toSet())))
 				.with("canCreateTopics", self!=null && (group.boardState==GroupFeatureState.ENABLED_OPEN || (group.boardState==GroupFeatureState.ENABLED_RESTRICTED && adminLevel.isAtLeast(Group.AdminLevel.MODERATOR))));
 		if(self!=null){
 			String msg=req.session().attribute("groupBoardMessage"+group.id);
@@ -160,6 +188,20 @@ public class BoardRoutes{
 					model.with("message", l.get("board_topic_deleted")).with("messageSubtitle", l.get("board_topic_deleted_subtitle"));
 				}
 			}
+		}
+		if(isAjax(req)){
+			String baseURL="/groups/"+group.id+"/board";
+			if(StringUtils.isNotEmpty(searchQuery))
+				baseURL+="?q="+URLEncoder.encode(searchQuery, StandardCharsets.UTF_8);
+			WebDeltaResponse wdr=new WebDeltaResponse(resp)
+					.setContent("ajaxUpdatable", model.renderBlock("ajaxPartialUpdate"))
+					.setAttribute("boardSearch", "data-base-url", baseURL)
+					.setURL(baseURL);
+			if(isSearch)
+				wdr.hide("boardSortTabs", "createTopicFab");
+			else
+				wdr.show("boardSortTabs", "createTopicFab");
+			return wdr;
 		}
 		return model;
 	}

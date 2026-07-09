@@ -1,7 +1,20 @@
+{# @pebvariable name="items" type="smithereen.model.board.BoardTopic[]" #}
 {% extends "page" %}
 {% block content %}
-{% if canCreateTopics %}<a href="/groups/{{ group.id }}/createTopic" class="fab iconAdd" title="{{ L('board_create_topic') }}"></a>{% endif %}
+{% if currentUser is not null %}
+<div class="gray borderBottom">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('board_search_placeholder') }}" value="{{ query }}" id="boardSearch" data-base-url="{{ urlPath }}"/>
+		{% script %}
+		initAjaxSearch("boardSearch");
+		{% endscript %}
+	</div>
+</div>
+{% endif %}
+{% if canCreateTopics %}<a href="/groups/{{ group.id }}/createTopic" class="fab iconAdd" title="{{ L('board_create_topic') }}" id="createTopicFab"></a>{% endif %}
 {% if message %}<div class="settingsMessage"><b>{{ message }}</b><br/>{{ messageSubtitle }}</div>{% endif %}
+<div id="ajaxUpdatable">
+{% block ajaxPartialUpdate %}
 <div class="cardsBackdrop">
 {% for topic in items %}
 <div class="card boardTopicRow">
@@ -29,5 +42,7 @@
 <div class="emptyState">{{ L('board_no_topics') }}</div>
 {% endfor %}
 {% include "pagination" %}
+</div>
+{% endblock %}
 </div>
 {% endblock %}

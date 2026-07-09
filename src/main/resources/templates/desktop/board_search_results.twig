@@ -1,0 +1,34 @@
+{# @pebvariable name="items" type="smithereen.model.viewmodel.CommentViewModel[]" #}
+{% extends "page" %}
+{% block content %}
+{% include "board_tabbar" with {'tab': 'all'} %}
+<div class="gray borderBottom searchWithTabs">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('board_search_placeholder') }}" value="{{ query }}" id="boardSearch" data-base-url="{{ urlPath }}"/>
+		{% script %}
+		initAjaxSearch("boardSearch");
+		{% endscript %}
+	</div>
+	<div class="secondaryTabBar" id="boardSortTabs" style="display: none">
+		<a href="/groups/{{ group.id }}/board?sort=updated_desc" class="{{ sortOrder=='UPDATED_DESC' or sortOrder=='UPDATED_ASC' ? 'selected' : '' }}">{{ L('board_sort_date_updated') }}</a>
+		<a href="/groups/{{ group.id }}/board?sort=created_desc" class="{{ sortOrder=='CREATED_DESC' or sortOrder=='CREATED_ASC' ? 'selected' : '' }}">{{ L('board_sort_date_created') }}</a>
+	</div>
+</div>
+<div id="ajaxUpdatable">
+{% block ajaxPartialUpdate %}
+<div class="summaryWrap largerPadding">
+  <div class="summary">{{ totalItems>0 ? L('board_search_summary', {'count': totalItems}) : L('board_search_summary_none') }}</div>
+  {% include "pagination" %}
+</div>
+<div class="singleColumnLargerPadding boardComments" id="comments_{{ topic.commentParentID.htmlElementID }}">
+{% for comment in items %}
+	{% include "comment" with {'post': comment, 'baseReplyLevel': 0, 'canComment': false, 'first': loop.first, 'board': true, 'suppressDeletion': true, 'searchResultTopic': topics[comment.post.parentObjectID.id]} %}
+{% else %}
+	<div class="emptyState">{{ L('nothing_found') }}</div>
+{% endfor %}
+</div>
+<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}
+</div>
+{% endblock %}
+

@@ -34,7 +34,10 @@
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 32) }}</a>
 	</div>
 	<div class="commentContentWrap"{% if users[realPost.authorID].suspended %} id="postContentWrap{{ realPost.idString }}" style="display: none"{% endif %}>
-		<div class="authorNameWrap"><a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a></div>
+		<div class="authorNameWrap">
+			<a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
+			{% if board and searchResultTopic is not null %}{{ L('board_search_result_in_topic', {'topicName': searchResultTopic.title}, {'topic': {'href': searchResultTopic.url} }) }}{% endif %}
+		</div>
 		{% if realPost.hasContentWarning %}
 			<input type="checkbox" id="postCW_{{ realPost.idString }}" class="commentCWCheckbox" style="display: none"/>
 		<div class="postCWWrap">
