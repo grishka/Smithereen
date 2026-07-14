@@ -62,6 +62,10 @@ public class ScriptVM{
 					ScriptValue a=stack.pop();
 					if(a instanceof ScriptValue.Num(double na) && b instanceof ScriptValue.Num(double nb)){
 						stack.push(ScriptValue.of(na+nb));
+					}else if(a instanceof ScriptValue.Arr(List<ScriptValue> aa) && b instanceof ScriptValue.Arr(List<ScriptValue> ab)){
+						ArrayList<ScriptValue> combined=new ArrayList<>(aa);
+						combined.addAll(ab);
+						stack.push(ScriptValue.of(combined));
 					}else{
 						String sa=switch(a){
 							case ScriptValue.Num(double n) -> numberToString(n);
