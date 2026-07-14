@@ -368,6 +368,8 @@ class Compiler{
 	}
 
 	private void parseExpressionStatement(){
+		if(match(TokenType.SEMICOLON)) // Empty statement
+			return;
 		parseExpression();
 		consume(TokenType.SEMICOLON, "Expected ';' after expression");
 		emitInstruction(Op.POP);
