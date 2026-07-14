@@ -1,6 +1,7 @@
 package smithereen.scripting;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,11 +67,16 @@ public class ScriptVM{
 						ArrayList<ScriptValue> combined=new ArrayList<>(aa);
 						combined.addAll(ab);
 						stack.push(ScriptValue.of(combined));
+					}else if(a instanceof ScriptValue.Obj(Map<String, ScriptValue> oa) && b instanceof ScriptValue.Obj(Map<String, ScriptValue> ob)){
+						HashMap<String, ScriptValue> combined=new HashMap<>(oa);
+						combined.putAll(ob);
+						stack.push(ScriptValue.of(combined));
 					}else{
 						String sa=switch(a){
 							case ScriptValue.Num(double n) -> numberToString(n);
 							case ScriptValue.Str(String s) -> s;
-							case null, default -> throw new ScriptRuntimeException("Invalid operand type for '+'", script.getLineNumber(ip-1));
+							case null -> "";
+							default -> throw new ScriptRuntimeException("Invalid operand type for '+'", script.getLineNumber(ip-1));
 						};
 						String sb=switch(b){
 							case ScriptValue.Num(double n) -> numberToString(n);
@@ -157,8 +163,9 @@ public class ScriptVM{
 						stack.push(s==null ? null : ScriptValue.of(s.length()));
 					}else{
 						if(!(objV instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)))
-							throw new ScriptRuntimeException("Invalid operand types for object property access", script.getLineNumber(ip-1));
-						stack.push(obj.get(key));
+							stack.push(null);
+						else
+							stack.push(obj.get(key));
 					}
 				}
 				case Op.SET_OBJECT_FIELD -> {
@@ -186,7 +193,7 @@ public class ScriptVM{
 				case Op.GET_ARRAY_ELEMENT -> {
 					ScriptValue indexV=stack.pop();
 					ScriptValue arrayV=stack.pop();
-					if(indexV==null){
+					if(indexV==null || arrayV==null){
 						stack.push(null);
 					}else if(arrayV instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)){
 						// object['value']
@@ -260,8 +267,13 @@ public class ScriptVM{
 					ScriptValue arrV=stack.pop();
 					if(!(keyV instanceof ScriptValue.Str(String key)))
 						throw new IllegalStateException("Invalid operand types");
-					if(!(arrV instanceof ScriptValue.Arr(List<ScriptValue> arr)))
+					if(!(arrV instanceof ScriptValue.Arr(List<ScriptValue> arr))){
+						if(arrV==null){
+							stack.push(ScriptValue.of(new ArrayList<>()));
+							continue;
+						}
 						throw new ScriptRuntimeException("Invalid operand type for '@.'", script.getLineNumber(ip-1));
+					}
 					stack.push(ScriptValue.of(arr.stream()
 							.map(el->el instanceof ScriptValue.Obj(Map<String, ScriptValue> obj) ? obj.get(key) : null)
 							.collect(Collectors.toCollection(()->new ArrayList<>()))));
@@ -317,8 +329,9 @@ public class ScriptVM{
 					if(env.apiCallCallback==null)
 						throw new ScriptRuntimeException("API methods are not available in this environment", script.getLineNumber(ip-1));
 					String name=((ScriptValue.Str)script.constants[script.operands[ip-1]]).str();
-					ScriptValue.Obj methodArgs=(ScriptValue.Obj) stack.pop();
-					stack.push(env.apiCallCallback.doApiCall(name, methodArgs.obj()));
+					if(!(stack.pop() instanceof ScriptValue.Obj(Map<String, ScriptValue> obj)))
+						throw new ScriptRuntimeException("API method arguments must be an object", script.getLineNumber(ip-1));
+					stack.push(env.apiCallCallback.doApiCall(name, obj));
 				}
 				case Op.GET_ARGUMENT -> {
 					String name=((ScriptValue.Str)script.constants[script.operands[ip-1]]).str();

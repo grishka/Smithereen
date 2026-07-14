@@ -455,16 +455,20 @@ class Compiler{
 			consume(TokenType.IDENTIFIER, "Expected API method name after 'API.'");
 			String methodName=previous.value();
 			if(match(TokenType.DOT)){
-				consume(TokenType.IDENTIFIER, "Expected API method name after section name");
-				methodName+="."+previous.value();
+				if(match(TokenType.DELETE)){ // Special treatment for things like likes.delete, because `delete` is a keyword
+					methodName+=".delete";
+				}else{
+					consume(TokenType.IDENTIFIER, "Expected API method name after section name");
+					methodName+="."+previous.value();
+				}
 			}
 			consume(TokenType.LEFT_PAREN, "Expected '(' after API method name");
-			if(match(TokenType.LEFT_BRACE)){
-				parseObject(false);
-			}else{
+			if(match(TokenType.RIGHT_PAREN)){
 				emitInstruction(Op.NEW_OBJECT); // Treat 'API.section.method()' as 'API.section.method({})'
+			}else{
+				parseExpression();
+				consume(TokenType.RIGHT_PAREN, "Expected ')' after API method arguments");
 			}
-			consume(TokenType.RIGHT_PAREN, "Expected ')' after API method arguments");
 			int nameID=defineConstant(ScriptValue.of(methodName));
 			emitInstruction(Op.CALL_API_METHOD, nameID);
 			return;
