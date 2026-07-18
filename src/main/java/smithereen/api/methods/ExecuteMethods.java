@@ -2,6 +2,7 @@ package smithereen.api.methods;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
@@ -132,6 +133,8 @@ public class ExecuteMethods{
 				}
 				yield ScriptValue.of(sArr);
 			}
+			case null -> null;
+			case JsonNull jn -> null;
 			default -> throw new IllegalStateException("Unexpected value: " + el);
 		};
 	}
