@@ -52,21 +52,21 @@ public class LinkedDataSignaturesTests{
 	@DisplayName("Signature verification: Create activity (Mastodon)")
 	void testVerificationValidCreate(){
 		JsonObject in=readResourceAsJSON("/ld-signature/mastodon_signed_create.json").getAsJsonObject();
-		assertTrue(LinkedDataSignatures.verify(in, actor.publicKey));
+		assertTrue(LinkedDataSignatures.verify(in, actor.getFirstRsaPublicKey().key()));
 	}
 
 	@Test
 	@DisplayName("Signature verification: Delete activity (Mastodon)")
 	void testVerificationValidDelete(){
 		JsonObject in=readResourceAsJSON("/ld-signature/mastodon_signed_delete.json").getAsJsonObject();
-		assertTrue(LinkedDataSignatures.verify(in, actor.publicKey));
+		assertTrue(LinkedDataSignatures.verify(in, actor.getFirstRsaPublicKey().key()));
 	}
 
 	@Test
 	@DisplayName("Signature verification fails on a modified object")
 	void testVerificationTampered(){
 		JsonObject in=readResourceAsJSON("/ld-signature/mastodon_signed_create_tampered.json").getAsJsonObject();
-		assertFalse(LinkedDataSignatures.verify(in, actor.publicKey));
+		assertFalse(LinkedDataSignatures.verify(in, actor.getFirstRsaPublicKey().key()));
 	}
 
 	@Test

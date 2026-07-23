@@ -97,7 +97,7 @@ public class ActivityPubApplication extends Actor{
 		app.apID=activityPubID;
 		app.username=username;
 		app.domain=domain;
-		app.publicKey=publicKey;
+		app.publicKeys=new ArrayList<>(publicKeys);
 		app.name=StringUtils.isEmpty(name) ? activityPubID.toString() : name;
 		app.type=ClientAppType.STANDALONE; // TODO
 		app.description=summary;
@@ -115,7 +115,7 @@ public class ActivityPubApplication extends Actor{
 		if(StringUtils.isNotEmpty(app.username))
 			aa.username=app.username;
 		aa.domain=app.domain;
-		aa.publicKey=app.publicKey;
+		aa.publicKeys=new ArrayList<>(app.publicKeys);
 		aa.name=app.name;
 		aa.summary=app.description;
 		if(app.logo!=null)

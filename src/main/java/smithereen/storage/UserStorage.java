@@ -989,7 +989,7 @@ public class UserStorage{
 					.value("bdate", user.birthDate)
 					.value("username", user.username)
 					.value("domain", user.domain)
-					.value("public_key", user.publicKey.getEncoded())
+					.value("public_key", user.serializePublicKeys())
 					.value("ap_url", Objects.toString(user.url, null))
 					.value("ap_inbox", Objects.toString(user.inbox, null))
 					.value("ap_shared_inbox", Objects.toString(user.sharedInbox, null))

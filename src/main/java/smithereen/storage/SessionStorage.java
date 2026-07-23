@@ -31,6 +31,7 @@ import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.LruCache;
 import smithereen.Utils;
+import smithereen.activitypub.objects.Actor;
 import smithereen.model.Account;
 import smithereen.model.EmailCode;
 import smithereen.model.Group;
@@ -197,7 +198,7 @@ public class SessionStorage{
 		stmt.setString(1, firstName);
 		stmt.setString(2, lastName);
 		stmt.setString(3, username==null ? Utils.randomAlphanumericString(50) : username);
-		stmt.setBytes(4, pair.getPublic().getEncoded());
+		stmt.setBytes(4, Actor.serializeLocalActorRsaKey(pair.getPublic()));
 		stmt.setBytes(5, pair.getPrivate().getEncoded());
 		stmt.setInt(6, gender.ordinal());
 		stmt.execute();

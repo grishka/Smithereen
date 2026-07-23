@@ -135,14 +135,6 @@ public class User extends Actor{
 			sb.append(", gender=");
 			sb.append(gender);
 		}
-		if(publicKey!=null){
-			sb.append(", publicKey=");
-			sb.append(publicKey);
-		}
-		if(privateKey!=null){
-			sb.append(", privateKey=");
-			sb.append(privateKey);
-		}
 		sb.append('}');
 		return sb.toString();
 	}

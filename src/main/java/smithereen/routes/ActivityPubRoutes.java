@@ -962,7 +962,7 @@ public class ActivityPubRoutes{
 				if(!userID.equals(actor.activityPubID)){
 					throw new BadRequestException("LD-signature creator is not activity actor");
 				}
-				if(!LinkedDataSignatures.verify(rawActivity, actor.publicKey)){
+				if(!LinkedDataSignatures.verify(rawActivity, actor.getFirstRsaPublicKey().key())){ // TODO support EdDSA here? Are EdDSA LD signatures a thing?
 					throw new BadRequestException("LD-signature verification failed");
 				}
 				LOG.debug("verified LD signature by {}", userID);

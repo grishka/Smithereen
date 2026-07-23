@@ -14,12 +14,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
 import smithereen.activitypub.ParserContext;
 import smithereen.activitypub.objects.ActivityPubObject;
+import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.Image;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.exceptions.InternalServerErrorException;
@@ -38,7 +40,7 @@ public class ClientApp implements ActivityPubRepresentable{
 	public URI apID;
 	public String username;
 	public String domain;
-	transient public PublicKey publicKey;
+	transient public List<Actor.SigningKey> publicKeys=List.of();
 	transient public PrivateKey privateKey;
 	public String name;
 	public ClientAppType type;
@@ -56,12 +58,8 @@ public class ClientApp implements ActivityPubRepresentable{
 		a.apID=apID==null ? null : URI.create(apID);
 		a.username=res.getString("username");
 		a.domain=res.getString("domain");
-		byte[] key=res.getBytes("public_key");
-		try{
-			X509EncodedKeySpec spec=new X509EncodedKeySpec(key);
-			a.publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
-		}catch(Exception ignore){}
-		key=res.getBytes("private_key");
+		a.publicKeys=Actor.deserializePublicKeys(res.getBytes("public_key"));
+		byte[] key=res.getBytes("private_key");
 		if(key!=null){
 			try{
 				PKCS8EncodedKeySpec spec=new PKCS8EncodedKeySpec(key);
@@ -149,5 +147,9 @@ public class ClientApp implements ActivityPubRepresentable{
 
 	public boolean isLocal(){
 		return apID==null;
+	}
+
+	public byte[] serializePublicKeys(){
+		return Actor.serializePublicKeys(publicKeys);
 	}
 }

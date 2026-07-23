@@ -51,6 +51,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -630,8 +631,17 @@ public class ActivityPub{
 			sigParts.add(header+": "+value);
 		}
 		String sigStr=java.lang.String.join("\n", sigParts);
-		Signature sig=Signature.getInstance("SHA256withRSA");
-		sig.initVerify(user.publicKey);
+		Actor.SigningKey key;
+		try{
+			key=user.getPublicKey(URI.create(keyId));
+		}catch(NoSuchElementException x){
+			throw new BadRequestException("Invalid key ID "+keyId, x);
+		}
+		Signature sig=Signature.getInstance(switch(key.algorithm()){
+			case RSA -> "SHA256withRSA";
+			case EdDSA -> "Ed25519";
+		});
+		sig.initVerify(key.key());
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
 		if(!sig.verify(signature)){
 			LOG.debug("Failed signature header: {}", sigHeader);
@@ -739,8 +749,18 @@ public class ActivityPub{
 				throw new IllegalArgumentException("Signature with 'rsa-sha256' algorithm not found");
 			byte[] signature=Base64.getDecoder().decode(rsaSignature.getAsJsonPrimitive("signature").getAsString());
 			String sigStr=generateActorTokenStringToBeSigned(token);
-			Signature sig=Signature.getInstance("SHA256withRSA");
-			sig.initVerify(group.publicKey);
+			URI keyId=URI.create(rsaSignature.get("keyId").getAsString());
+			Actor.SigningKey key;
+			try{
+				key=user.getPublicKey(keyId);
+			}catch(NoSuchElementException x){
+				throw new BadRequestException("Invalid key ID "+keyId, x);
+			}
+			Signature sig=Signature.getInstance(switch(key.algorithm()){
+				case RSA -> "SHA256withRSA";
+				case EdDSA -> "Ed25519";
+			});
+			sig.initVerify(key.key());
 			sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
 			if(!sig.verify(signature)){
 				throw new IllegalArgumentException("Actor token signature failed to verify");
