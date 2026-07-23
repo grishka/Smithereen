@@ -932,7 +932,7 @@ public class ActivityPubRoutes{
 				// Somehow, Application objects could end up interpreted as users in some previous Smithereen version.
 				if(actor instanceof ActivityPubApplication && oldActor instanceof ForeignUser fu)
 					actor=ctx.getUsersController().getUserOrThrow(fu.id);
-			}catch(ObjectNotFoundException x){
+			}catch(Exception x){
 				LOG.debug("Exception while refreshing remote actor {}", activity.actor.link, x);
 			}
 		}
