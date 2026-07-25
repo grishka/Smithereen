@@ -315,11 +315,11 @@ public class TextProcessorTest{
 		assertEquals("durov", normalizeContactInfoValue(VKONTAKTE, "@durov"));
 		assertEquals("durov", normalizeContactInfoValue(VKONTAKTE, "durov"));
 		assertEquals("id1", normalizeContactInfoValue(VKONTAKTE, "id1"));
+		assertEquals("durov", normalizeContactInfoValue(VKONTAKTE, "https://vkontakte.ru/durov"));
 
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://vk.com/💩"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://fuck.vk.com/durov"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://www.vk.com/durov"));
-		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://vkontakte.ru/durov"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://vk.com"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "https://example.com/durov"));
 		assertNull(normalizeContactInfoValue(VKONTAKTE, "💩"));

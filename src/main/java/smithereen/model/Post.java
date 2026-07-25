@@ -279,6 +279,13 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		return o.isEmpty() ? null : o.toString();
 	}
 
+	/**
+	 * Whether this is a wall-to-wall post or a comment on one (and hence whether the "who can see others' posts on my wall" privacy setting applies to it).
+	 */
+	public boolean isWallToWall(){
+		return (getReplyLevel()==0 && ownerID!=authorID) || (getReplyLevel()>0 && flags.contains(Post.Flag.TOP_IS_WALL_TO_WALL));
+	}
+
 	public enum Privacy{
 		PUBLIC(null),
 		FOLLOWERS_AND_MENTIONED("post_visible_to_followers_mentioned"),

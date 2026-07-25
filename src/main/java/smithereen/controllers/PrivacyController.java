@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
@@ -442,13 +443,55 @@ public class PrivacyController{
 			throw new UserContentUnavailableException();
 	}
 
-	public void filterPosts(@Nullable User self, Collection<Post> posts){
+	public void filterPostsForPerPostPrivacy(@Nullable User self, Collection<Post> posts){
 		// TODO optimize this to avoid querying the same friendship states multiple times
 		posts.removeIf(post->!checkPostPrivacy(self, post));
 	}
 
-	public void filterPostViewModels(@Nullable User self, Collection<PostViewModel> posts){
+	public void filterPostViewModelsForPerPostPrivacy(@Nullable User self, Collection<PostViewModel> posts){
 		posts.removeIf(post->!checkPostPrivacy(self, post.post));
+	}
+
+	public void filterPostsForOwnerPrivacy(@Nullable User self, Collection<Post> posts){
+		HashSet<Integer> groupIDs=new HashSet<>(), userIDsForWallToWallPosts=new HashSet<>(), userIDsForProfileAccess=new HashSet<>();
+		for(Post post:posts){
+			if(post.ownerID<0){
+				groupIDs.add(-post.ownerID);
+			}else{
+				userIDsForProfileAccess.add(post.ownerID);
+				if(post.isWallToWall()){
+					userIDsForWallToWallPosts.add(post.ownerID);
+				}
+			}
+		}
+		Map<Integer, Group> groups=context.getGroupsController().getGroupsByIdAsMap(groupIDs);
+		Map<Integer, User> users=context.getUsersController().getUsers(Stream.of(userIDsForWallToWallPosts, userIDsForProfileAccess).flatMap(Set::stream).collect(Collectors.toSet()));
+		HashSet<Integer> accessibleGroups=new HashSet<>(), accessibleUserProfiles=new HashSet<>(), accessibleUserWalls=new HashSet<>();
+		for(Group g:groups.values()){
+			if(canUserAccessGroupContent(self, g) && g.wallState!=GroupFeatureState.DISABLED)
+				accessibleGroups.add(g.id);
+		}
+		for(int id:userIDsForWallToWallPosts){
+			User user=users.get(id);
+			if(user==null)
+				continue;
+			if(checkUserPrivacy(self, user, UserPrivacySettingKey.WALL_OTHERS_POSTS))
+				accessibleUserWalls.add(id);
+		}
+		for(int id:userIDsForProfileAccess){
+			User user=users.get(id);
+			if(user==null)
+				continue;
+			if(canAccessUserProfile(self, user))
+				accessibleUserProfiles.add(id);
+		}
+		posts.removeIf(p->{
+			if(p.ownerID<0){
+				return !accessibleGroups.contains(-p.ownerID);
+			}else{
+				return !accessibleUserProfiles.contains(p.ownerID) || (p.isWallToWall() && !accessibleUserWalls.contains(p.ownerID));
+			}
+		});
 	}
 
 	private boolean canAccessBannedProfiles(@Nullable User self){
@@ -489,6 +532,23 @@ public class PrivacyController{
 		}
 		if(target.banInfo!=null && target.banInfo.suspendedOnRemoteServer() && !canAccessBannedProfiles(self))
 			throw new UserErrorException("profile_banned");
+	}
+
+	public boolean canAccessUserProfile(@Nullable User self, User target){
+		if(Config.demoMode && self==null)
+			return false;
+		switch(target.banStatus){
+			case NONE -> {}
+			case FROZEN, SUSPENDED, SELF_DEACTIVATED -> {
+				if(!canAccessBannedProfiles(self))
+					return false;
+			}
+			case HIDDEN -> {
+				if(self==null)
+					return false;
+			}
+		}
+		return target.banInfo==null || !target.banInfo.suspendedOnRemoteServer() || canAccessBannedProfiles(self);
 	}
 
 	void populatePrivacySettingsFriendListUsers(User self, Collection<PrivacySetting> settings){

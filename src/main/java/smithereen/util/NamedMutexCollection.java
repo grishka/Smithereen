@@ -16,9 +16,10 @@ public class NamedMutexCollection{
 	private final HashMap<String, RefCountedReentrantLock> heldLocks=new HashMap<>();
 
 	public void acquire(String name){
-		ReentrantLock lock;
+		RefCountedReentrantLock lock;
 		synchronized(this){
 			lock=heldLocks.computeIfAbsent(name, k->reusePool.isEmpty() ? new RefCountedReentrantLock() : reusePool.pop());
+			lock.refCount.incrementAndGet();
 		}
 		lock.lock();
 	}
@@ -39,13 +40,7 @@ public class NamedMutexCollection{
 	}
 
 	private static class RefCountedReentrantLock extends ReentrantLock{
-		private AtomicInteger refCount=new AtomicInteger();
-
-		@Override
-		public void lock(){
-			refCount.incrementAndGet();
-			super.lock();
-		}
+		private final AtomicInteger refCount=new AtomicInteger();
 
 		@Override
 		public void unlock(){

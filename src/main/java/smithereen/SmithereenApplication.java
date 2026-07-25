@@ -1248,6 +1248,7 @@ public class SmithereenApplication{
 					int accountID=accountIdsBySession.getOrDefault(sid, 0);
 					if(accountID==0)
 						return;
+					accountIdsBySession.remove(sid);
 					Set<HttpSession> sessions=sessionsByAccount.get(accountID);
 					if(sessions==null)
 						return;

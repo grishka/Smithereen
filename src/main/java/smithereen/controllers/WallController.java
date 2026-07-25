@@ -638,7 +638,7 @@ public class WallController{
 			for(PostViewModel post:posts){
 				PaginatedList<Post> comments=allComments.get(post.post.getIDForInteractions());
 				if(comments!=null){
-					context.getPrivacyController().filterPosts(self, comments.list);
+					context.getPrivacyController().filterPostsForPerPostPrivacy(self, comments.list);
 					if(!comments.list.isEmpty()){
 						post.repliesObjects=comments.list.stream().map(PostViewModel::new).toList();
 						post.totalTopLevelComments=comments.total;
@@ -814,7 +814,7 @@ public class WallController{
 			// For two-level and flat, if we're getting replies to a comment, always treat them as a flat list
 			if((type==CommentViewType.TWO_LEVEL && threadParent.getReplyLevel()>0) || type==CommentViewType.FLAT){
 				PaginatedList<PostViewModel> posts=PostViewModel.wrap(PostStorage.getRepliesFlat(key, primaryOffset, primaryCount, reversed));
-				context.getPrivacyController().filterPostViewModels(self, posts.list);
+				context.getPrivacyController().filterPostViewModelsForPerPostPrivacy(self, posts.list);
 				fillInParentAuthors(posts.list, threadParent);
 				return posts;
 			}
@@ -852,7 +852,7 @@ public class WallController{
 	public PaginatedList<PostViewModel> getRepliesFlat(@Nullable User self, List<Integer> key, int maxID, int count){
 		try{
 			PaginatedList<PostViewModel> posts=PostViewModel.wrap(PostStorage.getRepliesFlatWithMaxID(key, maxID, count));
-			context.getPrivacyController().filterPostViewModels(self, posts.list);
+			context.getPrivacyController().filterPostViewModelsForPerPostPrivacy(self, posts.list);
 			fillInParentAuthors(posts.list, null);
 			return posts;
 		}catch(SQLException x){
@@ -890,7 +890,7 @@ public class WallController{
 		try{
 			PaginatedList<Post> posts=PostStorage.getRepliesExact(key.stream().mapToInt(Integer::intValue).toArray(), maxID, count);
 			posts.list=new ArrayList<>(posts.list);
-			context.getPrivacyController().filterPosts(self, posts.list);
+			context.getPrivacyController().filterPostsForPerPostPrivacy(self, posts.list);
 			return posts;
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
@@ -1140,7 +1140,7 @@ public class WallController{
 		}
 		if(hasPrivate){
 			posts=new ArrayList<>(posts);
-			context.getPrivacyController().filterPosts(self, posts);
+			context.getPrivacyController().filterPostsForPerPostPrivacy(self, posts);
 		}
 		return posts;
 	}

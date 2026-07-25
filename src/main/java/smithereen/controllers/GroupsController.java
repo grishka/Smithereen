@@ -761,6 +761,8 @@ public class GroupsController{
 	public void removeAdmin(Group group, User self, User user){
 		try{
 			Group.AdminLevel oldLevel=getMemberAdminLevel(group, user);
+			if(oldLevel==Group.AdminLevel.OWNER)
+				throw new UserActionNotAllowedException("Can't demote group owner");
 			GroupStorage.removeGroupAdmin(group.id, user.id);
 			ModerationStorage.createGroupActionLogEntry(group.id, GroupActionLogAction.CHANGE_MEMBER_ADMIN_LEVEL, self.id, Map.of("user", user.id, "old", oldLevel.toString(), "new", Group.AdminLevel.REGULAR.toString()));
 			context.getActivityPubWorker().sendUpdateGroupActivity(group);

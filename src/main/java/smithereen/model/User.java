@@ -16,6 +16,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import smithereen.Config;
@@ -552,6 +553,11 @@ public class User extends Actor{
 			return ((User) other).id==id && ((User) other).activityPubID.equals(activityPubID);
 		}
 		return false;
+	}
+
+	@Override
+	public int hashCode(){
+		return Objects.hashCode(id);
 	}
 
 	@Override

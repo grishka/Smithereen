@@ -81,7 +81,7 @@ public class EnqueueScriptTokenParser implements TokenParser{
 			List<Scope> scopes=context.getScopeChain().getGlobalScopes();
 			Scope lastScope=scopes.getLast();
 			String bottomScripts=(String) Objects.requireNonNullElse(lastScope.get("_bottomScripts"), "");
-			lastScope.put("_bottomScripts", bottomScripts+sw.toString().trim()+"\n");
+			lastScope.put("_bottomScripts", bottomScripts+sw.toString().trim().replace("</script>", "<\\/script>")+"\n");
 		}
 
 		@Override

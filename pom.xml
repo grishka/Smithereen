@@ -55,6 +55,11 @@
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.0.0-M4</version>
+				<configuration>
+					<argLine>
+						--add-opens smithereen.server/smithereen=org.junit.platform.commons
+					</argLine>
+				</configuration>
 			</plugin>
 
 			<!-- I don't care about this fancy repository stuff, I just want the jar copied to the server -->

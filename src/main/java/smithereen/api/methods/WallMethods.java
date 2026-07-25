@@ -89,14 +89,16 @@ public class WallMethods{
 		User self=actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
 
 		Map<Integer, Post> postsByID=ctx.getWallController().getPosts(ids);
-		ArrayList<PostViewModel> posts=new ArrayList<>();
+		ArrayList<Post> rawPosts=new ArrayList<>();
 		for(int id:ids){
 			Post post=postsByID.get(id);
 			if(post==null)
 				continue;
-			posts.add(new PostViewModel(post));
+			rawPosts.add(post);
 		}
-		ctx.getPrivacyController().filterPostViewModels(self, posts);
+		ctx.getPrivacyController().filterPostsForOwnerPrivacy(self, rawPosts);
+		ctx.getPrivacyController().filterPostsForPerPostPrivacy(self, rawPosts);
+		List<PostViewModel> posts=rawPosts.stream().map(PostViewModel::new).toList();
 
 		List<ApiWallPost> res=ApiUtils.getPosts(posts, ctx, actx, true, true, true);
 		if(actx.optParamBoolean("extended")){
@@ -130,6 +132,7 @@ public class WallMethods{
 
 		Post post=ctx.getWallController().getPostOrThrow(postID);
 		ctx.getPrivacyController().enforcePostPrivacy(self, post);
+		ctx.getPrivacyController().enforceObjectPrivacy(self, post);
 		Post threadParent;
 		if(commentID>0){
 			threadParent=ctx.getWallController().getPostOrThrow(commentID, true);
