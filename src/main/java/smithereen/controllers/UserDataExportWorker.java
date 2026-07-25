@@ -172,7 +172,7 @@ public class UserDataExportWorker{
 							.add("name", wf.name)
 							.add("contexts", wf.contexts.stream().map(c->c.toString().toLowerCase()).collect(JsonArrayBuilder.COLLECTOR))
 							.add("words", wf.words.stream().collect(JsonArrayBuilder.COLLECTOR))
-							.add("expires", wf.expiresAt.getEpochSecond())
+							.add("expires", wf.expiresAt==null ? 0 : wf.expiresAt.getEpochSecond())
 							.build();
 				}).collect(JsonArrayBuilder.COLLECTOR), zos, "wordFilters");
 

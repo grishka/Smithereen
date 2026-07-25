@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
+import smithereen.exceptions.UserActionNotAllowedException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
 import smithereen.model.CommentViewType;
@@ -45,6 +46,7 @@ public class BoardRoutes{
 	public static Object createTopicForm(Request req, Response resp, Account self, ApplicationContext ctx){
 		Group group=getGroup(req);
 		ctx.getBoardController().enforceTopicCreationPermission(self.user, group);
+		ctx.getPrivacyController().enforceUserAccessToGroupContent(self.user, group);
 		Templates.addJsLangForNewPostForm(req);
 		return new RenderedTemplateResponse("board_create_topic_form", req)
 				.pageTitle(group.name+" | "+lang(req).get("board_new_topic_title"))
@@ -132,13 +134,16 @@ public class BoardRoutes{
 	}
 
 	public static Object groupTopics(Request req, Response resp){
+		Account self=currentUserAccount(req);
 		Group group=getGroup(req);
 		ApplicationContext ctx=context(req);
+		ctx.getPrivacyController().enforceUserAccessToGroupContent(self==null ? null : self.user, group);
+		if(group.boardState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("err_access_content");
 		BoardTopicsSortOrder order=enumValueOpt(req.queryParams("sort") instanceof String s ? s.toUpperCase() : null, BoardTopicsSortOrder.class);
 		if(order==null)
 			order=BoardTopicsSortOrder.UPDATED_DESC;
 		PaginatedList<BoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(group, offset(req), 40, order);
-		Account self=currentUserAccount(req);
 		Group.AdminLevel adminLevel=Group.AdminLevel.REGULAR;
 		if(self!=null)
 			adminLevel=ctx.getGroupsController().getMemberAdminLevel(group, self.user);
