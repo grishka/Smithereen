@@ -57,7 +57,7 @@
 				<version>3.0.0-M4</version>
 				<configuration>
 					<argLine>
-						--add-opens smithereen.server/smithereen=org.junit.platform.commons
+						--add-reads smithereen.server=org.junit.jupiter.api
 					</argLine>
 				</configuration>
 			</plugin>
