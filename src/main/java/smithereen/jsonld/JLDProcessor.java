@@ -531,9 +531,11 @@ public class JLDProcessor{
 
 		if(v.has("@container")){
 			String container=v.get("@container").getAsString();
-			if(container!=null && !"@list".equals(container) && !"@set".equals(container) && !"@index".equals(container) && !"@language".equals(container))
-				throw new JLDException("invalid container mapping");
-			definition.containerMapping=container;
+			if(!"@graph".equals(container)){
+				if(container!=null && !"@list".equals(container) && !"@set".equals(container) && !"@index".equals(container) && !"@language".equals(container))
+					throw new JLDException("invalid container mapping");
+				definition.containerMapping=container;
+			}
 		}
 
 		if(v.has("@language")){
