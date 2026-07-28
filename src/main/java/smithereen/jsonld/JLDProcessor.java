@@ -182,7 +182,7 @@ public class JLDProcessor{
 		lc.addProperty("QuoteAuthorization", JLD.MASTODON_QUOTES_FEP+"QuoteAuthorization");
 		lc.addProperty("QuoteRequest", JLD.MASTODON_QUOTES_FEP+"QuoteRequest");
 
-		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, lc), new ArrayList<>(), null);
+		localContext=updateContext(new JLDContext(), makeArray(JLD.ACTIVITY_STREAMS, JLD.W3_SECURITY, JLD.W3_CID, lc), new ArrayList<>(), null);
 		inverseLocalContext=createReverseContext(localContext);
 	}
 
@@ -299,6 +299,8 @@ public class JLDProcessor{
 			case "https://w3id.org/security/multikey/v1" -> readResourceFile("w3-multikey");
 			case "https://purl.archive.org/socialweb/webfinger" -> readResourceFile("purl-webfinger");
 			case "https://gotosocial.org/ns" -> readResourceFile("gotosocial");
+			case "https://www.w3.org/ns/cid/v1" -> readResourceFile("w3-cid");
+			case "https://w3id.org/security/data-integrity/v2" -> readResourceFile("w3-data-integrity-v2");
 			default -> {
 				if(allowNetworking){
 					remoteContextFetchMutexes.acquire(iri);

@@ -18,6 +18,8 @@ import java.security.spec.EdECPoint;
 import java.security.spec.EdECPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.NamedParameterSpec;
+import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 
 import javax.crypto.AEADBadTagException;
@@ -63,6 +65,26 @@ public class CryptoUtils{
 			else
 				throw new IOException("Unexpected key length "+encoded.length);
 		}catch(IOException x){
+			throw new RuntimeException(x);
+		}
+	}
+
+	public static PublicKey decodeRsaPublicKey(byte[] encoded){
+		try{
+			X509EncodedKeySpec spec=new X509EncodedKeySpec(encoded);
+			return KeyFactory.getInstance("RSA").generatePublic(spec);
+		}catch(InvalidKeySpecException x){
+			// a simpler RSA key format, used at least by Misskey
+			// FWIW, Misskey user objects also contain a key "isCat" which I ignore
+			try{
+				RSAPublicKeySpec spec=CryptoUtils.decodeSimpleRSAKey(encoded);
+				return KeyFactory.getInstance("RSA").generatePublic(spec);
+			}catch(NoSuchAlgorithmException xx){
+				throw new RuntimeException(xx);
+			}catch(InvalidKeySpecException | IOException xx){
+				throw new IllegalArgumentException(x);
+			}
+		}catch(NoSuchAlgorithmException x){
 			throw new RuntimeException(x);
 		}
 	}
@@ -123,6 +145,27 @@ public class CryptoUtils{
 		byte[] b=new byte[count];
 		RANDOM.nextBytes(b);
 		return b;
+	}
+
+	public static RSAPublicKeySpec decodeSimpleRSAKey(byte[] key) throws IOException{
+		SimpleASN1InputStream in=new SimpleASN1InputStream(new ByteArrayInputStream(key));
+		int id=in.read();
+		if(id!=0x30)
+			throw new IOException("Must start with SEQUENCE");
+		int seqLen=in.readLength();
+		id=in.read();
+		if(id!=2)
+			throw new IOException("SEQUENCE must be followed by INTEGER");
+		int modLen=in.readLength();
+		byte[] modBytes=new byte[modLen];
+		in.read(modBytes);
+		id=in.read();
+		if(id!=2)
+			throw new IOException("SEQUENCE must be followed by INTEGER");
+		int expLen=in.readLength();
+		byte[] expBytes=new byte[expLen];
+		in.read(expBytes);
+		return new RSAPublicKeySpec(new BigInteger(modBytes), new BigInteger(expBytes));
 	}
 
 	private static class SimpleASN1InputStream extends FilterInputStream{
