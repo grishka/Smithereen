@@ -58,6 +58,8 @@
 				<configuration>
 					<argLine>
 						--add-reads smithereen.server=org.junit.jupiter.api
+						--add-exports org.junit.platform.commons/org.junit.platform.commons.util=ALL-UNNAMED
+						--add-exports org.junit.platform.commons/org.junit.platform.commons.logging=ALL-UNNAMED
 					</argLine>
 				</configuration>
 			</plugin>
@@ -219,7 +221,7 @@
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter</artifactId>
-			<version>5.10.3</version>
+			<version>5.14.4</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
