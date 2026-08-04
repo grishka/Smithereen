@@ -10,15 +10,23 @@
 	{% endif %}
 	<h3 class="marginBefore">{{ L('server_restrictions') }}</h3>
 	<div class="marginBefore">
-		{% if server.restriction is null %}
+		{% if restriction is null %}
 		{{ L('server_restrictions_none') }}
 		{% else %}
 		<div>{{ L('server_restrictions_suspended') }}</div>
-		<div class="marginBefore"><b><a href="{{ profileURL(server.restriction.moderatorId) }}">{{ users[server.restriction.moderatorId] | name('full') }}</a> {{ LD(server.restriction.createdAt) }}</b>{% if server.restriction.privateComment is not null %}: {{ server.restriction.privateComment }}{% endif %}</div>
+		{% if restriction.domain!=server.host %}
+		<div>{{ L('server_restrictions_suspended_higher_level_domain', {'domain': restriction.domain}) }}</div>
+		{% endif %}
+		<div class="marginBefore"><b><a href="{{ profileURL(restriction.moderatorId) }}">{{ users[restriction.moderatorId] | name('full') }}</a> {{ LD(restriction.createdAt) }}</b>{% if restriction.privateComment is not null %}: {{ restriction.privateComment }}{% endif %}</div>
 		{% endif %}
 	</div>
 	<div class="marginBefore">
-		<a class="button" href="/settings/admin/federation/{{ server.host }}/restrictionForm" data-ajax-box>{{ L('server_restrictions_change') }}</a>
+		{% if restriction is null %}
+		<a class="button" href="/settings/admin/federationRules/create?domain={{ server.host | urlencode }}" data-ajax-box>{{ L('admin_federation_restrict_server') }}</a>
+		{% else %}
+		<a class="button" href="/settings/admin/federationRules/{{ restriction.domain }}/edit" data-ajax-box>{{ L('admin_federation_edit_rule') }}</a>
+		<a class="button" href="/settings/admin/federationRules/{{ restriction.domain }}/confirmDelete" data-confirm-title="{{ L('admin_federation_delete_rule') }}" data-confirm-message="{{ L('admin_federation_delete_rule_confirm', {'domain': restriction.domain}) | forceEscape }}" data-confirm-action="/settings/admin/federationRules/{{ restriction.domain }}/delete">{{ L('admin_federation_delete_server_rule') }}</a>
+		{% endif %}
 	</div>
 	<h3 class="marginBefore">{{ L('server_availability') }}</h3>
 	<div class="marginBefore">{{ L('server_availability_explain') }}</div>

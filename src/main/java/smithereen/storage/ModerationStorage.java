@@ -17,6 +17,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import smithereen.Utils;
+import smithereen.model.FederationRestriction;
 import smithereen.model.ServerAnnouncement;
 import smithereen.model.ServerRule;
 import smithereen.model.admin.ActorStaffNote;
@@ -191,15 +192,6 @@ public class ModerationStorage{
 				.selectFrom("report_actions")
 				.where("report_id=? AND id=?", reportID, actionID)
 				.executeAndGetSingleObject(ViolationReportAction::fromResultSet);
-	}
-
-	public static void setServerRestriction(int id, String restrictionJson) throws SQLException{
-		new SQLQueryBuilder()
-				.update("servers")
-				.value("restriction", restrictionJson)
-				.value("is_restricted", restrictionJson!=null)
-				.where("id=?", id)
-				.executeNoResult();
 	}
 
 	public static Map<Integer, Integer> getRoleAccountCounts() throws SQLException{
@@ -725,6 +717,44 @@ public class ModerationStorage{
 					.toList();
 			return new PaginatedList<>(log, total, offset, count);
 		}
+	}
+
+	// endregion
+	// region Federation restrictions
+
+	public static List<FederationRestriction> getFederationRestrictions() throws SQLException{
+		return new SQLQueryBuilder()
+				.selectFrom("blocks_domain")
+				.executeAsStream(FederationRestriction::fromResultSet)
+				.toList();
+	}
+
+	public static void createFederationRestriction(String domain, int moderatorID, String publicComment, String privateComment, FederationRestriction.RestrictionType type) throws SQLException{
+		new SQLQueryBuilder()
+				.insertInto("blocks_domain")
+				.value("domain", domain)
+				.value("moderator_id", moderatorID)
+				.value("public_comment", publicComment)
+				.value("private_comment", privateComment)
+				.value("restriction_type", type)
+				.executeNoResult();
+	}
+
+	public static void updateFederationRestriction(String domain, String publicComment, String privateComment, FederationRestriction.RestrictionType type) throws SQLException{
+		new SQLQueryBuilder()
+				.update("blocks_domain")
+				.value("public_comment", publicComment)
+				.value("private_comment", privateComment)
+				.value("restriction_type", type)
+				.where("domain=?", domain)
+				.executeNoResult();
+	}
+
+	public static void deleteFederationRestriction(String domain) throws SQLException{
+		new SQLQueryBuilder()
+				.deleteFrom("blocks_domain")
+				.where("domain=?", domain)
+				.executeNoResult();
 	}
 
 	// endregion

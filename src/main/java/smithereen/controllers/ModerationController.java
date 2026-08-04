@@ -97,6 +97,7 @@ import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
+import smithereen.util.DomainRuleMatcher;
 import smithereen.util.InetAddressRange;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
@@ -114,6 +115,8 @@ public class ModerationController{
 	private List<IPBlockRule> ipRules;
 	private List<ServerRule> serverRules;
 	private List<ServerAnnouncement> currentAndFutureAnnouncements;
+	private final DomainRuleMatcher<FederationRestriction> federationRestrictions=new DomainRuleMatcher<>();
+	private ArrayList<FederationRestriction> allFederationRestrictions=new ArrayList<>();
 
 	public ModerationController(ApplicationContext context){
 		this.context=context;
@@ -536,12 +539,24 @@ public class ModerationController{
 	// endregion
 	// region Federation & federation restrictions
 
-	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean onlyRestricted, String query){
+	public void reloadFederationRestrictions(){
+		allFederationRestrictions.clear();
+		try{
+			allFederationRestrictions.addAll(ModerationStorage.getFederationRestrictions());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		for(FederationRestriction fr:allFederationRestrictions){
+			federationRestrictions.insert(fr.domain, fr);
+		}
+	}
+
+	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, String query){
 		try{
 			if(StringUtils.isNotEmpty(query)){
 				query=Utils.convertIdnToAsciiIfNeeded(query);
 			}
-			return FederationStorage.getAllServers(offset, count, availability, onlyRestricted, query);
+			return FederationStorage.getAllServers(offset, count, availability, query);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -564,15 +579,6 @@ public class ModerationController{
 		}
 	}
 
-	public void setServerRestriction(Server server, FederationRestriction restriction){
-		try{
-			ModerationStorage.setServerRestriction(server.id(), restriction!=null ? Utils.gson.toJson(restriction) : null);
-			serversByDomainCache.remove(server.host());
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
 	public Server getOrAddServer(String domain){
 		domain=domain.toLowerCase();
 		Server server=serversByDomainCache.get(domain);
@@ -584,7 +590,7 @@ public class ModerationController{
 				server=FederationStorage.getServerByDomain(domain);
 				if(server==null){
 					int id=FederationStorage.addServer(domain);
-					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
+					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, EnumSet.noneOf(Server.Feature.class));
 				}
 			}
 			serversByDomainCache.put(domain, server);
@@ -639,6 +645,95 @@ public class ModerationController{
 	public List<String> getPeerDomains(){
 		try{
 			return UserStorage.getPeerDomains();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	@Nullable
+	public FederationRestriction getDomainFederationRestriction(String domain){
+		return federationRestrictions.find(domain.toLowerCase());
+	}
+
+	public List<FederationRestriction> getAllFederationRestrictions(){
+		return List.copyOf(allFederationRestrictions);
+	}
+
+	public void createFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment){
+		try{
+			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
+			synchronized(federationRestrictions){
+				FederationRestriction existingRestriction=federationRestrictions.find(domain);
+				if(existingRestriction!=null){
+					if(existingRestriction.domain.equals(domain))
+						throw new UserErrorException("err_federation_restriction_already_exists", Map.of("domain", existingRestriction.domain));
+					else
+						throw new UserErrorException("err_federation_restriction_already_exists_subdomain", Map.of("domain", existingRestriction.domain));
+				}
+
+				// When a rule for an upper-level domain is added, find and delete all existing subdomain rules since it supersedes them anyway
+				final String domainSuffix="."+domain;
+				allFederationRestrictions.removeIf(fr->{
+					if(fr.domain.endsWith(domainSuffix)){
+						federationRestrictions.delete(fr.domain);
+						try{
+							ModerationStorage.deleteFederationRestriction(fr.domain);
+						}catch(SQLException x){
+							throw new InternalServerErrorException(x);
+						}
+						return true;
+					}
+					return false;
+				});
+
+				ModerationStorage.createFederationRestriction(domain, self.id, publicComment, privateComment, type);
+				FederationRestriction restriction=new FederationRestriction();
+				restriction.createdAt=Instant.now();
+				restriction.domain=domain;
+				restriction.moderatorId=self.id;
+				restriction.type=type;
+				restriction.publicComment=publicComment;
+				restriction.privateComment=privateComment;
+				allFederationRestrictions.add(restriction);
+				allFederationRestrictions.sort(Comparator.comparing(fr->fr.domain));
+				federationRestrictions.insert(domain, restriction);
+			}
+			// TODO audit log
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment){
+		try{
+			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
+			synchronized(federationRestrictions){
+				FederationRestriction fr=federationRestrictions.find(domain);
+				if(fr==null || !fr.domain.equals(domain))
+					throw new ObjectNotFoundException();
+				ModerationStorage.updateFederationRestriction(domain, publicComment, privateComment, type);
+				fr.publicComment=publicComment;
+				fr.privateComment=privateComment;
+				fr.type=type;
+			}
+			// TODO audit log
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteFederationRestriction(User self, String domain){
+		try{
+			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
+			synchronized(federationRestrictions){
+				FederationRestriction fr=federationRestrictions.find(domain);
+				if(fr==null || !fr.domain.equals(domain))
+					throw new ObjectNotFoundException();
+				ModerationStorage.deleteFederationRestriction(domain);
+				federationRestrictions.delete(domain);
+				allFederationRestrictions.remove(fr);
+			}
+			// TODO audit log
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

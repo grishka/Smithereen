@@ -20,10 +20,15 @@
 			{% for server in items %}
 			<div class="listItemWithDivider">
 				<div><a href="/settings/admin/federation/{{ server.host }}">{{ server.host }}</a></div>
-				{% if server.restriction is null %}
+				{% set restriction=restrictions.apply(server.host) %}
+				{% if restriction is null %}
 				<div class="smallMarginBefore">{{ L('server_state_not_restricted') }}</div>
 				{% else %}
+				{% if server.host==restriction.domain %}
 				<div class="smallMarginBefore">{{ L('server_state_suspended') }}</div>
+				{% else %}
+				<div class="smallMarginBefore">{{ L('server_state_suspended_subdomain', {'blockedDomain': restriction.domain}) }}</div>
+				{% endif %}
 				{% endif %}
 			</div>
 			{% else %}

@@ -192,11 +192,11 @@ public class ActivityPub{
 		if(!"https".equals(uri.getScheme()) && !"http".equals(uri.getScheme()))
 			throw new IllegalStateException("Invalid URI scheme in fetchRemoteObject: "+uri);
 
-		Server server=ctx.getModerationController().getOrAddServer(uri.getAuthority());
-		FederationRestriction restriction=server.restriction();
+		ctx.getModerationController().getOrAddServer(uri.getAuthority());
+		FederationRestriction restriction=ctx.getModerationController().getDomainFederationRestriction(uri.getAuthority());
 		if(restriction!=null){
 			if(restriction.type==FederationRestriction.RestrictionType.SUSPENSION){
-				throw new ObjectNotFoundException("Federation with "+server.host()+" is blocked by this server's policies");
+				throw new ObjectNotFoundException("Federation with "+uri.getAuthority()+" is blocked by this server's policies");
 			}
 		}
 
@@ -340,6 +340,13 @@ public class ActivityPub{
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 		}
 
+		FederationRestriction restriction=ctx.getModerationController().getDomainFederationRestriction(inboxUrl.getAuthority());
+		if(restriction!=null){
+			if(restriction.type==FederationRestriction.RestrictionType.SUSPENSION){
+				LOG.debug("Not sending {} activity to server {} because federation with it is blocked", activity.getType(), inboxUrl.getAuthority());
+				return;
+			}
+		}
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
 			LOG.debug("Not sending {} activity to server {} because it's down", activity.getType(), server.host());
@@ -348,12 +355,6 @@ public class ActivityPub{
 		if(requiredServerFeatures!=null && !requiredServerFeatures.isEmpty() && !server.features().containsAll(requiredServerFeatures)){
 			LOG.debug("Not sending {} activity to server {} because its feature set {} does not include required features {}", activity.getType(), server.host(), server.features(), requiredServerFeatures);
 			return;
-		}
-		if(server.restriction()!=null){
-			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
-				LOG.debug("Not sending {} activity to server {} because federation with it is blocked", activity.getType(), server.host());
-				return;
-			}
 		}
 
 		Future<JsonObject> f=serializerSignerExecutor.submit(()->{
@@ -376,6 +377,13 @@ public class ActivityPub{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
+		FederationRestriction restriction=ctx.getModerationController().getDomainFederationRestriction(inboxUrl.getAuthority());
+		if(restriction!=null){
+			if(restriction.type==FederationRestriction.RestrictionType.SUSPENSION){
+				LOG.debug("Not forwarding activity to server {} because federation with it is blocked", inboxUrl.getAuthority());
+				return;
+			}
+		}
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
 			LOG.debug("Not forwarding activity to server {} because it's down", server.host());
@@ -384,12 +392,6 @@ public class ActivityPub{
 		if(requiredServerFeatures!=null && !requiredServerFeatures.isEmpty() && !server.features().containsAll(requiredServerFeatures)){
 			LOG.debug("Not forwarding activity to server {} because its feature set {} does not include required features {}", server.host(), server.features(), requiredServerFeatures);
 			return;
-		}
-		if(server.restriction()!=null){
-			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
-				LOG.debug("Not forwarding activity to server {} because federation with it is blocked", server.host());
-				return;
-			}
 		}
 
 		postActivityInternal(inboxUrl, activityJson, actor, server, ctx, false, false);

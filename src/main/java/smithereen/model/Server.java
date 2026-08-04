@@ -9,10 +9,9 @@ import java.util.EnumSet;
 import smithereen.Utils;
 import smithereen.storage.DatabaseUtils;
 
-public record Server(int id, String host, String software, String version, Instant lastUpdated, LocalDate lastErrorDay, int errorDayCount, boolean isUp, FederationRestriction restriction, EnumSet<Feature> features){
+public record Server(int id, String host, String software, String version, Instant lastUpdated, LocalDate lastErrorDay, int errorDayCount, boolean isUp, EnumSet<Feature> features){
 
 	public static Server fromResultSet(ResultSet res) throws SQLException{
-		String restriction=res.getString("restriction");
 		EnumSet<Feature> features=EnumSet.noneOf(Feature.class);
 		Utils.deserializeEnumSet(features, Feature.class, res.getLong("features"));
 		return new Server(
@@ -24,7 +23,6 @@ public record Server(int id, String host, String software, String version, Insta
 				DatabaseUtils.getLocalDate(res, "last_error_day"),
 				res.getInt("error_day_count"),
 				res.getBoolean("is_up"),
-				restriction!=null ? Utils.gson.fromJson(restriction, FederationRestriction.class) : null,
 				features
 		);
 	}

@@ -178,6 +178,23 @@ CREATE TABLE `audit_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
+-- Table structure for table `blocks_domain`
+--
+
+CREATE TABLE `blocks_domain` (
+  `domain` varchar(100) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `moderator_id` int unsigned DEFAULT NULL,
+  `public_comment` text NOT NULL,
+  `private_comment` text NOT NULL,
+  `restriction_type` tinyint unsigned NOT NULL,
+  `flags` bit(32) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`domain`),
+  KEY `moderator_id` (`moderator_id`),
+  CONSTRAINT `blocks_domain_ibfk_1` FOREIGN KEY (`moderator_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
 -- Table structure for table `blocks_email_domain`
 --
 
@@ -1063,14 +1080,11 @@ CREATE TABLE `servers` (
   `last_error_day` date DEFAULT NULL,
   `error_day_count` int NOT NULL DEFAULT '0',
   `is_up` tinyint unsigned NOT NULL DEFAULT '1',
-  `is_restricted` tinyint unsigned NOT NULL DEFAULT '0',
-  `restriction` json DEFAULT NULL,
   `features` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `host` (`host`),
   KEY `is_up` (`is_up`),
-  KEY `error_day_count` (`error_day_count`),
-  KEY `is_restricted` (`is_restricted`)
+  KEY `error_day_count` (`error_day_count`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -1322,4 +1336,4 @@ CREATE TABLE `word_filters` (
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 
--- Dump completed on 2026-06-14 12:30:06
+-- Dump completed on 2026-08-04 22:44:10

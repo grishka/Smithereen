@@ -1,7 +1,11 @@
 {% import "forms" as form %}
 {{ form.start("federationRestriction") }}
-	{{ form.radioGroup('type', '', [
-		{'value': 'NONE', 'label': L('federation_no_restrictions'), 'selected': type=='NONE'},
+	{% if editing %}
+	{{ form.labeledText(L('domain'), domain) }}
+	{% else %}
+	{{ form.textInput('domain', L('domain'), domain, {'explanation': L('admin_federation_restriction_domain_explain'), 'required': true}) }}
+	{% endif %}
+	{{ form.radioGroup('type', L('admin_federation_restriction_type'), [
 		{'value': 'SUSPENSION', 'label': L('federation_suspend'), 'explanation': L('federation_suspend_explain'), 'selected': type=='SUSPENSION'}
 	]) }}
 	{{ form.textInput('publicComment', L('federation_restriction_public_comment'), publicComment, {'explanation': L('federation_restriction_public_comment_explain'), 'required': true}) }}

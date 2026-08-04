@@ -1,0 +1,36 @@
+{# @pebvariable name="items" type="smithereen.model.FederationRestriction[]" #}
+{% extends "page" %}
+{% block content %}
+{% include "admin_access_tabbar" with {'tab': 'federationRules'} %}
+{% if isMobile %}
+<a href="/settings/admin/federationRules/create" class="fab iconAdd" title="{{ L('admin_create_rule') }}" data-ajax-box></a>
+{% else %}
+<div class="summaryWrap">
+	<div class="summary">
+		{{ L('summary_X_federation_rules', {'count': items | length}) }}
+		<span class="auxText">| <a href="/settings/admin/federationRules/create" data-ajax-box>{{ L('admin_create_rule') }}</a></span>
+	</div>
+</div>
+{% endif %}
+<div class="singleColumn">
+{% for restriction in items %}
+	<div class="listItemWithDivider">
+		<div><b>{{ restriction.domain }}</b></div>
+		<div class="marginBefore">
+		{% if restriction.type=='SUSPENSION' %}
+			{{ L('server_state_suspended') -}}
+		{% endif %},
+		<a href="{{ profileURL(restriction.moderatorId) }}">{{ users[restriction.moderatorId] | name }}</a>
+		{{ LD(restriction.createdAt) }}
+		{% if restriction.privateComment is not empty %}
+		<blockquote>{{ restriction.privateComment }}</blockquote>
+		{% endif %}
+		</div>
+		<div class="marginBefore">
+			<a href="/settings/admin/federationRules/{{ restriction.domain }}/edit" data-ajax-box>{{ L('edit') }}</a> |
+			<a href="/settings/admin/federationRules/{{ restriction.domain }}/confirmDelete" data-confirm-title="{{ L('admin_federation_delete_rule') }}" data-confirm-message="{{ L('admin_federation_delete_rule_confirm', {'domain': restriction.domain}) | forceEscape }}" data-confirm-action="/settings/admin/federationRules/{{ restriction.domain }}/delete">{{ L('delete') }}</a>
+		</div>
+	</div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -24,6 +24,7 @@ import smithereen.api.model.ApiUser;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.libvips.VipsImage;
+import smithereen.model.FederationRestriction;
 import smithereen.model.ObfuscatedObjectIDType;
 import smithereen.model.PaginatedList;
 import smithereen.model.Post;
@@ -72,8 +73,10 @@ public class ServerMethods{
 	}
 	
 	public static Object getRestrictedServers(ApplicationContext ctx, ApiCallContext actx){
-		PaginatedList<Server> servers=ctx.getModerationController().getAllServers(actx.getOffset(), actx.getCount(Integer.MAX_VALUE, Integer.MAX_VALUE), null, true, null);
-		return new ApiPaginatedList<>(servers.total, servers.list.stream().map(s->new RestrictedServer(s.host(), s.restriction().publicComment, "suspension")).toList());
+		List<FederationRestriction> servers=ctx.getModerationController().getAllFederationRestrictions();
+		int offset=Math.min(actx.getOffset(), servers.size());
+		int count=actx.getCount(servers.size()-offset, servers.size()-offset);
+		return new ApiPaginatedList<>(servers.size(), servers.subList(offset, offset+count).stream().map(s->new RestrictedServer(s.domain, s.publicComment, "suspension")).toList());
 	}
 
 	public static Object report(ApplicationContext ctx, ApiCallContext actx){

@@ -49,7 +49,7 @@ public class FederationStorage{
 				.executeNoResult();
 	}
 
-	public static PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean restrictedOnly, String query) throws SQLException{
+	public static PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, String query) throws SQLException{
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String where="";
 			Object[] whereArgs={};
@@ -59,11 +59,6 @@ public class FederationStorage{
 					case DOWN -> "is_up=0";
 					case FAILING -> "error_day_count>0";
 				};
-			}
-			if(restrictedOnly){
-				if(!where.isEmpty())
-					where+=" AND ";
-				where+="is_restricted=1";
 			}
 			if(StringUtils.isNotEmpty(query)){
 				if(!where.isEmpty())

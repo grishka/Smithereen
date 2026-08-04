@@ -454,9 +454,16 @@ public class SmithereenApplication{
 				path("/federation", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationServerList);
 					getRequiringPermission("/:domain", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationServerDetails);
-					getRequiringPermission("/:domain/restrictionForm", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationServerRestrictionForm);
-					postRequiringPermissionWithCSRF("/:domain/restrict", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRestrictServer);
 					getRequiringPermissionWithCSRF("/:domain/resetAvailability", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationResetServerAvailability);
+				});
+				path("/federationRules", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRules);
+					getRequiringPermission("/create", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleCreateForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleCreate);
+					getRequiringPermission("/:domain/confirmDelete", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleConfirmDelete);
+					postRequiringPermissionWithCSRF("/:domain/delete", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleDelete);
+					getRequiringPermission("/:domain/edit", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleEditForm);
+					postRequiringPermissionWithCSRF("/:domain/edit", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleEdit);
 				});
 				path("/roles", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_ROLES, AdminRolesRoutes::roles);
@@ -1280,6 +1287,7 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(()->context.getMailController().removeExpiredGuids(), 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(ApiUtils::doCleanupTasks, 10, TimeUnit.MINUTES);
 		context.getUsersController().loadPresenceFromDatabase();
+		context.getModerationController().reloadFederationRestrictions();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			context.getFriendsController().doPendingHintsUpdates();
