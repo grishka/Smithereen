@@ -67,8 +67,6 @@
   "server_state_not_restricted": "Нет ограничений",
   "server_state_suspended": "Заблокирован",
   "server_state_suspended_subdomain": "Заблокирован (поддомен <b>{blockedDomain}</b>)",
-  "server_filter_all": "Все",
-  "server_filter_restricted": "С ограничениями",
   "server_filter_any_availability": "Любая доступность",
   "server_filter_failing": "Проблемные",
   "server_filter_unavailable": "Недоступные",

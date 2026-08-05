@@ -67,8 +67,6 @@
   "server_state_not_restricted": "Not restricted",
   "server_state_suspended": "Suspended",
   "server_state_suspended_subdomain": "Suspended (subdomain of <b>{blockedDomain}</b>)",
-  "server_filter_all": "All",
-  "server_filter_restricted": "Restricted",
   "server_filter_any_availability": "Any availability",
   "server_filter_failing": "Failing",
   "server_filter_unavailable": "Unavailable",
