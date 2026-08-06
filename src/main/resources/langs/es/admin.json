@@ -64,8 +64,6 @@
   "summary_X_servers_found": "{count, plural, one {# servidor} other {# servidores}} encontrado/s",
   "server_state_not_restricted": "Sin restricción",
   "server_state_suspended": "Suspendido",
-  "server_filter_all": "Todo",
-  "server_filter_restricted": "Restringido",
   "server_filter_any_availability": "Cualquier disponibilidad",
   "server_filter_failing": "Fallando",
   "server_filter_unavailable": "No disponible",
