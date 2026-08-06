@@ -4690,6 +4690,9 @@ label.largeAccented{
 		max-height: min(1000px, 100vh);
 		margin: auto;
 	}
+	code{
+		line-height: 140%;
+	}
 }
 
 .postLayer .wallPostForm.editing{
