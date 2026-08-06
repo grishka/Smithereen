@@ -64,8 +64,6 @@
   "summary_X_servers_found": "{count, plural, one {Знойдзены # сервер} few {Знойдзена # сервера} other {Знойдзена # сервераў}}",
   "server_state_not_restricted": "Няма абмежаванняў",
   "server_state_suspended": "Заблакаваны",
-  "server_filter_all": "Ўсе",
-  "server_filter_restricted": "З абмежаваннямі",
   "server_filter_any_availability": "Любая даступнасць",
   "server_filter_failing": "Праблемныя",
   "server_filter_unavailable": "Недаступныя",
