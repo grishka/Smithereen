@@ -659,7 +659,7 @@ public class ModerationController{
 		return List.copyOf(allFederationRestrictions);
 	}
 
-	public void createFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment){
+	public void createFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment, boolean obfuscate){
 		try{
 			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
 			synchronized(federationRestrictions){
@@ -686,7 +686,11 @@ public class ModerationController{
 					return false;
 				});
 
-				ModerationStorage.createFederationRestriction(domain, self.id, publicComment, privateComment, type);
+				int flags=0;
+				if(obfuscate)
+					flags|=FederationRestriction.FLAG_DOMAIN_OBFUSCATED;
+
+				ModerationStorage.createFederationRestriction(domain, self.id, publicComment, privateComment, type, flags);
 				FederationRestriction restriction=new FederationRestriction();
 				restriction.createdAt=Instant.now();
 				restriction.domain=domain;
@@ -694,6 +698,7 @@ public class ModerationController{
 				restriction.type=type;
 				restriction.publicComment=publicComment;
 				restriction.privateComment=privateComment;
+				restriction.flags=flags;
 				allFederationRestrictions.add(restriction);
 				allFederationRestrictions.sort(Comparator.comparing(fr->fr.domain));
 				federationRestrictions.insert(domain, restriction);
@@ -704,17 +709,23 @@ public class ModerationController{
 		}
 	}
 
-	public void updateFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment){
+	public void updateFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment, boolean obfuscate){
 		try{
 			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
 			synchronized(federationRestrictions){
 				FederationRestriction fr=federationRestrictions.find(domain);
 				if(fr==null || !fr.domain.equals(domain))
 					throw new ObjectNotFoundException();
-				ModerationStorage.updateFederationRestriction(domain, publicComment, privateComment, type);
+
+				int flags=0;
+				if(obfuscate)
+					flags|=FederationRestriction.FLAG_DOMAIN_OBFUSCATED;
+
+				ModerationStorage.updateFederationRestriction(domain, publicComment, privateComment, type, flags);
 				fr.publicComment=publicComment;
 				fr.privateComment=privateComment;
 				fr.type=type;
+				fr.flags=flags;
 			}
 			// TODO audit log
 		}catch(SQLException x){

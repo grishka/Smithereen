@@ -10,4 +10,5 @@
 	]) }}
 	{{ form.textInput('publicComment', L('federation_restriction_public_comment'), publicComment, {'explanation': L('federation_restriction_public_comment_explain'), 'required': true}) }}
 	{{ form.textInput('privateComment', L('federation_restriction_private_comment'), privateComment, {'explanation': L('federation_restriction_private_comment_explain')}) }}
+	{{ form.checkBox('obfuscate', '', L('admin_federation_restriction_obfuscate'), obfuscate, {'explanation': L('admin_federation_restriction_obfuscate_explain')}) }}
 {{ form.end() }}

@@ -423,5 +423,7 @@
   "server_restrictions_suspended_higher_level_domain": "A higher-level domain rule for <b>{domain}</b> applies to this server.",
   "admin_federation_restrict_server": "Restrict this server...",
   "admin_federation_edit_rule": "Edit restriction",
-  "admin_federation_delete_server_rule": "Remove restriction"
+  "admin_federation_delete_server_rule": "Remove restriction",
+  "admin_federation_restriction_obfuscate": "Mask the domain",
+  "admin_federation_restriction_obfuscate_explain": "Replace some characters with asterisks on the \"About this server\" page."
 }

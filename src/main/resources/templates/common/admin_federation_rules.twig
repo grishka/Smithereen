@@ -31,6 +31,8 @@
 			<a href="/settings/admin/federationRules/{{ restriction.domain }}/confirmDelete" data-confirm-title="{{ L('admin_federation_delete_rule') }}" data-confirm-message="{{ L('admin_federation_delete_rule_confirm', {'domain': restriction.domain}) | forceEscape }}" data-confirm-action="/settings/admin/federationRules/{{ restriction.domain }}/delete">{{ L('delete') }}</a>
 		</div>
 	</div>
+{% else %}
+<div class="emptyState">{{ L('admin_federation_rules_empty') }}</div>
 {% endfor %}
 </div>
 {% endblock %}

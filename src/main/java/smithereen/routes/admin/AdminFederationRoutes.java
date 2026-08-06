@@ -84,70 +84,6 @@ public class AdminFederationRoutes{
 		return model;
 	}
 
-	public static Object federationServerRestrictionForm(Request req, Response resp, Account self, ApplicationContext ctx){
-		String domain=req.params(":domain");
-		if(StringUtils.isEmpty(domain))
-			throw new ObjectNotFoundException();
-		FederationRestriction restriction=null;
-
-		Object form=wrapForm(req, resp, "admin_federation_restriction_form", "/settings/admin/federation/"+domain+"/restrict",
-				lang(req).get("federation_restriction_title"), "save", "federationRestriction", List.of("type", "privateComment", "publicComment"), k->switch(k){
-					case "type" -> (restriction!=null ? restriction.type : "none").toString();
-					case "privateComment" -> restriction!=null ? restriction.privateComment : null;
-					case "publicComment" -> restriction!=null ? restriction.publicComment : null;
-					default -> throw new IllegalArgumentException();
-				}, null);
-		if(form instanceof WebDeltaResponse wdr){
-			wdr.runScript("""
-					function federationServerRestrictionForm_updateFieldVisibility(){
-						var publicComment=ge("formRow_publicComment");
-						var privateComment=ge("formRow_privateComment");
-						var publicCommentField=ge("publicComment");
-						if(ge("type0").checked){
-							publicComment.hide();
-							privateComment.hide();
-							publicCommentField.required=false;
-						}else{
-							publicComment.show();
-							privateComment.show();
-							publicCommentField.required=true;
-						}
-					}
-					ge("type0").addEventListener("change", function(){federationServerRestrictionForm_updateFieldVisibility();}, false);
-					ge("type1").addEventListener("change", function(){federationServerRestrictionForm_updateFieldVisibility();}, false);
-					federationServerRestrictionForm_updateFieldVisibility();""");
-		}
-		return form;
-	}
-
-	/*public static Object federationRestrictServer(Request req, Response resp, Account self, ApplicationContext ctx){
-		String domain=req.params(":domain");
-		if(StringUtils.isEmpty(domain))
-			throw new ObjectNotFoundException();
-		Server server=ctx.getModerationController().getServerByDomain(domain);
-		requireQueryParams(req, "type");
-
-		FederationRestriction.RestrictionType type=enumValueOpt(req.queryParams("type"), FederationRestriction.RestrictionType.class);
-		if(type!=null){
-			requireQueryParams(req, "publicComment");
-			FederationRestriction r=new FederationRestriction();
-			r.type=type;
-			r.createdAt=Instant.now();
-			r.moderatorId=self.user.id;
-			r.publicComment=req.queryParams("publicComment");
-			r.privateComment=req.queryParamOrDefault("privateComment", "");
-			ctx.getModerationController().setServerRestriction(server, r);
-		}else{
-			ctx.getModerationController().setServerRestriction(server, null);
-		}
-
-		if(isAjax(req)){
-			return new WebDeltaResponse(resp).refresh();
-		}
-		resp.redirect(back(req));
-		return "";
-	}*/
-
 	public static Object federationResetServerAvailability(Request req, Response resp, Account self, ApplicationContext ctx){
 		String domain=req.params(":domain");
 		if(StringUtils.isEmpty(domain))
@@ -184,8 +120,9 @@ public class AdminFederationRoutes{
 		String publicComment=req.queryParams("publicComment").strip();
 		String privateComment=req.queryParams("privateComment");
 		FederationRestriction.RestrictionType type=enumValue(req.queryParams("type"), FederationRestriction.RestrictionType.class);
+		boolean obfuscate="on".equals(req.queryParams("obfuscate"));
 		try{
-			ctx.getModerationController().createFederationRestriction(self.user, domain, type, publicComment, privateComment);
+			ctx.getModerationController().createFederationRestriction(self.user, domain, type, publicComment, privateComment, obfuscate);
 		}catch(UserErrorException x){
 			if(isAjax(req)){
 				return new WebDeltaResponse(resp)
@@ -227,7 +164,8 @@ public class AdminFederationRoutes{
 				.with("editing", true)
 				.with("domain", restriction.domain)
 				.with("publicComment", restriction.publicComment)
-				.with("privateComment", restriction.privateComment);
+				.with("privateComment", restriction.privateComment)
+				.with("obfuscate", restriction.isDomainObfuscated());
 		return wrapForm(req, resp, "admin_federation_restriction_form", "/settings/admin/federationRules/"+restriction.domain+"/edit", lang(req).get("federation_restriction_title"),
 				"save", model);
 	}
@@ -238,9 +176,10 @@ public class AdminFederationRoutes{
 
 		String publicComment=req.queryParams("publicComment").strip();
 		String privateComment=req.queryParams("privateComment");
+		boolean obfuscate="on".equals(req.queryParams("obfuscate"));
 		FederationRestriction.RestrictionType type=enumValue(req.queryParams("type"), FederationRestriction.RestrictionType.class);
 		try{
-			ctx.getModerationController().updateFederationRestriction(self.user, domain, type, publicComment, privateComment);
+			ctx.getModerationController().updateFederationRestriction(self.user, domain, type, publicComment, privateComment, obfuscate);
 		}catch(UserErrorException x){
 			if(isAjax(req)){
 				return new WebDeltaResponse(resp)

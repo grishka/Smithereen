@@ -729,7 +729,7 @@ public class ModerationStorage{
 				.toList();
 	}
 
-	public static void createFederationRestriction(String domain, int moderatorID, String publicComment, String privateComment, FederationRestriction.RestrictionType type) throws SQLException{
+	public static void createFederationRestriction(String domain, int moderatorID, String publicComment, String privateComment, FederationRestriction.RestrictionType type, int flags) throws SQLException{
 		new SQLQueryBuilder()
 				.insertInto("blocks_domain")
 				.value("domain", domain)
@@ -737,16 +737,18 @@ public class ModerationStorage{
 				.value("public_comment", publicComment)
 				.value("private_comment", privateComment)
 				.value("restriction_type", type)
+				.value("flags", flags)
 				.executeNoResult();
 	}
 
-	public static void updateFederationRestriction(String domain, String publicComment, String privateComment, FederationRestriction.RestrictionType type) throws SQLException{
+	public static void updateFederationRestriction(String domain, String publicComment, String privateComment, FederationRestriction.RestrictionType type, int flags) throws SQLException{
 		new SQLQueryBuilder()
 				.update("blocks_domain")
 				.value("public_comment", publicComment)
 				.value("private_comment", privateComment)
 				.value("restriction_type", type)
 				.where("domain=?", domain)
+				.value("flags", flags)
 				.executeNoResult();
 	}
 

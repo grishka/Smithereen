@@ -76,7 +76,7 @@ public class ServerMethods{
 		List<FederationRestriction> servers=ctx.getModerationController().getAllFederationRestrictions();
 		int offset=Math.min(actx.getOffset(), servers.size());
 		int count=actx.getCount(servers.size()-offset, servers.size()-offset);
-		return new ApiPaginatedList<>(servers.size(), servers.subList(offset, offset+count).stream().map(s->new RestrictedServer(s.domain, s.publicComment, "suspension")).toList());
+		return new ApiPaginatedList<>(servers.size(), servers.subList(offset, offset+count).stream().map(s->new RestrictedServer(s.getDisplayDomain(), s.publicComment, "suspension")).toList());
 	}
 
 	public static Object report(ApplicationContext ctx, ApiCallContext actx){

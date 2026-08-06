@@ -3,10 +3,13 @@ package smithereen.model;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Arrays;
 
 import smithereen.storage.DatabaseUtils;
 
 public class FederationRestriction{
+	public static final int FLAG_DOMAIN_OBFUSCATED=1;
+
 	public String domain;
 	public RestrictionType type;
 	public String publicComment, privateComment;
@@ -27,7 +30,21 @@ public class FederationRestriction{
 	}
 
 	public String getDisplayDomain(){
+		if(isDomainObfuscated()){
+			// https://github.com/mastodon/mastodon/blob/b625f21ceab87556c990344d586a231b6c4559e3/app/models/domain_block.rb#L87
+			int visibleRatio=domain.length()/4;
+			char[] chars=domain.toCharArray();
+			for(int i=visibleRatio;i<chars.length-visibleRatio;i++){
+				if(chars[i]!='.')
+					chars[i]='*';
+			}
+			return new String(chars);
+		}
 		return domain;
+	}
+
+	public boolean isDomainObfuscated(){
+		return (flags & FLAG_DOMAIN_OBFUSCATED)!=0;
 	}
 
 	public enum RestrictionType{
