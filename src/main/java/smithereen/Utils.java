@@ -592,6 +592,19 @@ public class Utils{
 		}
 	}
 
+	public static URI normalizeURI(String in){
+		if(!isURL(in))
+			return null;
+		String normalized=normalizeURLDomain(in);
+		URI uri;
+		try{
+			uri=new URI(normalized);
+		}catch(URISyntaxException e){
+			return null;
+		}
+		return uri;
+	}
+
 	public static boolean isUsernameAndDomain(String in){
 		if(in==null)
 			return false;
