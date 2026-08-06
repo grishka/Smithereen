@@ -39,8 +39,7 @@ public class TruncateTextFilter implements Filter{
 			String elText;
 			if(el instanceof Element e){
 				elText=e.text();
-				if("br".equals(e.tagName()))
-					totalLen+=50;
+				totalLen+=e.select("br").size()*50;
 			}else if(el instanceof TextNode){
 				elText=((TextNode) el).text();
 			}else{
@@ -86,7 +85,7 @@ public class TruncateTextFilter implements Filter{
 				truncated.body().appendChild(el.clone());
 			}
 		}
-		if(truncated.text().equals(full))
+		if(truncated.body().equals(doc.body()))
 			return new SafeString(input);
 
 		String randomID=Utils.randomAlphanumericString(15);
