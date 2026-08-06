@@ -64,8 +64,6 @@
   "summary_X_servers_found": "{count, plural, one {# server} other {# servers}} gevonden",
   "server_state_not_restricted": "Niet beperkt",
   "server_state_suspended": "Opgeschort",
-  "server_filter_all": "Alle",
-  "server_filter_restricted": "Beperkt",
   "server_filter_any_availability": "Eventuele beschikbaarheid",
   "server_filter_failing": "Bij gebreke",
   "server_filter_unavailable": "Niet beschikbaar",
