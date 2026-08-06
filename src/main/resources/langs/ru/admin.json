@@ -67,8 +67,6 @@
   "server_state_not_restricted": "Нет ограничений",
   "server_state_suspended": "Заблокирован",
   "server_state_suspended_subdomain": "Заблокирован (поддомен <b>{blockedDomain}</b>)",
-  "server_filter_all": "Все",
-  "server_filter_restricted": "С ограничениями",
   "server_filter_any_availability": "Любая доступность",
   "server_filter_failing": "Проблемные",
   "server_filter_unavailable": "Недоступные",
@@ -425,5 +423,7 @@
   "server_restrictions_suspended_higher_level_domain": "К этому серверу применяется правило для домена более высокого уровня <b>{domain}</b>.",
   "admin_federation_restrict_server": "Ограничить этот сервер...",
   "admin_federation_edit_rule": "Редактировать ограничение",
-  "admin_federation_delete_server_rule": "Снять ограничение"
+  "admin_federation_delete_server_rule": "Снять ограничение",
+  "admin_federation_restriction_obfuscate": "Маскировать домен",
+  "admin_federation_restriction_obfuscate_explain": "Закрыть часть символов звёздочками на странице \"О сервере\"."
 }
