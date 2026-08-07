@@ -93,41 +93,99 @@ public class SearchStorage{
 		return '+'+String.join(" +", words);
 	}
 
-	public static List<SearchResult> search(String query, int selfID, int maxCount) throws SQLException{
-		query=prepareNameQuery(query);
+	private static PaginatedList<Integer> searchUsersWithShortQuery(String query, int selfID, int count) throws SQLException{
+		query=query.replace("%", "").strip();
+		if(query.isEmpty())
+			return PaginatedList.emptyList(count);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
-			ArrayList<SearchResult> results=new ArrayList<>();
-			HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("users")
+					.count()
+					.where("username LIKE ?", query+"%")
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			ArrayList<Integer> results=new ArrayList<>();
+			new SQLQueryBuilder(conn)
+					.selectFrom("followings")
+					.columns("followee_id")
+					.join("LEFT JOIN users ON followings.followee_id=users.id")
+					.where("username LIKE ? AND follower_id=?", query+"%", selfID)
+					.orderBy("hints_rank DESC")
+					.limit(count, 0)
+					.executeAndGetIntStream()
+					.boxed()
+					.forEach(results::add);
 
-			PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT qsearch_index.user_id, qsearch_index.group_id FROM qsearch_index " +
-					"LEFT JOIN followings ON followings.followee_id=qsearch_index.user_id " +
-					"LEFT JOIN group_memberships ON group_memberships.group_id=qsearch_index.group_id " +
-					"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND (followings.follower_id=? OR group_memberships.user_id=?) " +
-					"ORDER BY IFNULL(followings.hints_rank, group_memberships.hints_rank) DESC LIMIT ?", query, selfID, selfID, maxCount);
-			try(ResultSet res=stmt.executeQuery()){
-				addResults(res, results, needUsers, needGroups);
-			}
-			if(results.size()<maxCount){
-				stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id, group_id FROM qsearch_index WHERE MATCH(string) AGAINST (? IN BOOLEAN MODE) LIMIT ?", query, maxCount-results.size());
-				try(ResultSet res=stmt.executeQuery()){
-					addResults(res, results, needUsers, needGroups);
-				}
+			if(results.size()<count){
+				new SQLQueryBuilder(conn)
+						.selectFrom("users")
+						.columns("id")
+						.whereNotIn("id", results)
+						.andWhere("username LIKE ?", query+"%")
+						.orderBy("LENGTH(username) ASC, username ASC")
+						.limit(count-results.size(), 0)
+						.executeAndGetIntStream()
+						.boxed()
+						.forEach(results::add);
 			}
 
-			Map<Integer, User> users=UserStorage.getById(needUsers, false);
-			Map<Integer, Group> groups=GroupStorage.getById(needGroups);
-			for(SearchResult sr: results){
-				switch(sr.type){
-					case USER -> sr.user=users.get(sr.id);
-					case GROUP -> sr.group=groups.get(sr.id);
-				}
-			}
-
-			return results;
+			return new PaginatedList<>(results, total, 0, count);
 		}
 	}
 
+	public static List<SearchResult> search(String query, int selfID, int maxCount) throws SQLException{
+		HashSet<Integer> needUsers=new HashSet<>(), needGroups=new HashSet<>();
+		ArrayList<SearchResult> results=new ArrayList<>();
+
+		query=query.strip();
+		if(query.isEmpty())
+			return List.of();
+		if(query.length()<3){
+			for(int uid:searchUsersWithShortQuery(query, selfID, maxCount).list){
+				results.add(new SearchResult(SearchResult.Type.USER, uid));
+				needUsers.add(uid);
+			}
+		}else{
+			query=prepareNameQuery(query);
+			try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+
+				PreparedStatement stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT qsearch_index.user_id, qsearch_index.group_id FROM qsearch_index "+
+						"LEFT JOIN followings ON followings.followee_id=qsearch_index.user_id "+
+						"LEFT JOIN group_memberships ON group_memberships.group_id=qsearch_index.group_id "+
+						"WHERE (MATCH(string) AGAINST (? IN BOOLEAN MODE)) AND (followings.follower_id=? OR group_memberships.user_id=?) "+
+						"ORDER BY IFNULL(followings.hints_rank, group_memberships.hints_rank) DESC LIMIT ?", query, selfID, selfID, maxCount);
+				try(ResultSet res=stmt.executeQuery()){
+					addResults(res, results, needUsers, needGroups);
+				}
+				if(results.size()<maxCount){
+					stmt=SQLQueryBuilder.prepareStatement(conn, "SELECT user_id, group_id FROM qsearch_index WHERE MATCH(string) AGAINST (? IN BOOLEAN MODE) LIMIT ?", query, maxCount-results.size());
+					try(ResultSet res=stmt.executeQuery()){
+						addResults(res, results, needUsers, needGroups);
+					}
+				}
+			}
+		}
+
+		Map<Integer, User> users=UserStorage.getById(needUsers, false);
+		Map<Integer, Group> groups=GroupStorage.getById(needGroups);
+		for(SearchResult sr: results){
+			switch(sr.type){
+				case USER -> sr.user=users.get(sr.id);
+				case GROUP -> sr.group=groups.get(sr.id);
+			}
+		}
+
+		return results;
+	}
+
 	public static PaginatedList<Integer> searchUsers(String query, int selfID, int count) throws SQLException{
+		query=query.strip();
+		if(query.isEmpty())
+			return PaginatedList.emptyList(count);
+		if(query.length()<3){
+			return searchUsersWithShortQuery(query, selfID, count);
+		}
 		query=prepareNameQuery(query);
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			int total=DatabaseUtils.oneFieldToInt(SQLQueryBuilder.prepareStatement(conn,

@@ -146,6 +146,8 @@ public class SQLQueryBuilder{
 	}
 
 	private void whereIn(boolean negate, String column, Object... args){
+		if(args.length==0)
+			return;
 		StringBuilder sb=new StringBuilder();
 		sb.append('`');
 		sb.append(column);
