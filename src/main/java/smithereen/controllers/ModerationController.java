@@ -546,6 +546,7 @@ public class ModerationController{
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
+		federationRestrictions.clear();
 		for(FederationRestriction fr:allFederationRestrictions){
 			federationRestrictions.insert(fr.domain, fr);
 		}
@@ -660,6 +661,7 @@ public class ModerationController{
 	}
 
 	public void createFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment, boolean obfuscate){
+		int flags=0;
 		try{
 			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
 			synchronized(federationRestrictions){
@@ -686,7 +688,6 @@ public class ModerationController{
 					return false;
 				});
 
-				int flags=0;
 				if(obfuscate)
 					flags|=FederationRestriction.FLAG_DOMAIN_OBFUSCATED;
 
@@ -703,7 +704,13 @@ public class ModerationController{
 				allFederationRestrictions.sort(Comparator.comparing(fr->fr.domain));
 				federationRestrictions.insert(domain, restriction);
 			}
-			// TODO audit log
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CREATE_FEDERATION_RULE, 0, 0, null,
+					Map.of("domain", domain,
+							"publicComment", publicComment,
+							"privateComment", privateComment,
+							"flags", flags,
+							"type", type.ordinal())
+			);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -711,7 +718,9 @@ public class ModerationController{
 
 	public void updateFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment, boolean obfuscate){
 		try{
+			HashMap<String, Object> auditLogParams=new HashMap<>();
 			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
+			auditLogParams.put("domain", domain);
 			synchronized(federationRestrictions){
 				FederationRestriction fr=federationRestrictions.find(domain);
 				if(fr==null || !fr.domain.equals(domain))
@@ -721,13 +730,37 @@ public class ModerationController{
 				if(obfuscate)
 					flags|=FederationRestriction.FLAG_DOMAIN_OBFUSCATED;
 
+				boolean anythingChanged=false;
+				if(!publicComment.equals(fr.publicComment)){
+					anythingChanged=true;
+					auditLogParams.put("oldPublicComment", fr.publicComment);
+					auditLogParams.put("newPublicComment", publicComment);
+				}
+				if(!privateComment.equals(fr.privateComment)){
+					anythingChanged=true;
+					auditLogParams.put("oldPrivateComment", fr.privateComment);
+					auditLogParams.put("newPrivateComment", privateComment);
+				}
+				if(flags!=fr.flags){
+					anythingChanged=true;
+					auditLogParams.put("oldFlags", fr.flags);
+					auditLogParams.put("newFlags", flags);
+				}
+				if(type!=fr.type){
+					anythingChanged=true;
+					auditLogParams.put("oldType", fr.type.ordinal());
+					auditLogParams.put("newType", type.ordinal());
+				}
+				if(!anythingChanged)
+					return;
+
 				ModerationStorage.updateFederationRestriction(domain, publicComment, privateComment, type, flags);
 				fr.publicComment=publicComment;
 				fr.privateComment=privateComment;
 				fr.type=type;
 				fr.flags=flags;
 			}
-			// TODO audit log
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.UPDATE_FEDERATION_RULE, 0, 0, null, auditLogParams);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -736,15 +769,22 @@ public class ModerationController{
 	public void deleteFederationRestriction(User self, String domain){
 		try{
 			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
+			FederationRestriction fr;
 			synchronized(federationRestrictions){
-				FederationRestriction fr=federationRestrictions.find(domain);
+				fr=federationRestrictions.find(domain);
 				if(fr==null || !fr.domain.equals(domain))
 					throw new ObjectNotFoundException();
 				ModerationStorage.deleteFederationRestriction(domain);
 				federationRestrictions.delete(domain);
 				allFederationRestrictions.remove(fr);
 			}
-			// TODO audit log
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.DELETE_FEDERATION_RULE, 0, 0, null,
+					Map.of("domain", domain,
+							"publicComment", fr.publicComment,
+							"privateComment", fr.privateComment,
+							"flags", fr.flags,
+							"type", fr.type.ordinal())
+			);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

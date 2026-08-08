@@ -65,6 +65,11 @@ public class PrefixTree<K, V>{
 		return x.children!=null && !x.children.isEmpty() ? x : null;
 	}
 
+	public synchronized void clear(){
+		if(root.children!=null)
+			root.children.clear();
+	}
+
 	@Override
 	public String toString(){
 		return "PrefixTree{"+

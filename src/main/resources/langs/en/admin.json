@@ -425,5 +425,8 @@
   "admin_federation_edit_rule": "Edit restriction",
   "admin_federation_delete_server_rule": "Remove restriction",
   "admin_federation_restriction_obfuscate": "Mask the domain",
-  "admin_federation_restriction_obfuscate_explain": "Replace some characters with asterisks on the \"About this server\" page."
+  "admin_federation_restriction_obfuscate_explain": "Replace some characters with asterisks on the \"About this server\" page.",
+  "admin_audit_log_created_federation_rule": "<a id=\"adminUser\">{name}</a> created federation restriction for <b>{domain}</b>:",
+  "admin_audit_log_updated_federation_rule": "<a id=\"adminUser\">{name}</a> updated federation restriction for <b>{domain}</b>:",
+  "admin_audit_log_deleted_federation_rule": "<a id=\"adminUser\">{name}</a> deleted federation restriction for <b>{domain}</b>:"
 }

@@ -23,6 +23,7 @@ import smithereen.Mailer;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.lang.Lang;
 import smithereen.model.Account;
+import smithereen.model.FederationRestriction;
 import smithereen.model.ForeignGroup;
 import smithereen.model.ForeignUser;
 import smithereen.model.Group;
@@ -371,6 +372,19 @@ public class AdminGeneralRoutes{
 					links.put("targetGroup", Map.of("href", targetGroup!=null ? targetGroup.getProfileURL() : "/club"+(-le.ownerID())));
 					yield l.get("admin_audit_log_changed_group_username", langArgs);
 				}
+
+				case CREATE_FEDERATION_RULE -> {
+					langArgs.put("domain", le.extra().get("domain"));
+					yield l.get("admin_audit_log_created_federation_rule", langArgs);
+				}
+				case UPDATE_FEDERATION_RULE -> {
+					langArgs.put("domain", le.extra().get("domain"));
+					yield l.get("admin_audit_log_updated_federation_rule", langArgs);
+				}
+				case DELETE_FEDERATION_RULE -> {
+					langArgs.put("domain", le.extra().get("domain"));
+					yield l.get("admin_audit_log_deleted_federation_rule", langArgs);
+				}
 			};
 			String extraText=switch(le.action()){
 				case ASSIGN_ROLE, DELETE_ROLE, ACTIVATE_ACCOUNT, RESET_USER_PASSWORD, DELETE_USER, DELETE_GROUP -> null;
@@ -545,6 +559,37 @@ public class AdminGeneralRoutes{
 						statusStr+="<br/>"+l.get("admin_group_ban_message")+": "+TextProcessor.escapeHTML((String)le.extra().get("message"));
 					}
 					yield statusStr;
+				}
+
+				case CREATE_FEDERATION_RULE, DELETE_FEDERATION_RULE -> {
+					ArrayList<String> lines=new ArrayList<>();
+					String publicComment=le.extra().get("publicComment").toString();
+					if(!publicComment.isEmpty())
+						lines.add(l.get("federation_restriction_public_comment")+": "+TextProcessor.escapeHTML(publicComment));
+					String privateComment=le.extra().get("privateComment").toString();
+					if(!privateComment.isEmpty())
+						lines.add(l.get("federation_restriction_private_comment")+": "+TextProcessor.escapeHTML(privateComment));
+					int flags=((Number)le.extra().get("flags")).intValue();
+					lines.add(l.get("admin_federation_restriction_obfuscate")+": "+l.get((flags & FederationRestriction.FLAG_DOMAIN_OBFUSCATED)==0 ? "no" : "yes"));
+					yield "<i>"+String.join("<br/>", lines)+"</i>";
+				}
+				case UPDATE_FEDERATION_RULE -> {
+					ArrayList<String> lines=new ArrayList<>();
+					if(le.extra().containsKey("oldPublicComment")){
+						lines.add(l.get("federation_restriction_public_comment")+": "+TextProcessor.escapeHTML(le.extra().get("oldPublicComment").toString())
+								+" &rarr; "+TextProcessor.escapeHTML(le.extra().get("newPublicComment").toString()));
+					}
+					if(le.extra().containsKey("oldPrivateComment")){
+						lines.add(l.get("federation_restriction_private_comment")+": "+TextProcessor.escapeHTML(le.extra().get("oldPrivateComment").toString())
+								+" &rarr; "+TextProcessor.escapeHTML(le.extra().get("newPrivateComment").toString()));
+					}
+					if(le.extra().containsKey("oldFlags")){
+						int oldFlags=((Number)le.extra().get("oldFlags")).intValue();
+						int newFlags=((Number)le.extra().get("newFlags")).intValue();
+						lines.add(l.get("admin_federation_restriction_obfuscate")+": "+l.get((oldFlags & FederationRestriction.FLAG_DOMAIN_OBFUSCATED)==0 ? "no" : "yes")
+								+" &rarr; "+l.get((newFlags & FederationRestriction.FLAG_DOMAIN_OBFUSCATED)==0 ? "no" : "yes"));
+					}
+					yield "<i>"+String.join("<br/>", lines)+"</i>";
 				}
 			};
 			return new AuditLogEntryViewModel(le, TextProcessor.substituteLinks(mainText, links), extraText);
