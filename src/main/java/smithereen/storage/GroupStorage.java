@@ -255,7 +255,7 @@ public class GroupStorage{
 							new SQLQueryBuilder(conn)
 									.insertInto("group_links")
 									.value("group_id", group.id)
-									.value("url", l.url.toString())
+									.value("url", l.getNormalizedUrl().toString())
 									.value("title", l.title)
 									.value("object_type", l.object==null ? null : l.object.type().id)
 									.value("object_id", l.object==null ? null : l.object.id())
