@@ -20,7 +20,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -103,7 +102,6 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
 import smithereen.util.CaptchaGenerator;
 import smithereen.util.CharacterRange;
-import smithereen.util.CryptoUtils;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
@@ -612,7 +610,7 @@ public class SystemRoutes{
 				try{
 					Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.queryParams("group")));
 					GroupLink gl=ctx.getGroupsController().getLink(group, safeParseLong(req.queryParams("link")));
-					if(gl.isUnresolvedActivityPubObject && gl.url.toString().equals(uri)){
+					if(gl.isUnresolvedActivityPubObject && gl.getNormalizedUrl().toString().equals(uri)){
 						ctx.getGroupsController().setLinkResolved(group, gl, ObjectLinkResolver.getObjectIdFromObject(obj));
 					}
 				}catch(ObjectNotFoundException ignore){}

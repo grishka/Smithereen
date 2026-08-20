@@ -64,6 +64,7 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.text.Whitelist;
+import smithereen.util.UriRenderer;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
@@ -1151,7 +1152,7 @@ public class GroupsRoutes{
 				.with("objectTitle", objectTitle)
 				.with("pageTitle", res.title())
 				.with("image", res.image())
-				.with("domain", url.getHost())
+				.with("domain", UriRenderer.HOST_ONLY.render(url))
 				.with("url", url.toString());
 		Object responseObj=wrapForm(req, resp, "group_add_link_form", "/groups/"+group.id+"/finishAddingLink", l.get("group_add_link_title"), "group_do_add_link", model);
 		if(responseObj instanceof WebDeltaResponse wdr)
@@ -1222,8 +1223,8 @@ public class GroupsRoutes{
 				.with("objectTitle", objectTitle)
 				.with("pageTitle", link.title)
 				.with("image", actor!=null ? actor.getAvatar() : link.getImage())
-				.with("domain", link.url.getHost())
-				.with("url", link.url.toString())
+				.with("domain", link.getHumanReadableHost())
+				.with("url", link.getNormalizedUrl().toString())
 				.with("requireTitle", true);
 		Object responseObj=wrapForm(req, resp, "group_add_link_form", "/groups/"+group.id+"/links/"+id+"/update", l.get("group_edit_link_title"), "save", model);
 		if(responseObj instanceof WebDeltaResponse wdr)
