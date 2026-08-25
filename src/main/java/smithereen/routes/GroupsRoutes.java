@@ -1070,7 +1070,8 @@ public class GroupsRoutes{
 			}else{
 				wdr.show("profileStatusCont")
 						.hide("profileStatusLink")
-						.setContent("profileStatusCont", status);
+						.setContent("profileStatusCont", TextProcessor.escapeHTML(status))
+						.runScript("delete ge('profileStatusCont').customData.tooltip;");
 			}
 			return wdr;
 		}
