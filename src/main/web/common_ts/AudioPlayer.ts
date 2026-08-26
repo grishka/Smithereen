@@ -340,7 +340,7 @@ class AudioPlayer{
 		const artist=t.qs(".artist");
 		const title=t.qs(".title");
 		if(artist.offsetWidth<artist.scrollWidth || title.offsetWidth<title.scrollWidth){
-			t.setAttribute("title", t.innerText);
+			t.setAttribute("title", `${artist.innerText}\xA0— ${title.innerText}`);
 		}else{
 			t.removeAttribute("title");
 		}
