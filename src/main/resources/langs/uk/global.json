@@ -50,6 +50,7 @@
   "search": "Пошук",
   "search_people": "Люди",
   "search_groups": "Групи",
+  "index_welcome": "Ласкаво просимо!",
   "content_type_photo": "Фото",
   "content_type_video": "Відео",
   "content_type_audio": "Аудіофайл",
@@ -60,5 +61,6 @@
   "do_share_post": "Поділитися записом",
   "do_share_comment": "Поділитися коментарем",
   "menu_bookmarks": "Мої Закладки",
-  "menu_photos": "Мої Фото"
+  "menu_photos": "Мої Фотографії",
+  "footer_developer_docs": "Розробникам"
 }
