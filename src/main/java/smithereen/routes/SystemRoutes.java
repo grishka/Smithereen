@@ -1005,7 +1005,7 @@ public class SystemRoutes{
 			nameRanges.clear();
 			usernameRanges.clear();
 			String name=TextProcessor.escapeHTML(u.getFullName());
-			String username=TextProcessor.escapeHTML(u.getFullUsername());
+			String username=TextProcessor.escapeHTML(u.getFullUsernameHumanReadable());
 			for(Pattern ptn:normalizedQueryParts){
 				Matcher m=ptn.matcher(name);
 				matcherLoop:

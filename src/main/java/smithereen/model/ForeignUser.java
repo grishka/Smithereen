@@ -414,6 +414,11 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
+	public String getFullUsernameHumanReadable(){
+		return username+"@"+getHumanReadableDomain();
+	}
+
+	@Override
 	public URI getFollowersURL(){
 		return followers;
 	}

@@ -1,4 +1,6 @@
 {# @pebvariable name="items" type="smithereen.model.admin.ViolationReport[]" #}
+{# @pebvariable name="users" type="java.util.Map<Integer, smithereen.model.User>" #}
+{# @pebvariable name="groups" type="java.util.Map<Integer, smithereen.model.Group>" #}
 {% extends "page" %}
 {% block content %}
 {% if filteredByUser is not null %}
@@ -29,12 +31,12 @@
 			{% set user=users[report.targetID] %}
 			<div class="flL smallMarginRight">{{ user | pictureForAvatar('a') }}</div>
 			<div class="ellipsize accent"><b>{{ user | name('complete') }}</b></div>
-			<div class="grayText ellipsize">@{{ user.fullUsername }}</div>
+			<div class="grayText ellipsize">@{{ user.fullUsernameHumanReadable }}</div>
 			{% elseif report.targetID<0 %}
 			{% set group=groups[-report.targetID] %}
 			<div class="flL smallMarginRight">{{ group | pictureForAvatar('a') }}</div>
 			<div class="ellipsize accent"><b>{{ group.name }}</b></div>
-			<div class="grayText ellipsize">@{{ group.fullUsername }}</div>
+			<div class="grayText ellipsize">@{{ group.fullUsernameHumanReadable }}</div>
 			{% endif %}
 		</div>
 		<div class="ellipsize">
