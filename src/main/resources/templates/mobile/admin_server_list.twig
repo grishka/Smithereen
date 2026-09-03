@@ -1,4 +1,5 @@
 {# @pebvariable name="items" type="smithereen.model.Server[]" #}
+{# @pebvariable name="restriction" type="smithereen.model.FederationRestriction" #}
 {% extends "page" %}
 {% block content %}
 {% include "admin_access_tabbar" with {'tab': 'federation'} %}
@@ -28,7 +29,7 @@
 			{% if server.host==restriction.domain %}
 			<div class="smallMarginBefore">{{ L('server_state_suspended') }}</div>
 			{% else %}
-			<div class="smallMarginBefore">{{ L('server_state_suspended_subdomain', {'blockedDomain': restriction.domain}) }}</div>
+			<div class="smallMarginBefore">{{ L('server_state_suspended_subdomain', {'blockedDomain': restriction.humanReadableDomain}) }}</div>
 			{% endif %}
 			{% endif %}
 		</div>

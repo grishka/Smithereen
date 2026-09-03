@@ -17,7 +17,7 @@
 	{% for rule in rules %}
 	<div class="listItemWithDivider">
 		<div>
-			<b>{{ rule.rule.domain }}</b> &mdash; {{ L(rule.rule.action.langKey) }}
+			<b>{{ rule.rule.humanReadableDomain }}</b> &mdash; {{ L(rule.rule.action.langKey) }}
 		</div>
 		{% if rule.note is not empty %}<div class="smallVMargin">{{ rule.note }}</div>{% endif %}
 		<div class="smallVMargin">

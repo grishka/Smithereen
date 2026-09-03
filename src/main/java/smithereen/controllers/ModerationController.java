@@ -668,9 +668,9 @@ public class ModerationController{
 				FederationRestriction existingRestriction=federationRestrictions.find(domain);
 				if(existingRestriction!=null){
 					if(existingRestriction.domain.equals(domain))
-						throw new UserErrorException("err_federation_restriction_already_exists", Map.of("domain", existingRestriction.domain));
+						throw new UserErrorException("err_federation_restriction_already_exists", Map.of("domain", existingRestriction.getHumanReadableDomain()));
 					else
-						throw new UserErrorException("err_federation_restriction_already_exists_subdomain", Map.of("domain", existingRestriction.domain));
+						throw new UserErrorException("err_federation_restriction_already_exists_subdomain", Map.of("domain", existingRestriction.getHumanReadableDomain()));
 				}
 
 				// When a rule for an upper-level domain is added, find and delete all existing subdomain rules since it supersedes them anyway
