@@ -7,23 +7,20 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.annotations.SerializedName;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.net.URI;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.spec.EdECPoint;
-import java.security.spec.EdECPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.NamedParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -37,21 +34,22 @@ import java.util.Objects;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.SerializerContext;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FederationException;
+import smithereen.jsonld.JLD;
 import smithereen.model.ActorStatus;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.SizedImage;
-import smithereen.exceptions.BadRequestException;
-import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
 import smithereen.text.TextProcessor;
 import smithereen.util.Base58;
 import smithereen.util.CryptoUtils;
 import smithereen.util.MulticodecIDs;
 import smithereen.util.MultiformatsVarInt;
+import smithereen.util.UriRenderer;
 import spark.utils.StringUtils;
 
 public abstract class Actor extends ActivityPubObject{
@@ -60,7 +58,14 @@ public abstract class Actor extends ActivityPubObject{
 	public String username;
 	transient public List<SigningKey> publicKeys=List.of();
 	transient public PrivateKey privateKey;
+
+	/**
+	 * <p>The ASCII-only representation of the actor's domain (<a href="https://en.wikipedia.org/wiki/Punycode">Punycode</a>-encoded if necessary).</p>
+	 * <p><b>Not suitable for displaying in the UI!</b> Use {@link getHumanReadableDomain} for that.</p>
+	 */
+	@Nullable
 	public String domain;
+
 	public URI inbox;
 	public URI outbox;
 	public URI sharedInbox;
@@ -560,6 +565,15 @@ public abstract class Actor extends ActivityPubObject{
 				return sk;
 		}
 		throw new NoSuchElementException("This actor does not have a public key with id "+id);
+	}
+
+	/**
+	 * <p>The representation of the actor's domain suitable for displaying in the UI.</p>
+	 * <p><b>Do not use this in business logic!</b> Use {@link domain} instead.</p>
+	 */
+	@Nullable
+	public String getHumanReadableDomain(){
+		return UriRenderer.renderDomain(domain);
 	}
 
 	public static class EndpointsStorageWrapper{

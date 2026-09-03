@@ -26,7 +26,7 @@
 					<div><a href="{{ req.from.profileURL }}">{{ req.from | name('complete') }}</a></div>
 					{% if req.from.domain is not empty %}
 					<div class="grayText">{{ L('server') }}:</div>
-					<div>{{ req.from.domain }}</div>
+					<div>{{ req.from.humanReadableDomain }}</div>
 					{% endif %}
 					{% if req.message is not empty %}
 					<div class="grayText">{{ L('message') }}:</div>

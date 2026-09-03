@@ -18,7 +18,7 @@
 				<div><a href="{{ friend.profileURL }}"{{ profileRel(friend) }}>{{ friend | name('complete') }}</a></div>
 				{% if friend.domain is not empty %}
 					<div class="grayText">{{ L('server') }}:</div>
-					<div><a href="{{ friend.url }}" target="_blank">{{ friend.domain }}</a></div>
+					<div><a href="{{ friend.url }}" target="_blank">{{ friend.humanReadableDomain }}</a></div>
 				{% endif %}
 				{% if onlines contains friend.id and onlines[friend.id].isOnline %}<div></div><div class="onlineText">{{ L('user_online') }}{% if onlines[friend.id].mobile %}<span class="mobileOnlineIcon"></span>{% endif %}</div>{% endif %}
 				{% if userLists is not null and userLists contains friend.id and userLists[friend.id] is not empty %}

@@ -719,7 +719,7 @@ public class SystemRoutes{
 				subtitle="";
 				boxTitle=l.get("report_title_user");
 				titleText=l.get("report_text_user");
-				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+				otherServerDomain=user instanceof ForeignUser fu ? fu.getHumanReadableDomain() : null;
 			}
 			case "group" -> {
 				int id=safeParseInt(rawID);
@@ -729,7 +729,7 @@ public class SystemRoutes{
 				subtitle="";
 				boxTitle=l.get(group.isEvent() ? "report_title_event" : "report_title_group");
 				titleText=l.get(group.isEvent() ? "report_text_event" : "report_text_group");
-				otherServerDomain=group instanceof ForeignGroup fg ? fg.domain : null;
+				otherServerDomain=group instanceof ForeignGroup fg ? fg.getHumanReadableDomain() : null;
 			}
 			case "message" -> {
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.MAIL_MESSAGE);
@@ -740,7 +740,7 @@ public class SystemRoutes{
 				subtitle=TextProcessor.truncateOnWordBoundary(msg.text, 200);
 				boxTitle=l.get("report_title_message");
 				titleText=l.get("report_text_message");
-				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+				otherServerDomain=user instanceof ForeignUser fu ? fu.getHumanReadableDomain() : null;
 			}
 			case "photo" -> {
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
@@ -755,7 +755,7 @@ public class SystemRoutes{
 				subtitle=photo.description;
 				boxTitle=l.get("report_title_photo");
 				titleText=l.get("report_text_photo");
-				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+				otherServerDomain=user instanceof ForeignUser fu ? fu.getHumanReadableDomain() : null;
 			}
 			case "comment" -> {
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.COMMENT);

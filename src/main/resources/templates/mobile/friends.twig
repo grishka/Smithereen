@@ -1,3 +1,4 @@
+{# @pebvariable name="owner" type="smithereen.model.User" #}
 {%extends "page"%}
 {% block headerTitle %}
 {% if tab=='friends' %}
@@ -101,7 +102,7 @@
 {% set key='remote_following_incomplete' %}
 {% endif %}
 {% if totalItems<realTotal %}
-<div class="bottomSummaryWrap"><div class="bottomSummary">{{ L(key, {'name': owner.firstAndGender, 'gender': owner.gender, 'server': owner.domain}, {'link': {'href': owner.url, 'target': '_blank', 'rel': 'nofollow'} }) }}</div></div>
+<div class="bottomSummaryWrap"><div class="bottomSummary">{{ L(key, {'name': owner.firstAndGender, 'gender': owner.gender, 'server': owner.humanReadableDomain}, {'link': {'href': owner.url, 'target': '_blank', 'rel': 'nofollow'} }) }}</div></div>
 {% endif %}
 {% endif %}
 </div>

@@ -1,4 +1,5 @@
 {# @pebvariable name="user" type="smithereen.model.User" #}
+{# @pebvariable name="movedTo" type="smithereen.model.User" #}
 {%extends "page"%}
 {% macro profileSection(_context, title, editURL, fields) %}
 	{% set isSelf=(_context.currentUser is not null and _context.currentUser.id==_context.user.id) %}
@@ -49,13 +50,13 @@
 	{% if movedTo.domain is empty %}
 	<a href="{{ movedTo.profileURL }}"><b>{{ movedTo | name }}</b></a>
 	{% else %}
-	<a href="{{ movedTo.profileURL }}">{{ L('profile_moved_link', {'domain': movedTo.domain, 'name': movedTo | name}) }}</a>
+	<a href="{{ movedTo.profileURL }}">{{ L('profile_moved_link', {'domain': movedTo.humanReadableDomain, 'name': movedTo | name}) }}</a>
 	{% endif %}
 </div>
 {% elseif user.domain is not null %}
 <div class="card padded">
 	{{L('incomplete_profile')}}<br/>
-	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', {'domain': user.domain})}}</a>
+	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', {'domain': user.humanReadableDomain})}}</a>
 </div>
 {%endif%}
 {% if user.banInfo is not null and currentUser is not null and userPermissions.hasPermission('MANAGE_USERS') %}

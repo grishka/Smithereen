@@ -16,7 +16,7 @@
 				{% if account is not null %}
 				<span data-tooltip="{{ L('admin_account_id_tooltip') }}" style="display: inline-block;">({{ account.id }})</span>
 				{% else %}
-				<span data-tooltip="{{ L('admin_ap_actor_id_tooltip') }}" style="display: inline-block;">({{ user.activityPubID }})</span>
+				<span data-tooltip="{{ L('admin_ap_actor_id_tooltip') }}" style="display: inline-block;">({{ user.humanReadableActivityPubID }})</span>
 				{% endif %}
 			</div>
 			<div class="marginBefore marginAfter">

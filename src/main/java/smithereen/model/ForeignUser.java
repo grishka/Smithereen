@@ -83,7 +83,7 @@ public class ForeignUser extends User implements ForeignActor{
 		sb.append(super.toString());
 		if(domain!=null){
 			sb.append("domain='");
-			sb.append(domain);
+			sb.append(getHumanReadableDomain());
 			sb.append('\'');
 		}
 		if(activityPubID!=null){
