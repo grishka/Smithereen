@@ -166,6 +166,6 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 
 	@Override
 	public String toString(){
-		return getClass().getName()+"["+post.getActivityPubID()+"]";
+		return getClass().getName()+"["+post.getHumanReadableActivityPubURL()+"]";
 	}
 }

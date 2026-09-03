@@ -28,7 +28,7 @@
 			<div class="postInfo">
 				<a href="{{ realPost.internalURL }}" class="postLink">{{ LD(realPost.createdAt) }}</a>
 				{% if not realPost.local %}
-					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a>
 				{% endif %}
 			</div>
 		</div>
@@ -92,7 +92,7 @@
 						 onclick="return showReplyForm('{{realPost.idString}}', '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', 'comment', {{ commentViewType!='FLAT' }}, '{{ commentViewType=='TWO_LEVEL' and replyLevel>0 ? realPost.replyKeyAsStrings[0] : '' }}')">{{ L('add_reply') }}</a>
 				{% endif %}
 				{% if not realPost.local %}
-					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a>
 				{% endif %}
 				{% endif %}
 			</div>

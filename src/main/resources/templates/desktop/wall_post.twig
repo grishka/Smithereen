@@ -30,7 +30,7 @@
 			<div class="postInfo">
 				<a href="{{ realPost.internalURL }}" onclick="return openPostLayer('{{ realPost.id }}')" class="postLink">{{ LD(realPost.createdAt) }}</a>
 				{% if not realPost.local %}
-					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a>
 				{% endif %}
 			</div>
 		</div>
@@ -100,7 +100,7 @@
 					<a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}">{{ L('wall_to_wall') }}</a>
 				{% endif %}
 				{% if not realPost.local %}
-					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a>
 				{% endif %}
 				{% if standalone and currentUser is not null and realPost.ownerID==currentUser.id and realPost.authorID==currentUser.id %}
 					| <a href="{{ realPost.internalURL }}/{{ isPinned ? 'unpin' : 'pin' }}?csrf={{ csrf }}&rid={{ randomID }}" id="postPinButton{{ realPost.id }}_{{ randomID }}" data-ajax data-ajax-hide="postPinButton{{ realPost.id }}_{{ randomID }}" data-ajax-show="postPinLoader{{ realPost.id }}_{{ randomID }}">{{ L(isPinned ? 'wall_unpin_post' : 'wall_pin_post') }}</a><span class="inlineLoader" style="display: none" id="postPinLoader{{ realPost.id }}_{{ randomID }}"></span>

@@ -51,7 +51,7 @@
 	<a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}" class="button tertiary">{{ L('wall_to_wall') }}</a>
 	{% endif %}
 	{% if not realPost.local %}
-	<a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener" class="button tertiary">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+	<a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener" class="button tertiary">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a>
 	{% endif %}
 </div>
 <div class="postLayerCommentsHeader" id="postCommentsSummary{{ post.post.id }}_{{ randomID }}" style="{% if items is empty %}display: none{% endif %}">

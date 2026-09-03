@@ -709,7 +709,7 @@ public class SystemRoutes{
 				subtitle=TextProcessor.truncateOnWordBoundary(post.text, 200);
 				boxTitle=l.get(post.getReplyLevel()>0 ? "report_title_comment" : "report_title_post");
 				titleText=l.get(post.getReplyLevel()>0 ? "report_text_comment" : "report_text_post");
-				otherServerDomain=Config.isLocal(post.getActivityPubID()) ? null : post.getActivityPubID().getHost();
+				otherServerDomain=Config.isLocal(post.getActivityPubID()) ? null : post.getHumanReadableDomain();
 			}
 			case "user" -> {
 				int id=safeParseInt(rawID);
@@ -770,7 +770,7 @@ public class SystemRoutes{
 				subtitle=TextProcessor.truncateOnWordBoundary(comment.text, 200);
 				boxTitle=l.get("report_title_comment");
 				titleText=l.get("report_text_comment");
-				otherServerDomain=Config.isLocal(comment.getActivityPubID()) ? null : comment.getActivityPubID().getHost();
+				otherServerDomain=Config.isLocal(comment.getActivityPubID()) ? null : comment.getHumanReadableDomain();
 			}
 			default -> throw new BadRequestException();
 		}
