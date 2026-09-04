@@ -1384,11 +1384,20 @@ public class UserStorage{
 			cacheByActivityPubID.put(user.activityPubID, user.id);
 	}
 
-	private static void removeFromCache(User user){
+	private static void removeFromCache(User user) throws SQLException{
 		cache.remove(user.id);
 		cacheByUsername.remove(user.getFullUsername().toLowerCase());
 		if(user instanceof ForeignUser)
 			cacheByActivityPubID.remove(user.activityPubID);
+		if(!(user instanceof ForeignUser)){
+			int accountID=new SQLQueryBuilder()
+					.selectFrom("accounts")
+					.columns("id")
+					.where("user_id=?", user.id)
+					.executeAndGetInt();
+			if(accountID>0)
+				accountCache.remove(accountID);
+		}
 	}
 
 	static String getQSearchStringForUser(User user){
