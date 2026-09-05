@@ -278,7 +278,7 @@ public class ModerationStorage{
 		}
 	}
 
-	public static PaginatedList<AdminUserViewModel> getUsers(String q, Boolean localOnly, String emailDomain, InetAddressRange ipRange, int role, UserBanStatus banStatus, boolean remoteSuspended, int offset, int count) throws SQLException{
+	public static PaginatedList<AdminUserViewModel> getUsers(String q, Boolean localOnly, String emailDomain, InetAddressRange ipRange, int role, UserBanStatus banStatus, boolean remoteSuspended, String serverDomain, int offset, int count) throws SQLException{
 		if(StringUtils.isNotEmpty(q)){
 			q=Arrays.stream(TextProcessor.transliterate(q).replaceAll("[()\\[\\]*+~<>\\\"@-]", " ").split("[ \t]+")).filter(Predicate.not(String::isBlank)).map(s->'+'+s+'*').collect(Collectors.joining(" "));
 		}
@@ -320,6 +320,10 @@ public class ModerationStorage{
 			whereArgs.add(banStatus);
 		}else if(remoteSuspended){
 			whereParts.add("`users`.ap_id IS NOT NULL AND `users`.ban_info IS NOT NULL AND `users`.ban_info->'$.suspendedOnRemoteServer'=true");
+		}
+		if(serverDomain!=null){
+			whereParts.add("`users`.domain=?");
+			whereArgs.add(serverDomain);
 		}
 		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
 			String where;

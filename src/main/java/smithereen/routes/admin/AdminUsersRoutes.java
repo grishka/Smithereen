@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.SmithereenApplication;
+import smithereen.Utils;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -67,7 +68,12 @@ public class AdminUsersRoutes{
 		int role=safeParseInt(req.queryParams("role"));
 		String banStatusParam=req.queryParams("banStatus");
 		UserBanStatus banStatus=enumValueOpt(banStatusParam, UserBanStatus.class);
-		PaginatedList<AdminUserViewModel> items=ctx.getModerationController().getAllUsers(offset(req), 100, q, localOnly, emailDomain, lastIP, role, banStatus, "REMOTE_SUSPENDED".equals(banStatusParam));
+		String serverDomain=req.queryParams("serverDomain");
+		if(StringUtils.isNotEmpty(serverDomain))
+			serverDomain=Utils.convertIdnToAsciiIfNeeded(serverDomain.strip());
+		if(StringUtils.isEmpty(serverDomain))
+			serverDomain=null;
+		PaginatedList<AdminUserViewModel> items=ctx.getModerationController().getAllUsers(offset(req), 100, q, localOnly, emailDomain, lastIP, role, banStatus, "REMOTE_SUSPENDED".equals(banStatusParam), serverDomain);
 		model.paginate(items);
 		model.with("users", ctx.getUsersController().getUsers(items.list.stream().map(AdminUserViewModel::userID).collect(Collectors.toSet())));
 		model.with("accounts", ctx.getModerationController().getAccounts(items.list.stream().map(AdminUserViewModel::accountID).filter(i->i>0).collect(Collectors.toSet())));
@@ -82,7 +88,8 @@ public class AdminUsersRoutes{
 				.with("roleID", role)
 				.with("banStatus", banStatusParam)
 				.with("query", q)
-				.with("hasFilters", StringUtils.isNotEmpty(q) || localOnly!=null || StringUtils.isNotEmpty(emailDomain) || StringUtils.isNotEmpty(lastIP) || role>0);
+				.with("userServerDomain", req.queryParams("serverDomain"))
+				.with("hasFilters", StringUtils.isNotEmpty(q) || localOnly!=null || StringUtils.isNotEmpty(emailDomain) || StringUtils.isNotEmpty(lastIP) || role>0 || StringUtils.isNotEmpty(serverDomain));
 		jsLangKey(req, "cancel", "yes", "no");
 		String msg=req.session().attribute("adminSettingsUsersMessage");
 		if(msg!=null){

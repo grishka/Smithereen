@@ -4,7 +4,7 @@
 {% include "admin_users_tabbar" with {'tab': 'users'} %}
 <div class="gray borderBottom">
 	<div class="searchFieldWrap singleColumn">
-		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('search_users') }}" value="{{ query }}" id="userSearch" data-base-url="{{ urlPath }}" data-extra-fields="emailDomain,lastIP,role,banStatus"/>
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('search_users') }}" value="{{ query }}" id="userSearch" data-base-url="{{ urlPath }}" data-extra-fields="emailDomain,lastIP,role,banStatus,serverDomain"/>
 	{% script %}
 		initAjaxSearch("userSearch");
 	{% endscript %}
@@ -67,6 +67,10 @@
 				<input type="text" name="lastIP" id="lastIP" value="{{ lastIP }}" placeholder="123.0.0.0/8"/>
 			</div>
 			<div class="filterFieldBlock">
+				<label for="serverDomain">{{ L('search_server_domain') }}</label>
+				<input type="text" name="serverDomain" id="serverDomain" value="{{ userServerDomain }}" placeholder="example.com"/>
+			</div>
+			<div class="filterFieldBlock">
 				<label for="role">{{ L('role') }}</label>
 				<select name="role" id="role">
 					<option value=""{{ roleID==0 ? ' selected' : '' }}>{{ L('any_role') }}</option>
@@ -78,7 +82,7 @@
 			<div class="filterFieldBlock">
 				<label for="banStatus">{{ L('admin_users_ban_status') }}</label>
 				<select name="banStatus" id="banStatus">
-					<option{{ banStatus is null ? ' selected' : '' }}>{{ L('admin_users_any_ban_status') }}</option>
+					<option value=""{{ banStatus is null ? ' selected' : '' }}>{{ L('admin_users_any_ban_status') }}</option>
 					<option value="NONE"{{ banStatus=='NONE' ? ' selected' : '' }}>{{ L('admin_users_ban_status_none') }}</option>
 					<option value="FROZEN"{{ banStatus=='FROZEN' ? ' selected' : '' }}>{{ L('admin_users_ban_status_frozen') }}</option>
 					<option value="SUSPENDED"{{ banStatus=='SUSPENDED' ? ' selected' : '' }}>{{ L('admin_users_ban_status_suspended') }}</option>
