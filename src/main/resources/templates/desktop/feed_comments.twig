@@ -66,7 +66,7 @@
 					{%- endif -%}
 					<a href="{{ photo.url }}" class="postLink">{{ LD(photo.createdAt) }}</a>
 {#					{% if not realPost.local %}#}
-{#						| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>#}
+{#						| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a>#}
 {#					{% endif %}#}
 					{% if currentUser is not null and interactions.canComment %}
 						<span id="postCommentLinkWrap{{ photo.idString }}" style="{{ interactions.commentCount==0 ? '' : 'display: none;' }}">| <a href="{{ photo.url }}" onclick="return showPostCommentForm('{{ photo.idString }}')">{{ L('add_comment') }}</a></span>

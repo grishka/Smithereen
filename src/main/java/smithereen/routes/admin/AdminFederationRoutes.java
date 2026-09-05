@@ -1,6 +1,5 @@
 package smithereen.routes.admin;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -162,7 +161,7 @@ public class AdminFederationRoutes{
 		RenderedTemplateResponse model=new RenderedTemplateResponse("admin_federation_restriction_form", req)
 				.with("type", restriction.type)
 				.with("editing", true)
-				.with("domain", restriction.domain)
+				.with("domain", restriction.getHumanReadableDomain())
 				.with("publicComment", restriction.publicComment)
 				.with("privateComment", restriction.privateComment)
 				.with("obfuscate", restriction.isDomainObfuscated());

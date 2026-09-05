@@ -324,7 +324,7 @@ public abstract sealed class NoteOrQuestion extends ActivityPubObject permits No
 										new TextNode("RE: "),
 										doc.createElement("a")
 												.attr("href", repost.getActivityPubURL().toString())
-												.text(repost.getActivityPubURL().toString())
+												.text(repost.getHumanReadableActivityPubURL())
 								))
 				);
 				noq.content=root.html();

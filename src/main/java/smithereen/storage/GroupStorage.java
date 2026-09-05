@@ -1211,7 +1211,7 @@ public class GroupStorage{
 	static String getQSearchStringForGroup(Group group){
 		String s=TextProcessor.transliterate(group.name)+" "+group.username;
 		if(group.domain!=null)
-			s+=" "+group.domain;
+			s+=" "+TextProcessor.transliterate(group.getHumanReadableDomain());
 		return s;
 	}
 

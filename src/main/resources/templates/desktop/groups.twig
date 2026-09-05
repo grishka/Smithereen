@@ -1,3 +1,4 @@
+{# @pebvariable name="items" type="smithereen.model.Group[]" #}
 {% extends "page" %}
 {% block content %}
 {% if currentUser is not null and owner.id==currentUser.id %}
@@ -51,7 +52,7 @@
 				{% endif %}
 				{% if group.domain is not empty %}
 				<div class="grayText">{{ L('server') }}:</div>
-				<div>{{ group.domain }}</div>
+				<div>{{ group.humanReadableDomain }}</div>
 				{% endif %}
 			</div>
 		</td>

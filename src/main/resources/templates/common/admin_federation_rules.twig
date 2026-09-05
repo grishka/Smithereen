@@ -15,7 +15,7 @@
 <div class="singleColumn">
 {% for restriction in items %}
 	<div class="listItemWithDivider">
-		<div><b>{{ restriction.domain }}</b></div>
+		<div><b>{{ restriction.humanReadableDomain }}</b></div>
 		<div class="marginBefore">
 		{% if restriction.type=='SUSPENSION' %}
 			{{ L('server_state_suspended') -}}

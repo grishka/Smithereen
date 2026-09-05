@@ -1418,7 +1418,7 @@ public class UserStorage{
 		sb.append(user.username);
 		if(user.domain!=null){
 			sb.append(' ');
-			sb.append(user.domain);
+			sb.append(TextProcessor.transliterate(user.getHumanReadableDomain()));
 		}
 		return sb.toString();
 	}

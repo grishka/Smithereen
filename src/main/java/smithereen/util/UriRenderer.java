@@ -1,6 +1,8 @@
 package smithereen.util;
 
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.IDN;
 import java.net.URI;
@@ -155,6 +157,19 @@ public class UriRenderer{
 						(cp>=0x1D173 && cp<=0x1D17A) ||
 						// Tags, Variation Selectors, nulls
 						(cp>=0xE0000 && cp<=0xE0FFF));
+	}
+
+
+	@Contract(value="null->null; !null->!null")
+	public static @Nullable String renderDomain(@Nullable String domain){
+		if(domain==null) return null;
+		int portIndex=domain.indexOf(':');
+		if(portIndex==-1){
+			return IDN.toUnicode(domain);
+		}
+		String port=domain.substring(portIndex+1);
+		domain=domain.substring(0,portIndex);
+		return IDN.toUnicode(domain)+":"+port;
 	}
 
 	public @NotNull String render(@NotNull URI url){

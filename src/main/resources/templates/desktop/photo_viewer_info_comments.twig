@@ -77,7 +77,7 @@
 			<li><a href="{{ saveURL }}" id="photoSave_{{ saveElementID }}" data-ajax data-ajax-show="photoSaveLoader_{{ saveElementID }}" data-ajax-hide="photoSaveText_{{ saveElementID }}"><span id="photoSaveText_{{ saveElementID }}">{{ L('photo_save_to_album') }}</span> <span class="inlineLoader" id="photoSaveLoader_{{ saveElementID }}" style="display: none"></span></a></li>
 			{% endif %}
 			{% if photo.apID is not null %}
-			<li><a href="{{ photo.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': photo.activityPubURL.host}) }}</a></li>
+			<li><a href="{{ photo.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': photo.humanReadableDomain}) }}</a></li>
 			{% endif %}
 			{% if photo is not null and userPermissions is not null and userPermissions.canReport(photo) %}
 			<li><a href="/system/reportForm?type=photo&id={{ photo.idString }}" data-ajax-box>{{ L('report') }}</a></li>

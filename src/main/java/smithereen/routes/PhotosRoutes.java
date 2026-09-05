@@ -459,7 +459,7 @@ public class PhotosRoutes{
 		}
 		origURL=Objects.toString(pa.image.getOriginalURI(), null);
 		return new PhotoViewerPhotoInfo(null, author.getProfileURL(), author.getCompleteName(), null, null, html, null,
-				allowedActions, pa.image.getURLsForPhotoViewer(), null, origURL, null, null, saveURL);
+				allowedActions, pa.image.getURLsForPhotoViewer(), null, origURL, null, null, null, saveURL);
 	}
 
 	private static EnumSet<PhotoViewerPhotoInfo.AllowedAction> getAllowedActionsForPhoto(ApplicationContext ctx, User self, Photo photo, PhotoAlbum album){
@@ -545,7 +545,7 @@ public class PhotosRoutes{
 		origURL=Objects.toString(photo.image.getOriginalURI(), null);
 		return new PhotoViewerPhotoInfo(encodeLong(XTEA.obfuscateObjectID(photo.id, ObfuscatedObjectIDType.PHOTO)), author!=null ? author.getProfileURL() : "/id"+photo.authorID,
 				author!=null ? author.getCompleteName() : "DELETED", encodeLong(XTEA.obfuscateObjectID(album.id, ObfuscatedObjectIDType.PHOTO_ALBUM)), album.getLocalizedTitle(lang(req), self!=null ? self.user : null, owner),
-				html, topHTML, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString(), null);
+				html, topHTML, allowedActions, photo.image.getURLsForPhotoViewer(), pvInteractions, origURL, photo.getURL(), photo.apID==null ? null : photo.getActivityPubURL().toString(), photo.getHumanReadableDomain(), null);
 	}
 
 	private static List<PhotoViewerPhotoInfo> makePhotoInfosForPhotoList(Request req, List<Photo> photos, ApplicationContext ctx, Account self, Map<Long, PhotoAlbum> albums){

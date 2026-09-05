@@ -252,6 +252,11 @@ public class ForeignGroup extends Group implements ForeignActor{
 	}
 
 	@Override
+	public String getFullUsernameHumanReadable(){
+		return username+"@"+getHumanReadableDomain();
+	}
+
+	@Override
 	protected NonCachedRemoteImage.Args getAvatarArgs(){
 		return new NonCachedRemoteImage.GroupProfilePictureArgs(id);
 	}
