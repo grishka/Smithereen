@@ -32,6 +32,7 @@ import smithereen.jsonld.JLD;
 import smithereen.model.feed.FriendsNewsfeedTypeFilter;
 import smithereen.storage.DatabaseUtils;
 import smithereen.text.TextProcessor;
+import smithereen.util.FullUsername;
 import spark.utils.StringUtils;
 
 public class ForeignUser extends User implements ForeignActor{
@@ -409,13 +410,8 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
-	public String getFullUsername(){
-		return username+"@"+domain;
-	}
-
-	@Override
-	public String getFullUsernameHumanReadable(){
-		return username+"@"+getHumanReadableDomain();
+	public FullUsername getFullUsername(){
+		return FullUsername.create(username+"@"+domain);
 	}
 
 	@Override
