@@ -425,7 +425,7 @@ public class GroupsRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
-		resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
+		resp.redirect(group.getAbsoluteProfileURL());
 		return "";
 	}
 
@@ -435,7 +435,7 @@ public class GroupsRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
-		resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
+		resp.redirect(group.getAbsoluteProfileURL());
 		return "";
 	}
 

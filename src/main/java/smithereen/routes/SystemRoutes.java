@@ -940,7 +940,7 @@ public class SystemRoutes{
 				.add("width", Math.min(500, maxWidth))
 				.add("height", (String)null)
 				.add("author_name", author.getFullName())
-				.add("author_url", UriBuilder.local().rawPath(author.getFullUsername()).build().toString())
+				.add("author_url", author.getAbsoluteProfileURL())
 				.add("provider_name", Config.serverDisplayName)
 				.add("provider_url", "https://"+Config.domain+"/")
 				.add("html", model.renderToString())
