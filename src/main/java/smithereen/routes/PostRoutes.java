@@ -142,6 +142,11 @@ public class PostRoutes{
 		}
 
 		Post post=ctx.getWallController().createWallPost(self.user, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts, null, null, null);
+		String from=req.queryParams("from");
+
+		if("externalShare".equals(from)){
+			return ajaxAwareRedirect(req, resp, "/posts/"+post.id);
+		}
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
@@ -153,7 +158,7 @@ public class PostRoutes{
 
 			CommentViewType viewType=self.prefs.commentViewType;
 
-			boolean fromNotifications="notifications".equals(req.queryParams("from"));
+			boolean fromNotifications="notifications".equals(from);
 
 			String formID=req.queryParams("formID");
 			if(repost!=null){

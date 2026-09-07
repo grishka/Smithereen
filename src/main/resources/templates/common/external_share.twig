@@ -1,0 +1,6 @@
+{% extends "page" %}
+{% block content %}
+<div class="singleColumn">
+	{% include "wall_post_form" with {'id': 'externalShare', 'addClasses': 'nonCollapsible editing', 'showOwnAvatar': true, 'from': 'externalShare'} %}
+</div>
+{% endblock %}

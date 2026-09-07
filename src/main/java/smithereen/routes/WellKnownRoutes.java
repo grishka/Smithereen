@@ -26,10 +26,20 @@ public class WellKnownRoutes{
 			resp.type("application/json");
 			WebfingerResponse wfr=new WebfingerResponse();
 			wfr.subject="https://"+Config.domain;
+
 			WebfingerResponse.Link authLink=new WebfingerResponse.Link();
 			authLink.rel="http://ostatus.org/schema/1.0/subscribe";
 			authLink.template=Config.localURI("activitypub/externalInteraction?uri")+"={uri}";
-			wfr.links=List.of(authLink);
+
+			WebfingerResponse.Link objectIntentLink=new WebfingerResponse.Link();
+			objectIntentLink.rel="https://w3id.org/fep/3b86/Object";
+			objectIntentLink.template=Config.localURI("activitypub/externalInteraction?uri")+"={object}";
+
+			WebfingerResponse.Link createIntentLink=new WebfingerResponse.Link();
+			createIntentLink.rel="https://w3id.org/fep/3b86/Create";
+			createIntentLink.template=Config.localURI("system/share?text")+"={content}";
+
+			wfr.links=List.of(authLink, objectIntentLink, createIntentLink);
 			return Utils.gson.toJson(wfr);
 		}else if(StringUtils.isNotEmpty(resource) && resource.startsWith("acct:")){
 			String[] parts=resource.substring(5).split("@", 2);
@@ -53,14 +63,25 @@ public class WellKnownRoutes{
 
 					WebfingerResponse wfr=new WebfingerResponse();
 					wfr.subject="acct:"+user.username+"@"+Config.domain;
+
 					WebfingerResponse.Link selfLink=new WebfingerResponse.Link();
 					selfLink.rel="self";
 					selfLink.type="application/activity+json";
 					selfLink.href=user.activityPubID;
+
 					WebfingerResponse.Link authLink=new WebfingerResponse.Link();
 					authLink.rel="http://ostatus.org/schema/1.0/subscribe";
 					authLink.template=Config.localURI("activitypub/externalInteraction?uri")+"={uri}";
-					wfr.links=List.of(selfLink, authLink);
+
+					WebfingerResponse.Link objectIntentLink=new WebfingerResponse.Link();
+					objectIntentLink.rel="https://w3id.org/fep/3b86/Object";
+					objectIntentLink.template=Config.localURI("activitypub/externalInteraction?uri")+"={object}";
+
+					WebfingerResponse.Link createIntentLink=new WebfingerResponse.Link();
+					createIntentLink.rel="https://w3id.org/fep/3b86/Create";
+					createIntentLink.template=Config.localURI("system/share?text")+"={content}";
+
+					wfr.links=List.of(selfLink, authLink, objectIntentLink, createIntentLink);
 					return Utils.gson.toJson(wfr);
 				}else if(user==null){
 					Group group=GroupStorage.getByUsername(username);

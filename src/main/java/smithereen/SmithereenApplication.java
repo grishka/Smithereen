@@ -618,6 +618,7 @@ public class SmithereenApplication{
 				resp.header("cache-control", "private, max-age=604800");
 				return Config.combinedMobileCSS;
 			});
+			getLoggedIn("/share", SystemRoutes::externalShare);
 
 			if(Config.DEBUG){
 				path("/debug", ()->{

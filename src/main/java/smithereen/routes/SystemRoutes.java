@@ -1100,4 +1100,14 @@ public class SystemRoutes{
 				.with("languages", Lang.list);
 		return new WebDeltaResponse(resp).box(lang(req).get("choose_language_title"), model.renderToString(), null, true, "<span class=\"inlineLoader\" style=\"display: none\" id=\"langChooserLoader\"></span>");
 	}
+
+	public static Object externalShare(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		RenderedTemplateResponse rtr=new RenderedTemplateResponse("external_share", req)
+				.with("prefilledPostText", req.queryParams("text"))
+				.pageTitle(l.get("wall_external_share_title"));
+		if(!isMobile(req))
+			rtr.addNavBarItem(l.get("wall_external_share_title"));
+		return rtr;
+	}
 }
