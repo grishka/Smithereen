@@ -47,6 +47,7 @@ import smithereen.storage.MediaCache;
 import smithereen.text.TextProcessor;
 import smithereen.util.Base58;
 import smithereen.util.CryptoUtils;
+import smithereen.util.FullUsername;
 import smithereen.util.MulticodecIDs;
 import smithereen.util.MultiformatsVarInt;
 import smithereen.util.UriRenderer;
@@ -78,11 +79,11 @@ public abstract class Actor extends ActivityPubObject{
 	public String aboutSource;
 
 	public String getProfileURL(String action){
-		return "/"+getFullUsername()+"/"+action;
+		return "/"+getFullUsername().percentEncoded()+"/"+action;
 	}
 
 	public String getProfileURL(){
-		return "/"+getFullUsername();
+		return "/"+getFullUsername().percentEncoded();
 	}
 
 	public String getAbsoluteProfileURL(){
@@ -130,20 +131,8 @@ public abstract class Actor extends ActivityPubObject{
 		return icon.cropRegion;
 	}
 
-	/**
-	 * <p>The ASCII-only representation of the actor's username (with <a href="https://en.wikipedia.org/wiki/Punycode">Punycode</a>-encoded domain if necessary).</p>
-	 * <p><b>Not suitable for displaying in the UI!</b> Use {@link getFullUsernameHumanReadable} for that.</p>
-	 */
-	public String getFullUsername(){
-		return username;
-	}
-
-	/**
-	 * <p>The representation of the actor's username suitable for displaying in the UI.</p>
-	 * <p><b>Do not use this in business logic!</b> Use {@link getFullUsername} instead.</p>
-	 */
-	public String getFullUsernameHumanReadable(){
-		return username;
+	public FullUsername getFullUsername(){
+		return FullUsername.create(username);
 	}
 
 	public URI getFollowersURL(){

@@ -18,7 +18,7 @@
 		{% set user=users[report.targetID] %}
 		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ user | pictureForAvatar('a') }}</a></div>
 		<div class="ellipsize"><b><a href="{{ profileURL(report.targetID) }}">{{ user | name('complete') }}</a></b></div>
-		<div class="grayText ellipsize">@{{ user.fullUsernameHumanReadable }}</div>
+			<div class="grayText ellipsize">@{{ user.fullUsername.humanReadable }}</div>
 		{% if userPermissions.hasPermission('MANAGE_USERS') %}
 		<div><a href="/users/{{ report.targetID }}/meminfo">{{ L('admin_manage_user') }}</a></div>
 		{% endif %}
@@ -26,7 +26,7 @@
 		{% set group=groups[-report.targetID] %}
 		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ group | pictureForAvatar('a') }}</a></div>
 		<div class="ellipsize"><b><a href="{{ profileURL(report.targetID) }}">{{ group.name }}</a></b></div>
-		<div class="grayText ellipsize">@{{ group.fullUsernameHumanReadable }}</div>
+			<div class="grayText ellipsize">@{{ group.fullUsername.humanReadable }}</div>
 		{% endif %}
 	</div>
 	<div class="ellipsize">

@@ -57,6 +57,7 @@ import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.IntPair;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
+import smithereen.util.FullUsername;
 import smithereen.util.NamedMutexCollection;
 import spark.utils.StringUtils;
 
@@ -64,7 +65,7 @@ public class GroupStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(GroupStorage.class);
 
 	private static final LruCache<Integer, Group> cacheByID=new LruCache<>(500);
-	private static final LruCache<String, Group> cacheByUsername=new LruCache<>(500);
+	private static final LruCache<FullUsername, Group> cacheByUsername=new LruCache<>(500);
 	private static final LruCache<URI, ForeignGroup> cacheByActivityPubID=new LruCache<>(500);
 
 	private static final Object adminUpdateLock=new Object();
@@ -337,21 +338,14 @@ public class GroupStorage{
 	}
 
 	public static Group getByUsername(String username) throws SQLException{
-		Group g=cacheByUsername.get(username.toLowerCase());
+		FullUsername fullUsername=FullUsername.create(username);
+		Group g=cacheByUsername.get(fullUsername);
 		if(g!=null)
 			return g;
-		String domain;
-		if(username.contains("@")){
-			String[] parts=username.split("@", 2);
-			username=parts[0];
-			domain=parts[1];
-		}else{
-			domain="";
-		}
 		g=new SQLQueryBuilder()
 				.selectFrom("groups")
 				.allColumns()
-				.where("username=? AND domain=?", username, domain)
+				.where("username=? AND domain=?", fullUsername.getUsername(), fullUsername.getDomain())
 				.executeAndGetSingleObject(Group::fromResultSet);
 		if(g!=null){
 			if(g.icon!=null && !g.icon.isEmpty() && g.icon.getFirst() instanceof LocalImage li){
@@ -388,7 +382,7 @@ public class GroupStorage{
 		HashSet<String> remainingUsernames=new HashSet<>();
 		Map<String, Integer> ids=new HashMap<>();
 		for(String u:usernames){
-			Group g=cacheByUsername.get(u.toLowerCase());
+			Group g=cacheByUsername.get(FullUsername.create(u));
 			if(g!=null){
 				ids.put(u, g.id);
 				continue;
@@ -1196,14 +1190,14 @@ public class GroupStorage{
 
 	private static void putIntoCache(Group group){
 		cacheByID.put(group.id, group);
-		cacheByUsername.put(group.getFullUsername().toLowerCase(), group);
+		cacheByUsername.put(group.getFullUsername(), group);
 		if(group instanceof ForeignGroup)
 			cacheByActivityPubID.put(group.activityPubID, (ForeignGroup) group);
 	}
 
 	private static void removeFromCache(Group group){
 		cacheByID.remove(group.id);
-		cacheByUsername.remove(group.getFullUsername().toLowerCase());
+		cacheByUsername.remove(group.getFullUsername());
 		if(group instanceof ForeignGroup)
 			cacheByActivityPubID.remove(group.activityPubID);
 	}

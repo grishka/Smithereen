@@ -53,6 +53,8 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.templates.Templates;
 import smithereen.text.TextProcessor;
 import smithereen.text.Whitelist;
+import smithereen.util.FullUsername;
+import smithereen.util.TriFunction;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
@@ -84,17 +86,29 @@ public class ProfileRoutes{
 						case "club", "event" -> ctx.getGroupsController().getGroupOrThrow(id);
 						default -> throw new IllegalStateException("Unexpected value: "+matcher.group(1));
 					};
-					resp.redirect("/"+actor.getFullUsername());
+					resp.redirect("/"+actor.getFullUsername().percentEncoded());
 					return "";
 				}catch(ObjectNotFoundException ignore){}
 			}
 			throw new ObjectNotFoundException("err_user_not_found", x);
 		}
 		return switch(ur.type()){
-			case USER -> userProfile(req, resp, ctx.getUsersController().getUserOrThrow(ur.localID()));
-			case GROUP -> GroupsRoutes.groupProfile(req, resp, ctx.getGroupsController().getGroupOrThrow(ur.localID()));
+			case USER -> profile(req, resp, ctx.getUsersController().getUserOrThrow(ur.localID()), ProfileRoutes::userProfile);
+			case GROUP -> profile(req, resp, ctx.getGroupsController().getGroupOrThrow(ur.localID()), GroupsRoutes::groupProfile);
 			case APPLICATION -> AppsRoutes.appPage(req, resp, ur.localID());
 		};
+	}
+
+	private static <T extends Actor> Object profile(Request req, Response resp, T actor, TriFunction<Request, Response, T, RenderedTemplateResponse> template){
+		String username=req.params(":username");
+		FullUsername fullUsername=actor.getFullUsername();
+
+		// The canonical URL should include a human-readable domain, not punycode-encoded one.
+		if(!username.equals(fullUsername.humanReadable())){
+			resp.redirect("/"+fullUsername.percentEncoded());
+			return "";
+		}
+		return template.apply(req, resp, actor);
 	}
 
 	public static RenderedTemplateResponse userProfile(Request req, Response resp, User user){
@@ -359,7 +373,7 @@ public class ProfileRoutes{
 			meta.put("og:site_name", Config.serverDisplayName);
 			meta.put("og:title", user.getFullName());
 			meta.put("og:url", user.url.toString());
-			meta.put("og:username", user.getFullUsername());
+			meta.put("og:username", user.getFullUsername().toString());
 			if(StringUtils.isNotEmpty(user.firstName))
 				meta.put("og:first_name", user.firstName);
 			if(StringUtils.isNotEmpty(user.lastName))

@@ -450,7 +450,7 @@ public class TextProcessor{
 					try{
 						User user=UserStorage.getById(uid);
 						if(user!=null){
-							el.attr("href", "/"+user.getFullUsername());
+							el.attr("href", "/"+user.getFullUsername().percentEncoded());
 							if(user instanceof ForeignUser){
 								el.attr("rel", "nofollow");
 							}

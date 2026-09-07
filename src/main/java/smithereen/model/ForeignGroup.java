@@ -30,6 +30,7 @@ import smithereen.model.groups.GroupLink;
 import smithereen.storage.DatabaseUtils;
 import smithereen.storage.FederationStorage;
 import smithereen.text.TextProcessor;
+import smithereen.util.FullUsername;
 import spark.utils.StringUtils;
 
 public class ForeignGroup extends Group implements ForeignActor{
@@ -247,13 +248,8 @@ public class ForeignGroup extends Group implements ForeignActor{
 	}
 
 	@Override
-	public String getFullUsername(){
-		return username+"@"+domain;
-	}
-
-	@Override
-	public String getFullUsernameHumanReadable(){
-		return username+"@"+getHumanReadableDomain();
+	public FullUsername getFullUsername(){
+		return FullUsername.create(username+"@"+domain);
 	}
 
 	@Override

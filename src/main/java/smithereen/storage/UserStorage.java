@@ -62,6 +62,7 @@ import smithereen.storage.sql.DatabaseConnectionManager;
 import smithereen.storage.sql.SQLQueryBuilder;
 import smithereen.storage.utils.Pair;
 import smithereen.text.TextProcessor;
+import smithereen.util.FullUsername;
 import smithereen.util.NamedMutexCollection;
 import spark.utils.StringUtils;
 
@@ -69,7 +70,7 @@ public class UserStorage{
 	private static final Logger LOG=LoggerFactory.getLogger(UserStorage.class);
 
 	private static final LruCache<Integer, User> cache=new LruCache<>(500);
-	private static final LruCache<String, Integer> cacheByUsername=new LruCache<>(500);
+	private static final LruCache<FullUsername, Integer> cacheByUsername=new LruCache<>(500);
 	private static final LruCache<URI, Integer> cacheByActivityPubID=new LruCache<>(500);
 
 	private static final LruCache<Integer, Account> accountCache=new LruCache<>(500);
@@ -183,7 +184,7 @@ public class UserStorage{
 		HashSet<String> remainingUsernames=new HashSet<>();
 		Map<String, Integer> ids=new HashMap<>();
 		for(String u:usernames){
-			Integer id=cacheByUsername.get(u.toLowerCase());
+			Integer id=cacheByUsername.get(FullUsername.create(u));
 			if(id!=null){
 				ids.put(u, id);
 				continue;
@@ -224,7 +225,7 @@ public class UserStorage{
 						return new Pair<>(username+(domain.isEmpty() ? "" : ("@"+domain)), r.getInt("id"));
 					})
 					.forEach(p->{
-						cacheByUsername.put(p.first().toLowerCase(), p.second());
+						cacheByUsername.put(FullUsername.create(p.first()), p.second());
 						ids.put(p.first(), p.second());
 					});
 		}
@@ -232,23 +233,14 @@ public class UserStorage{
 	}
 
 	public static User getByUsername(@NotNull String username) throws SQLException{
-		username=username.toLowerCase();
-		Integer id=cacheByUsername.get(username);
+		FullUsername fullUsername=FullUsername.create(username);
+		Integer id=cacheByUsername.get(fullUsername);
 		if(id!=null)
 			return getById(id);
-		String realUsername;
-		String domain="";
-		if(username.contains("@")){
-			String[] parts=username.split("@");
-			realUsername=parts[0];
-			domain=parts[1];
-		}else{
-			realUsername=username;
-		}
 		User user=new SQLQueryBuilder()
 				.selectFrom("users")
 				.allColumns()
-				.where("username=? AND domain=?", realUsername, domain)
+				.where("username=? AND domain=?", fullUsername.getUsername().toLowerCase(), fullUsername.getDomain().toLowerCase())
 				.executeAndGetSingleObject(User::fromResultSet);
 		if(user!=null){
 			if(user.icon!=null && !user.icon.isEmpty() && user.icon.getFirst() instanceof LocalImage li){
@@ -262,25 +254,17 @@ public class UserStorage{
 	}
 
 	public static int getIdByUsername(@NotNull String username) throws SQLException{
-		username=username.toLowerCase();
-		Integer id=cacheByUsername.get(username);
+		FullUsername fullUsername=FullUsername.create(username);
+		Integer id=cacheByUsername.get(fullUsername);
 		if(id!=null)
 			return id;
-		String realUsername;
-		String domain="";
-		if(username.contains("@")){
-			String[] parts=username.split("@");
-			realUsername=parts[0];
-			domain=parts[1];
-		}else{
-			realUsername=username;
-		}
-		if(realUsername.length()>Actor.USERNAME_MAX_LENGTH)
+		String realUsername=fullUsername.getUsername();
+		if(fullUsername.getUsername().length()>Actor.USERNAME_MAX_LENGTH)
 			realUsername=realUsername.substring(0, Actor.USERNAME_MAX_LENGTH);
 		return new SQLQueryBuilder()
 				.selectFrom("users")
 				.columns("id")
-				.where("username=? AND domain=?", realUsername, domain)
+				.where("username=? AND domain=?", realUsername.toLowerCase(), fullUsername.getDomain().toLowerCase())
 				.executeAndGetInt();
 	}
 
@@ -1093,7 +1077,7 @@ public class UserStorage{
 		if(user!=null){
 			cacheByActivityPubID.put(apID, user.id);
 			cache.put(user.id, user);
-			cacheByUsername.put(user.getFullUsername().toLowerCase(), user.id);
+			cacheByUsername.put(user.getFullUsername(), user.id);
 		}
 		return user;
 	}
@@ -1379,14 +1363,14 @@ public class UserStorage{
 
 	private static void putIntoCache(User user){
 		cache.put(user.id, user);
-		cacheByUsername.put(user.getFullUsername().toLowerCase(), user.id);
+		cacheByUsername.put(user.getFullUsername(), user.id);
 		if(user instanceof ForeignUser)
 			cacheByActivityPubID.put(user.activityPubID, user.id);
 	}
 
 	private static void removeFromCache(User user) throws SQLException{
 		cache.remove(user.id);
-		cacheByUsername.remove(user.getFullUsername().toLowerCase());
+		cacheByUsername.remove(user.getFullUsername());
 		if(user instanceof ForeignUser)
 			cacheByActivityPubID.remove(user.activityPubID);
 		if(!(user instanceof ForeignUser)){

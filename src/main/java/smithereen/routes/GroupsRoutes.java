@@ -358,7 +358,7 @@ public class GroupsRoutes{
 			meta.put("og:site_name", Config.serverDisplayName);
 			meta.put("og:title", group.name);
 			meta.put("og:url", group.url.toString());
-			meta.put("og:username", group.getFullUsername());
+			meta.put("og:username", group.getFullUsername().toString());
 			String descr=l.get("X_members", Map.of("count", group.memberCount));
 			if(wallPostsCount>0)
 				descr+=", "+l.get("X_posts", Map.of("count", wallPostsCount));
@@ -425,7 +425,7 @@ public class GroupsRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
-		resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
+		resp.redirect(Config.localURI("/"+group.getFullUsername().percentEncoded()).toString());
 		return "";
 	}
 
@@ -435,7 +435,7 @@ public class GroupsRoutes{
 		if(isAjax(req)){
 			return new WebDeltaResponse(resp).refresh();
 		}
-		resp.redirect(Config.localURI("/"+group.getFullUsername()).toString());
+		resp.redirect(Config.localURI("/"+group.getFullUsername().percentEncoded()).toString());
 		return "";
 	}
 
