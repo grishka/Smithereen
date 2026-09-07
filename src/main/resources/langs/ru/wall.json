@@ -97,5 +97,6 @@
   "wall_search_title_user": "Поиск по стене {name, inflect, genitive}",
   "wall_search_title_group": "Поиск по стене \"{name}\"",
   "wall_search_posts_only_short": "Только записи",
-  "wall_search_all_short": "Записи и комментарии"
+  "wall_search_all_short": "Записи и комментарии",
+  "wall_external_share_title": "Новая запись"
 }
