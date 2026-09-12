@@ -12,6 +12,9 @@
   "user_photo_albums": "Альбоми {name}",
   "group_photo_albums": "Альбоми групи",
   "event_photo_albums": "Альбоми події",
+  "photo_album_restrict_uploads": "Фотографії можуть додавати лише модератори та адміністратори",
+  "photo_album_disable_commenting": "Відключена можливість коментування для цього альбому",
+  "uploading_photo_X_of_Y": "Завантаження фотографії <b>{current}</b> з <b>{total}</b>…",
   "photo_description": "Опис",
   "photo_description_saved": "Опис збережено",
   "edit_photo_album": "Редагувати альбом",
@@ -22,6 +25,7 @@
   "edit_photos": "Змінити фотографії",
   "uploading_photos": "Завантаження фотографій",
   "photo_albums": "Фотоальбоми",
+  "photo_X_of_Y": "{current} фотографія з {total}",
   "photo_added_at": "Додано {date}",
   "photo_album_label": "Альбом",
   "delete_photo": "Видалити фотографію",
@@ -53,5 +57,10 @@
   "photo_tag_select_friend": "Вибрати друга",
   "photo_delete_tag": "Видалити мітку",
   "photo_tags": "У цьому фото:",
-  "photo_add_tag_submit": "Додати"
+  "photo_add_tag_submit": "Додати",
+  "new_photos_of_me": "Нові фотографії зі мною",
+  "photo_confirm_tag": "Підтвердити",
+  "view_user_profile_photos": "Переглянути фотографії",
+  "photo_load_failed_local": "Фотографія недоступна або пошкоджена.",
+  "photo_load_failed_remote": "Не вдалося завантажити фотографію з віддаленого сервера. <a id=\"direct\">Подивитися напряму</a>."
 }
