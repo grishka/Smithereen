@@ -1,1 +1,21 @@
-{}
+{
+  "bookmarks_title": "Закладки",
+  "add_bookmark": "Додати закладки",
+  "remove_bookmark": "Видалити закладки",
+  "bookmarks_people": "Люди",
+  "bookmarks_communities": "Спільноти",
+  "bookmarks_posts": "Дописи",
+  "bookmarks_people_empty": "Люди яких ви додали до закладок будуть показуватися тут.",
+  "bookmarks_communities_empty": "Групи та події які ви додали до закладок будуть показуватися тут.",
+  "bookmarks_posts_empty": "Дописи які ви вподобали будуть показуватися тут.",
+  "bookmarks_X_liked_posts": "Ви вподобали {count, plural, one {# допис} other {# дописи}}",
+  "bookmarks_photos": "Фотографії",
+  "bookmarks_photos_empty": "Фотографії які ви вподобали будуть показуватися тут.",
+  "bookmarks_X_liked_photos": "Ви вподобали {count, plural,one {# фотографію} other {# фотографії}}",
+  "user_bookmark_added": "{name} було додано до ваших <a id=\"bookmarks\">закладок</a>.",
+  "user_bookmark_removed": "{name} було видалено з ваших <a id=\"bookmarks\">закладок</a>.",
+  "group_bookmark_added": "Група була додана до ваших <a id=\"bookmarks\">закладок</a>.",
+  "group_bookmark_removed": "Група була видалена з ваших <a id=\"bookmarks\">закладок</a>.",
+  "event_bookmark_added": "Подія була додана до ваших <a id=\"bookmarks\">закладок</a>.",
+  "event_bookmark_removed": "Подія була видалена з ваших <a id=\"bookmarks\">закладок</a>."
+}
