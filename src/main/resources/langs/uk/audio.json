@@ -1,1 +1,7 @@
-{}
+{
+  "audio_unknown_artist": "Невідомий виконавець",
+  "audio_unknown_title": "Невідома назва",
+  "audio_missing_box_title": "Непідтримуваний аудіозапис",
+  "audio_missing_box_message_1": "Цей аудіозапис <b>{artist}&nbsp;— {title}</b> не вдалося відтворити, оскільки її було видалено з сервера або не підтримується формат.",
+  "audio_missing_box_message_2": "Ви можете спробувати <a id=\"missingAudioLink\">завантажити напряму</a>."
+}

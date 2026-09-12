@@ -63,6 +63,7 @@
   "profile_website": "Сайт",
   "profile_edit_phone_number": "Номер телефону",
   "profile_phone_number": "Телефон",
+  "profile_edit_contact_example_3options": "{example1}, {example2} або {example3}",
   "profile_hometown": "Рiдне мiсто",
   "profile_relationship": "Сiмейний стан",
   "profile_relationship_engaged": "{ownGender, select, female {заручена} other {заручений}}",
@@ -79,6 +80,7 @@
   "profile_user_you_follow": "Ви підписані",
   "profile_user_friend_request_sent": "Заявка надіслана",
   "user_online": "Онлайн",
+  "user_last_seen": "{gender, select, female {заходила} other {заходив}} {date}",
   "profile_update_status": "змінити статус",
   "update_status": "Змінити статус"
 }
