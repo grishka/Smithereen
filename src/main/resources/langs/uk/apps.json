@@ -25,7 +25,7 @@
   "oauth_scope_likes": "Уподобання та закладки",
   "oauth_scope_likes_info": "Ця програма отримає доступ до усього вподобаного та збереженого в закладках вмісту",
   "oauth_scope_likes_write_info": "Ця програма зможе вподобати вміст від вашого імені та керувати вашими закладками",
-  "oauth_scope_newsfeed": "Стрічка новин",
+  "oauth_scope_newsfeed": "Новини",
   "oauth_scope_newsfeed_info": "Ця програма отримає доступ до вашої стрічки новин",
   "oauth_scope_notifications": "Сповіщення",
   "oauth_scope_notifications_info": "Ця програма отримає доступ до ваших сповіщень",
@@ -45,5 +45,5 @@
   "apps_redirect_urls": "Адреса перенаправлення OAuth",
   "apps_redirect_urls_explanation": "Один на рядок",
   "err_app_redirect_url_invalid": "Адреса перенаправлення \"{url}\" не коректний URL.",
-  "apps_standalone_placeholder": "<b>{appName}</b> окремий додаток."
+  "apps_standalone_placeholder": "<b>{appName}</b> є standalone-додатком."
 }
