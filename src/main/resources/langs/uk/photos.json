@@ -47,7 +47,7 @@
   "update_avatar_crop_title_group": "Зображення логотипу",
   "update_avatar_thumb_title": "Створити мініатюру",
   "update_avatar_thumb_explanation1": "Обрізати зображення щоби створити мініатюру.",
-  "avatars_album_user": "Фотографія профілю {name}",
+  "avatars_album_user": "Фотографія профілю {name, inflect, genitive}",
   "avatars_album_group": "Зображення логотипу спільноти",
   "avatar_edit_thumbnail": "Редагувати мініатюру",
   "avatar_open": "Відрити фотографію",
