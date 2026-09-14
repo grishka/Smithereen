@@ -61,7 +61,7 @@
   "search": "Пошук",
   "search_people": "Люди",
   "search_groups": "Групи",
-  "in_reply_to_name": "{name}",
+  "in_reply_to_name": "{name, inflect, dative}",
   "server": "Сервер",
   "menu_events": "Мої Події",
   "date_format_month_year": "{month} {year}",
