@@ -13,7 +13,7 @@
   "bookmarks_photos_empty": "Фотографії які ви вподобали будуть показуватися тут.",
   "bookmarks_X_liked_photos": "Ви вподобали {count, plural,one {# фотографію} other {# фотографії}}",
   "user_bookmark_added": "{name} було додано до ваших <a id=\"bookmarks\">закладок</a>.",
-  "user_bookmark_removed": "{name} було видалено з ваших <a id=\"bookmarks\">закладок</a>.",
+  "user_bookmark_removed": "{name} {gender, select, female {була видалена} other {було видалено}} з ваших <a id=\"bookmarks\">закладок</a>.",
   "group_bookmark_added": "Група була додана до ваших <a id=\"bookmarks\">закладок</a>.",
   "group_bookmark_removed": "Група була видалена з ваших <a id=\"bookmarks\">закладок</a>.",
   "event_bookmark_added": "Подія була додана до ваших <a id=\"bookmarks\">закладок</a>.",
