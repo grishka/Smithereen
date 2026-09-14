@@ -6,15 +6,15 @@
   "wall_of_X": "Стіна {name}",
   "wall_X_and_Y": "{name1} і {name2}",
   "wall_my_posts": "Мої записи",
-  "delete_post": "Видалити допис",
-  "delete_post_confirm": "Ви впевнені, що хочете видалити даний допис?",
+  "delete_post": "Видалити запис",
+  "delete_post_confirm": "Ви впевнені, що хочете видалити даний запис?",
   "wall": "Стіна",
   "X_posts": "{count, plural, =0 {Немає записів} one {# запис} few {# записи} other {# записів}}",
   "delete_reply": "Видалити коментар",
   "delete_reply_confirm": "Ви впевнені, що хочете видалити цей коментар?",
   "add_reply": "Відповісти",
   "comment_placeholder": "Написати коментар…",
-  "wall_post_title": "Допис",
+  "wall_post_title": "Запис на стіні",
   "wall_of_group": "Стіна групи",
   "write_on_group_wall": "Написати на стіні групи…",
   "server_of_user_X_no_wall": "Сервер {name} не підтримує дописи в стіні.",
@@ -98,5 +98,5 @@
   "wall_search_title_group": "Шукати на стіні \"{name}\"",
   "wall_search_posts_only_short": "Тільки дописи",
   "wall_search_all_short": "Дописи й коментарі",
-  "wall_external_share_title": "Новий допис"
+  "wall_external_share_title": "Новий запис"
 }
