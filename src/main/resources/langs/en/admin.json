@@ -428,5 +428,9 @@
   "admin_federation_restriction_obfuscate_explain": "Replace some characters with asterisks on the \"About this server\" page.",
   "admin_audit_log_created_federation_rule": "<a id=\"adminUser\">{name}</a> created federation restriction for <b>{domain}</b>:",
   "admin_audit_log_updated_federation_rule": "<a id=\"adminUser\">{name}</a> updated federation restriction for <b>{domain}</b>:",
-  "admin_audit_log_deleted_federation_rule": "<a id=\"adminUser\">{name}</a> deleted federation restriction for <b>{domain}</b>:"
+  "admin_audit_log_deleted_federation_rule": "<a id=\"adminUser\">{name}</a> deleted federation restriction for <b>{domain}</b>:",
+  "admin_user_ban_text_single": "Choose restrictions for <b>{name}</b>'s account:",
+  "admin_user_ban_text_multiple": "Choose restrictions for <b>{count, plural, one {# user} other {# users}}</b> ({countsByLocation}):",
+  "admin_user_ban_X_local_users": "{count} local",
+  "admin_user_ban_X_remote_users": "{count} remote"
 }

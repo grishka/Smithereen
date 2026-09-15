@@ -1,7 +1,26 @@
-{# @pebvariable name="user" type="smithereen.model.User" #}
+{# @pebvariable name="users" type="smithereen.model.User[]" #}
 {% import "forms" as form %}
 {{ form.start("userBan") }}
-	{% if user.domain is empty %}
+	{% set localCount=0 %}
+	{% set remoteCount=0 %}
+	{% for user in users %}
+	    {% if user.domain is empty %}
+	    	{% set localCount=localCount+1 %}
+		{% else %}
+	    	{% set remoteCount=remoteCount+1 %}
+	    {% endif %}
+	{% endfor %}
+	<div class="marginAfter">
+	{% if (users | length)==1 %}
+		{{ L('admin_user_ban_text_single', {'name': users.first.firstLastAndGender}) }}
+	{% else %}
+		{% set userCounts=[] %}
+		{% if localCount>0 %}{% set _=userCounts.add(L('admin_user_ban_X_local_users', {'count': localCount})) %}{% endif %}
+		{% if remoteCount>0 %}{% set _=userCounts.add(L('admin_user_ban_X_remote_users', {'count': remoteCount})) %}{% endif %}
+		{{ L('admin_user_ban_text_multiple', {'count': users | length, 'countsByLocation': userCounts | join(', ')}) }}
+	{% endif %}
+	</div>
+	{% if localCount>0 %}
 	{{ form.radioGroup('status', '', [
 		{'value': 'NONE', 'label': L('admin_user_no_restrictions'), 'selected': status=='NONE', 'skip': hideNone},
 		{'value': 'FROZEN', 'label': L('admin_user_freeze'), 'explanation': L('admin_user_freeze_explain'), 'selected': status=='FROZEN'},
@@ -29,5 +48,8 @@
 	{% endif %}
 	{% if deleteReportContent %}
 	{{ form.checkBox('confirmReportContentDeletion', '', L('report_delete_content_checkbox'), false, {'explanation': L('report_delete_content_checkbox_explanation'), 'required': true}) }}
+	{% endif %}
+	{% if (userIDs | length)>1 %}
+	<input type="hidden" name="userIDs" value="{{ userIDs | join(',') }}"/>
 	{% endif %}
 {{ form.end() }}

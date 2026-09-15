@@ -19,36 +19,39 @@
 	</div>
 	{% endif %}
 	<div class="withRightColumnFilters">
-		<div class="leftColumn">
+		<div class="leftColumn" id="itemsCont" onchange="cur.onCheckboxChange(event)">
 		{% for user in items %}
-			<div class="listItemWithDivider adminInfoGrid">
-				<div class="spanAll avaAndName">
-					<div class="avaW">{{ users[user.userID] | pictureForAvatar('a', 30) }}</div>
-					<div><a href="/users/{{ user.userID }}/meminfo"><b>{{ users[user.userID] | name("complete") }}</b></a></div>
-					<div class="grayText">@{{ users[user.userID].fullUsernameHumanReadable }}, ID {{ user.userID }}</div>
-				</div>
-				{% if user.lastActive is not null %}
-					<div class="ellipsize spanAll">
-						<span class="grayText">{{ L('admin_last_user_activity') }}:</span>
-						{{ LD(user.lastActive) }}
-						{%- if user.lastIP is not null %}, {{ user.lastIP.hostAddress }}{% endif %}
+			<label class="clickableListItem checkable">
+				<input type="checkbox" name="{{ user.userID }}"/>
+				<div class="adminInfoGrid">
+					<div class="spanAll avaAndName">
+						<div class="avaW">{{ users[user.userID] | pictureForAvatar('a', 30) }}</div>
+						<div><a href="/users/{{ user.userID }}/meminfo"><b>{{ users[user.userID] | name("complete") }}</b></a></div>
+						<div class="grayText">@{{ users[user.userID].fullUsernameHumanReadable }}, ID {{ user.userID }}</div>
 					</div>
-				{% endif %}
-				{% if user.accountID!=0 %}
-				<div class="ellipsize">
-					<span class="grayText">{{ L('email') }}:</span>
-					{{ user.emailDomain }}
-				</div>
-				<div class="ellipsize">
-					<span class="grayText">{{ L('role') }}:</span>
-					{% if user.role!=0 %}
-					{{ rolesMap[user.role].langKey is empty ? rolesMap[user.role].name : L(rolesMap[user.role].langKey) }}
-					{% else %}
-					<i>{{ L('role_none') }}</i>
+					{% if user.lastActive is not null %}
+						<div class="ellipsize spanAll">
+							<span class="grayText">{{ L('admin_last_user_activity') }}:</span>
+							{{ LD(user.lastActive) }}
+							{%- if user.lastIP is not null %}, {{ user.lastIP.hostAddress }}{% endif %}
+						</div>
+					{% endif %}
+					{% if user.accountID!=0 %}
+					<div class="ellipsize">
+						<span class="grayText">{{ L('email') }}:</span>
+						{{ user.emailDomain }}
+					</div>
+					<div class="ellipsize">
+						<span class="grayText">{{ L('role') }}:</span>
+						{% if user.role!=0 %}
+						{{ rolesMap[user.role].langKey is empty ? rolesMap[user.role].name : L(rolesMap[user.role].langKey) }}
+						{% else %}
+						<i>{{ L('role_none') }}</i>
+						{% endif %}
+					</div>
 					{% endif %}
 				</div>
-				{% endif %}
-			</div>
+			</label>
 		{% else %}
 			<div class="emptyState">{{ L('no_users_found') }}</div>
 		{% endfor %}
@@ -94,6 +97,49 @@
 		</div>
 	</div>
 	<div class="bottomSummaryWrap">{% include "pagination" %}</div>
+	<div class="boxButtonBar bottomActionBar" style="display: none; margin-top: -1px;" id="actionBar">
+		<div class="buttonBarAux"><a href="javascript:void(0)" onclick="cur.resetSelection()" class="deleteButton flL" data-tooltip="{{ L('clear_selection') }}" aria-label="{{ L('clear_selection') }}"></a><span id="selectedCount" class="actionBarTitle"></span></div>
+		<button onclick="cur.showRestrictUsersForm()">{{ L('admin_user_change_restrictions') }}</button>
+	</div>
 {% endblock %}
 </div>
+{% script %}
+(function(){
+	var itemType="{{ contentType }}";
+	var itemsCont=ge("itemsCont");
+	var actionBar=ge("actionBar");
+	var selectedCount=ge("selectedCount");
+
+	cur.onCheckboxChange=function(ev){
+		var numChecked=itemsCont.querySelectorAll("input:checked").length;
+		if(numChecked){
+			actionBar.show();
+			selectedCount.innerText=lang("X_users", {count: numChecked});
+		}else{
+			actionBar.hide();
+		}
+	};
+	cur.resetSelection=function(){
+		var checkboxes=itemsCont.querySelectorAll("input:checked");
+		for(var i=0;i<checkboxes.length;i++){
+			checkboxes[i].checked=false;
+		}
+		actionBar.hide();
+	};
+
+	function getSelectedIDs(){
+		var ids=[];
+		var checkboxes=itemsCont.querySelectorAll("input:checked");
+		for(var i=0;i<checkboxes.length;i++){
+			ids.push(checkboxes[i].name);
+		}
+		return ids;
+	}
+
+	cur.showRestrictUsersForm=function(){
+		LayerManager.getInstance().showBoxLoader();
+		ajaxGetAndApplyActions("/settings/admin/users/ban?ids="+getSelectedIDs().join(","));
+	};
+})();
+{% endscript %}
 {% endblock %}

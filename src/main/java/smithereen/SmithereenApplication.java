@@ -430,6 +430,8 @@ public class SmithereenApplication{
 					getRequiringPermission("/changeEmailForm", UserRole.Permission.MANAGE_USER_ACCESS, AdminUsersRoutes::changeUserEmailForm);
 					postRequiringPermissionWithCSRF("/changeEmail", UserRole.Permission.MANAGE_USER_ACCESS, AdminUsersRoutes::changeUserEmail);
 					getRequiringPermissionWithCSRF("/endSession", UserRole.Permission.MANAGE_USER_ACCESS, AdminUsersRoutes::endUserSession);
+					getRequiringPermission("/ban", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::banUserFormBulk);
+					postRequiringPermissionWithCSRF("/ban", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::banUsersBulk);
 				});
 				path("/reports", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_REPORTS, AdminReportingRoutes::reportsList);
