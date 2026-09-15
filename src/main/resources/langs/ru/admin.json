@@ -428,5 +428,9 @@
   "admin_federation_restriction_obfuscate_explain": "Закрыть часть символов звёздочками на странице \"О сервере\".",
   "admin_audit_log_created_federation_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {создала} other {создал}} ограничение федерации для <b>{domain}</b>:",
   "admin_audit_log_updated_federation_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {изменила} other {изменил}} ограничение федерации для <b>{domain}</b>:",
-  "admin_audit_log_deleted_federation_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} ограничение федерации для <b>{domain}</b>:"
+  "admin_audit_log_deleted_federation_rule": "<a id=\"adminUser\">{name}</a> {gender, select, female {удалила} other {удалил}} ограничение федерации для <b>{domain}</b>:",
+  "admin_user_ban_text_single": "Выберете ограничения для учётной записи <b>{name, inflect, genitive}</b>:",
+  "admin_user_ban_text_multiple": "Выберете ограничения для <b>{count, plural, one {# пользователя} few {# пользователей} other {# пользователей}}</b> ({countsByLocation}):",
+  "admin_user_ban_X_local_users": "{count, plural, one {# локальный} few {# локальных} other {# локальных}}",
+  "admin_user_ban_X_remote_users": "{count} с других серверов"
 }
