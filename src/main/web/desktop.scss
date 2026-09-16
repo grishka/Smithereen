@@ -234,7 +234,7 @@ small{
 	.headerWrap{
 		width: $siteWidthWide;
 	}
-	.contentWrap{
+	#contentWrap{
 		width: $siteWidthWide;
 	}
 }
@@ -243,7 +243,7 @@ small{
 	.headerWrap{
 		width: $siteWidthNarrow;
 	}
-	.contentWrap{
+	#contentWrap{
 		width: $siteWidthNarrow;
 	}
 }
@@ -588,7 +588,7 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	}
 }
 
-.contentWrap{
+#contentWrap{
 	margin-left: auto;
 	margin-right: auto;
 	display: flex;

@@ -292,7 +292,7 @@ class AudioPlayer{
 					</div>
 				</div>
 			`;
-			document.body.qs(".contentWrap").insertAdjacentElement("beforebegin", inlinePlayer);
+			ge("contentWrap").insertAdjacentElement("beforebegin", inlinePlayer);
 			inlinePlayer.hide();
 		}
 		this.setPlayer(new AudioManager(this), id);
