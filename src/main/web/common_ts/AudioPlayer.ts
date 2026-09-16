@@ -3,6 +3,9 @@ const enum AudioElementIDs{
 	TIP_WRAP="audioTipWrap",
 	TIP="audioTip",
 	TIP_ARROW="audioTipArrow",
+	INLINE_PLAYER="inlinePlayer",
+	INLINE_PLAYER_ARTIST="inlinePlayerArtist",
+	INLINE_PLAYER_TITLE="inlinePlayerTitle",
 }
 
 const enum AudioLocalStorageKey{
@@ -142,7 +145,7 @@ class AudioPlayer{
 		return this.instance;
 	}
 
-	public static playOrPause(id:string){
+	public static playOrPause(id?:string){
 		this.getInstance().playOrPause(id);
 	}
 
@@ -171,6 +174,7 @@ class AudioPlayer{
 
 	public updateAllControls(){
 		this.forEachControl(this.setGraphics.bind(this));
+		this.updateInlinePlayer();
 		if(this.mgr){
 			this.mgr.onPlayProgress(true);
 		}
@@ -274,6 +278,23 @@ class AudioPlayer{
 		if(!this.eventsInitialized){
 			this.initEvents();
 		}
+		if(!ge(AudioElementIDs.INLINE_PLAYER) && !mobile){
+			const inlinePlayer=ce("div", {id: AudioElementIDs.INLINE_PLAYER});
+			inlinePlayer.addEventListener("dragstart", (e)=>e.preventDefault());
+			inlinePlayer.addEventListener("selectstart", (e)=>e.preventDefault());
+			// language=HTML
+			inlinePlayer.innerHTML=`
+				<div id="inlinePlayerWrap">
+					<div id="inlinePlayerPlayButton" class="flL" onclick="AudioPlayer.getInstance().playOrPause()"></div>
+					<div id="inlinePlayerInfo" class="flL">
+						<div id="inlinePlayerArtist"></div>
+						<div id="inlinePlayerTitle"></div>
+					</div>
+				</div>
+			`;
+			ge("contentWrap").insertAdjacentElement("beforebegin", inlinePlayer);
+			inlinePlayer.hide();
+		}
 		this.setPlayer(new AudioManager(this), id);
 	}
 
@@ -304,6 +325,7 @@ class AudioPlayer{
 				break;
 		}
 		this.forEachControl(this.setGraphics.bind(this));
+		this.updateInlinePlayer();
 	}
 
 	private initEvents(){
@@ -426,7 +448,7 @@ class AudioPlayer{
 		this.playOrPause(id);
 	}
 
-	private playOrPause(id:string){
+	private playOrPause(id?:string){
 		if(this.cancelClick){
 			this.cancelClick=false;
 			return;
@@ -436,6 +458,7 @@ class AudioPlayer{
 			return;
 		}
 		const curAudioID=this.curPlayerID;
+		id=id===undefined ? curAudioID : id;
 		if(id==curAudioID){
 			if(this.mgr.paused()){
 				// TODO: If a video is playing, actually pause the video.
@@ -472,7 +495,8 @@ class AudioPlayer{
 			this.state=AudioPlayerState.LOAD;
 		}
 		this.setMediaSession();
-		this.forEachControl(this.setGraphics.bind(this))
+		this.forEachControl(this.setGraphics.bind(this));
+		this.updateInlinePlayer();
 	}
 
 	public onPlayProgress(curTime:number, totalTime:number, forceUpdateProgressBar?:boolean){
@@ -494,6 +518,7 @@ class AudioPlayer{
 
 	public onPlayFinish(){
 		this.stop();
+		ge(AudioElementIDs.INLINE_PLAYER)?.hideAnimated();
 	}
 
 	onLoadProgress(loaded:number, total:number){
@@ -511,6 +536,7 @@ class AudioPlayer{
 				c.row.dataset.unavailable=AudioUnavailabilityReason.UNSUPPORTED_FORMAT.toString();
 			});
 			this.stop();
+			ge(AudioElementIDs.INLINE_PLAYER)?.hideAnimated();
 			this.showAudioUnavailableMessage(this.lastSong);
 		}
 	}
@@ -657,5 +683,25 @@ class AudioPlayer{
 		}
 		localStorage.setItem(AudioLocalStorageKey.TIME_FORMAT_LEFT, this.timeFormatLeft ? "1" : "0");
 		event.stopPropagation();
+	}
+
+	updateInlinePlayer(){
+		const player=ge(AudioElementIDs.INLINE_PLAYER);
+		if(!player) return;
+		if(!isVisible(player)) player.showAnimated();
+		if(this.lastSong){
+			ge(AudioElementIDs.INLINE_PLAYER_ARTIST).textContent=this.lastSong.artist;
+			ge(AudioElementIDs.INLINE_PLAYER_TITLE).textContent=this.lastSong.title;
+		}
+		switch(this.state){
+			case AudioPlayerState.PLAY:
+			case AudioPlayerState.LOAD:
+				player.classList.add("playing");
+				break;
+			case AudioPlayerState.PAUSE:
+			case AudioPlayerState.STOP:
+				player.classList.remove("playing");
+				break;
+		}
 	}
 }

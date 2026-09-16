@@ -234,7 +234,7 @@ small{
 	.headerWrap{
 		width: $siteWidthWide;
 	}
-	.contentWrap{
+	#contentWrap{
 		width: $siteWidthWide;
 	}
 }
@@ -243,7 +243,7 @@ small{
 	.headerWrap{
 		width: $siteWidthNarrow;
 	}
-	.contentWrap{
+	#contentWrap{
 		width: $siteWidthNarrow;
 	}
 }
@@ -588,7 +588,7 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	}
 }
 
-.contentWrap{
+#contentWrap{
 	margin-left: auto;
 	margin-right: auto;
 	display: flex;
@@ -5464,3 +5464,77 @@ ol.largeNumbers{
 	}
 }
 
+$inlinePlayerHeight: 34px;
+$inlinePlayerWidth: 154px;
+$inlinePlayerMargin: 9px;
+$inlinePlayerDistanceFromEdge: 20px;
+
+#inlinePlayer{
+	position: sticky;
+	top: $inlinePlayerDistanceFromEdge;
+	left: calc(50% + $siteWidthNarrow / 2 - 7px);
+	width: $inlinePlayerWidth;
+	height: $inlinePlayerHeight;
+	margin-bottom: calc(0px - $inlinePlayerHeight - $inlinePlayerMargin);
+	margin-top: $inlinePlayerMargin;
+	border-radius: 3px;
+	cursor: default;
+	background-color: $inlinePlayerBackgroundCover;
+	color: $inlinePlayerTextColor;
+	opacity: 0.7;
+	transition: opacity 200ms ease-out, color 100ms ease-out;
+	&:hover{
+		color: $inlinePlayerTextColorOnHover;
+		opacity: 1;
+	}
+}
+
+@media (max-width: 839px){
+	#inlinePlayer{
+		display: none;
+	}
+}
+
+@media (max-width: 1100px){
+	#inlinePlayer{
+		position: fixed;
+		top: auto;
+		left: calc(50% - $siteWidthNarrow / 2 + $leftMenuWidth - $inlinePlayerWidth - $inlinePlayerMargin);
+		bottom: $inlinePlayerDistanceFromEdge;
+		margin: auto;
+	}
+}
+
+#inlinePlayerWrap{
+	position: absolute;
+	top: 0;
+}
+
+#inlinePlayerInfo{
+	padding: 3px 8px 5px 0;
+	/*cursor: pointer; TODO: uncomment when showing global controls on click is implemented*/
+}
+
+#inlinePlayerPlayButton{
+	position: relative;
+	cursor: pointer;
+	width: 16px;
+	height: 16px;
+	margin: 9px 7px;
+	background: svg-inline(inlinePlayerPlay) no-repeat -4px -4px / 24px 24px;
+	#inlinePlayer.playing &{
+		background-image: svg-inline(inlinePlayerPause);
+	}
+}
+
+#inlinePlayerArtist{
+	font-weight: bold;
+}
+
+#inlinePlayerArtist, #inlinePlayerTitle{
+	line-height: 13px;
+	width: 115px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
