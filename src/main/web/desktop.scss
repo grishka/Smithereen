@@ -5479,12 +5479,11 @@ $inlinePlayerDistanceFromEdge: 20px;
 	margin-top: $inlinePlayerMargin;
 	border-radius: 3px;
 	cursor: default;
-	background-color: $inlinePlayerBackgroundCover;
+	background-color: $inlinePlayerBackgroundColor;
 	color: $inlinePlayerTextColor;
 	opacity: 0.7;
-	transition: opacity 200ms ease-out, color 100ms ease-out;
+	transition: opacity 200ms ease-out;
 	&:hover{
-		color: $inlinePlayerTextColorOnHover;
 		opacity: 1;
 	}
 }
