@@ -52,7 +52,7 @@ public class TruncateTextFilter implements Filter{
 					truncated.body().appendChild(el.clone());
 				}else{
 					Node e=el.clone();
-					int initialLen=totalLen-elText.length();
+					int initialLen=totalLen-elText.length()-(el instanceof Element element ? element.select("br").size() : 0)*50;
 					List<Node> toRemove=new ArrayList<>();
 					e.traverse(new NodeVisitor(){
 						private int len=initialLen;
