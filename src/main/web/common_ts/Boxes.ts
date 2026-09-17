@@ -198,11 +198,26 @@ class LayerManager{
 
 	private lockPageScroll(){
 		if(LayerManager.pageScrollLockCount++==0){
+			this.lockInlinePlayerIfNeeded(); // It's important that this is called before changing the body style
 			var scrollbarW=window.innerWidth-document.body.clientWidth;
 			document.body.style.top = `-${window.scrollY}px`;
 			document.body.style.position="fixed";
 			document.body.style.paddingRight=scrollbarW+"px";
 			ge("wrap").classList.add("scrollLocked");
+		}
+	}
+
+	lockInlinePlayerIfNeeded(){
+		if(LayerManager.pageScrollLockCount<=0) return;
+		const inlinePlayer=ge("inlinePlayer");
+		if(inlinePlayer){
+			const headerBarHeight=49;
+			const inlinePlayerDistanceFromEdge=20;
+
+			// It is important that getBoundingClientRect is called BEFORE anything else.
+			inlinePlayer.style.top=Math.max(inlinePlayerDistanceFromEdge, Math.min(headerBarHeight, inlinePlayer.getBoundingClientRect().top))+"px";
+			inlinePlayer.style.marginTop="0";
+			inlinePlayer.style.position="fixed";
 		}
 	}
 
@@ -214,6 +229,12 @@ class LayerManager{
 			document.body.style.paddingRight="";
 			ge("wrap").classList.remove("scrollLocked");
 			window.scrollTo(0, parseInt(scrollY || '0') * -1);
+			const inlinePlayer=ge("inlinePlayer");
+			if(inlinePlayer){
+				inlinePlayer.style.top="";
+				inlinePlayer.style.marginTop="";
+				inlinePlayer.style.position="";
+			}
 		}
 	}
 
