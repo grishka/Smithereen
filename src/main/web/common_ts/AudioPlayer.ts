@@ -688,7 +688,10 @@ class AudioPlayer{
 	updateInlinePlayer(){
 		const player=ge(AudioElementIDs.INLINE_PLAYER);
 		if(!player) return;
-		if(!isVisible(player)) player.showAnimated();
+		if(!isVisible(player)){
+			player.showAnimated();
+			LayerManager.getInstance().lockInlinePlayerIfNeeded();
+		}
 		if(this.lastSong){
 			ge(AudioElementIDs.INLINE_PLAYER_ARTIST).textContent=this.lastSong.artist;
 			ge(AudioElementIDs.INLINE_PLAYER_TITLE).textContent=this.lastSong.title;

@@ -5497,7 +5497,8 @@ $inlinePlayerDistanceFromEdge: 20px;
 @media (max-width: 1100px){
 	#inlinePlayer{
 		position: fixed;
-		top: auto;
+		/* !important is needed so that the position is correct when a layer is active, see LayerManager#lockPageScroll */
+		top: auto !important;
 		left: calc(50% - $siteWidthNarrow / 2 + $leftMenuWidth - $inlinePlayerWidth - $inlinePlayerMargin);
 		bottom: $inlinePlayerDistanceFromEdge;
 		margin: auto;
