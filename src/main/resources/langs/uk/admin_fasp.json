@@ -1,1 +1,10 @@
-{}
+{
+  "admin_fasps": "Служби FASP",
+  "admin_fasp_learn_more": "Дізнатися більше на {site}",
+  "admin_fasp_tab_active": "Активні з'єднання",
+  "admin_fasp_tab_requests": "Запити на реєстрацію",
+  "admin_fasp_confirm_connection": "Підтвердити",
+  "admin_fasp_capabilities_unknown": "(не завантажено)",
+  "admin_fasp_debug_timestamp": "Час",
+  "admin_fasp_delete_title": "Видалити службу FASP"
+}
