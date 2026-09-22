@@ -189,5 +189,13 @@
   "admin_report_reason_spam": "Спам",
   "admin_report_reason_rules": "Правила порушено",
   "admin_report_reason_other": "Інше",
-  "admin_report_violated_rules": "Порушені правила"
+  "admin_report_violated_rules": "Порушені правила",
+  "admin_user_content_comments": "Інші коментарі",
+  "admin_user_content_photos": "Фотографії",
+  "admin_content_create_report": "Створити скаргу",
+  "admin_create_report_title": "Створити скаргу",
+  "admin_report_add_content_list": "Додати зі списку",
+  "admin_custom_css": "Стилі",
+  "admin_css_resources": "Ресурси",
+  "admin_css_add_file": "Завантажити файл"
 }
