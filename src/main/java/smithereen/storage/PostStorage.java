@@ -130,6 +130,10 @@ public class PostStorage{
 				.executeNoResult();
 	}
 
+	public static void updateWallPostExtraFields(Post post) throws SQLException{
+		updateWallPostExtraFields(post.id, post.serializeExtraFields());
+	}
+
 	public static void updateWallPostExtraFields(int id, String extra) throws SQLException{
 		new SQLQueryBuilder()
 				.update("wall_posts")

@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,6 +23,7 @@ import smithereen.activitypub.objects.LinkOrObject;
 import smithereen.activitypub.objects.NoteOrQuestion;
 import smithereen.exceptions.ObjectNotFoundException;
 import smithereen.model.Post;
+import smithereen.model.UserBanStatus;
 import smithereen.storage.PostStorage;
 
 public class FetchAllWallRepliesTask implements Callable<Post>{
@@ -54,6 +56,10 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 
 	@Override
 	public Post call() throws Exception{
+		if(!post.canFetchReplies()){
+			LOG.debug("Post {} is not eligible for fetching all replies", post.getActivityPubID());
+			return null;
+		}
 		LOG.debug("Started fetching full reply tree for post {}", post.getActivityPubID());
 		try{
 			if(post.activityPubReplies==null){
@@ -101,6 +107,8 @@ public class FetchAllWallRepliesTask implements Callable<Post>{
 				}
 			}
 		}finally{
+			post.repliesFetchedAt=Instant.now();
+			PostStorage.updateWallPostExtraFields(post);
 			if(post.getReplyLevel()==0){
 				synchronized(apw){
 					fetchingAllReplies.remove(post.getActivityPubID());

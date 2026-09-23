@@ -98,5 +98,6 @@
   "wall_search_title_group": "Search \"{name}\" wall",
   "wall_search_posts_only_short": "Posts only",
   "wall_search_all_short": "Posts & comments",
-  "wall_external_share_title": "New post"
+  "wall_external_share_title": "New post",
+  "wall_show_new_remote_comments": "Show new remote comments"
 }

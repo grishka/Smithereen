@@ -3,6 +3,7 @@ class PostLayer extends BaseMediaViewerLayer{
 	private postID:string;
 	private commentID:string;
 	private randomID:string;
+	private repliesLoader:RemoteRepliesLoader;
 
 	public constructor(contentHTML:string, postID:string, commentID:string, fromPopState:boolean){
 		super(fromPopState);
@@ -24,6 +25,9 @@ class PostLayer extends BaseMediaViewerLayer{
 		this.randomID=this.contentWrap.qs(".postLayerPost").dataset.rid;
 		this.id="postLayer"+this.postID+"_"+this.randomID;
 		this.contentWrap.qs(".closeBtn").addEventListener("click", (ev)=>this.dismiss());
+		if((this.contentWrap.firstElementChild as HTMLElement).dataset.canFetchReplies){
+			this.repliesLoader=new RemoteRepliesLoader(postID, this.onRemoteRepliesLoaded.bind(this));
+		}
 	}
 
 	public onCreateContentView():HTMLElement{
@@ -64,6 +68,20 @@ class PostLayer extends BaseMediaViewerLayer{
 	onHidden(){
 		AudioPlayer.getInstance().deregisterPlayerContainer(PlayerIDSuffix.LAYER);
 		super.onHidden();
+	}
+
+	dismiss(){
+		if(this.repliesLoader){
+			this.repliesLoader.cancel();
+			this.repliesLoader=null;
+		}
+		super.dismiss();
+	}
+
+	private onRemoteRepliesLoaded(count:number){
+		if(count>0){
+			this.contentWrap.qs(".postLayerNewCommentsW").show();
+		}
 	}
 }
 

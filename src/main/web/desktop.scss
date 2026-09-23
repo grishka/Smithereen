@@ -955,25 +955,30 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 
 .commentsPreviewWrap{
 	padding-left: 60px;
-	.loadPrev{
-		display: block;
-		height: 30px;
-		width: 100%;
-		line-height: 31px;
-		text-align: center;
-		background-color: $menuItemsSeparator;
-		&:hover{
-			text-decoration: none;
-		}
-	}
-	.prevLoader{
-		height: 30px;
-		background-color: $menuItemsSeparator;
-		margin-top: 5px;
-	}
 	>*:first-child{
 		margin-top: 5px;
 	}
+}
+
+.commentsPreviewWrap .loadPrev, .loadNewComments{
+	display: block;
+	height: 30px;
+	width: 100%;
+	line-height: 31px;
+	text-align: center;
+	background-color: $menuItemsSeparator;
+	&:hover{
+		text-decoration: none;
+	}
+}
+
+.commentsPreviewWrap .prevLoader{
+	margin-top: 5px;
+}
+
+.commentsPreviewWrap .prevLoader, .newCommentsLoader{
+	height: 30px;
+	background-color: $menuItemsSeparator;
 }
 
 .comment{
@@ -4813,6 +4818,10 @@ label.largeAccented{
 	.comment.twoLevelIndented{
 		margin-left: 60px;
 	}
+}
+
+.postLayerNewCommentsW{
+	padding: 17px 23px 0;
 }
 
 .mobileOnlineIcon{

@@ -17,12 +17,21 @@
 </div>
 <div class="summaryWrap noPadTop">
 	<div class="summary">
-		{{- L('X_comments', {'count': post.post.replyCount}) }}
+		<span id="postCommentsTotal{{ post.post.id }}_{{ randomID }}">{{- L('X_comments', {'count': post.post.replyCount}) }}</span>
 		<span class="auxText">{% if needExpandCWsButton %}| <a href="javascript:void(0)" onclick="expandAllCommentCWs()">{{ L('expand_all_cws') }}</a>{% endif %}</span>
 	</div>
 	{% include "pagination" %}
 </div>
 <div id="postReplies{{post.post.id}}_{{ randomID }}" class="singleColumn">
+	{% if currentUser is not null and post.post.canFetchReplies %}
+	<div class="marginAfter" id="postNewCommentsW{{ post.post.id }}_{{ randomID }}" style="display: none">
+		<a class="loadNewComments" id="postLoadNewComments{{ post.post.id }}_{{ randomID }}" href="/posts/{{ post.post.id }}/ajaxReloadComments?rid={{ randomID }}&fromLayer" data-ajax data-ajax-hide="postLoadNewComments{{ post.post.id }}_{{ randomID }}" data-ajax-show="postNewCommentsLoader{{ post.post.id }}_{{ randomID }}">{{ L('wall_show_new_remote_comments') }}</a>
+		<div class="newCommentsLoader loader" style="display: none" id="postNewCommentsLoader{{ post.post.id }}_{{ randomID }}"></div>
+	</div>
+	{% script %}
+	loadRemoteComments("{{ post.post.id }}", "{{ randomID }}");
+	{% endscript %}
+	{% endif %}
 	{%- for reply in items %}
 	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_comment#{commentViewType=='FLAT' ? '' : 'Reply'}Post#{post.post.id}_#{randomID}", 'first': loop.first, 'topLevel': post, 'randomID': randomID} %}
 	{% endfor -%}

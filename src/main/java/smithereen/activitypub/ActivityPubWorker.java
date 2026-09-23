@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -1320,6 +1321,8 @@ public class ActivityPubWorker{
 	}
 
 	public synchronized Future<Post> fetchAllReplies(Post post){
+		if(!post.canFetchReplies())
+			return CompletableFuture.completedFuture(post);
 		return fetchingAllWallReplies.computeIfAbsent(post.getActivityPubID(), (uri)->executor.submit(new FetchAllWallRepliesTask(this, context, fetchingAllWallReplies, post)));
 	}
 

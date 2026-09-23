@@ -887,6 +887,8 @@ public class SmithereenApplication{
 			get("/layerPrevComments", PostRoutes::ajaxLayerPrevComments);
 			getWithCSRF("/pin", PostRoutes::pinPost);
 			getWithCSRF("/unpin", PostRoutes::unpinPost);
+			getLoggedIn("/fetchAllReplies", PostRoutes::fetchAllReplies);
+			get("/ajaxReloadComments", PostRoutes::ajaxReloadComments);
 		});
 
 		path("/albums/:id", ()->{

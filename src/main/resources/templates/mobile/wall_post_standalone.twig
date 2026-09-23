@@ -63,6 +63,15 @@
 	<span class="loader inlineLoader" style="display: none" id="loadPrevLoader{{ post.post.id }}"></span>
 </div>
 {% endif %}
+{% if currentUser is not null and realPost.canFetchReplies %}
+<div id="postNewCommentsW{{ post.post.id }}" class="loadMoreComments" style="display: none">
+	<a id="postLoadNewComments{{ post.post.id }}" href="/posts/{{ post.post.id }}/ajaxReloadComments" data-ajax data-ajax-hide="postLoadNewComments{{ post.post.id }}" data-ajax-show="postNewCommentsLoader{{ post.post.id }}">{{ L('wall_show_new_remote_comments') }}</a>
+	<div class="loader inlineLoader" style="display: none" id="postNewCommentsLoader{{ post.post.id }}"></div>
+</div>
+{% script %}
+loadRemoteComments("{{ post.post.id }}");
+{% endscript %}
+{% endif %}
 <div id="postReplies{{realPost.id}}">
 	{% for reply in items %}
 		{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_commentPost#{realPost.id}", 'topLevel': post} %}
