@@ -1,3 +1,26 @@
 {
-  "report": "Поскаржитись"
+  "report": "Поскаржитись",
+  "report_title_post": "Поскаржитися на допис",
+  "report_title_comment": "Поскаржитися на коментар",
+  "report_title_user": "Поскаржитися на профіль",
+  "report_title_group": "Поскаржитися на групу",
+  "report_title_event": "Поскаржитися на подію",
+  "report_text_post": "Що не так з цим дописом?",
+  "report_text_comment": "Що не так з цим коментарем?",
+  "report_text_user": "Що не так з цим профілем?",
+  "report_text_group": "Що не так з цією групою?",
+  "report_text_event": "Що не так з цією подією?",
+  "report_sent": "Скарга надіслана",
+  "report_forward_to_domain": "Анонімно переадресовано <b>{domain}</b>",
+  "report_submitted": "Ваша скарга була відправлена до співробітників сервера.",
+  "report_title_message": "Поскаржитися на повідомлення",
+  "report_text_message": "Що не так з цим повідомленням?",
+  "report_title_photo": "Поскаржитися на фотографію",
+  "report_text_photo": "Що не так з цією фотографією?",
+  "report_reason_spam": "Це спам",
+  "report_reason_rules": "Це порушує правила сервера",
+  "report_reason_illegal": "Це заборонено",
+  "report_reason_other": "Щось інше",
+  "report_comment_placeholder": "Коментар (не обов'язково)",
+  "report_select_rules": "Які правила порушено?"
 }
