@@ -55,7 +55,12 @@
 	{% endif %}
 </div>
 <div class="postLayerCommentsHeader" id="postCommentsSummary{{ post.post.id }}_{{ randomID }}" style="{% if items is empty %}display: none{% endif %}">
-	<div class="total" id="postCommentsTotal{{ post.post.id }}_{{ randomID }}" style="{% if items | length<totalItems %}display: none{% endif %}">{{ L('X_comments', {'count': post.post.replyCount}) }}</div>
+	<div class="total" id="postCommentsTotal{{ post.post.id }}_{{ randomID }}" style="{% if items | length<totalItems %}display: none{% endif %}">
+		{{ L('X_comments', {'count': post.post.replyCount}) }}
+		{% if currentUser is not null and realPost.canFetchReplies %}
+		<div class="loader flR" id="postCommentsRemoteLoader{{ post.post.id }}_{{ randomID }}" style="height: 13px"></div>
+		{% endif %}
+	</div>
 	{% if items | length<totalItems %}
 	<div class="loadMore" id="loadPrevWrap{{ post.post.id }}_{{ randomID }}">
 		<a href="/posts/{{ post.post.id }}/layerPrevComments?offset={{ items | length }}&rid={{ randomID }}" id="loadPrevBtn{{ post.post.id }}_{{ randomID }}" data-ajax data-ajax-hide="loadPrevBtn{{ post.post.id }}_{{ randomID }}" data-ajax-show="loadPrevLoader{{ post.post.id }}_{{ randomID }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': totalItems-(items | length)}) : L('show_previous_comments') }}</a>

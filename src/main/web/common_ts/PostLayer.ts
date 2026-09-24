@@ -79,6 +79,7 @@ class PostLayer extends BaseMediaViewerLayer{
 	}
 
 	private onRemoteRepliesLoaded(count:number){
+		ge(`postCommentsRemoteLoader${this.postID}_${this.randomID}`).remove();
 		if(count>0){
 			this.contentWrap.qs(".postLayerNewCommentsW").show();
 		}
