@@ -52,7 +52,11 @@ function loadRemoteComments(postID:string, randomID:string=null){
 	cur.repliesLoader=new RemoteRepliesLoader(postID, (count)=>{
 		cur.repliesLoader=null;
 		if(count>0){
-			ge("postNewCommentsW"+postID+(randomID ? ("_"+randomID) : "")).show();
+			var idSuffix=postID+(randomID ? ("_"+randomID) : "");
+			ge("postNewCommentsW"+idSuffix).show();
+			var loader=ge("postCommentsRemoteLoader"+idSuffix);
+			if(loader)
+				loader.remove();
 		}
 	});
 	ajaxNavCallbacks.push(()=>{

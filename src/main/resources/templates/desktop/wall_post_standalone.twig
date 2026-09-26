@@ -19,6 +19,9 @@
 	<div class="summary">
 		<span id="postCommentsTotal{{ post.post.id }}_{{ randomID }}">{{- L('X_comments', {'count': post.post.replyCount}) }}</span>
 		<span class="auxText">{% if needExpandCWsButton %}| <a href="javascript:void(0)" onclick="expandAllCommentCWs()">{{ L('expand_all_cws') }}</a>{% endif %}</span>
+		{% if currentUser is not null and post.post.canFetchReplies %}
+		<span class="inlineLoader" id="postCommentsRemoteLoader{{ post.post.id }}_{{ randomID }}"></span>
+		{% endif %}
 	</div>
 	{% include "pagination" %}
 </div>

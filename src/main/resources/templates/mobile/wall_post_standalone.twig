@@ -3,6 +3,9 @@
 {% set realPost=post.post %}
 {%extends "page"%}
 {% block headerActionButtons %}
+	{% if currentUser is not null and post.post.canFetchReplies %}
+		<span class="inlineLoader actionButton" id="postCommentsRemoteLoader{{ post.post.id }}"></span>
+	{% endif %}
 	{% if needExpandCWsButton %}
 	    <button title="{{ L('expand_all_cws') }}" class="actionButton iconCW" onclick="expandAllCommentCWs()"></button>
 	{% endif %}
