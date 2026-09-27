@@ -1709,6 +1709,9 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 			for(var cb of ajaxNavCallbacks){
 				cb();
 			}
+			var qsearchField:HTMLInputElement=ge("qsearchField");
+			if(qsearchField)
+				qsearchField.value="";
 			ajaxNavCallbacks=[];
 			cur={};
 			if(addToHistory){

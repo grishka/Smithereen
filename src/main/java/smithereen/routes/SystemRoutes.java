@@ -615,7 +615,7 @@ public class SystemRoutes{
 					}
 				}catch(ObjectNotFoundException ignore){}
 			}
-			return new JsonObjectBuilder().add("success", switch(obj){
+			JsonObjectBuilder result=new JsonObjectBuilder().add("success", switch(obj){
 				case Post post when post.getReplyLevel()>0 -> Config.localURI("/posts/"+post.replyKey.getFirst()+"#comment"+post.id).toString();
 				case Post post -> post.getInternalURL().toString();
 				case Actor actor -> actor.getProfileURL();
@@ -624,7 +624,13 @@ public class SystemRoutes{
 				case Comment comment -> ctx.getCommentsController().getCommentParent(self.user, comment).getURL();
 				case BoardTopic topic -> topic.getURL();
 				default -> throw new RemoteObjectFetchException(RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, null);
-			}).build();
+			});
+			if(obj instanceof Post post){
+				result.add("post_id", (post.getReplyLevel()>0 ? post.replyKey.getFirst() : post.id)+"");
+				if(post.getReplyLevel()>0)
+					result.add("comment_id", post.id+"");
+			}
+			return result.build();
 		}catch(RemoteObjectFetchException x){
 			JsonObjectBuilder jb=new JsonObjectBuilder().add("error", switch(x.error){
 				case UNSUPPORTED_OBJECT_TYPE -> l.get("unsupported_remote_object_type");

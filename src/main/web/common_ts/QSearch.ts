@@ -89,7 +89,15 @@ function loadRemoteObject(url:string, opts:any={}):void{
 		opts={};
 	ajaxPost("/system/loadRemoteObject", {uri: url, ...opts}, (resp:any)=>{
 		if(resp.success){
-			window.location.href=resp.success;
+			if(mobile){
+				window.location.href=resp.success;
+			}else{
+				if(resp.post_id){
+					openPostLayer(resp.post_id, resp.comment_id);
+				}else{
+					ajaxNavigate(resp.success, true);
+				}
+			}
 		}else if(resp.error){
 			var content=resp.error as string;
 			if(resp.details){
