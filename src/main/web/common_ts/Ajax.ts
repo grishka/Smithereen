@@ -4,10 +4,12 @@ class RemoteRepliesLoader{
 	private readonly onDone:{(count:number):void};
 	private xhr:XMLHttpRequest;
 	private canceled:boolean=false;
+	private readonly fetchID:string;
 
 	public constructor(postID:string, onDone:{(count:number):void}){
 		this.postID=postID;
 		this.onDone=onDone;
+		this.fetchID=new Date().getTime().toString();
 		this.doNextRequest();
 	}
 
@@ -28,7 +30,7 @@ class RemoteRepliesLoader{
 			this.timeout=null;
 			this.doNextRequest();
 		};
-		this.xhr=ajaxGet(`/posts/${this.postID}/fetchAllReplies`, r=>{
+		this.xhr=ajaxGet(`/posts/${this.postID}/fetchAllReplies?fid=${this.fetchID}`, r=>{
 			this.xhr=null;
 			if(this.canceled)
 				return;

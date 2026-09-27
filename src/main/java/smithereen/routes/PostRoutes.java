@@ -1434,12 +1434,13 @@ public class PostRoutes{
 
 	public static Object fetchAllReplies(Request req, Response resp, Account self, ApplicationContext ctx){
 		int postID=parseIntOrDefault(req.params(":postID"), 0);
+		String fetchID=req.queryParamOrDefault("fid", "");
 		Post post=ctx.getWallController().getPostOrThrow(postID);
 		ctx.getPrivacyController().enforcePostPrivacy(self.user, post);
 		resp.type("application/json");
 		final Session session=req.session();
 		synchronized(session){
-			record FetchRepliesRequest(Future<Post> future, Instant requestedAt, int initialCount){}
+			record FetchRepliesRequest(Future<Post> future, Instant requestedAt, int initialCount, String fetchID){}
 			Map<Integer, FetchRepliesRequest> requests=session.attribute("fetchingReplies");
 			if(requests==null)
 				session.attribute("fetchingReplies", requests=new HashMap<>());
@@ -1448,7 +1449,7 @@ public class PostRoutes{
 			Instant removeOlderThan=Instant.now().minus(10, ChronoUnit.MINUTES);
 			requests.values().removeIf(fr->fr.requestedAt.isBefore(removeOlderThan));
 
-			if(existingReq!=null){
+			if(existingReq!=null && existingReq.fetchID.equals(fetchID)){
 				int currentCount=post.replyCount;
 				JsonObjectBuilder b=new JsonObjectBuilder();
 				if(existingReq.future.isDone()){
@@ -1468,7 +1469,7 @@ public class PostRoutes{
 			}
 
 			Future<Post> future=ctx.getActivityPubWorker().fetchAllReplies(post);
-			requests.put(postID, new FetchRepliesRequest(future, Instant.now(), post.replyCount));
+			requests.put(postID, new FetchRepliesRequest(future, Instant.now(), post.replyCount, fetchID));
 			return new JsonObjectBuilder()
 					.add("status", "running")
 					.build();
