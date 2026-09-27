@@ -1,6 +1,6 @@
 <p align="center"><img src="/img/logo_text.svg" alt="Smithereen"/></p>
 
-<p align="center">[Official website](https://smithereen.software) | [API & federation documentation](https://smithereen.software/docs) | [Demo server](https://try.smithereen.software)</p>
+<p align="center"><a href="https://smithereen.software">Official website</a> | <a href="https://smithereen.software/docs">API & federation documentation</a> | <a href="https://try.smithereen.software">Demo server</a></p>
 
 Federated, ActivityPub-compatible social network with friends, walls, and groups.
 
