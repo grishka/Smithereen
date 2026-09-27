@@ -1,5 +1,7 @@
 <p align="center"><img src="/img/logo_text.svg" alt="Smithereen"/></p>
 
+<p align="center">[Official website](https://smithereen.software) | [API & federation documentation](https://smithereen.software/docs) | [Demo server](https://try.smithereen.software)</p>
+
 Federated, ActivityPub-compatible social network with friends, walls, and groups.
 
 If you have any questions or feedback, there's a [Telegram chat](https://t.me/SmithereenProject) you can join.
