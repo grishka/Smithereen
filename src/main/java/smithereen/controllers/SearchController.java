@@ -213,14 +213,7 @@ public class SearchController{
 			obj=context.getObjectLinkResolver().resolveLocally(uri, Object.class);
 			return switch(obj){
 				case Actor a -> a;
-				case Post p ->{
-					try{
-						context.getActivityPubWorker().fetchAllReplies(p).get(30, TimeUnit.SECONDS);
-					}catch(Throwable x){
-						LOG.trace("Error fetching replies", x);
-					}
-					yield p;
-				}
+				case Post p -> p;
 				case PhotoAlbum pa -> pa;
 				case Comment c -> c;
 				case Photo p -> p;
@@ -274,21 +267,11 @@ public class SearchController{
 					}
 					context.getWallController().loadAndPreprocessRemotePostMentions(nativePost, post);
 					context.getObjectLinkResolver().storeOrUpdateRemoteObject(nativePost, post);
-					try{
-						context.getActivityPubWorker().fetchAllReplies(nativePost).get(30, TimeUnit.SECONDS);
-					}catch(Throwable x){
-						LOG.trace("Error fetching replies", x);
-					}
 					yield nativePost;
 				}else if(post.isWallPostOrComment(context)){
 					Future<List<Post>> future=context.getActivityPubWorker().fetchWallReplyThread(post);
 					try{
 						List<Post> posts=future.get(30, TimeUnit.SECONDS);
-						try{
-							context.getActivityPubWorker().fetchAllReplies(posts.getFirst()).get(30, TimeUnit.SECONDS);
-						}catch(TimeoutException tx){
-							LOG.debug("Timed out fetching all replies for {}", posts.getFirst().getActivityPubID(), tx);
-						}
 						yield post.asNativePost(context);
 					}catch(InterruptedException x){
 						throw new RuntimeException(x);
