@@ -1033,5 +1033,9 @@ public class Utils{
 		}
 	}
 
+	public static boolean notNullAndContainsPrintableChars(String str){
+		return str!=null && !str.replaceAll("\\p{C}", "").isBlank();
+	}
+
 	private record EmailConfirmationCodeInfo(String code, EmailCodeActionType actionType, Instant sentAt){}
 }

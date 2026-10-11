@@ -263,6 +263,9 @@ public abstract class Actor extends ActivityPubObject{
 			}
 			if(username.length()>USERNAME_MAX_LENGTH)
 				username=username.substring(0, USERNAME_MAX_LENGTH);
+
+			if(!Utils.notNullAndContainsPrintableChars(name))
+				name=username;
 		}
 		if(activityPubID!=null){
 			domain=activityPubID.getHost();

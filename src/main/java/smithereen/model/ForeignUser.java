@@ -137,8 +137,10 @@ public class ForeignUser extends User implements ForeignActor{
 			lastName=optString(obj, "lastName");
 			middleName=optString(obj, "middleName");
 			maidenName=optString(obj, "maidenName");
+			if(!Utils.notNullAndContainsPrintableChars(firstName))
+				firstName=username;
 		}else{
-			firstName=StringUtils.isNotEmpty(name) ? name : username;
+			firstName=Utils.notNullAndContainsPrintableChars(name) ? name : username;
 			// If there's a single space somewhere in the name, assume it's first and last names
 			int spaceIdx=firstName.indexOf(' ');
 			if(spaceIdx>0 && spaceIdx==firstName.lastIndexOf(' ')){
