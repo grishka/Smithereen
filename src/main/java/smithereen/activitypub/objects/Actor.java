@@ -15,6 +15,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -78,11 +80,18 @@ public abstract class Actor extends ActivityPubObject{
 	public String aboutSource;
 
 	public String getProfileURL(String action){
-		return "/"+getFullUsername()+"/"+action;
+		return getProfileURL()+"/"+action;
 	}
 
 	public String getProfileURL(){
-		return "/"+getFullUsername();
+		StringBuilder sb=new StringBuilder("/");
+		sb.append(username);
+		if(StringUtils.isNotEmpty(domain)){
+			sb.append("@");
+			// Percent-encode potential IDN
+			sb.append(URLEncoder.encode(UriRenderer.renderDomain(domain), StandardCharsets.UTF_8));
+		}
+		return sb.toString();
 	}
 
 	public String getAbsoluteProfileURL(){
