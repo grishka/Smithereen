@@ -1,16 +1,21 @@
 package smithereen.api.methods;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import smithereen.ApplicationContext;
 import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.api.ApiCallContext;
+import smithereen.api.ApiErrorException;
 import smithereen.api.model.ApiErrorType;
 import smithereen.api.model.ApiGroup;
 import smithereen.api.model.ApiPaginatedListWithActors;
@@ -35,10 +40,26 @@ import smithereen.model.media.MediaFileUploadPurpose;
 import smithereen.model.media.MediaFileUploadTokens;
 import smithereen.model.viewmodel.PostViewModel;
 import smithereen.text.FormattedTextFormat;
+import smithereen.util.JsonObjectBuilder;
+import smithereen.util.MaintenanceScheduler;
 import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
 public class WallMethods{
+
+	private record FetchRepliesKey(byte[] accessToken, int postID, String requestID){}
+	private record FetchRepliesRequest(Future<Post> future, Instant requestedAt, int initialCount){}
+	private static final HashMap<FetchRepliesKey, FetchRepliesRequest> fetchRepliesRequests=new HashMap<>();
+
+	static{
+		MaintenanceScheduler.runPeriodically(()->{
+			synchronized(fetchRepliesRequests){
+				Instant removeOlderThan=Instant.now().minus(10, ChronoUnit.MINUTES);
+				fetchRepliesRequests.values().removeIf(fr->fr.requestedAt.isBefore(removeOlderThan));
+			}
+		}, 10, TimeUnit.MINUTES);
+	}
+
 	public static Object get(ApplicationContext ctx, ApiCallContext actx){
 		Actor owner=ApiUtils.getOwnerOrSelf(ctx, actx, "owner_id");
 		User self=actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
@@ -329,5 +350,59 @@ public class WallMethods{
 			res.groups=ApiUtils.getGroups(needGroups, ctx, actx);
 		}
 		return res;
+	}
+
+	public static Object loadRemoteComments(ApplicationContext ctx, ApiCallContext actx){
+		Post post=ctx.getWallController().getPostOrThrow(actx.requireParamIntPositive("post_id"));
+		if(post.getReplyLevel()!=0)
+			throw new ObjectNotFoundException();
+
+		User self=actx.hasPermission(ClientAppPermission.WALL_READ) ? actx.self.user : null;
+		ctx.getPrivacyController().enforcePostPrivacy(self, post);
+		ctx.getPrivacyController().enforceObjectPrivacy(self, post);
+
+		if(post.isLocal())
+			throw actx.error(ApiErrorType.ACTION_NOT_APPLICABLE, "this is a local post");
+
+		String requestID=actx.optParamString("request_id");
+		if(StringUtils.isEmpty(requestID)){
+			if(!post.canFetchReplies())
+				throw actx.error(ApiErrorType.ACTION_NOT_APPLICABLE, "conditions for loading remote comments for this post aren't met (post too new or comments were already loaded recently)");
+			ctx.getActivityPubWorker().fetchAllReplies(post);
+			return true;
+		}
+
+		FetchRepliesKey key=new FetchRepliesKey(actx.token.id(), post.id, requestID);
+		FetchRepliesRequest existingReq;
+		synchronized(fetchRepliesRequests){
+			existingReq=fetchRepliesRequests.get(key);
+		}
+
+		if(existingReq!=null){
+			int currentCount=post.replyCount;
+			JsonObjectBuilder b=new JsonObjectBuilder();
+			if(existingReq.future.isDone()){
+				b.add("status", "done")
+						.add("new_comment_count", currentCount-existingReq.initialCount);
+			}else{
+				b.add("status", "running");
+			}
+			return b.build();
+		}
+
+		if(!post.canFetchReplies()){
+			return new JsonObjectBuilder()
+					.add("status", "done")
+					.add("new_comment_count", 0)
+					.build();
+		}
+
+		Future<Post> future=ctx.getActivityPubWorker().fetchAllReplies(post);
+		synchronized(fetchRepliesRequests){
+			fetchRepliesRequests.put(key, new FetchRepliesRequest(future, Instant.now(), post.replyCount));
+		}
+		return new JsonObjectBuilder()
+				.add("status", "running")
+				.build();
 	}
 }

@@ -35,6 +35,7 @@ public class ApiWallPost{
 	public List<ApiWallPost> repostHistory;
 	public Boolean isMastodonStyleRepost;
 	public Boolean canPin, isPinned;
+	public Boolean canLoadRemoteComments;
 
 	// Comments only
 	public List<Integer> parentStack;
@@ -121,6 +122,7 @@ public class ApiWallPost{
 				if(ownerPinnedIDs!=null)
 					isPinned=ownerPinnedIDs.contains(id);
 			}
+			canLoadRemoteComments=post.post.canFetchReplies();
 		}else{
 			if(p.getReplyLevel()>1){
 				parentStack=p.replyKey.subList(1, p.replyKey.size());

@@ -110,6 +110,7 @@ public class ApiDispatcher{
 		registerMethod("wall.getEditSource", WallMethods::getEditSource, ClientAppPermission.WALL_WRITE);
 		registerMethod("wall.edit", WallMethods::edit, ClientAppPermission.WALL_WRITE);
 		registerMethod("wall.search", WallMethods::search, true);
+		registerMethod("wall.loadRemoteComments", WallMethods::loadRemoteComments, ClientAppPermission.WALL_READ);
 
 		registerMethod("photos.getAttachmentUploadServer", PhotosMethods::getAttachmentUploadServer, true);
 		registerMethod("photos.getAlbums", PhotosMethods::getAlbums, false);
