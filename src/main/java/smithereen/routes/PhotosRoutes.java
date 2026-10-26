@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
+import smithereen.activitypub.ActivityPubWorker;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.LocalImage;
 import smithereen.activitypub.objects.activities.Like;
@@ -1250,7 +1252,9 @@ public class PhotosRoutes{
 	}
 
 	public static Object getFriendsForTagging(Request req, Response resp, Account self, ApplicationContext ctx){
-		List<User> friends=ctx.getFriendsController().getFriends(self.user, 0, 10_000, FriendsController.SortOrder.ID_ASCENDING).list;
+		List<User> friends=ctx.getFriendsController().getFriends(self.user, 0, ActivityPubWorker.MAX_FRIENDS, FriendsController.SortOrder.HINTS).list;
+		// Put users whose server supports tags first
+		friends.sort(Comparator.comparing(User::supportsPhotoTags).reversed());
 		return new RenderedTemplateResponse("photo_viewer_tag_friends", req)
 				.with("friends", friends);
 	}
