@@ -685,6 +685,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 					}
 				}
 			});
+			initSearchKeyDownEvent(input, list, "a[data-user-id]", (selected)=>selected.click());
 			ajaxGet("/photos/friendListForTagging", (r)=>{
 				list.innerHTML=r;
 				noResults=list.qs(".noResults");

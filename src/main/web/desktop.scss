@@ -185,7 +185,7 @@ small{
 	.qsearchName{
 		line-height: 30px;
 	}
-	&:hover{
+	&:hover, &.selected{
 		text-decoration: none;
 		background: $blockBackground;
 	}
@@ -4426,7 +4426,7 @@ label.largeAccented{
 		>a{
 			display: block;
 			padding: 5px;
-			&:hover{
+			&:hover, &.selected{
 				text-decoration: none;
 				background: $blockBackground;
 			}
