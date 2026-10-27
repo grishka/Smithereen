@@ -704,6 +704,10 @@ public class User extends Actor{
 		return Config.localURI("/users/"+id+"/tagged");
 	}
 
+	public boolean supportsPhotoTags(){
+		return true;
+	}
+
 	public URI getPinnedPostsURL(){
 		return Config.localURI("/users/"+id+"/pinnedPosts");
 	}

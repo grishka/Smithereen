@@ -461,6 +461,11 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
+	public boolean supportsPhotoTags(){
+		return taggedPhotos!=null;
+	}
+
+	@Override
 	public URI getPinnedPostsURL(){
 		return pinnedPosts;
 	}
