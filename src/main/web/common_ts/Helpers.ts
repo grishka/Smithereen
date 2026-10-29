@@ -59,6 +59,7 @@ interface HTMLElement{
 	currentVisibilityAnimation:Animation;
 
 	qs<E extends HTMLElement>(sel:string):E;
+	findScrollableParent():HTMLElement;
 	hide():void;
 	show():void;
 	hideAnimated(animName?:AnimationDescription, onEnd?:{():void}):void;
@@ -69,6 +70,21 @@ interface HTMLElement{
 
 HTMLElement.prototype.qs=function(sel:string){
 	return this.querySelector(sel);
+};
+
+HTMLElement.prototype.findScrollableParent=function(){
+	var parent=this.parentElement;
+	while(parent){
+		var overflow=window.getComputedStyle(parent).overflow;
+		if(overflow){
+			for(var ov of overflow.split(" ")){
+				if(ov=="auto" || ov=="scroll")
+					return parent;
+			}
+		}
+		parent=parent.parentElement;
+	}
+	return document.documentElement;
 };
 
 HTMLElement.prototype.hide=function():void{
@@ -1341,6 +1357,10 @@ function showTooltip(el:HTMLElement, text:string){
 	}
 	if(el.dataset.tooltipFixed!=undefined){
 		ttEl.style.position="fixed";
+		var scrollableParent=ttEl.findScrollableParent();
+		if(scrollableParent!=document.documentElement){
+			ttEl.style.transform="translateY("+(-scrollableParent.scrollTop)+"px)";
+		}
 	}
 	ttEl.showAnimated();
 }
