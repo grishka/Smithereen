@@ -1358,9 +1358,13 @@ function showTooltip(el:HTMLElement, text:string){
 	if(el.dataset.tooltipFixed!=undefined){
 		ttEl.style.position="fixed";
 		var scrollableParent=ttEl.findScrollableParent();
-		if(scrollableParent!=document.documentElement){
-			ttEl.style.transform="translateY("+(-scrollableParent.scrollTop)+"px)";
+		var totalScrollTop=0;
+		while(scrollableParent!=document.documentElement){
+			totalScrollTop+=scrollableParent.scrollTop;
+			scrollableParent=scrollableParent.findScrollableParent();
 		}
+		if(totalScrollTop)
+			ttEl.style.transform="translateY("+(-totalScrollTop)+"px)";
 	}
 	ttEl.showAnimated();
 }
