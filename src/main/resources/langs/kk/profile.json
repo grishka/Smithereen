@@ -94,7 +94,7 @@
   "profile_relationship_actively_searching": "белсенді іздеуде",
   "profile_relationship_in_relationship_with_X": "<a id=\"partner\">{partnerName}</a> кездеседі",
   "profile_relationship_engaged_with_X": "<a id=\"partner\">{partnerName}</a> атастырылған",
-  "profile_relationship_married_to_X": "<a id=\"partner\">{partnerName, inflect, {partnerGender, select, female {instrumental} male {prepositional} other {instrumental}}}</a> {partnerGender, select, female {үйленген} male {күйеуге шыққан} other {үйленген}}",
+  "profile_relationship_married_to_X": "<a id=\"partner\">{partnerGender, select, male {partnerName, inflect, prepositional} other {partnerName, inflect, instrumental}}</a> {partnerGender, select, female {үйленген} male {күйеуге шыққан} other {үйленген}}",
   "profile_relationship_in_love_with_X": "<a id=\"partner\">{partnerName}</a> ғашық",
   "profile_relationship_complicated_with_X": "<a id=\"partner\">{partnerName}</a> күрделі қарым-қатынаста",
   "profile_edit_relationship_partner": "Жұбым",
