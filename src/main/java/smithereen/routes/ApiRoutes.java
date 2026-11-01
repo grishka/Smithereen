@@ -83,7 +83,7 @@ import static smithereen.Utils.*;
 public class ApiRoutes{
 	private static final Logger LOG=LoggerFactory.getLogger(ApiRoutes.class);
 	private static final Pattern VERSION_PATTERN=Pattern.compile("^(\\d+)\\.(\\d+)$");
-	public static final String MAX_VERSION="1.0";
+	public static final String MAX_VERSION="1.1";
 
 	public static final Gson gson=new GsonBuilder()
 			.disableHtmlEscaping()
@@ -482,8 +482,8 @@ public class ApiRoutes{
 				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "version parameter \"v\" must have format major.minor, e.g. 1.0", params));
 			versionMajor=safeParseInt(matcher.group(1));
 			versionMinor=safeParseInt(matcher.group(2));
-			if(versionMajor>1 || versionMinor>0){
-				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "version "+versionMajor+"."+versionMinor+" too new for this server. Maximum supported API version is 1.0", params));
+			if(versionMajor>1 || versionMinor>1){
+				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "version "+versionMajor+"."+versionMinor+" too new for this server. Maximum supported API version is 1.1", params));
 			}else if(versionMajor==0){
 				throw new ApiErrorException(new ApiError(ApiErrorType.BAD_REQUEST, "invalid API version "+versionMajor+"."+versionMinor, params));
 			}
