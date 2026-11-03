@@ -12,7 +12,7 @@
 <style>
 {{ inlineTextResource("embed.css") }}
 </style>
-{% if realPost.hasAudioAttachments() %}
+{% if post.hasAudioAttachments() %}
 <style>
 {{ inlineTextResource("audioplayer_desktop.css") }}
 </style>
@@ -23,7 +23,10 @@
 	<div class="header">
 		<a href="{{ profileURL(realPost.authorID) }}" target="_blank" class="avaW">{{ users[realPost.authorID] | pictureForAvatar('a', 32) }}</a>
 		<div class="postInfo">
-			<div class="ellipsize"><a href="{{ profileURL(realPost.authorID) }}" class="postName" target="_blank">{{ users[realPost.authorID] | name }}</a></div>
+			<div class="ellipsize">
+				<a href="{{ profileURL(realPost.authorID) }}" class="postName" target="_blank">{{ users[realPost.authorID] | name }}</a>
+                {%- if realPost.action=='AVATAR_UPDATE' %} <span class="grayText">{{ L('post_action_updated_avatar', {'gender': users[realPost.authorID].gender}) }}</span>{% endif %}
+			</div>
 			{% if realPost.replyLevel==0 %}
 			<div><a href="{{ realPost.internalURL }}" target="_blank" class="postTime">{{ LD(realPost.createdAt) }}</a></div>
 			{% else %}

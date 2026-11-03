@@ -51,6 +51,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -191,11 +192,11 @@ public class ActivityPub{
 		if(!"https".equals(uri.getScheme()) && !"http".equals(uri.getScheme()))
 			throw new IllegalStateException("Invalid URI scheme in fetchRemoteObject: "+uri);
 
-		Server server=ctx.getModerationController().getOrAddServer(uri.getAuthority());
-		FederationRestriction restriction=server.restriction();
+		ctx.getModerationController().getOrAddServer(uri.getAuthority());
+		FederationRestriction restriction=ctx.getModerationController().getDomainFederationRestriction(uri.getAuthority());
 		if(restriction!=null){
 			if(restriction.type==FederationRestriction.RestrictionType.SUSPENSION){
-				throw new ObjectNotFoundException("Federation with "+server.host()+" is blocked by this server's policies");
+				throw new ObjectNotFoundException("Federation with "+uri.getAuthority()+" is blocked by this server's policies");
 			}
 		}
 
@@ -339,6 +340,13 @@ public class ActivityPub{
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 		}
 
+		FederationRestriction restriction=ctx.getModerationController().getDomainFederationRestriction(inboxUrl.getAuthority());
+		if(restriction!=null){
+			if(restriction.type==FederationRestriction.RestrictionType.SUSPENSION){
+				LOG.debug("Not sending {} activity to server {} because federation with it is blocked", activity.getType(), inboxUrl.getAuthority());
+				return;
+			}
+		}
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
 			LOG.debug("Not sending {} activity to server {} because it's down", activity.getType(), server.host());
@@ -347,12 +355,6 @@ public class ActivityPub{
 		if(requiredServerFeatures!=null && !requiredServerFeatures.isEmpty() && !server.features().containsAll(requiredServerFeatures)){
 			LOG.debug("Not sending {} activity to server {} because its feature set {} does not include required features {}", activity.getType(), server.host(), server.features(), requiredServerFeatures);
 			return;
-		}
-		if(server.restriction()!=null){
-			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
-				LOG.debug("Not sending {} activity to server {} because federation with it is blocked", activity.getType(), server.host());
-				return;
-			}
 		}
 
 		Future<JsonObject> f=serializerSignerExecutor.submit(()->{
@@ -375,6 +377,13 @@ public class ActivityPub{
 		if(actor.privateKey==null)
 			throw new IllegalArgumentException("Sending an activity requires an actor that has a private key on this server.");
 
+		FederationRestriction restriction=ctx.getModerationController().getDomainFederationRestriction(inboxUrl.getAuthority());
+		if(restriction!=null){
+			if(restriction.type==FederationRestriction.RestrictionType.SUSPENSION){
+				LOG.debug("Not forwarding activity to server {} because federation with it is blocked", inboxUrl.getAuthority());
+				return;
+			}
+		}
 		Server server=ctx.getModerationController().getServerByDomain(inboxUrl.getAuthority());
 		if(server.getAvailability()==Server.Availability.DOWN){
 			LOG.debug("Not forwarding activity to server {} because it's down", server.host());
@@ -383,12 +392,6 @@ public class ActivityPub{
 		if(requiredServerFeatures!=null && !requiredServerFeatures.isEmpty() && !server.features().containsAll(requiredServerFeatures)){
 			LOG.debug("Not forwarding activity to server {} because its feature set {} does not include required features {}", server.host(), server.features(), requiredServerFeatures);
 			return;
-		}
-		if(server.restriction()!=null){
-			if(server.restriction().type==FederationRestriction.RestrictionType.SUSPENSION){
-				LOG.debug("Not forwarding activity to server {} because federation with it is blocked", server.host());
-				return;
-			}
 		}
 
 		postActivityInternal(inboxUrl, activityJson, actor, server, ctx, false, false);
@@ -630,8 +633,17 @@ public class ActivityPub{
 			sigParts.add(header+": "+value);
 		}
 		String sigStr=java.lang.String.join("\n", sigParts);
-		Signature sig=Signature.getInstance("SHA256withRSA");
-		sig.initVerify(user.publicKey);
+		Actor.SigningKey key;
+		try{
+			key=user.getPublicKey(URI.create(keyId));
+		}catch(NoSuchElementException x){
+			throw new BadRequestException("Invalid key ID "+keyId, x);
+		}
+		Signature sig=Signature.getInstance(switch(key.algorithm()){
+			case RSA -> "SHA256withRSA";
+			case EdDSA -> "Ed25519";
+		});
+		sig.initVerify(key.key());
 		sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
 		if(!sig.verify(signature)){
 			LOG.debug("Failed signature header: {}", sigHeader);
@@ -739,8 +751,18 @@ public class ActivityPub{
 				throw new IllegalArgumentException("Signature with 'rsa-sha256' algorithm not found");
 			byte[] signature=Base64.getDecoder().decode(rsaSignature.getAsJsonPrimitive("signature").getAsString());
 			String sigStr=generateActorTokenStringToBeSigned(token);
-			Signature sig=Signature.getInstance("SHA256withRSA");
-			sig.initVerify(group.publicKey);
+			URI keyId=URI.create(rsaSignature.get("keyId").getAsString());
+			Actor.SigningKey key;
+			try{
+				key=user.getPublicKey(keyId);
+			}catch(NoSuchElementException x){
+				throw new BadRequestException("Invalid key ID "+keyId, x);
+			}
+			Signature sig=Signature.getInstance(switch(key.algorithm()){
+				case RSA -> "SHA256withRSA";
+				case EdDSA -> "Ed25519";
+			});
+			sig.initVerify(key.key());
 			sig.update(sigStr.getBytes(StandardCharsets.UTF_8));
 			if(!sig.verify(signature)){
 				throw new IllegalArgumentException("Actor token signature failed to verify");

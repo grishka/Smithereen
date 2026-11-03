@@ -989,7 +989,7 @@ public class UserStorage{
 					.value("bdate", user.birthDate)
 					.value("username", user.username)
 					.value("domain", user.domain)
-					.value("public_key", user.publicKey.getEncoded())
+					.value("public_key", user.serializePublicKeys())
 					.value("ap_url", Objects.toString(user.url, null))
 					.value("ap_inbox", Objects.toString(user.inbox, null))
 					.value("ap_shared_inbox", Objects.toString(user.sharedInbox, null))
@@ -1231,19 +1231,19 @@ public class UserStorage{
 		accountCache.evictAll();
 	}
 
-	public static List<User> getAdmins() throws SQLException{
+	public static List<Integer> getAdminsWithPermission(UserRole.Permission permission) throws SQLException{
 		Set<Integer> rolesToShow=Config.userRoles.values()
 				.stream()
-				.filter(r->r.permissions().contains(UserRole.Permission.VISIBLE_IN_STAFF))
+				.filter(r->r.hasPermission(permission))
 				.map(UserRole::id)
 				.collect(Collectors.toSet());
 		if(rolesToShow.isEmpty())
 			return List.of();
-		return getByIdAsList(new SQLQueryBuilder()
+		return new SQLQueryBuilder()
 				.selectFrom("accounts")
 				.columns("user_id")
 				.whereIn("role", rolesToShow)
-				.executeAndGetIntList());
+				.executeAndGetIntList();
 	}
 
 	public static int getPeerDomainCount() throws SQLException{
@@ -1384,11 +1384,20 @@ public class UserStorage{
 			cacheByActivityPubID.put(user.activityPubID, user.id);
 	}
 
-	private static void removeFromCache(User user){
+	private static void removeFromCache(User user) throws SQLException{
 		cache.remove(user.id);
 		cacheByUsername.remove(user.getFullUsername().toLowerCase());
 		if(user instanceof ForeignUser)
 			cacheByActivityPubID.remove(user.activityPubID);
+		if(!(user instanceof ForeignUser)){
+			int accountID=new SQLQueryBuilder()
+					.selectFrom("accounts")
+					.columns("id")
+					.where("user_id=?", user.id)
+					.executeAndGetInt();
+			if(accountID>0)
+				accountCache.remove(accountID);
+		}
 	}
 
 	static String getQSearchStringForUser(User user){
@@ -1409,7 +1418,7 @@ public class UserStorage{
 		sb.append(user.username);
 		if(user.domain!=null){
 			sb.append(' ');
-			sb.append(user.domain);
+			sb.append(TextProcessor.transliterate(user.getHumanReadableDomain()));
 		}
 		return sb.toString();
 	}

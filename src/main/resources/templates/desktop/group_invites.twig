@@ -25,7 +25,7 @@
 					{% endif %}
 					{% if invite.group.domain is not empty %}
 					<div class="grayText">{{ L('server') }}:</div>
-					<div>{{ invite.group.domain }}</div>
+					<div>{{ invite.group.humanReadableDomain }}</div>
 					{% endif %}
 					<div class="unlabeled grayText">
 						{{ L('group_invited_by_X', {'inviter': invite.inviter | name}, {'inviter': {'href': invite.inviter.profileURL} }) }}

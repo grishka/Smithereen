@@ -202,6 +202,7 @@
   "settings_notifications_mentions": "Mentions",
   "settings_notifications_photo_tags": "Photo tags",
   "settings_notifications_group_invites": "Community invitations",
+  "settings_notifications_signup_requests": "Signup requests",
   "settings_summary_X_filters": "You have {count, plural, =0 {no filters} one {# filter} other {# filters}}",
   "settings_no_filters": "Filters allow you to hide posts containing certain words.\n\nYour filters will appear here.",
   "settings_create_filter": "Create filter",

@@ -18,7 +18,8 @@ class TokenInput{
 		this.root=el;
 		this.completionCallback=completionCallback;
 		el.classList.add("tokenInput");
-		this.edit=ce("input", {type: "text"});
+		this.edit=ce("input", {type: "text", autocomplete: "off"});
+		this.edit.dataset.opIgnore=""; // Disable 1Password suggestions https://www.1password.dev/web/compatible-website-design#ignore-offers-to-save-or-fill-specific-fields
 		el.appendChild(this.edit);
 		this.completionList=new CompletionList(this.edit, (el)=>{
 			this.onCompletionClick(el.customData.token);

@@ -203,6 +203,7 @@ public class RenderAttachmentsFunction implements Function{
 			"audio/aac",
 			"audio/aacp",
 			"audio/ogg",
+			"audio/opus",
 			"audio/webm",
 			"audio/flac"
 	);

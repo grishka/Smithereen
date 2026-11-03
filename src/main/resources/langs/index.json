@@ -76,9 +76,9 @@
       "fallback": "ru"
     },
     {
-      "locale" : "kk",
-      "name" : "Kazakh",
-      "fallback" : "ru"
+      "locale": "kk",
+      "name": "Kazakh",
+      "fallback": "ru"
     }
   ]
 }

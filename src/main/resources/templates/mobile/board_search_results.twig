@@ -1,0 +1,24 @@
+{% extends "page" %}
+{% block content %}
+<div class="gray borderBottom">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('board_search_placeholder') }}" value="{{ query }}" id="boardSearch" data-base-url="{{ urlPath }}"/>
+		{% script %}
+		initAjaxSearch("boardSearch");
+		{% endscript %}
+	</div>
+</div>
+<div id="ajaxUpdatable">
+{% block ajaxPartialUpdate %}
+<div class="singleColumnLargerPadding boardComments" id="comments_{{ topic.commentParentID.htmlElementID }}">
+{% for comment in items %}
+	{% include "comment" with {'post': comment, 'baseReplyLevel': 0, 'canComment': false, 'first': loop.first, 'board': true, 'suppressDeletion': true, 'searchResultTopic': topics[comment.post.parentObjectID.id]} %}
+{% else %}
+	<div class="emptyState">{{ L('nothing_found') }}</div>
+{% endfor %}
+</div>
+{% include "pagination" %}
+</div>
+{% endblock %}
+{% endblock %}
+

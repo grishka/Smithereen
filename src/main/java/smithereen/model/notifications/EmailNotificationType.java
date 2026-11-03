@@ -1,5 +1,7 @@
 package smithereen.model.notifications;
 
+import smithereen.model.UserPermissions;
+import smithereen.model.admin.UserRole;
 import smithereen.util.TranslatableEnum;
 
 public enum EmailNotificationType implements TranslatableEnum<EmailNotificationType>{
@@ -11,7 +13,10 @@ public enum EmailNotificationType implements TranslatableEnum<EmailNotificationT
 	PHOTO_COMMENT,
 	COMMENT_REPLY,
 	MENTION,
-	GROUP_INVITE;
+	GROUP_INVITE,
+
+	// Admin-only
+	SIGNUP_REQUEST;
 
 	@Override
 	public String getLangKey(){
@@ -25,6 +30,14 @@ public enum EmailNotificationType implements TranslatableEnum<EmailNotificationT
 			case COMMENT_REPLY -> "replies";
 			case MENTION -> "mentions";
 			case GROUP_INVITE -> "group_invites";
+			case SIGNUP_REQUEST -> "signup_requests";
 		};
+	}
+
+	public boolean isAvailable(UserPermissions permissions){
+		if(this==SIGNUP_REQUEST){
+			return permissions.hasPermission(UserRole.Permission.MANAGE_INVITES);
+		}
+		return true;
 	}
 }

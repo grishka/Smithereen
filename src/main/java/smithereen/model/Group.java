@@ -273,7 +273,7 @@ public class Group extends Actor{
 			for(GroupLink link:links){
 				JsonObjectBuilder linkBuilder=new JsonObjectBuilder()
 						.add("type", "Link")
-						.add("href", link.url.toString())
+						.add("href", link.getNormalizedUrl().toString())
 						.add("id", Config.localURI("/groups/"+id+"/links/"+link.id).toString())
 						.add("name", link.title)
 						.add("displayOrder", link.displayOrder);

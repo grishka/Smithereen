@@ -85,7 +85,7 @@ public class GroupStorage{
 						.insertInto("groups")
 						.value("name", name)
 						.value("username", "__tmp"+System.currentTimeMillis())
-						.value("public_key", pair.getPublic().getEncoded())
+						.value("public_key", Actor.serializeLocalActorRsaKey(pair.getPublic()))
 						.value("private_key", pair.getPrivate().getEncoded())
 						.value("member_count", 1)
 						.value("about", description)
@@ -163,7 +163,7 @@ public class GroupStorage{
 					.value("ap_url", Objects.toString(group.url, null))
 					.value("ap_inbox", group.inbox.toString())
 					.value("ap_shared_inbox", Objects.toString(group.sharedInbox, null))
-					.value("public_key", group.publicKey.getEncoded())
+					.value("public_key", group.serializePublicKeys())
 					.value("avatar", group.hasAvatar() ? group.icon.get(0).asActivityPubObject(new JsonObject(), new SerializerContext(null, (String)null)).toString() : null)
 					.value("event_start_time", group.eventStartTime)
 					.value("event_end_time", group.eventEndTime)
@@ -255,7 +255,7 @@ public class GroupStorage{
 							new SQLQueryBuilder(conn)
 									.insertInto("group_links")
 									.value("group_id", group.id)
-									.value("url", l.url.toString())
+									.value("url", l.getNormalizedUrl().toString())
 									.value("title", l.title)
 									.value("object_type", l.object==null ? null : l.object.type().id)
 									.value("object_id", l.object==null ? null : l.object.id())
@@ -1211,7 +1211,7 @@ public class GroupStorage{
 	static String getQSearchStringForGroup(Group group){
 		String s=TextProcessor.transliterate(group.name)+" "+group.username;
 		if(group.domain!=null)
-			s+=" "+group.domain;
+			s+=" "+TextProcessor.transliterate(group.getHumanReadableDomain());
 		return s;
 	}
 

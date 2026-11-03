@@ -14,7 +14,7 @@
 					{% if req.from.domain is not empty %}
 					<tr>
 						<td class="grayText">{{ L('server') }}:</td>
-						<td>{{ req.from.domain }}</td>
+						<td>{{ req.from.humanReadableDomain }}</td>
 					</tr>
 					{% endif %}
 					{% if req.message is not empty %}

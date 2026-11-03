@@ -1,3 +1,4 @@
+{# @pebvariable name="app" type="smithereen.model.apps.ClientApp" #}
 {% extends "page" %}
 {% block content %}
 {% if not isMobile %}
@@ -11,7 +12,7 @@
 {% if not app.local %}
 <div class="bottomSummaryWrap">
 	<div class="bottomSummary">
-		<a href="{{ app.apID }}" target="_blank">{{ L('open_on_server_X', {'domain': app.domain}) }}</a>
+		<a href="{{ app.apID }}" target="_blank">{{ L('open_on_server_X', {'domain': app.humanReadableDomain}) }}</a>
 	</div>
 </div>
 {% endif %}

@@ -109,6 +109,8 @@ public class ApiDispatcher{
 		registerMethod("wall.createComment", WallMethods::createComment, ClientAppPermission.WALL_WRITE);
 		registerMethod("wall.getEditSource", WallMethods::getEditSource, ClientAppPermission.WALL_WRITE);
 		registerMethod("wall.edit", WallMethods::edit, ClientAppPermission.WALL_WRITE);
+		registerMethod("wall.search", WallMethods::search, true);
+		registerMethod("wall.loadRemoteComments", WallMethods::loadRemoteComments, ClientAppPermission.WALL_READ);
 
 		registerMethod("photos.getAttachmentUploadServer", PhotosMethods::getAttachmentUploadServer, true);
 		registerMethod("photos.getAlbums", PhotosMethods::getAlbums, false);
@@ -175,6 +177,7 @@ public class ApiDispatcher{
 		registerMethod("board.closeTopic", BoardMethods::closeTopic, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("board.pinTopic", BoardMethods::pinTopic, ClientAppPermission.GROUPS_WRITE);
 		registerMethod("board.unpinTopic", BoardMethods::unpinTopic, ClientAppPermission.GROUPS_WRITE);
+		registerMethod("board.search", BoardMethods::search, true);
 
 		registerMethod("account.getCounters", AccountMethods::getCounters, true);
 		registerMethod("account.setOnline", AccountMethods::setOnline, true);
@@ -202,6 +205,7 @@ public class ApiDispatcher{
 		registerMethod("messages.delete", MessagesMethods::delete, ClientAppPermission.MESSAGES_WRITE);
 		registerMethod("messages.restore", MessagesMethods::restore, ClientAppPermission.MESSAGES_WRITE);
 		registerMethod("messages.markAsRead", MessagesMethods::markAsRead, ClientAppPermission.MESSAGES_WRITE);
+		registerMethod("messages.search", MessagesMethods::search, ClientAppPermission.MESSAGES_READ);
 
 		registerMethod("polls.getById", PollsMethods::getById, false);
 		registerMethod("polls.addVote", PollsMethods::addVote, ClientAppPermission.WALL_WRITE);

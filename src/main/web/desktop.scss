@@ -185,7 +185,7 @@ small{
 	.qsearchName{
 		line-height: 30px;
 	}
-	&:hover{
+	&:hover, &.selected{
 		text-decoration: none;
 		background: $blockBackground;
 	}
@@ -234,7 +234,7 @@ small{
 	.headerWrap{
 		width: $siteWidthWide;
 	}
-	.contentWrap{
+	#contentWrap{
 		width: $siteWidthWide;
 	}
 }
@@ -243,7 +243,7 @@ small{
 	.headerWrap{
 		width: $siteWidthNarrow;
 	}
-	.contentWrap{
+	#contentWrap{
 		width: $siteWidthNarrow;
 	}
 }
@@ -588,7 +588,7 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 	}
 }
 
-.contentWrap{
+#contentWrap{
 	margin-left: auto;
 	margin-right: auto;
 	display: flex;
@@ -955,25 +955,30 @@ _::-webkit-full-page-media, _:future, :root .post .repostIcon, :root .post .post
 
 .commentsPreviewWrap{
 	padding-left: 60px;
-	.loadPrev{
-		display: block;
-		height: 30px;
-		width: 100%;
-		line-height: 31px;
-		text-align: center;
-		background-color: $menuItemsSeparator;
-		&:hover{
-			text-decoration: none;
-		}
-	}
-	.prevLoader{
-		height: 30px;
-		background-color: $menuItemsSeparator;
-		margin-top: 5px;
-	}
 	>*:first-child{
 		margin-top: 5px;
 	}
+}
+
+.commentsPreviewWrap .loadPrev, .loadNewComments{
+	display: block;
+	height: 30px;
+	width: 100%;
+	line-height: 31px;
+	text-align: center;
+	background-color: $menuItemsSeparator;
+	&:hover{
+		text-decoration: none;
+	}
+}
+
+.commentsPreviewWrap .prevLoader{
+	margin-top: 5px;
+}
+
+.commentsPreviewWrap .prevLoader, .newCommentsLoader{
+	height: 30px;
+	background-color: $menuItemsSeparator;
 }
 
 .comment{
@@ -2339,7 +2344,6 @@ textarea{
 
 .poll{
 	max-width: 400px;
-	padding: 6px 0 3px;
 	label{
 		display: block;
 		padding: 3px 0 0 16px;
@@ -4422,7 +4426,7 @@ label.largeAccented{
 		>a{
 			display: block;
 			padding: 5px;
-			&:hover{
+			&:hover, &.selected{
 				text-decoration: none;
 				background: $blockBackground;
 			}
@@ -4691,6 +4695,9 @@ label.largeAccented{
 		max-height: min(1000px, 100vh);
 		margin: auto;
 	}
+	code{
+		line-height: 140%;
+	}
 }
 
 .postLayer .wallPostForm.editing{
@@ -4811,6 +4818,10 @@ label.largeAccented{
 	.comment.twoLevelIndented{
 		margin-left: 60px;
 	}
+}
+
+.postLayerNewCommentsW{
+	padding: 17px 23px 0;
 }
 
 .mobileOnlineIcon{
@@ -5462,3 +5473,77 @@ ol.largeNumbers{
 	}
 }
 
+$inlinePlayerHeight: 34px;
+$inlinePlayerWidth: 154px;
+$inlinePlayerMargin: 9px;
+$inlinePlayerDistanceFromEdge: 20px;
+
+#inlinePlayer{
+	position: sticky;
+	top: $inlinePlayerDistanceFromEdge;
+	left: calc(50% + $siteWidthNarrow / 2 - 7px);
+	width: $inlinePlayerWidth;
+	height: $inlinePlayerHeight;
+	margin-bottom: calc(0px - $inlinePlayerHeight - $inlinePlayerMargin);
+	margin-top: $inlinePlayerMargin;
+	border-radius: 3px;
+	cursor: default;
+	background-color: $inlinePlayerBackgroundColor;
+	color: $inlinePlayerTextColor;
+	opacity: 0.7;
+	transition: opacity 200ms ease-out;
+	&:hover{
+		opacity: 1;
+	}
+}
+
+@media (max-width: 839px){
+	#inlinePlayer{
+		display: none;
+	}
+}
+
+@media (max-width: 1100px){
+	#inlinePlayer{
+		position: fixed;
+		/* !important is needed so that the position is correct when a layer is active, see LayerManager#lockPageScroll */
+		top: auto !important;
+		left: calc(50% - $siteWidthNarrow / 2 + $leftMenuWidth - $inlinePlayerWidth - $inlinePlayerMargin);
+		bottom: $inlinePlayerDistanceFromEdge;
+		margin: auto;
+	}
+}
+
+#inlinePlayerWrap{
+	position: absolute;
+	top: 0;
+}
+
+#inlinePlayerInfo{
+	padding: 3px 8px 5px 0;
+	/*cursor: pointer; TODO: uncomment when showing global controls on click is implemented*/
+}
+
+#inlinePlayerPlayButton{
+	position: relative;
+	cursor: pointer;
+	width: 16px;
+	height: 16px;
+	margin: 9px 7px;
+	background: svg-inline(inlinePlayerPlay) no-repeat -4px -4px / 24px 24px;
+	#inlinePlayer.playing &{
+		background-image: svg-inline(inlinePlayerPause);
+	}
+}
+
+#inlinePlayerArtist{
+	font-weight: bold;
+}
+
+#inlinePlayerArtist, #inlinePlayerTitle{
+	line-height: 13px;
+	width: 115px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

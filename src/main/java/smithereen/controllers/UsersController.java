@@ -56,6 +56,7 @@ import smithereen.model.admin.UserActionLogAction;
 import smithereen.model.admin.UserRole;
 import smithereen.model.feed.NewsfeedEntry;
 import smithereen.model.friends.FollowRelationship;
+import smithereen.model.notifications.RealtimeNotification;
 import smithereen.model.viewmodel.UserContentMetrics;
 import smithereen.model.viewmodel.UserRelationshipMetrics;
 import smithereen.storage.DatabaseUtils;
@@ -276,7 +277,12 @@ public class UsersController{
 			if(SessionStorage.getAccountByEmail(email)!=null || SessionStorage.isThereInviteRequestWithEmail(email) || SessionStorage.isEmailInvited(email))
 				throw new UserErrorException("err_reg_email_taken");
 			FloodControl.OPEN_SIGNUP_OR_INVITE_REQUEST.incrementOrThrow(Utils.getRequestIP(req));
-			SessionStorage.putInviteRequest(email, firstName, lastName, reason);
+			SignupRequest request=SessionStorage.putInviteRequest(email, firstName, lastName, reason);
+			List<Integer> adminIDs=UserStorage.getAdminsWithPermission(UserRole.Permission.MANAGE_INVITES);
+			context.getNotificationsController().sendRealtimeCountersUpdates(adminIDs);
+			for(User user: UserStorage.getByIdAsList(adminIDs)){
+				context.getNotificationsController().sendRealtimeNotifications(user, "signup_request_"+request.id, RealtimeNotification.Type.SIGNUP_REQUEST, request, null, null);
+			}
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -301,6 +307,7 @@ public class UsersController{
 	public void deleteSignupInviteRequest(int id){
 		try{
 			SessionStorage.deleteInviteRequest(id);
+			context.getNotificationsController().sendRealtimeCountersUpdates(UserStorage.getAdminsWithPermission(UserRole.Permission.MANAGE_INVITES));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

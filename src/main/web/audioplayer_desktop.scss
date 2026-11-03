@@ -1,4 +1,17 @@
-@import "audioplayer_common.scss";
+@import 'audioplayer_common.scss';
+
+@svg-load inlinePlayerPlay url('img/audio_play.svg'){
+	fill: $inlinePlayerButtonColor;
+	*[fill=red]{
+		visibility: hidden;
+	}
+}
+@svg-load inlinePlayerPause url('img/audio_pause.svg'){
+	fill: $inlinePlayerButtonColor;
+	*[fill=red]{
+		visibility: hidden;
+	}
+}
 
 .audioAttachmentList{
 	padding: 6px 0 0 4px;

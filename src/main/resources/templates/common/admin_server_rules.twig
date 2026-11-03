@@ -4,15 +4,16 @@
 {% if not isMobile %}
 <div class="summaryWrap">
 	<div class="summary">
-		{{ L('admin_server_rules_summary', {'count': rules | length}) }}
+		<span id="serverRulesSummary">{{ L('admin_server_rules_summary', {'count': rules | length}) }}</span>
 		<span class="auxText"> | <a href="/settings/admin/rules/createForm">{{ L('admin_server_rules_create') }}</a></span>
 	</div>
 </div>
 {% else %}
 <a href="/settings/admin/rules/createForm" class="fab iconAdd" title="{{ L('admin_server_rules_create') }}"></a>
 {% endif %}
-<div class="singleColumn">
-	{% if message is not empty %}<div class="settingsMessage">{{ message }}</div>{% endif %}
+<div id="serverRulesList" class="singleColumn">
+    {% if message is not empty %}
+		<div id="serverRulesSettingsMessage" class="settingsMessage">{{ message }}</div>{% endif %}
 {% for rule in rules %}
 	<div class="listItemWithDivider" id="rule{{ rule.id }}">
 		<div><b>{{ rule.title }}</b></div>

@@ -136,14 +136,6 @@ public class User extends Actor{
 			sb.append(", gender=");
 			sb.append(gender);
 		}
-		if(publicKey!=null){
-			sb.append(", publicKey=");
-			sb.append(publicKey);
-		}
-		if(privateKey!=null){
-			sb.append(", privateKey=");
-			sb.append(privateKey);
-		}
 		sb.append('}');
 		return sb.toString();
 	}
@@ -710,6 +702,10 @@ public class User extends Actor{
 
 	public URI getTaggedPhotosURL(){
 		return Config.localURI("/users/"+id+"/tagged");
+	}
+
+	public boolean supportsPhotoTags(){
+		return true;
 	}
 
 	public URI getPinnedPostsURL(){

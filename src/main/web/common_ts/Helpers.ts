@@ -59,6 +59,7 @@ interface HTMLElement{
 	currentVisibilityAnimation:Animation;
 
 	qs<E extends HTMLElement>(sel:string):E;
+	findScrollableParent():HTMLElement;
 	hide():void;
 	show():void;
 	hideAnimated(animName?:AnimationDescription, onEnd?:{():void}):void;
@@ -69,6 +70,21 @@ interface HTMLElement{
 
 HTMLElement.prototype.qs=function(sel:string){
 	return this.querySelector(sel);
+};
+
+HTMLElement.prototype.findScrollableParent=function(){
+	var parent=this.parentElement;
+	while(parent){
+		var overflow=window.getComputedStyle(parent).overflow;
+		if(overflow){
+			for(var ov of overflow.split(" ")){
+				if(ov=="auto" || ov=="scroll")
+					return parent;
+			}
+		}
+		parent=parent.parentElement;
+	}
+	return document.documentElement;
 };
 
 HTMLElement.prototype.hide=function():void{
@@ -543,13 +559,23 @@ function ajaxSubmitForm(form:HTMLFormElement, onDone:{(resp?:any):void}=null, su
 	if(extra.additionalInputs){
 		Object.assign(data, extra.additionalInputs);
 	}
-	data.csrf=userConfig.csrf;
 	if(location.search){
 		var params=new URLSearchParams(location.search);
 		if(params.has("lang")){
 			data.lang=params.get("lang");
 		}
 	}
+	if(form.method=="get"){
+		submittingForm=null;
+		var url=new URL(form.action);
+		url.search="";
+		for(var k in data){
+			url.searchParams.append(k, data[k]);
+		}
+		ajaxNavigate(url.toString(), true);
+		return;
+	}
+	data.csrf=userConfig.csrf;
 	ajaxPost(form.action, data, function(resp:any){
 		if(extra.onResponseReceived){
 			extra.onResponseReceived(resp);
@@ -1331,6 +1357,14 @@ function showTooltip(el:HTMLElement, text:string){
 	}
 	if(el.dataset.tooltipFixed!=undefined){
 		ttEl.style.position="fixed";
+		var scrollableParent=ttEl.findScrollableParent();
+		var totalScrollTop=0;
+		while(scrollableParent!=document.documentElement){
+			totalScrollTop+=scrollableParent.scrollTop;
+			scrollableParent=scrollableParent.findScrollableParent();
+		}
+		if(totalScrollTop)
+			ttEl.style.transform="translateY("+(-totalScrollTop)+"px)";
 	}
 	ttEl.showAnimated();
 }
@@ -1699,6 +1733,9 @@ function ajaxNavigate(url:string, addToHistory:boolean){
 			for(var cb of ajaxNavCallbacks){
 				cb();
 			}
+			var qsearchField:HTMLInputElement=ge("qsearchField");
+			if(qsearchField)
+				qsearchField.value="";
 			ajaxNavCallbacks=[];
 			cur={};
 			if(addToHistory){

@@ -1,6 +1,7 @@
 package smithereen.api.methods;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.api.ApiCallContext;
 import smithereen.api.model.ApiBoardTopic;
+import smithereen.api.model.ApiComment;
 import smithereen.api.model.ApiPaginatedList;
 import smithereen.api.model.ApiPaginatedListWithActors;
 import smithereen.api.model.ApiUser;
@@ -23,6 +25,7 @@ import smithereen.model.board.BoardTopic;
 import smithereen.model.board.BoardTopicsSortOrder;
 import smithereen.model.comments.Comment;
 import smithereen.model.comments.CommentableObjectType;
+import smithereen.model.viewmodel.CommentViewModel;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.XTEA;
@@ -223,5 +226,34 @@ public class BoardMethods{
 		BoardTopic topic=ctx.getBoardController().getTopic(actx.self.user, topicID);
 		ctx.getBoardController().setTopicPinned(actx.self.user, topic, pinned);
 		return true;
+	}
+
+	public static Object search(ApplicationContext ctx, ApiCallContext actx){
+		User self=actx.hasPermission(ClientAppPermission.GROUPS_READ) ? actx.self.user : null;
+		int offset=actx.getOffset();
+		int count=actx.getCount(20, 100);
+		String query=actx.requireParamString("q");
+		Group group=ApiUtils.getGroup(ctx, actx, "group_id");
+		boolean needLikes=actx.optParamBoolean("need_likes");
+		PaginatedList<CommentViewModel> comments=CommentViewModel.wrap(ctx.getBoardController().searchComments(group, self, query, offset, count));
+
+		List<ApiComment> apiComments=ApiUtils.getComments(comments.list, ctx, actx, needLikes);
+		for(int i=0;i<comments.list.size();i++){
+			apiComments.get(i).topicId=XTEA.encodeObjectID(comments.list.get(i).post.parentObjectID.id(), ObfuscatedObjectIDType.BOARD_TOPIC);
+		}
+
+		record SearchResponse(int count, List<ApiComment> items, List<ApiUser> profiles, List<ApiBoardTopic> topics){}
+
+		if(actx.optParamBoolean("extended")){
+			HashSet<Integer> needUsers=new HashSet<>();
+			CommentViewModel.collectUserIDs(comments.list, needUsers);
+			HashSet<Long> needTopics=new HashSet<>();
+			for(CommentViewModel c:comments.list){
+				needTopics.add(c.post.parentObjectID.id());
+			}
+			List<ApiBoardTopic> topics=ctx.getBoardController().getTopicsIgnoringPrivacy(needTopics).values().stream().map(ApiBoardTopic::new).toList();
+			return new SearchResponse(comments.total, apiComments, ApiUtils.getUsers(needUsers, ctx, actx), topics);
+		}
+		return new SearchResponse(comments.total, apiComments, null, null);
 	}
 }

@@ -8,7 +8,7 @@
 		<div>
 			<h2><a href="{{ group.profileURL }}" target="_blank" rel="noopener">{{ group.name }}</a></h2>
 			<div class="marginBefore marginAfter">
-				@{{ group.fullUsername }}, ID {{ group.id }}
+				@{{ group.fullUsernameHumanReadable }}, ID {{ group.id }}
 				{% if group.domain is not empty %}
 				<span data-tooltip="{{ L('admin_ap_actor_id_tooltip') }}" style="display: inline-block;">({{ group.activityPubID }})</span>
 				{% endif %}

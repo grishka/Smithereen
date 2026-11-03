@@ -12,11 +12,11 @@
 		<div>
 			<h2><a href="{{ user.profileURL }}" target="_blank" rel="noopener">{{ user | name('complete') }}</a></h2>
 			<div class="marginBefore marginAfter">
-				@{{ user.fullUsername }}, ID {{ user.id }}
+				@{{ user.fullUsernameHumanReadable }}, ID {{ user.id }}
 				{% if account is not null %}
 				<span data-tooltip="{{ L('admin_account_id_tooltip') }}" style="display: inline-block;">({{ account.id }})</span>
 				{% else %}
-				<span data-tooltip="{{ L('admin_ap_actor_id_tooltip') }}" style="display: inline-block;">({{ user.activityPubID }})</span>
+				<span data-tooltip="{{ L('admin_ap_actor_id_tooltip') }}" style="display: inline-block;">({{ user.humanReadableActivityPubID }})</span>
 				{% endif %}
 			</div>
 			<div class="marginBefore marginAfter">

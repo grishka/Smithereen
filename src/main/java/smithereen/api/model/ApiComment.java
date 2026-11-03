@@ -32,6 +32,8 @@ public class ApiComment{
 	public Integer replyToUser;
 	public CommentThread thread;
 
+	public String topicId; // board.search only
+
 	public transient long rawID;
 
 	public record Likes(int count, boolean canLike, boolean userLikes){}

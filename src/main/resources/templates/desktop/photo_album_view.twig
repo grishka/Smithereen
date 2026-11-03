@@ -16,21 +16,15 @@ new PhotoAlbumUploader("{{ album.url }}/upload");
 <div id="uploadHide">
 <div class="mediaGridW">
 <div class="summaryWrap">
-	<div class="summary">
-	{%- if album.systemType=="TAGGED" %}
-	{{- currentUser is not null and currentUser.id==album.ownerID ? L('summary_X_photos_of_me', {'count': totalItems}) : L('summary_X_photos_of_user', {'count': totalItems, 'name': owner.firstAndGender}) }}
-	{%- else %}
-	{{- L('summary_album_X_photos', {'count': totalItems}) }}
-	{%- endif %}
-	</div>
+	<div id="photoAlbumSummary" class="summary">{{ summary }}</div>
 	{% if items is not empty %}
 	<a href="{{ album.url }}{{ reverseOrder ? '' : '?rev' }}" class="flR order{{ reverseOrder ? ' reverse' : '' }}" data-tooltip="{{ L('reverse_order') }}"></a>
 	{% endif %}
 </div>
 {% if items is empty %}
-<div class="singleColumn"><div class="emptyState">{{ L('no_photos_in_album') }}</div></div>
+<div id="photoGrid" class="singleColumn"><div class="emptyState">{{ L('no_photos_in_album') }}</div></div>
 {% else %}
-<div class="photoGrid">
+<div id="photoGrid" class="photoGrid">
 {% block photosInner %}
 {% for photo in items %}
     <a href="{{ photo.url }}{% if not isAjax %}?nojs{% endif %}" class="photo" id="photo{{ photo.idString }}" onclick="return openPhotoViewer(this)" data-pv="{{ json(photoViewerData[photo.id]) }}">{{ photo.image | pictureForPhoto('m', false) }}</a>

@@ -58,6 +58,10 @@ function initQSearch(){
 				resultsHidden=true;
 			}
 		});
+		initSearchKeyDownEvent(qsearchField, qsearchResults, ".qsearchResult", (selected)=>{
+			selected.click();
+			qsearchField.blur();
+		});
 	}
 	qsearchField.addEventListener("input", (ev:Event)=>{
 		if(debounceTimeout)
@@ -83,13 +87,52 @@ function initQSearch(){
 	});
 }
 
+function initSearchKeyDownEvent(searchField:HTMLInputElement, resultsContainer:HTMLElement, resultSelector:string, onEnter:(selected:HTMLElement)=>void){
+	searchField.addEventListener("keydown", (ev:KeyboardEvent)=>{
+		if(ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+		const down=ev.key==="ArrowDown";
+		if(down || ev.key==="ArrowUp"){
+			let selected=resultsContainer.qs(`${resultSelector}.selected`);
+			if(selected){
+				selected.classList.remove("selected");
+				do{
+					selected=(down ? selected.nextElementSibling : selected.previousElementSibling) as HTMLElement;
+					// Skip section headers and invisible (filtered out) items
+				}while(selected && !(selected.matches(resultSelector) && isVisible(selected)));
+			}
+			if(!selected){
+				selected=resultsContainer.qs(down ? resultSelector : `${resultSelector}:last-of-type`);
+			}
+			if(selected){
+				selected.classList.add("selected");
+				selected.scrollIntoView({block: "nearest"});
+			}
+			ev.preventDefault(); // Don't change the cursor position
+		}
+		if(ev.key==="Enter"){
+			const selected=resultsContainer.qs(`${resultSelector}.selected`);
+			if(selected){
+				onEnter(selected);
+			}
+		}
+	});
+}
+
 function loadRemoteObject(url:string, opts:any={}):void{
 	LayerManager.getInstance().showBoxLoader();
 	if(!opts)
 		opts={};
 	ajaxPost("/system/loadRemoteObject", {uri: url, ...opts}, (resp:any)=>{
 		if(resp.success){
-			window.location.href=resp.success;
+			if(mobile){
+				window.location.href=resp.success;
+			}else{
+				if(resp.post_id){
+					openPostLayer(resp.post_id, resp.comment_id);
+				}else{
+					ajaxNavigate(resp.success, true);
+				}
+			}
 		}else if(resp.error){
 			var content=resp.error as string;
 			if(resp.details){

@@ -1,4 +1,5 @@
 {# @pebvariable name="user" type="smithereen.model.User" #}
+{# @pebvariable name="movedTo" type="smithereen.model.User" #}
 {%extends "page"%}
 {% macro profileSection(_context, title, editURL, fields) %}
 	{% set isSelf=(_context.currentUser is not null and _context.currentUser.id==_context.user.id) %}
@@ -39,14 +40,14 @@
 	{% if movedTo.domain is empty %}
 	<a href="{{ movedTo.profileURL }}"><b>{{ movedTo | name }}</b></a>
 	{% else %}
-	<a href="{{ movedTo.profileURL }}">{{ L('profile_moved_link', {'domain': movedTo.domain, 'name': movedTo | name}) }}</a>
+	<a href="{{ movedTo.profileURL }}">{{ L('profile_moved_link', {'domain': movedTo.humanReadableDomain, 'name': movedTo | name}) }}</a>
 	{% endif %}
 </div>
 {% elseif user.domain %}
 <div class="marginsAreMessy"></div>
 <div class="settingsMessage">
 	{{L('incomplete_profile')}}<br/>
-	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', {'domain': user.domain})}}</a>
+	<a href="{{user.url}}" target="_blank">{{L('open_on_server_X', {'domain': user.humanReadableDomain})}}</a>
 </div>
 {%endif%}
 {% if user.banInfo is not null and currentUser is not null and userPermissions.hasPermission('MANAGE_USERS') %}
@@ -176,7 +177,7 @@
 			{% if friends is not empty %}
 			{% include "profile_module_user_grid" with {'users': friends, 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': user.friendsCount})} %}
 			{% else %}
-			{% include "profile_module_centered_text" with {'text': L('remote_friends_incomplete', {'name': user.firstAndGender, 'gender': user.gender, 'server': user.domain}, {'link': {'href': user.url, 'target': '_blank', 'rel': 'nofollow'} }), 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': user.friendsCount})} %}
+			{% include "profile_module_centered_text" with {'text': L('remote_friends_incomplete', {'name': user.firstAndGender, 'gender': user.gender, 'server': user.humanReadableDomain}, {'link': {'href': user.url, 'target': '_blank', 'rel': 'nofollow'} }), 'headerTitle': L('friends'), 'headerHref': "/users/#{user.id}/friends", 'subheaderTitle': L('X_friends', {'count': user.friendsCount})} %}
 			{% endif %}
 		{% endif %}
 		{% if onlineFriends is not empty %}
@@ -193,7 +194,7 @@
 			{% endfor %}
 			{% include "profile_module_user_list" with {'users': followingWithTitles, 'headerTitle': L('following'), 'subheaderTitle': L('X_people', {'count': user.followingCount}), 'headerHref': "/users/#{user.id}/following"} %}
 			{% else %}
-			{% include "profile_module_centered_text" with {'text': L('remote_following_incomplete', {'name': user.firstAndGender, 'gender': user.gender, 'server': user.domain}, {'link': {'href': user.url, 'target': '_blank', 'rel': 'nofollow'} }), 'headerTitle': L('following'), 'subheaderTitle': L('X_people', {'count': user.followingCount}), 'headerHref': "/users/#{user.id}/following"} %}
+			{% include "profile_module_centered_text" with {'text': L('remote_following_incomplete', {'name': user.firstAndGender, 'gender': user.gender, 'server': user.humanReadableDomain}, {'link': {'href': user.url, 'target': '_blank', 'rel': 'nofollow'} }), 'headerTitle': L('following'), 'subheaderTitle': L('X_people', {'count': user.followingCount}), 'headerHref': "/users/#{user.id}/following"} %}
 			{% endif %}
 		{% endif %}
 		{% if groups is not empty %}

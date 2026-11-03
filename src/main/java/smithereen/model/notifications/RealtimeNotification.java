@@ -24,7 +24,10 @@ public record RealtimeNotification(String id, Type type, ObjectType objectType, 
 		EVENT_INVITE,
 		GROUP_REQUEST_ACCEPTED,
 		PHOTO_TAG,
-		EXPORT_READY;
+		EXPORT_READY,
+
+		// Admin-only
+		SIGNUP_REQUEST;
 
 		public RealtimeNotificationSettingType getSettingType(){
 			return switch(this){
@@ -37,6 +40,7 @@ public record RealtimeNotification(String id, Type type, ObjectType objectType, 
 				case MAIL_MESSAGE -> RealtimeNotificationSettingType.MAIL;
 				case GROUP_INVITE, GROUP_REQUEST_ACCEPTED, EVENT_INVITE -> RealtimeNotificationSettingType.GROUP_INVITES;
 				case PHOTO_TAG -> RealtimeNotificationSettingType.PHOTO_TAGS;
+				case SIGNUP_REQUEST -> RealtimeNotificationSettingType.SIGNUP_REQUESTS;
 				case EXPORT_READY -> null;
 			};
 		}

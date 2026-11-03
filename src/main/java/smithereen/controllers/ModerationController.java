@@ -97,6 +97,7 @@ import smithereen.storage.PostStorage;
 import smithereen.storage.SessionStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.TextProcessor;
+import smithereen.util.DomainRuleMatcher;
 import smithereen.util.InetAddressRange;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
@@ -114,6 +115,8 @@ public class ModerationController{
 	private List<IPBlockRule> ipRules;
 	private List<ServerRule> serverRules;
 	private List<ServerAnnouncement> currentAndFutureAnnouncements;
+	private final DomainRuleMatcher<FederationRestriction> federationRestrictions=new DomainRuleMatcher<>();
+	private ArrayList<FederationRestriction> allFederationRestrictions=new ArrayList<>();
 
 	public ModerationController(ApplicationContext context){
 		this.context=context;
@@ -291,10 +294,11 @@ public class ModerationController{
 		}
 	}
 
-	private void updateReportsCounter(){
+	private void updateReportsCounter() throws SQLException{
 		AdminNotifications an=AdminNotifications.getInstance(null);
 		if(an!=null){
-			an.openReportsCount=getViolationReportsCount(true);
+			an.setOpenReportsCount(getViolationReportsCount(true));
+			context.getNotificationsController().sendRealtimeCountersUpdates(UserStorage.getAdminsWithPermission(UserRole.Permission.MANAGE_REPORTS));
 		}
 	}
 
@@ -535,12 +539,25 @@ public class ModerationController{
 	// endregion
 	// region Federation & federation restrictions
 
-	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, boolean onlyRestricted, String query){
+	public void reloadFederationRestrictions(){
+		allFederationRestrictions.clear();
+		try{
+			allFederationRestrictions.addAll(ModerationStorage.getFederationRestrictions());
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+		federationRestrictions.clear();
+		for(FederationRestriction fr:allFederationRestrictions){
+			federationRestrictions.insert(fr.domain, fr);
+		}
+	}
+
+	public PaginatedList<Server> getAllServers(int offset, int count, @Nullable Server.Availability availability, String query){
 		try{
 			if(StringUtils.isNotEmpty(query)){
 				query=Utils.convertIdnToAsciiIfNeeded(query);
 			}
-			return FederationStorage.getAllServers(offset, count, availability, onlyRestricted, query);
+			return FederationStorage.getAllServers(offset, count, availability, query);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -563,15 +580,6 @@ public class ModerationController{
 		}
 	}
 
-	public void setServerRestriction(Server server, FederationRestriction restriction){
-		try{
-			ModerationStorage.setServerRestriction(server.id(), restriction!=null ? Utils.gson.toJson(restriction) : null);
-			serversByDomainCache.remove(server.host());
-		}catch(SQLException x){
-			throw new InternalServerErrorException(x);
-		}
-	}
-
 	public Server getOrAddServer(String domain){
 		domain=domain.toLowerCase();
 		Server server=serversByDomainCache.get(domain);
@@ -583,7 +591,7 @@ public class ModerationController{
 				server=FederationStorage.getServerByDomain(domain);
 				if(server==null){
 					int id=FederationStorage.addServer(domain);
-					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, null, EnumSet.noneOf(Server.Feature.class));
+					server=new Server(id, domain, null, null, Instant.now(), null, 0, true, EnumSet.noneOf(Server.Feature.class));
 				}
 			}
 			serversByDomainCache.put(domain, server);
@@ -638,6 +646,145 @@ public class ModerationController{
 	public List<String> getPeerDomains(){
 		try{
 			return UserStorage.getPeerDomains();
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	@Nullable
+	public FederationRestriction getDomainFederationRestriction(String domain){
+		return federationRestrictions.find(domain.toLowerCase());
+	}
+
+	public List<FederationRestriction> getAllFederationRestrictions(){
+		return List.copyOf(allFederationRestrictions);
+	}
+
+	public void createFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment, boolean obfuscate){
+		int flags=0;
+		try{
+			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
+			synchronized(federationRestrictions){
+				FederationRestriction existingRestriction=federationRestrictions.find(domain);
+				if(existingRestriction!=null){
+					if(existingRestriction.domain.equals(domain))
+						throw new UserErrorException("err_federation_restriction_already_exists", Map.of("domain", existingRestriction.getHumanReadableDomain()));
+					else
+						throw new UserErrorException("err_federation_restriction_already_exists_subdomain", Map.of("domain", existingRestriction.getHumanReadableDomain()));
+				}
+
+				// When a rule for an upper-level domain is added, find and delete all existing subdomain rules since it supersedes them anyway
+				final String domainSuffix="."+domain;
+				allFederationRestrictions.removeIf(fr->{
+					if(fr.domain.endsWith(domainSuffix)){
+						federationRestrictions.delete(fr.domain);
+						try{
+							ModerationStorage.deleteFederationRestriction(fr.domain);
+						}catch(SQLException x){
+							throw new InternalServerErrorException(x);
+						}
+						return true;
+					}
+					return false;
+				});
+
+				if(obfuscate)
+					flags|=FederationRestriction.FLAG_DOMAIN_OBFUSCATED;
+
+				ModerationStorage.createFederationRestriction(domain, self.id, publicComment, privateComment, type, flags);
+				FederationRestriction restriction=new FederationRestriction();
+				restriction.createdAt=Instant.now();
+				restriction.domain=domain;
+				restriction.moderatorId=self.id;
+				restriction.type=type;
+				restriction.publicComment=publicComment;
+				restriction.privateComment=privateComment;
+				restriction.flags=flags;
+				allFederationRestrictions.add(restriction);
+				allFederationRestrictions.sort(Comparator.comparing(fr->fr.domain));
+				federationRestrictions.insert(domain, restriction);
+			}
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.CREATE_FEDERATION_RULE, 0, 0, null,
+					Map.of("domain", domain,
+							"publicComment", publicComment,
+							"privateComment", privateComment,
+							"flags", flags,
+							"type", type.ordinal())
+			);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void updateFederationRestriction(User self, String domain, FederationRestriction.RestrictionType type, String publicComment, String privateComment, boolean obfuscate){
+		try{
+			HashMap<String, Object> auditLogParams=new HashMap<>();
+			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
+			auditLogParams.put("domain", domain);
+			synchronized(federationRestrictions){
+				FederationRestriction fr=federationRestrictions.find(domain);
+				if(fr==null || !fr.domain.equals(domain))
+					throw new ObjectNotFoundException();
+
+				int flags=0;
+				if(obfuscate)
+					flags|=FederationRestriction.FLAG_DOMAIN_OBFUSCATED;
+
+				boolean anythingChanged=false;
+				if(!publicComment.equals(fr.publicComment)){
+					anythingChanged=true;
+					auditLogParams.put("oldPublicComment", fr.publicComment);
+					auditLogParams.put("newPublicComment", publicComment);
+				}
+				if(!privateComment.equals(fr.privateComment)){
+					anythingChanged=true;
+					auditLogParams.put("oldPrivateComment", fr.privateComment);
+					auditLogParams.put("newPrivateComment", privateComment);
+				}
+				if(flags!=fr.flags){
+					anythingChanged=true;
+					auditLogParams.put("oldFlags", fr.flags);
+					auditLogParams.put("newFlags", flags);
+				}
+				if(type!=fr.type){
+					anythingChanged=true;
+					auditLogParams.put("oldType", fr.type.ordinal());
+					auditLogParams.put("newType", type.ordinal());
+				}
+				if(!anythingChanged)
+					return;
+
+				ModerationStorage.updateFederationRestriction(domain, publicComment, privateComment, type, flags);
+				fr.publicComment=publicComment;
+				fr.privateComment=privateComment;
+				fr.type=type;
+				fr.flags=flags;
+			}
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.UPDATE_FEDERATION_RULE, 0, 0, null, auditLogParams);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public void deleteFederationRestriction(User self, String domain){
+		try{
+			domain=Utils.convertIdnToAsciiIfNeeded(domain.toLowerCase());
+			FederationRestriction fr;
+			synchronized(federationRestrictions){
+				fr=federationRestrictions.find(domain);
+				if(fr==null || !fr.domain.equals(domain))
+					throw new ObjectNotFoundException();
+				ModerationStorage.deleteFederationRestriction(domain);
+				federationRestrictions.delete(domain);
+				allFederationRestrictions.remove(fr);
+			}
+			ModerationStorage.createAuditLogEntry(self.id, AuditLogEntry.Action.DELETE_FEDERATION_RULE, 0, 0, null,
+					Map.of("domain", domain,
+							"publicComment", fr.publicComment,
+							"privateComment", fr.privateComment,
+							"flags", fr.flags,
+							"type", fr.type.ordinal())
+			);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -769,7 +916,7 @@ public class ModerationController{
 
 	public List<User> getPublicServerAdmins(){
 		try{
-			return UserStorage.getAdmins();
+			return UserStorage.getByIdAsList(UserStorage.getAdminsWithPermission(UserRole.Permission.VISIBLE_IN_STAFF));
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}
@@ -797,10 +944,10 @@ public class ModerationController{
 	// endregion
 	// region User management
 
-	public PaginatedList<AdminUserViewModel> getAllUsers(int offset, int count, String query, Boolean localOnly, String emailDomain, String ipSubnet, int roleID, UserBanStatus banStatus, boolean remoteSuspended){
+	public PaginatedList<AdminUserViewModel> getAllUsers(int offset, int count, String query, Boolean localOnly, String emailDomain, String ipSubnet, int roleID, UserBanStatus banStatus, boolean remoteSuspended, String serverDomain){
 		try{
 			InetAddressRange subnet=ipSubnet!=null ? InetAddressRange.parse(ipSubnet) : null;
-			return ModerationStorage.getUsers(query, localOnly, emailDomain, subnet, roleID, banStatus, remoteSuspended, offset, count);
+			return ModerationStorage.getUsers(query, localOnly, emailDomain, subnet, roleID, banStatus, remoteSuspended, serverDomain, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

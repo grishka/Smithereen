@@ -168,7 +168,7 @@ public class ForeignGroup extends Group implements ForeignActor{
 					if(linkHref!=null && linkId!=null && Utils.uriHostMatches(activityPubID, linkId) && linkName!=null){
 						GroupLink gl=new GroupLink();
 						gl.apID=linkId;
-						gl.url=linkHref;
+						gl.setNormalizedUrl(linkHref);
 						gl.title=linkName;
 						gl.displayOrder=linkOrder;
 						gl.apImageURL=linkIconSrc;
@@ -249,6 +249,11 @@ public class ForeignGroup extends Group implements ForeignActor{
 	@Override
 	public String getFullUsername(){
 		return username+"@"+domain;
+	}
+
+	@Override
+	public String getFullUsernameHumanReadable(){
+		return username+"@"+getHumanReadableDomain();
 	}
 
 	@Override

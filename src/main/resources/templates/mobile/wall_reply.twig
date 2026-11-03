@@ -77,7 +77,7 @@
 						{% set _=options.add({'type': 'link', 'label': L('report').toString(), 'href': "/system/reportForm?type=post&id=#{realPost.id}", 'ajax': 'box'}) %}
 					{% endif %}
 					{% if not realPost.local %}
-						{% set _=options.add({'type': 'link', 'target': '_blank', 'href': realPost.activityPubURL, 'label': L('open_on_server_X', {'domain': realPost.activityPubURL.host}).toString()}) %}
+						{% set _=options.add({'type': 'link', 'target': '_blank', 'href': realPost.activityPubURL, 'label': L('open_on_server_X', {'domain': realPost.humanReadableDomain}).toString()}) %}
 					{% endif %}
 
 					<a href="#" onclick="return showOptions(this)" data-options="{{ json(options) }}">{{ L('more_actions') }}</a>

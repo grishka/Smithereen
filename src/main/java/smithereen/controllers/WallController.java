@@ -68,6 +68,7 @@ import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
 import smithereen.storage.PostStorage;
+import smithereen.storage.SearchStorage;
 import smithereen.storage.UserStorage;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
@@ -1091,6 +1092,17 @@ public class WallController{
 	public int getLocalPostCount(boolean comments){
 		try{
 			return PostStorage.getLocalPostCount(comments);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<Post> searchOwnerPosts(Actor owner, String query, boolean includeComments, boolean ownerOnly, int offset, int count){
+		try{
+			query=SearchStorage.prepareTextQuery(query);
+			if(query.isEmpty())
+				return PaginatedList.emptyList(count);
+			return PostStorage.searchOwnerPosts(owner.getOwnerID(), query, offset, count, ownerOnly, includeComments);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

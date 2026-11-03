@@ -1,4 +1,6 @@
 {# @pebvariable name="report" type="smithereen.model.admin.ViolationReport" #}
+{# @pebvariable name="users" type="java.util.Map<Integer, smithereen.model.User>" #}
+{# @pebvariable name="groups" type="java.util.Map<Integer, smithereen.model.Group>" #}
 {% extends "page" %}
 {% block content %}
 {% include "reports_tabbar" with {'tab': 'view'} %}
@@ -16,7 +18,7 @@
 		{% set user=users[report.targetID] %}
 		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ user | pictureForAvatar('a') }}</a></div>
 		<div class="ellipsize"><b><a href="{{ profileURL(report.targetID) }}">{{ user | name('complete') }}</a></b></div>
-		<div class="grayText ellipsize">@{{ user.fullUsername }}</div>
+		<div class="grayText ellipsize">@{{ user.fullUsernameHumanReadable }}</div>
 		{% if userPermissions.hasPermission('MANAGE_USERS') %}
 		<div><a href="/users/{{ report.targetID }}/meminfo">{{ L('admin_manage_user') }}</a></div>
 		{% endif %}
@@ -24,7 +26,7 @@
 		{% set group=groups[-report.targetID] %}
 		<div class="flL smallMarginRight"><a href="{{ profileURL(report.targetID) }}">{{ group | pictureForAvatar('a') }}</a></div>
 		<div class="ellipsize"><b><a href="{{ profileURL(report.targetID) }}">{{ group.name }}</a></b></div>
-		<div class="grayText ellipsize">@{{ group.fullUsername }}</div>
+		<div class="grayText ellipsize">@{{ group.fullUsernameHumanReadable }}</div>
 		{% endif %}
 	</div>
 	<div class="ellipsize">

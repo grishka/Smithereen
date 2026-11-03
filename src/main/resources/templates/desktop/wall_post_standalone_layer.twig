@@ -2,7 +2,7 @@
 {% set realPost=post.post %}
 {% set randomID=randomString() %}
 {% set interactions=postInteractions[realPost.getIDForInteractions()] %}
-<div class="postLayerHeader">
+<div class="postLayerHeader"{% if currentUser is not null and realPost.canFetchReplies %} data-can-fetch-replies="1"{% endif %}>
 	<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }} class="flL postAuthorAva">{{ users[realPost.authorID] | pictureForAvatar('a') }}</a>
 	<a class="closeBtn flR">{{ L('close') }}</a>
 	<div>
@@ -51,11 +51,16 @@
 	<a href="/users/{{ realPost.ownerID }}/wall/with/{{ realPost.authorID }}" class="button tertiary">{{ L('wall_to_wall') }}</a>
 	{% endif %}
 	{% if not realPost.local %}
-	<a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener" class="button tertiary">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+	<a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener" class="button tertiary">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a>
 	{% endif %}
 </div>
 <div class="postLayerCommentsHeader" id="postCommentsSummary{{ post.post.id }}_{{ randomID }}" style="{% if items is empty %}display: none{% endif %}">
-	<div class="total" id="postCommentsTotal{{ post.post.id }}_{{ randomID }}" style="{% if items | length<totalItems %}display: none{% endif %}">{{ L('X_comments', {'count': post.post.replyCount}) }}</div>
+	<div class="total" id="postCommentsTotal{{ post.post.id }}_{{ randomID }}" style="{% if items | length<totalItems %}display: none{% endif %}">
+		{{ L('X_comments', {'count': post.post.replyCount}) }}
+		{% if currentUser is not null and realPost.canFetchReplies %}
+		<div class="loader flR" id="postCommentsRemoteLoader{{ post.post.id }}_{{ randomID }}" style="height: 13px"></div>
+		{% endif %}
+	</div>
 	{% if items | length<totalItems %}
 	<div class="loadMore" id="loadPrevWrap{{ post.post.id }}_{{ randomID }}">
 		<a href="/posts/{{ post.post.id }}/layerPrevComments?offset={{ items | length }}&rid={{ randomID }}" id="loadPrevBtn{{ post.post.id }}_{{ randomID }}" data-ajax data-ajax-hide="loadPrevBtn{{ post.post.id }}_{{ randomID }}" data-ajax-show="loadPrevLoader{{ post.post.id }}_{{ randomID }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': totalItems-(items | length)}) : L('show_previous_comments') }}</a>
@@ -71,6 +76,12 @@
 {#	{% include "pagination" %}#}
 {#</div>#}
 <div>
+{% if currentUser is not null and realPost.canFetchReplies %}
+<div class="postLayerNewCommentsW" id="postNewCommentsW{{ post.post.id }}_{{ randomID }}" style="display: none">
+	<a class="loadNewComments" id="postLoadNewComments{{ post.post.id }}_{{ randomID }}" href="/posts/{{ post.post.id }}/ajaxReloadComments?rid={{ randomID }}&fromLayer" data-ajax data-ajax-hide="postLoadNewComments{{ post.post.id }}_{{ randomID }}" data-ajax-show="postNewCommentsLoader{{ post.post.id }}_{{ randomID }}">{{ L('wall_show_new_remote_comments') }}</a>
+	<div class="newCommentsLoader loader" style="display: none" id="postNewCommentsLoader{{ post.post.id }}_{{ randomID }}"></div>
+</div>
+{% endif %}
 <div id="postReplies{{post.post.id}}_{{ randomID }}" class="postLayerComments">
 	{%- for reply in items %}
 	{% include "wall_reply" with {'post': reply, 'replyFormID': "wallPostForm_comment#{commentViewType=='FLAT' ? '' : 'Reply'}Post#{post.post.id}_#{randomID}", 'first': false, 'topLevel': post, 'randomID': randomID} %}

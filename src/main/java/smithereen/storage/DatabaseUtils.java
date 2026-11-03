@@ -233,12 +233,17 @@ public class DatabaseUtils{
 		return date==null ? null : date.toLocalDate();
 	}
 
-	public static void doWithTransaction(DatabaseConnection conn, SQLRunnable r) throws SQLException{
+	public static void doWithTransaction(@NotNull DatabaseConnection conn, @NotNull SQLRunnableVoid r) throws SQLException{
+		doWithTransaction(conn, (SQLRunnable<Void>) r);
+	}
+
+	public static <R> R doWithTransaction(@NotNull DatabaseConnection conn, @NotNull SQLRunnable<R> r) throws SQLException{
 		boolean success=false;
 		try{
 			conn.createStatement().execute("START TRANSACTION");
-			r.run();
+			R result=r.run();
 			success=true;
+			return result;
 		}finally{
 			conn.createStatement().execute(success ? "COMMIT" : "ROLLBACK");
 		}
@@ -256,7 +261,18 @@ public class DatabaseUtils{
 	}
 
 	@FunctionalInterface
-	public interface SQLRunnable{
-		void run() throws SQLException;
+	public interface SQLRunnable<R>{
+		R run() throws SQLException;
+	}
+
+	@FunctionalInterface
+	public interface SQLRunnableVoid extends SQLRunnable<Void>{
+		@Override
+		default Void run() throws SQLException{
+			runVoid();
+			return null;
+		}
+
+		void runVoid() throws SQLException;
 	}
 }

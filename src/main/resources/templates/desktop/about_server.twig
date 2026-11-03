@@ -59,10 +59,10 @@
 			<th width="200">{{ L('server') }}</th>
 			<th>{{ L('federation_restriction_reason') }}</th>
 		</tr>
-		{%- for server in restrictedServers %}
+		{%- for restriction in restrictedServers %}
 		<tr>
-			<td>{{ server.host }}</td>
-			<td>{{ server.restriction.publicComment }}</td>
+			<td>{{ restriction.displayDomain }}</td>
+			<td>{{ restriction.publicComment }}</td>
 		</tr>
 		{%- endfor %}
 	</table>

@@ -14,6 +14,7 @@ import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.EnumSet;
@@ -37,6 +38,9 @@ import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 
 public sealed class Post extends PostLikeObject implements ActivityPubRepresentable, ReportableContentObject, LikeableContentObject permits ReportedPost{
+	private static final int FETCH_REPLIES_INITIAL_WAIT_MINUTES=5;
+	private static final int FETCH_REPLIES_COOLDOWN_MINUTES=15;
+
 	public int id;
 	public int repostOf;
 	public List<Integer> replyKey=List.of();
@@ -49,6 +53,7 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	public URI mastodonQuoteAuth;
 	public long appID;
 	public URI appApID;
+	public Instant repliesFetchedAt;
 
 	@Override
 	public URI getActivityPubID(){
@@ -99,6 +104,9 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 			}
 			if(extra.has("app")){
 				appID=extra.get("app").getAsLong();
+			}
+			if(extra.has("replyFetch")){
+				repliesFetchedAt=Instant.ofEpochSecond(extra.get("replyFetch").getAsLong());
 			}
 		}
 	}
@@ -275,6 +283,9 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 		if(appApID!=null){
 			jb.add("appAP", appApID.toString());
 		}
+		if(repliesFetchedAt!=null){
+			jb.add("replyFetch", repliesFetchedAt.getEpochSecond());
+		}
 		JsonObject o=jb.build();
 		return o.isEmpty() ? null : o.toString();
 	}
@@ -284,6 +295,11 @@ public sealed class Post extends PostLikeObject implements ActivityPubRepresenta
 	 */
 	public boolean isWallToWall(){
 		return (getReplyLevel()==0 && ownerID!=authorID) || (getReplyLevel()>0 && flags.contains(Post.Flag.TOP_IS_WALL_TO_WALL));
+	}
+
+	public boolean canFetchReplies(){
+		return !isLocal() && activityPubReplies!=null && createdAt.isBefore(Instant.now().minus(FETCH_REPLIES_INITIAL_WAIT_MINUTES, ChronoUnit.MINUTES))
+				&& (repliesFetchedAt==null || repliesFetchedAt.isBefore(Instant.now().minus(FETCH_REPLIES_COOLDOWN_MINUTES, ChronoUnit.MINUTES)));
 	}
 
 	public enum Privacy{

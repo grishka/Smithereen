@@ -477,7 +477,7 @@ public class ApiUtils{
 				default -> null;
 			};
 		}
-		return new ApiGroup.Link(l.id, l.url.toString(), title, l.getDescription(),
+		return new ApiGroup.Link(l.id, l.getNormalizedUrl().toString(), title, l.getDescription(),
 				img==null ? null : img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_SMALL, actx.imageFormat).toString(),
 				img==null ? null : img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_MEDIUM, actx.imageFormat).toString(),
 				img==null ? null : img.getApiUriForSizeAndFormat(SizedImage.Type.AVA_SQUARE_LARGE, actx.imageFormat).toString(),

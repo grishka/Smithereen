@@ -11,6 +11,16 @@
 {% endif %}
 {% include "mail_tabbar" %}
 <a href="/my/mail/compose" class="fab iconPencil" title="{{ L('mail_compose') }}"></a>
+<div class="gray borderBottom">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('mail_search_placeholder') }}" value="{{ query }}" id="mailSearch" data-base-url="/my/mail"/>
+		{% script %}
+		initAjaxSearch("mailSearch");
+		{% endscript %}
+	</div>
+</div>
+<div id="ajaxUpdatable">
+{% block ajaxPartialUpdate %}
 <div id="mailMessagesList">
 {% for msg in items %}
 <a href="/my/mail/messages/{{ msg.idString }}" class="mailMessageRow{{ msg.unread ? ' unread' : '' }}" id="msgRow{{ msg.idString }}">
@@ -30,7 +40,9 @@
 {% else %}
 <div class="singleColumn">
 	<div class="emptyState">
-		{%- if tab=="inbox" %}
+		{%- if isSearch %}
+		{{- L('mail_search_no_results') }}
+		{%- elseif tab=="inbox" %}
 		{{- L('mail_inbox_empty') }}
 		{%- elseif tab=="outbox" %}
 		{{- L('mail_outbox_empty') }}
@@ -40,4 +52,6 @@
 {% endfor %}
 </div>
 <div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}
+</div>
 {% endblock %}

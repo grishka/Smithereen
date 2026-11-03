@@ -58,10 +58,10 @@
 <div class="singleColumn">
 	<h2>{{ L('about_server_federation_restrictions') }}</h2>
 	<div class="marginBefore marginAfter">{{ L('about_server_federation_restrictions_explain', {'count': restrictedServers | length}) }}</div>
-	{%- for server in restrictedServers %}
+	{%- for restriction in restrictedServers %}
 	<div class="listItemWithDivider">
-		{{ server.host }}
-		<div class="grayText">{{ server.restriction.publicComment }}</div>
+		{{ restriction.displayDomain }}
+		<div class="grayText">{{ restriction.publicComment }}</div>
 	</div>
 	{%- endfor %}
 </div>

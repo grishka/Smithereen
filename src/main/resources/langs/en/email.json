@@ -75,5 +75,7 @@
   "email_content_removal_subject": "{serverName}: content removed",
   "email_content_removal_header": "Server staff removed something you shared",
   "email_content_removal_body": "What was removed:",
-  "email_content_removal_rules": "This happened because you didn't follow these rules:"
+  "email_content_removal_rules": "This happened because you didn't follow these rules:",
+  "email_signup_request_plaintext": "{name} requested to sign up on your server. See all the signup requests here: {url}",
+  "email_go_to_signup_requests": "Go to signup requests"
 }

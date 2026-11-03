@@ -1,10 +1,16 @@
 @import "palette.scss";
 
-@svg-load audioPlay url('img/audio_play.svg') {
-	fill: $audioControlsColor;
+@svg-load audioPlay url('img/audio_play.svg'){
+	fill: #FFFFFF;
+	*[fill=red]{
+		fill: $audioControlsColor;
+	}
 }
-@svg-load audioPause url('img/audio_pause.svg') {
-	fill: $audioControlsColor;
+@svg-load audioPause url('img/audio_pause.svg'){
+	fill: #FFFFFF;
+	*[fill=red]{
+		fill: $audioControlsColor;
+	}
 }
 
 .audio{

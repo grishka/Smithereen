@@ -202,6 +202,7 @@
   "settings_notifications_mentions": "Упоминания",
   "settings_notifications_photo_tags": "Отметки на фотографиях",
   "settings_notifications_group_invites": "Приглашения в сообщества",
+  "settings_notifications_signup_requests": "Заявки на регистрацию на сервере",
   "settings_summary_X_filters": "У вас {count, plural, =0 {нет фильтров} one {# фильтр} few {# фильтра} other {# фильтров}}",
   "settings_no_filters": "Фильтры позволяют вам скрывать записи, содержащие определённые слова.\n\nВаши фильтры появятся здесь.",
   "settings_create_filter": "Создать фильтр",

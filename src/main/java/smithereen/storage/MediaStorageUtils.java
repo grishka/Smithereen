@@ -319,6 +319,14 @@ public class MediaStorageUtils{
 				Spark.halt(400, l.get("err_file_upload_image_format"));
 				throw new IllegalStateException();
 			}
+
+			VipsImage.Interpretation in=img.getInterpretation();
+			if(in!=VipsImage.Interpretation.RGB && in!=VipsImage.Interpretation.RGB16 && in!=VipsImage.Interpretation.scRGB && in!=VipsImage.Interpretation.sRGB){
+				VipsImage newImg=img.colorspace(VipsImage.Interpretation.sRGB);
+				img.release();
+				img=newImg;
+			}
+
 			if(img.hasAlpha()){
 				VipsImage flat=img.flatten(255, 255, 255);
 				img.release();
@@ -411,6 +419,14 @@ public class MediaStorageUtils{
 				Utils.copyBytes(in, out, 5*1024*1024);
 			}
 			img=new VipsImage(tmp.getAbsolutePath());
+
+			VipsImage.Interpretation in=img.getInterpretation();
+			if(in!=VipsImage.Interpretation.RGB && in!=VipsImage.Interpretation.RGB16 && in!=VipsImage.Interpretation.scRGB && in!=VipsImage.Interpretation.sRGB){
+				VipsImage newImg=img.colorspace(VipsImage.Interpretation.sRGB);
+				img.release();
+				img=newImg;
+			}
+			
 			if(img.hasAlpha()){
 				VipsImage flat=img.flatten(255, 255, 255);
 				img.release();

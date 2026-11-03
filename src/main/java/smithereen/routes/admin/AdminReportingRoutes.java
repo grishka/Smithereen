@@ -479,7 +479,7 @@ public class AdminReportingRoutes{
 
 		RenderedTemplateResponse model=new RenderedTemplateResponse("report_form", req);
 		model.with("actorForAvatar", user)
-				.with("otherServerDomain", user instanceof ForeignUser fu ? fu.domain : null)
+				.with("otherServerDomain", user instanceof ForeignUser fu ? fu.getHumanReadableDomain() : null)
 				.with("serverRules", ctx.getModerationController().getServerRules());
 		return wrapForm(req, resp, "report_form", "/settings/admin/createReport?type="+type+"&ids="+ids+"&uid="+user.id, l.get("admin_create_report_title"), "create", model);
 	}

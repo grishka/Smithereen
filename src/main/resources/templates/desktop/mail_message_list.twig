@@ -11,9 +11,25 @@
 </div>
 {% endif %}
 {% include "mail_tabbar" %}
+<div class="gray borderBottom">
+	<div class="searchFieldWrap singleColumn">
+		<input type="text" autocomplete="off" class="searchField" placeholder="{{ L('mail_search_placeholder') }}" value="{{ query }}" id="mailSearch" data-base-url="/my/mail"/>
+		{% script %}
+		initAjaxSearch("mailSearch");
+		{% endscript %}
+	</div>
+</div>
+<div id="ajaxUpdatable">
+{% block ajaxPartialUpdate %}
 <div class="summaryWrap">
 	<div class="summary">
-		{%- if tab=="inbox" %}
+		{%- if isSearch %}
+		{% if totalItems==0 %}
+		{{- L('mail_no_messages') }}
+		{% else %}
+		{{ L('mail_X_messages_found', {'count': totalItems}) }}
+		{% endif %}
+		{%- elseif tab=="inbox" %}
 		{{- L('mail_inbox_summary', {'count': totalItems}) }}
 		{%- elseif tab=="outbox" %}
 		{{- L('mail_outbox_summary', {'count': totalItems}) }}
@@ -47,7 +63,9 @@
 {% else %}
 <div class="singleColumn">
 	<div class="emptyState">
-		{%- if tab=="inbox" %}
+		{%- if isSearch %}
+		{{- L('mail_search_no_results') }}
+		{%- elseif tab=="inbox" %}
 		{{- L('mail_inbox_empty') }}
 		{%- elseif tab=="outbox" %}
 		{{- L('mail_outbox_empty') }}
@@ -57,4 +75,6 @@
 {% endfor %}
 </div>
 <div class="bottomSummaryWrap">{% include "pagination" %}</div>
+{% endblock %}
+</div>
 {% endblock %}

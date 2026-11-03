@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.IDN;
 import java.net.URI;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -598,6 +599,10 @@ public class ObjectLinkResolver{
 				throw new ObjectNotFoundException();
 			name=matcher.group(1);
 			domain=matcher.group(2);
+			try{
+				domain=IDN.toASCII(domain);
+			}catch(IllegalArgumentException ignored){
+			}
 			if(domain.equalsIgnoreCase(Config.domain))
 				domain=null;
 		}else{

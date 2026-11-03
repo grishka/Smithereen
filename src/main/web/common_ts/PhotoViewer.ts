@@ -20,6 +20,7 @@ interface PhotoViewerPhoto{
 	originalURL:string;
 	historyURL:string;
 	apURL:string;
+	humanReadableDomain:string;
 	saveURL:string;
 
 	bottomPartEl:HTMLElement; // cached DOM tree of comments and stuff, set at runtime
@@ -69,6 +70,20 @@ function doOpenPhotoViewer(info:PhotoViewerInlineData, listURL:string="/photos/a
 		let viewer=new DesktopPhotoViewer(info, listURL, fromPopState);
 		viewer.show();
 		return viewer;
+	}
+}
+
+// After a photo is deleted from the middle of the list, the indices of photos after the deleted one
+// become invalid. This can result in an error when after deleting a photo from the middle of the list
+// the user tries to open the last photo in the list.
+//
+// For this reason, all the indices of photos after the deleted one must be adjusted.
+function updatePhotoIndicesAfterDeletion(deletedIndex:number){
+	for(const photo of document.querySelectorAll<HTMLAnchorElement>("a.photo")){
+		const data=JSON.parse(photo.dataset.pv) as PhotoViewerInlineData;
+		if(data.index<=deletedIndex) continue;
+		data.index=deletedIndex++;
+		photo.dataset.pv=JSON.stringify(data);
 	}
 }
 

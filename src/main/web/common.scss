@@ -1008,3 +1008,18 @@ h2+.textByItself{
 	background-image: svg-inline(groupLinkPlaceholderIcon);
 	background-size: var(--ava-width) var(--ava-height);
 }
+
+blockquote{
+	margin-left: 0;
+	margin-right: 0;
+	padding: 2px 0 2px 8px;
+	border-left: solid 2px $textAreaBorder;
+}
+
+blockquote:last-child{
+	margin-bottom: 0;
+}
+
+blockquote:first-child{
+	margin-top: 0;
+}

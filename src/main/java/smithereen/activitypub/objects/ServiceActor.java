@@ -1,9 +1,11 @@
 package smithereen.activitypub.objects;
 
 import java.net.URI;
+import java.util.List;
 
 import smithereen.BuildInfo;
 import smithereen.Config;
+import smithereen.util.UriBuilder;
 
 public class ServiceActor extends Actor{
 
@@ -18,7 +20,6 @@ public class ServiceActor extends Actor{
 
 	private ServiceActor(){
 		privateKey=Config.serviceActorPrivateKey;
-		publicKey=Config.serviceActorPublicKey;
 		username="activitypub_service_actor";
 		name="Smithereen "+BuildInfo.VERSION+" at "+Config.domain;
 		url=Config.localURI("/system/about");
@@ -26,6 +27,7 @@ public class ServiceActor extends Actor{
 		sharedInbox=Config.localURI("/activitypub/sharedInbox");
 		inbox=Config.localURI("/activitypub/serviceActor/inbox");
 		outbox=Config.localURI("/activitypub/serviceActor/outbox");
+		publicKeys=List.of(new SigningKey(new UriBuilder(activityPubID).fragment("main-key").build(), Config.serviceActorPublicKey, SigningKey.Algorithm.RSA));
 	}
 
 	@Override

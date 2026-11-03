@@ -1,5 +1,7 @@
 package smithereen.model.viewmodel;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -11,6 +13,7 @@ import smithereen.model.Post;
 import smithereen.model.filtering.WordFilter;
 
 public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
+	@Nullable
 	public Repost repost;
 	public WordFilter matchedFilter;
 
@@ -36,6 +39,11 @@ public class PostViewModel extends BasePostViewModel<Post, PostViewModel>{
 			ids.add(repost.post.post.id);
 			repost.post.collectRepostIDs(ids);
 		}
+	}
+
+	@Override
+	public boolean hasAudioAttachments(){
+		return super.hasAudioAttachments() || (repost!=null && repost.post.hasAudioAttachments());
 	}
 
 	public static PaginatedList<PostViewModel> wrap(PaginatedList<Post> list){

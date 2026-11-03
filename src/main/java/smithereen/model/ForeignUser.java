@@ -83,7 +83,7 @@ public class ForeignUser extends User implements ForeignActor{
 		sb.append(super.toString());
 		if(domain!=null){
 			sb.append("domain='");
-			sb.append(domain);
+			sb.append(getHumanReadableDomain());
 			sb.append('\'');
 		}
 		if(activityPubID!=null){
@@ -137,8 +137,10 @@ public class ForeignUser extends User implements ForeignActor{
 			lastName=optString(obj, "lastName");
 			middleName=optString(obj, "middleName");
 			maidenName=optString(obj, "maidenName");
+			if(!Utils.notNullAndContainsPrintableChars(firstName))
+				firstName=username;
 		}else{
-			firstName=StringUtils.isNotEmpty(name) ? name : username;
+			firstName=Utils.notNullAndContainsPrintableChars(name) ? name : username;
 			// If there's a single space somewhere in the name, assume it's first and last names
 			int spaceIdx=firstName.indexOf(' ');
 			if(spaceIdx>0 && spaceIdx==firstName.lastIndexOf(' ')){
@@ -414,6 +416,11 @@ public class ForeignUser extends User implements ForeignActor{
 	}
 
 	@Override
+	public String getFullUsernameHumanReadable(){
+		return username+"@"+getHumanReadableDomain();
+	}
+
+	@Override
 	public URI getFollowersURL(){
 		return followers;
 	}
@@ -451,6 +458,11 @@ public class ForeignUser extends User implements ForeignActor{
 	@Override
 	public URI getTaggedPhotosURL(){
 		return taggedPhotos;
+	}
+
+	@Override
+	public boolean supportsPhotoTags(){
+		return taggedPhotos!=null;
 	}
 
 	@Override

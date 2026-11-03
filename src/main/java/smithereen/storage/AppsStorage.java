@@ -11,6 +11,7 @@ import java.net.URI;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Instant;
@@ -23,6 +24,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import smithereen.Config;
 import smithereen.Utils;
 import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.objects.Actor;
@@ -66,7 +68,7 @@ public class AppsStorage{
 					.value("domain", app.domain)
 					.value("name", app.name)
 					.value("description", app.description)
-					.value("public_key", app.publicKey==null ? null : app.publicKey.getEncoded())
+					.value("public_key", app.serializePublicKeys())
 					.value("type", app.type)
 					.value("logo", app.logo==null ? null : app.logo.asActivityPubObject(new JsonObject(), new SerializerContext(null, (String)null)).toString())
 					.value("developer_id", app.developerID==0 ? null : app.developerID)
@@ -134,12 +136,13 @@ public class AppsStorage{
 	}
 
 	public static long createApp(int userID, String name, String description, LocalImage logo, String extraFields) throws SQLException{
-		byte[] publicKey, privateKey;
+		byte[] privateKey;
+		PublicKey publicKey;
 		try{
 			KeyPairGenerator kpg=KeyPairGenerator.getInstance("RSA");
 			kpg.initialize(2048);
 			KeyPair pair=kpg.generateKeyPair();
-			publicKey=pair.getPublic().getEncoded();
+			publicKey=pair.getPublic();
 			privateKey=pair.getPrivate().getEncoded();
 		}catch(NoSuchAlgorithmException x){
 			throw new RuntimeException(x);
@@ -151,7 +154,7 @@ public class AppsStorage{
 				.value("description", description)
 				.value("logo", serializedLogo==null ? null : serializedLogo.toString())
 				.value("developer_id", userID)
-				.value("public_key", publicKey)
+				.value("public_key", Actor.serializeLocalActorRsaKey(publicKey))
 				.value("private_key", privateKey)
 				.value("extra", extraFields)
 				.executeAndGetIDLong();

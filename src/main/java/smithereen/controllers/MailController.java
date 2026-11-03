@@ -45,6 +45,7 @@ import smithereen.storage.MailStorage;
 import smithereen.storage.MediaStorage;
 import smithereen.storage.MediaStorageUtils;
 import smithereen.storage.NotificationsStorage;
+import smithereen.storage.SearchStorage;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
 import smithereen.util.BackgroundTaskRunner;
@@ -71,6 +72,17 @@ public class MailController{
 	public PaginatedList<MailMessage> getOutbox(User self, int offset, int count){
 		try{
 			return MailStorage.getOutbox(self.id, offset, count);
+		}catch(SQLException x){
+			throw new InternalServerErrorException(x);
+		}
+	}
+
+	public PaginatedList<MailMessage> searchMessages(User self, String query, int offset, int count){
+		try{
+			query=SearchStorage.prepareTextQuery(query);
+			if(query.isEmpty())
+				return PaginatedList.emptyList(count);
+			return MailStorage.searchMessages(self.id, query, offset, count);
 		}catch(SQLException x){
 			throw new InternalServerErrorException(x);
 		}

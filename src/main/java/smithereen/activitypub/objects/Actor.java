@@ -1,50 +1,73 @@
 package smithereen.activitypub.objects;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.google.gson.annotations.SerializedName;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigInteger;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import smithereen.Config;
 import smithereen.Utils;
-import smithereen.activitypub.SerializerContext;
 import smithereen.activitypub.ParserContext;
+import smithereen.activitypub.SerializerContext;
+import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.FederationException;
+import smithereen.jsonld.JLD;
 import smithereen.model.ActorStatus;
 import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.SizedImage;
-import smithereen.exceptions.BadRequestException;
-import smithereen.jsonld.JLD;
 import smithereen.storage.MediaCache;
 import smithereen.text.TextProcessor;
+import smithereen.util.Base58;
+import smithereen.util.CryptoUtils;
+import smithereen.util.MulticodecIDs;
+import smithereen.util.MultiformatsVarInt;
+import smithereen.util.UriRenderer;
 import spark.utils.StringUtils;
 
 public abstract class Actor extends ActivityPubObject{
 	public static final int USERNAME_MAX_LENGTH=64;
 
 	public String username;
-	transient public PublicKey publicKey;
+	transient public List<SigningKey> publicKeys=List.of();
 	transient public PrivateKey privateKey;
+
+	/**
+	 * <p>The ASCII-only representation of the actor's domain (<a href="https://en.wikipedia.org/wiki/Punycode">Punycode</a>-encoded if necessary).</p>
+	 * <p><b>Not suitable for displaying in the UI!</b> Use {@link getHumanReadableDomain} for that.</p>
+	 */
+	@Nullable
 	public String domain;
+
 	public URI inbox;
 	public URI outbox;
 	public URI sharedInbox;
@@ -57,11 +80,18 @@ public abstract class Actor extends ActivityPubObject{
 	public String aboutSource;
 
 	public String getProfileURL(String action){
-		return "/"+getFullUsername()+"/"+action;
+		return getProfileURL()+"/"+action;
 	}
 
 	public String getProfileURL(){
-		return "/"+getFullUsername();
+		StringBuilder sb=new StringBuilder("/");
+		sb.append(username);
+		if(StringUtils.isNotEmpty(domain)){
+			sb.append("@");
+			// Percent-encode potential IDN
+			sb.append(URLEncoder.encode(UriRenderer.renderDomain(domain), StandardCharsets.UTF_8));
+		}
+		return sb.toString();
 	}
 
 	public String getAbsoluteProfileURL(){
@@ -109,7 +139,19 @@ public abstract class Actor extends ActivityPubObject{
 		return icon.cropRegion;
 	}
 
+	/**
+	 * <p>The ASCII-only representation of the actor's username (with <a href="https://en.wikipedia.org/wiki/Punycode">Punycode</a>-encoded domain if necessary).</p>
+	 * <p><b>Not suitable for displaying in the UI!</b> Use {@link getFullUsernameHumanReadable} for that.</p>
+	 */
 	public String getFullUsername(){
+		return username;
+	}
+
+	/**
+	 * <p>The representation of the actor's username suitable for displaying in the UI.</p>
+	 * <p><b>Do not use this in business logic!</b> Use {@link getFullUsername} instead.</p>
+	 */
+	public String getFullUsernameHumanReadable(){
 		return username;
 	}
 
@@ -171,7 +213,7 @@ public abstract class Actor extends ActivityPubObject{
 		pubkey.addProperty("id", userURL+"#main-key");
 		pubkey.addProperty("owner", userURL);
 		StringBuilder pkey=new StringBuilder("-----BEGIN PUBLIC KEY-----\n");
-		String encodedKey=Base64.getEncoder().encodeToString(publicKey.getEncoded());
+		String encodedKey=Base64.getEncoder().encodeToString(getFirstRsaPublicKey().key.getEncoded());
 		for(int i=0;i<encodedKey.length();i+=64){
 			pkey.append(encodedKey, i, Math.min(encodedKey.length(), i+64));
 			pkey.append('\n');
@@ -230,6 +272,9 @@ public abstract class Actor extends ActivityPubObject{
 			}
 			if(username.length()>USERNAME_MAX_LENGTH)
 				username=username.substring(0, USERNAME_MAX_LENGTH);
+
+			if(!Utils.notNullAndContainsPrintableChars(name))
+				name=username;
 		}
 		if(activityPubID!=null){
 			domain=activityPubID.getHost();
@@ -239,31 +284,41 @@ public abstract class Actor extends ActivityPubObject{
 				url=activityPubID;
 		}
 
-		JsonObject pkey=obj.getAsJsonObject("publicKey");
-		if(pkey==null && !skipChecks)
-			throw new IllegalArgumentException("The actor is missing a public key (or @context in the actor object doesn't include the namespace \""+JLD.W3_SECURITY+"\")");
-		if(pkey!=null){
-			URI keyOwner=tryParseURL(optString(pkey, "owner"));
-			if(keyOwner!=null && !keyOwner.equals(activityPubID))
-				throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");
-			String pkeyEncoded=pkey.get("publicKeyPem").getAsString();
-			pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replaceAll("[^A-Za-z0-9+/=]", "").trim();
-			byte[] key=Base64.getDecoder().decode(pkeyEncoded);
-			try{
-				X509EncodedKeySpec spec=new X509EncodedKeySpec(key);
-				publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
-			}catch(InvalidKeySpecException x){
-				// a simpler RSA key format, used at least by Misskey
-				// FWIW, Misskey user objects also contain a key "isCat" which I ignore
-				try{
-					RSAPublicKeySpec spec=decodeSimpleRSAKey(key);
-					publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
-				}catch(NoSuchAlgorithmException ignore){
-				}catch(InvalidKeySpecException | IOException xx){
-					throw new BadRequestException(xx);
+		publicKeys=new ArrayList<>();
+		JsonArray assertionMethod=optArrayCompact(obj, "assertionMethod");
+		if(assertionMethod!=null){
+			for(JsonElement je:assertionMethod){
+				if(je instanceof JsonObject assertion && assertion.get("type") instanceof JsonPrimitive assertionType && "Multikey".equals(assertionType.getAsString())){
+					parseMultikey(assertion);
 				}
-			}catch(NoSuchAlgorithmException ignore){}
+			}
 		}
+
+		if(publicKeys.isEmpty()){
+			JsonObject pkey=obj.getAsJsonObject("publicKey");
+			if(pkey==null && !skipChecks)
+				throw new IllegalArgumentException("The actor is missing a public key (or @context in the actor object doesn't include the namespace \""+JLD.W3_SECURITY+"\")");
+			if(pkey!=null){
+				URI keyOwner=tryParseURL(optString(pkey, "owner"));
+				if(keyOwner!=null && !keyOwner.equals(activityPubID))
+					throw new IllegalArgumentException("Key owner ("+keyOwner+") is not equal to user ID ("+activityPubID+")");
+				String pkeyEncoded=pkey.get("publicKeyPem").getAsString();
+				pkeyEncoded=pkeyEncoded.replaceAll("-----(BEGIN|END) (RSA )?PUBLIC KEY-----", "").replaceAll("[^A-Za-z0-9+/=]", "").trim();
+				byte[] key=Base64.getDecoder().decode(pkeyEncoded);
+				URI keyId=tryParseURL(optString(pkey, "id"));
+				if(keyId==null)
+					throw new IllegalArgumentException("The actor's public key is missing an id");
+				if(!keyId.isAbsolute())
+					keyId=activityPubID.resolve(keyId);
+
+				try{
+					publicKeys.add(new SigningKey(keyId, CryptoUtils.decodeRsaPublicKey(key), SigningKey.Algorithm.RSA));
+				}catch(IllegalArgumentException x){
+					throw new BadRequestException(x);
+				}
+			}
+		}
+
 
 		inbox=tryParseURL(optString(obj, "inbox"));
 		ensureHostMatchesID(inbox, "inbox");
@@ -294,6 +349,81 @@ public abstract class Actor extends ActivityPubObject{
 		return this;
 	}
 
+	private void parseMultikey(JsonObject multikey){
+		if(!Objects.equals(activityPubID, tryParseURL(optString(multikey, "controller")))){
+			LOG.debug("Multikey object's controller {} does not match actor ID {}", optString(multikey, "controller"), activityPubID);
+			return;
+		}
+		URI keyId=tryParseURL(optString(multikey, "id"));
+		if(keyId==null){
+			LOG.debug("No id for multikey object {}", multikey);
+			return;
+		}
+		if(!keyId.isAbsolute())
+			keyId=activityPubID.resolve(keyId);
+		String b58Key=optString(multikey, "publicKeyMultibase");
+		if(StringUtils.isEmpty(b58Key)){
+			LOG.debug("publicKeyMultibase is empty for key {}", keyId);
+			return;
+		}
+		if(!b58Key.startsWith("z")){ // https://www.w3.org/TR/cid/#multibase-0
+			LOG.debug("publicKeyMultibase key {} uses an unsupported encoding '{}'", keyId, b58Key.charAt(0));
+			return;
+		}
+		b58Key=b58Key.substring(1);
+		byte[] rawKey;
+		try{
+			rawKey=Base58.decode(b58Key);
+		}catch(IllegalArgumentException x){
+			LOG.debug("publicKeyMultibase encoding is invalid", x);
+			return;
+		}
+		ByteArrayInputStream in=new ByteArrayInputStream(rawKey);
+		long typePrefix;
+		try{
+			typePrefix=MultiformatsVarInt.read(in);
+		}catch(IOException x){
+			throw new RuntimeException(x);
+		}
+		SigningKey.Algorithm algorithm;
+		if(typePrefix==MulticodecIDs.RSA_PUB){
+			algorithm=SigningKey.Algorithm.RSA;
+		}else if(typePrefix==MulticodecIDs.ED25519_PUB){
+			algorithm=SigningKey.Algorithm.EdDSA;
+		}else{
+			LOG.debug("Public key {} type prefix {} is unknown", keyId, typePrefix);
+			return;
+		}
+		byte[] encodedKey=in.readAllBytes();
+		PublicKey key;
+		switch(algorithm){
+			case RSA -> {
+				try{
+					key=CryptoUtils.decodeRsaPublicKey(encodedKey);
+				}catch(IllegalArgumentException x){
+					LOG.debug("Public RSA key {} is invalid", keyId, x);
+					return;
+				}
+			}
+			case EdDSA -> {
+				try{
+					if(encodedKey.length==32){ // Raw key
+						key=CryptoUtils.decodeEcPublicKey(encodedKey);
+					}else{
+						key=KeyFactory.getInstance("Ed25519").generatePublic(new X509EncodedKeySpec(encodedKey));
+					}
+				}catch(InvalidKeySpecException|IllegalArgumentException x){
+					LOG.debug("Public Ed25519 key {} is invalid", keyId, x);
+					return;
+				}catch(NoSuchAlgorithmException x){
+					throw new RuntimeException(x);
+				}
+			}
+			case null -> throw new IllegalStateException(); // unreachable but compiler wants it
+		}
+		publicKeys.add(new SigningKey(keyId, key, algorithm));
+	}
+
 	public abstract int getLocalID();
 	public abstract URI getWallURL();
 	public abstract URI getWallCommentsURL();
@@ -302,49 +432,13 @@ public abstract class Actor extends ActivityPubObject{
 	public abstract String getName();
 	public abstract String serializeProfileFields();
 
-	private static RSAPublicKeySpec decodeSimpleRSAKey(byte[] key) throws IOException{
-		ByteArrayInputStream in=new ByteArrayInputStream(key);
-		int id=in.read();
-		if(id!=0x30)
-			throw new IOException("Must start with SEQUENCE");
-		int seqLen=readDerLength(in);
-		id=in.read();
-		if(id!=2)
-			throw new IOException("SEQUENCE must be followed by INTEGER");
-		int modLen=readDerLength(in);
-		byte[] modBytes=new byte[modLen];
-		in.read(modBytes);
-		id=in.read();
-		if(id!=2)
-			throw new IOException("SEQUENCE must be followed by INTEGER");
-		int expLen=readDerLength(in);
-		byte[] expBytes=new byte[expLen];
-		in.read(expBytes);
-		return new RSAPublicKeySpec(new BigInteger(modBytes), new BigInteger(expBytes));
-	}
-
-	private static int readDerLength(InputStream in) throws IOException{
-		int length=in.read();
-		if((length & 0x80)!=0){
-			int additionalBytes=length & 0x7F;
-			if(additionalBytes>4)
-				throw new IOException("Invalid length value");
-			length=0;
-			for(int i=0;i<additionalBytes;i++){
-				length=length<<8;
-				length|=in.read() & 0xFF;
-			}
-		}
-		return Math.min(length, in.available());
-	}
-
 	protected void fillFromResultSet(ResultSet res) throws SQLException{
-		byte[] key=res.getBytes("public_key");
 		try{
-			X509EncodedKeySpec spec=new X509EncodedKeySpec(key);
-			publicKey=KeyFactory.getInstance("RSA").generatePublic(spec);
-		}catch(Exception ignore){}
-		key=res.getBytes("private_key");
+			publicKeys=deserializePublicKeys(res.getBytes("public_key"));
+		}catch(RuntimeException x){
+			LOG.warn("Failed to deserialize public keys for actor", x);
+		}
+		byte[] key=res.getBytes("private_key");
 		if(key!=null){
 			try{
 				PKCS8EncodedKeySpec spec=new PKCS8EncodedKeySpec(key);
@@ -432,6 +526,80 @@ public abstract class Actor extends ActivityPubObject{
 		return status!=null && !status.isExpired() ? status.text() : null;
 	}
 
+	public byte[] serializePublicKeys(){
+		return serializePublicKeys(publicKeys);
+	}
+
+	public static byte[] serializeLocalActorRsaKey(PublicKey key){
+		return serializePublicKeys(List.of(new SigningKey(URI.create("#"), key, SigningKey.Algorithm.RSA)));
+	}
+
+	public static byte[] serializePublicKeys(List<SigningKey> publicKeys){
+		if(publicKeys.isEmpty())
+			return null;
+		try{
+			ByteArrayOutputStream buf=new ByteArrayOutputStream();
+			DataOutputStream out=new DataOutputStream(buf);
+			for(SigningKey sk:publicKeys){
+				out.write(sk.algorithm.ordinal());
+				out.writeUTF(sk.id.toString());
+				byte[] key=sk.key.getEncoded();
+				out.writeShort(key.length);
+				out.write(key);
+			}
+			return buf.toByteArray();
+		}catch(IOException x){
+			throw new RuntimeException(x);
+		}
+	}
+
+	public static List<SigningKey> deserializePublicKeys(byte[] serialized){
+		if(serialized==null || serialized.length==0)
+			return new ArrayList<>();
+		try{
+			DataInputStream in=new DataInputStream(new ByteArrayInputStream(serialized));
+			ArrayList<SigningKey> publicKeys=new ArrayList<>();
+			while(in.available()>0){
+				SigningKey.Algorithm alg=SigningKey.Algorithm.values()[in.read()];
+				URI keyID=URI.create(in.readUTF());
+				int len=in.readUnsignedShort();
+				byte[] buf=new byte[len];
+				in.readFully(buf);
+				X509EncodedKeySpec spec=new X509EncodedKeySpec(buf);
+				PublicKey pk=KeyFactory.getInstance(alg.getKeyAlgorithm()).generatePublic(spec);
+				publicKeys.add(new SigningKey(keyID, pk, alg));
+			}
+			return publicKeys;
+		}catch(Exception x){
+			throw new RuntimeException(x);
+		}
+	}
+
+	public SigningKey getFirstRsaPublicKey(){
+		for(SigningKey sk:publicKeys){
+			if(sk.algorithm==SigningKey.Algorithm.RSA)
+				return sk;
+		}
+		throw new NoSuchElementException("This actor does not have an RSA public key");
+	}
+
+	public SigningKey getPublicKey(URI id){
+		for(SigningKey sk:publicKeys){
+			if(sk.id.equals(id))
+				return sk;
+		}
+		throw new NoSuchElementException("This actor does not have a public key with id "+id);
+	}
+
+	/**
+	 * <p>The representation of the actor's domain suitable for displaying in the UI.</p>
+	 * <p><b>Do not use this in business logic!</b> Use {@link domain} instead.</p>
+	 */
+	@Nullable
+	public String getHumanReadableDomain(){
+		return UriRenderer.renderDomain(domain);
+	}
+
 	public static class EndpointsStorageWrapper{
 		@SerializedName("fs")
 		public String followers;
@@ -465,5 +633,20 @@ public abstract class Actor extends ActivityPubObject{
 		public String pinnedPosts;
 		@SerializedName("ap")
 		public String apps;
+	}
+
+	public record SigningKey(URI id, PublicKey key, Algorithm algorithm){
+		public enum Algorithm{
+			RSA,
+			EdDSA,
+			;
+
+			public String getKeyAlgorithm(){
+				return switch(this){
+					case RSA -> "RSA";
+					case EdDSA -> "Ed25519";
+				};
+			}
+		}
 	}
 }

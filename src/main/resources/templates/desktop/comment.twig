@@ -28,7 +28,7 @@
 			<div class="postInfo">
 				<a href="{{ realPost.internalURL }}" class="postLink">{{ LD(realPost.createdAt) }}</a>
 				{% if not realPost.local %}
-					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a>
 				{% endif %}
 			</div>
 		</div>
@@ -55,7 +55,9 @@
 		</div>
 		{% endif %}
 		<a href="{{ profileURL(realPost.authorID) }}" class="authorName" id="postAuthor{{ realPost.idString }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
-		{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer" id="inReplyTo{{ realPost.idString }}"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyParentID, 'data-parent-type': 'comment'} }) }}</span>{% endif %}<br/>
+		{% if replyLevel>maxReplyDepth %}<span class="commentInReply grayText hoverCardContainer" id="inReplyTo{{ realPost.idString }}"> {{ L('comment_in_reply_to_user', {'gender': users[realPost.authorID].gender, 'name': users[post.parentAuthorID] | name('firstAndGender')}, {'parentComment': {'href': profileURL(post.parentAuthorID), 'class': "grayText parentCommentLink hoverCardTrigger", 'data-parent-id': realPost.replyParentID, 'data-parent-type': 'comment'} }) }}</span>{% endif %}
+		{% if board and searchResultTopic is not null %}{{ L('board_search_result_in_topic', {'topicName': searchResultTopic.title}, {'topic': {'href': searchResultTopic.url} }) }}{% endif %}
+		<br/>
 		<div id="postInner{{ realPost.idString }}">
 			{% block postInner %}
 			{% if realPost.hasContentWarning %}
@@ -90,7 +92,7 @@
 						 onclick="return showReplyForm('{{realPost.idString}}', '{{ replyFormID is empty ? 'wallPostForm_reply' : replyFormID }}', 'comment', {{ commentViewType!='FLAT' }}, '{{ commentViewType=='TWO_LEVEL' and replyLevel>0 ? realPost.replyKeyAsStrings[0] : '' }}')">{{ L('add_reply') }}</a>
 				{% endif %}
 				{% if not realPost.local %}
-					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a>
+					| <a href="{{ realPost.activityPubURL }}" target="_blank" rel="noopener">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a>
 				{% endif %}
 				{% endif %}
 			</div>

@@ -34,7 +34,10 @@
 		<a href="{{ profileURL(realPost.authorID) }}"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | pictureForAvatar('a', 32) }}</a>
 	</div>
 	<div class="commentContentWrap"{% if users[realPost.authorID].suspended %} id="postContentWrap{{ realPost.idString }}" style="display: none"{% endif %}>
-		<div class="authorNameWrap"><a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a></div>
+		<div class="authorNameWrap">
+			<a href="{{ profileURL(realPost.authorID) }}" class="authorName"{{ profileRel(realPost.authorID) }}>{{ users[realPost.authorID] | name }}</a>
+			{% if board and searchResultTopic is not null %}{{ L('board_search_result_in_topic', {'topicName': searchResultTopic.title}, {'topic': {'href': searchResultTopic.url} }) }}{% endif %}
+		</div>
 		{% if realPost.hasContentWarning %}
 			<input type="checkbox" id="postCW_{{ realPost.idString }}" class="commentCWCheckbox" style="display: none"/>
 		<div class="postCWWrap">
@@ -70,7 +73,7 @@
 						{% set _=options.add({'type': 'link', 'label': L('report').toString(), 'href': "/system/reportForm?type=comment&id=#{realPost.idString}", 'ajax': 'box'}) %}
 					{% endif %}
 					{% if not realPost.local %}
-						{% set _=options.add({'type': 'link', 'target': '_blank', 'href': realPost.activityPubURL, 'label': L('open_on_server_X', {'domain': realPost.activityPubURL.host}).toString()}) %}
+						{% set _=options.add({'type': 'link', 'target': '_blank', 'href': realPost.activityPubURL, 'label': L('open_on_server_X', {'domain': realPost.humanReadableDomain}).toString()}) %}
 					{% endif %}
 
 					<a href="#" onclick="return showOptions(this)" data-options="{{ json(options) }}">{{ L('more_actions') }}</a>

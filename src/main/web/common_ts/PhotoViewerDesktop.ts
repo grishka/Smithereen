@@ -649,6 +649,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 				this.tagFriendListPopup.style.left=(this.tagsWrap.offsetLeft+area.x+area.w)+"px";
 				this.tagFriendListPopup.style.top=(this.tagsWrap.offsetTop+area.y)+"px";
 				this.tagFriendListPopup.showAnimated();
+				input.focus();
 			};
 			list.addEventListener("click", (ev)=>{
 				var target=ev.target as HTMLElement;
@@ -684,6 +685,7 @@ class DesktopPhotoViewer extends BaseMediaViewerLayer{
 					}
 				}
 			});
+			initSearchKeyDownEvent(input, list, "a[data-user-id]", (selected)=>selected.click());
 			ajaxGet("/photos/friendListForTagging", (r)=>{
 				list.innerHTML=r;
 				noResults=list.qs(".noResults");

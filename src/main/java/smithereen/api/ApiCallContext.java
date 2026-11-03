@@ -282,7 +282,7 @@ public class ApiCallContext{
 	}
 
 	public boolean hasPermission(@NotNull ClientAppPermission permission){
-		return token!=null && token.permissions().contains(permission);
+		return token!=null && (token.permissions().contains(permission) || token.permissions().contains(ClientAppPermission.PASSWORD_GRANT_USED));
 	}
 
 	public void requirePermission(@NotNull ClientAppPermission permission){

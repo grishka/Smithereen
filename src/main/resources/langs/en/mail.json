@@ -36,5 +36,9 @@
   "profile_write_message_short": "Message",
   "messages_title": "Messages",
   "mail_conversation_history": "Conversation history",
-  "mail_privacy_forbidden": "You can't write to this user due to their privacy settings"
+  "mail_privacy_forbidden": "You can't write to this user due to their privacy settings",
+  "mail_search_placeholder": "Search messages",
+  "mail_X_messages_found": "{count, plural, one {# message} other {# messages}} found",
+  "mail_no_messages": "No messages",
+  "mail_search_no_results": "No messages found"
 }

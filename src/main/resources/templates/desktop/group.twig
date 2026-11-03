@@ -9,7 +9,7 @@
 <div class="marginsAreMessy"></div>
 <div class="settingsMessage">
 	{{ L('incomplete_profile') }}<br/>
-	<a href="{{ group.url }}" target="_blank">{{ L('open_on_server_X', {'domain': group.domain}) }}</a>
+	<a href="{{ group.url }}" target="_blank">{{ L('open_on_server_X', {'domain': group.humanReadableDomain}) }}</a>
 </div>
 {%endif%}
 {% if group.banInfo is not null and currentUser is not null and userPermissions.hasPermission('MANAGE_GROUPS') %}

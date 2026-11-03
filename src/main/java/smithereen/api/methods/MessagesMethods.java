@@ -27,15 +27,7 @@ import smithereen.util.XTEA;
 import spark.utils.StringUtils;
 
 public class MessagesMethods{
-	public static Object get(ApplicationContext ctx, ApiCallContext actx){
-		PaginatedList<MailMessage> messages;
-		int offset=actx.getOffset();
-		int count=actx.getCount(20, 200);
-		if(actx.optParamBoolean("out"))
-			messages=ctx.getMailController().getOutbox(actx.self.user, offset, count);
-		else
-			messages=ctx.getMailController().getInbox(actx.self.user, offset, count);
-
+	private static ApiPaginatedListWithActors<ApiMessage> wrapMessages(ApplicationContext ctx, ApiCallContext actx, PaginatedList<MailMessage> messages){
 		ApiPaginatedListWithActors<ApiMessage> resp=new ApiPaginatedListWithActors<>(messages.total, getMessages(messages.list, ctx, actx));
 		if(actx.optParamBoolean("extended")){
 			HashSet<Integer> needUsers=new HashSet<>();
@@ -48,6 +40,17 @@ public class MessagesMethods{
 			resp.profiles=ApiUtils.getUsers(needUsers, ctx, actx);
 		}
 		return resp;
+	}
+
+	public static Object get(ApplicationContext ctx, ApiCallContext actx){
+		PaginatedList<MailMessage> messages;
+		int offset=actx.getOffset();
+		int count=actx.getCount(20, 200);
+		if(actx.optParamBoolean("out"))
+			messages=ctx.getMailController().getOutbox(actx.self.user, offset, count);
+		else
+			messages=ctx.getMailController().getInbox(actx.self.user, offset, count);
+		return wrapMessages(ctx, actx, messages);
 	}
 
 	public static Object getById(ApplicationContext ctx, ApiCallContext actx){
@@ -166,5 +169,13 @@ public class MessagesMethods{
 			throw actx.error(ApiErrorType.ACTION_NOT_APPLICABLE, "only incoming messages can be marked as read");
 		ctx.getMailController().markMessageRead(actx.self.user, msg);
 		return true;
+	}
+
+	public static Object search(ApplicationContext ctx, ApiCallContext actx){
+		int offset=actx.getOffset();
+		int count=actx.getCount(20, 200);
+		String query=actx.requireParamString("q");
+		PaginatedList<MailMessage> messages=ctx.getMailController().searchMessages(actx.self.user, query, offset, count);
+		return wrapMessages(ctx, actx, messages);
 	}
 }

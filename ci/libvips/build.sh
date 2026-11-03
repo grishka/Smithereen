@@ -78,8 +78,8 @@ esac
 
 echo "DEPS=$DEPS, TARGET=$TARGET, PACKAGE=$PACKAGE, ROOT=$ROOT, VIPS_CPP_DEP=$VIPS_CPP_DEP"
 
-mkdir ${DEPS}
-mkdir ${TARGET}
+mkdir -p ${DEPS}
+mkdir -p ${TARGET}
 
 # Default optimisation level is for binary size (-Os)
 # Overriden to performance (-O3) for select dependencies that benefit
@@ -135,14 +135,14 @@ CURL="curl --silent --location --retry 3 --retry-max-time 30"
 if [ "${PLATFORM%-*}" == "linuxmusl" ] || [ "$DARWIN" = true ]; then
   # musl and macOS requires the standalone intl support library of gettext, since it's not provided by libc (like GNU).
   # We use a stub version of gettext instead, since we don't need any of the i18n features.
-  mkdir ${DEPS}/proxy-libintl
+  mkdir -p ${DEPS}/proxy-libintl
   $CURL https://github.com/frida/proxy-libintl/archive/${VERSION_PROXY_LIBINTL}.tar.gz | tar xzC ${DEPS}/proxy-libintl --strip-components=1
   cd ${DEPS}/proxy-libintl
   meson setup _build --default-library=static --buildtype=release --strip --prefix=${TARGET} ${MESON}
   meson install -C _build --tag devel
 fi
 
-mkdir ${DEPS}/zlib-ng
+mkdir -p ${DEPS}/zlib-ng
 $CURL https://github.com/zlib-ng/zlib-ng/archive/${VERSION_ZLIB_NG}.tar.gz | tar xzC ${DEPS}/zlib-ng --strip-components=1
 cd ${DEPS}/zlib-ng
 CFLAGS="${CFLAGS} -O3" cmake -G"Unix Makefiles" \
@@ -150,14 +150,14 @@ CFLAGS="${CFLAGS} -O3" cmake -G"Unix Makefiles" \
   -DBUILD_SHARED_LIBS=FALSE -DZLIB_COMPAT=TRUE -DWITH_ARMV6=FALSE
 make install/strip
 
-mkdir ${DEPS}/ffi
+mkdir -p ${DEPS}/ffi
 $CURL https://github.com/libffi/libffi/releases/download/v${VERSION_FFI}/libffi-${VERSION_FFI}.tar.gz | tar xzC ${DEPS}/ffi --strip-components=1
 cd ${DEPS}/ffi
 ./configure --host=${CHOST} --prefix=${TARGET} --enable-static --disable-shared --disable-dependency-tracking \
   --disable-builddir --disable-multi-os-directory --disable-raw-api --disable-structs --disable-docs
 make install-strip
 
-mkdir ${DEPS}/glib
+mkdir -p ${DEPS}/glib
 $CURL https://download.gnome.org/sources/glib/$(without_patch $VERSION_GLIB)/glib-${VERSION_GLIB}.tar.xz | tar xJC ${DEPS}/glib --strip-components=1
 cd ${DEPS}/glib
 $CURL https://gist.github.com/kleisauke/284d685efa00908da99ea6afbaaf39ae/raw/12773e117bd557b83ba2a7410698db41813c3fda/glib-without-gregex.patch | patch -p1
@@ -167,7 +167,7 @@ meson setup _build --default-library=static --buildtype=release --strip --prefix
 # bin-devel is needed for glib-mkenums
 meson install -C _build --tag bin-devel,devel
 
-mkdir ${DEPS}/exif
+mkdir -p ${DEPS}/exif
 $CURL https://github.com/libexif/libexif/releases/download/v${VERSION_EXIF}/libexif-${VERSION_EXIF}.tar.xz | tar xJC ${DEPS}/exif --strip-components=1
 cd ${DEPS}/exif
 ./configure --host=${CHOST} --prefix=${TARGET} --enable-static --disable-shared --disable-dependency-tracking \
@@ -175,19 +175,19 @@ cd ${DEPS}/exif
   CPPFLAGS="${CPPFLAGS} -DNO_VERBOSE_TAG_DATA"
 make install-strip doc_DATA=
 
-mkdir ${DEPS}/lcms
+mkdir -p ${DEPS}/lcms
 $CURL https://github.com/mm2/Little-CMS/releases/download/lcms${VERSION_LCMS}/lcms2-${VERSION_LCMS}.tar.gz | tar xzC ${DEPS}/lcms --strip-components=1
 cd ${DEPS}/lcms
 CFLAGS="${CFLAGS} -O3" meson setup _build --default-library=static --buildtype=release --strip --prefix=${TARGET} ${MESON} \
   -Dtests=disabled 
 meson install -C _build --tag devel
 
-mkdir ${DEPS}/aom
+mkdir -p ${DEPS}/aom
 $CURL https://storage.googleapis.com/aom-releases/libaom-${VERSION_AOM}.tar.gz | tar xzC ${DEPS}/aom --strip-components=1
 cd ${DEPS}/aom
 # Downgrade minimum required CMake version to 3.13 - https://aomedia.googlesource.com/aom/+/597a35fbc9837e33366a1108631d9c72ee7a49e7
 find . -name 'CMakeLists.txt' -o -name '*.cmake' | xargs sed -i'.bak' "/^cmake_minimum_required/s/3.16/3.13/"
-mkdir aom_build
+mkdir -p aom_build
 cd aom_build
 AOM_AS_FLAGS="${FLAGS}" cmake -G"Unix Makefiles" \
   -DCMAKE_TOOLCHAIN_FILE=${ROOT}/Toolchain.cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_TYPE=MinSizeRel \
@@ -197,7 +197,7 @@ AOM_AS_FLAGS="${FLAGS}" cmake -G"Unix Makefiles" \
   ..
 make install/strip
 
-mkdir ${DEPS}/de265
+mkdir -p ${DEPS}/de265
 $CURL https://github.com/strukturag/libde265/releases/download/v${VERSION_DE265}/libde265-${VERSION_DE265}.tar.gz | tar xzC ${DEPS}/de265 --strip-components=1
 cd ${DEPS}/de265
 # Do not build the dec265 and sherlock265 example programs.
@@ -207,7 +207,7 @@ CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" cmake -G"Unix Makefiles" \
   -DBUILD_SHARED_LIBS=FALSE
 make install/strip
 
-mkdir ${DEPS}/heif
+mkdir -p ${DEPS}/heif
 $CURL https://github.com/strukturag/libheif/releases/download/v${VERSION_HEIF}/libheif-${VERSION_HEIF}.tar.gz | tar xzC ${DEPS}/heif --strip-components=1
 cd ${DEPS}/heif
 # Downgrade minimum required CMake version to 3.12 - https://github.com/strukturag/libheif/issues/975
@@ -218,7 +218,7 @@ CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" cmake -G"Unix Makefiles" \
   -DCMAKE_DISABLE_FIND_PACKAGE_TIFF=1 -DCMAKE_DISABLE_FIND_PACKAGE_PNG=1 -DCMAKE_DISABLE_FIND_PACKAGE_JPEG=1
 make install/strip
 
-mkdir ${DEPS}/jpeg
+mkdir -p ${DEPS}/jpeg
 $CURL https://github.com/mozilla/mozjpeg/archive/v${VERSION_MOZJPEG}.tar.gz | tar xzC ${DEPS}/jpeg --strip-components=1
 cd ${DEPS}/jpeg
 cmake -G"Unix Makefiles" \
@@ -226,27 +226,27 @@ cmake -G"Unix Makefiles" \
   -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_JPEG8=1 -DWITH_TURBOJPEG=FALSE -DPNG_SUPPORTED=FALSE -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 make install/strip
 
-mkdir ${DEPS}/png
+mkdir -p ${DEPS}/png
 $CURL https://github.com/pnggroup/libpng/archive/v${VERSION_PNG}.tar.gz | tar xzC ${DEPS}/png --strip-components=1
 cd ${DEPS}/png
 ./configure --host=${CHOST} --prefix=${TARGET} --enable-static --disable-shared --disable-dependency-tracking \
   --disable-tools --without-binconfigs --disable-unversioned-libpng-config
 make install-strip dist_man_MANS=
 
-mkdir ${DEPS}/spng
+mkdir -p ${DEPS}/spng
 $CURL https://github.com/randy408/libspng/archive/v${VERSION_SPNG}.tar.gz | tar xzC ${DEPS}/spng --strip-components=1
 cd ${DEPS}/spng
 CFLAGS="${CFLAGS} -O3 -DSPNG_SSE=4" meson setup _build --default-library=static --buildtype=release --strip --prefix=${TARGET} ${MESON} \
   -Dstatic_zlib=true -Dbuild_examples=false
 meson install -C _build --tag devel
 
-mkdir ${DEPS}/imagequant
+mkdir -p ${DEPS}/imagequant
 $CURL https://github.com/lovell/libimagequant/archive/v${VERSION_IMAGEQUANT}.tar.gz | tar xzC ${DEPS}/imagequant --strip-components=1
 cd ${DEPS}/imagequant
 CFLAGS="${CFLAGS} -O3" meson setup _build --default-library=static --buildtype=release --strip --prefix=${TARGET} ${MESON}
 meson install -C _build --tag devel
 
-mkdir ${DEPS}/webp
+mkdir -p ${DEPS}/webp
 $CURL https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-${VERSION_WEBP}.tar.gz | tar xzC ${DEPS}/webp --strip-components=1
 cd ${DEPS}/webp
 ./configure --host=${CHOST} --prefix=${TARGET} --enable-static --disable-shared --disable-dependency-tracking \
@@ -254,7 +254,7 @@ cd ${DEPS}/webp
 make install-strip bin_PROGRAMS= noinst_PROGRAMS= man_MANS=
 
 if [ -z "$WITHOUT_HIGHWAY" ]; then
-  mkdir ${DEPS}/hwy
+  mkdir -p ${DEPS}/hwy
   $CURL https://github.com/google/highway/archive/${VERSION_HWY}.tar.gz | tar xzC ${DEPS}/hwy --strip-components=1
   cd ${DEPS}/hwy
   CFLAGS="${CFLAGS} -O3" CXXFLAGS="${CXXFLAGS} -O3" cmake -G"Unix Makefiles" \
@@ -263,7 +263,7 @@ if [ -z "$WITHOUT_HIGHWAY" ]; then
   make install/strip
 fi
 
-mkdir ${DEPS}/expat
+mkdir -p ${DEPS}/expat
 $CURL https://github.com/libexpat/libexpat/releases/download/R_${VERSION_EXPAT//./_}/expat-${VERSION_EXPAT}.tar.xz | tar xJC ${DEPS}/expat --strip-components=1
 cd ${DEPS}/expat
 ./configure --host=${CHOST} --prefix=${TARGET} --enable-static --disable-shared \
@@ -271,7 +271,7 @@ cd ${DEPS}/expat
   --without-libbsd --without-examples --without-tests
 make install-strip dist_cmake_DATA= nodist_cmake_DATA=
 
-mkdir ${DEPS}/archive
+mkdir -p ${DEPS}/archive
 $CURL https://github.com/libarchive/libarchive/releases/download/v${VERSION_ARCHIVE}/libarchive-${VERSION_ARCHIVE}.tar.xz | tar xJC ${DEPS}/archive --strip-components=1
 cd ${DEPS}/archive
 ./configure --host=${CHOST} --prefix=${TARGET} --enable-static --disable-shared --disable-dependency-tracking \
@@ -280,14 +280,14 @@ cd ${DEPS}/archive
   --without-lzo2 --without-cng --without-openssl --without-xml2 --without-expat
 make install-strip libarchive_man_MANS=
 
-mkdir ${DEPS}/cgif
+mkdir -p ${DEPS}/cgif
 $CURL https://github.com/dloebl/cgif/archive/v${VERSION_CGIF}.tar.gz | tar xzC ${DEPS}/cgif --strip-components=1
 cd ${DEPS}/cgif
 CFLAGS="${CFLAGS} -O3" meson setup _build --default-library=static --buildtype=release --strip --prefix=${TARGET} ${MESON} \
   -Dexamples=false -Dtests=false
 meson install -C _build --tag devel
 
-mkdir ${DEPS}/vips
+mkdir -p ${DEPS}/vips
 $CURL https://github.com/libvips/libvips/releases/download/v${VERSION_VIPS}/vips-${VERSION_VIPS}.tar.xz | tar xJC ${DEPS}/vips --strip-components=1
 cd ${DEPS}/vips
 # Use version number in SONAME
@@ -338,7 +338,7 @@ meson install -C _build --tag runtime,devel
 # Cleanup
 rm -rf ${TARGET}/lib/{pkgconfig,.libs,*.la,cmake}
 
-mkdir ${TARGET}/lib-filtered
+mkdir -p ${TARGET}/lib-filtered
 mv ${TARGET}/lib/glib-2.0 ${TARGET}/lib-filtered
 
 # Pack only the relevant libraries
@@ -388,6 +388,6 @@ ls -al lib
 rm -rf lib
 mv lib-filtered lib
 
-if [ ! -d "$OUTPUT_DIR" ]; then mkdir "$OUTPUT_DIR"; fi
+if [ ! -d "$OUTPUT_DIR" ]; then mkdir -p "$OUTPUT_DIR"; fi
 cp -r -v lib "$OUTPUT_DIR/"
 cp -r -v include "$OUTPUT_DIR/"

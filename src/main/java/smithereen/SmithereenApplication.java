@@ -430,6 +430,8 @@ public class SmithereenApplication{
 					getRequiringPermission("/changeEmailForm", UserRole.Permission.MANAGE_USER_ACCESS, AdminUsersRoutes::changeUserEmailForm);
 					postRequiringPermissionWithCSRF("/changeEmail", UserRole.Permission.MANAGE_USER_ACCESS, AdminUsersRoutes::changeUserEmail);
 					getRequiringPermissionWithCSRF("/endSession", UserRole.Permission.MANAGE_USER_ACCESS, AdminUsersRoutes::endUserSession);
+					getRequiringPermission("/ban", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::banUserFormBulk);
+					postRequiringPermissionWithCSRF("/ban", UserRole.Permission.MANAGE_USERS, AdminUsersRoutes::banUsersBulk);
 				});
 				path("/reports", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_REPORTS, AdminReportingRoutes::reportsList);
@@ -454,9 +456,16 @@ public class SmithereenApplication{
 				path("/federation", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationServerList);
 					getRequiringPermission("/:domain", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationServerDetails);
-					getRequiringPermission("/:domain/restrictionForm", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationServerRestrictionForm);
-					postRequiringPermissionWithCSRF("/:domain/restrict", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRestrictServer);
 					getRequiringPermissionWithCSRF("/:domain/resetAvailability", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationResetServerAvailability);
+				});
+				path("/federationRules", ()->{
+					getRequiringPermission("", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRules);
+					getRequiringPermission("/create", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleCreateForm);
+					postRequiringPermissionWithCSRF("/create", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleCreate);
+					getRequiringPermission("/:domain/confirmDelete", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleConfirmDelete);
+					postRequiringPermissionWithCSRF("/:domain/delete", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleDelete);
+					getRequiringPermission("/:domain/edit", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleEditForm);
+					postRequiringPermissionWithCSRF("/:domain/edit", UserRole.Permission.MANAGE_FEDERATION, AdminFederationRoutes::federationRuleEdit);
 				});
 				path("/roles", ()->{
 					getRequiringPermission("", UserRole.Permission.MANAGE_ROLES, AdminRolesRoutes::roles);
@@ -611,6 +620,7 @@ public class SmithereenApplication{
 				resp.header("cache-control", "private, max-age=604800");
 				return Config.combinedMobileCSS;
 			});
+			getLoggedIn("/share", SystemRoutes::externalShare);
 
 			if(Config.DEBUG){
 				path("/debug", ()->{
@@ -663,6 +673,7 @@ public class SmithereenApplication{
 				get("", PostRoutes::userWallAll);
 				get("/own", PostRoutes::userWallOwn);
 				get("/with/:otherUserID", PostRoutes::wallToWall);
+				getLoggedIn("/search", PostRoutes::userWallSearch);
 			});
 			get("/followers", FriendsRoutes::followers);
 			get("/following", FriendsRoutes::following);
@@ -790,6 +801,7 @@ public class SmithereenApplication{
 			get("/admins", GroupsRoutes::admins);
 			path("/wall", ()->{
 				get("", PostRoutes::groupWall);
+				getLoggedIn("/search", PostRoutes::groupWallSearch);
 			});
 			getWithCSRF("/invite", GroupsRoutes::inviteFriend);
 			postWithCSRF("/respondToInvite", GroupsRoutes::respondToInvite);
@@ -875,6 +887,8 @@ public class SmithereenApplication{
 			get("/layerPrevComments", PostRoutes::ajaxLayerPrevComments);
 			getWithCSRF("/pin", PostRoutes::pinPost);
 			getWithCSRF("/unpin", PostRoutes::unpinPost);
+			getLoggedIn("/fetchAllReplies", PostRoutes::fetchAllReplies);
+			get("/ajaxReloadComments", PostRoutes::ajaxReloadComments);
 		});
 
 		path("/albums/:id", ()->{
@@ -1278,6 +1292,7 @@ public class SmithereenApplication{
 		MaintenanceScheduler.runPeriodically(()->context.getMailController().removeExpiredGuids(), 1, TimeUnit.HOURS);
 		MaintenanceScheduler.runPeriodically(ApiUtils::doCleanupTasks, 10, TimeUnit.MINUTES);
 		context.getUsersController().loadPresenceFromDatabase();
+		context.getModerationController().reloadFederationRestrictions();
 
 		Runtime.getRuntime().addShutdownHook(new Thread(()->{
 			context.getFriendsController().doPendingHintsUpdates();

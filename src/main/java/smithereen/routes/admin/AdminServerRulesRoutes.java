@@ -1,6 +1,7 @@
 package smithereen.routes.admin;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import smithereen.ApplicationContext;
@@ -100,8 +101,18 @@ public class AdminServerRulesRoutes{
 		int id=safeParseInt(req.params(":id"));
 		ServerRule rule=ctx.getModerationController().getServerRuleByID(id);
 		ctx.getModerationController().deleteServerRule(self.user, rule);
-		if(isAjax(req))
-			return new WebDeltaResponse(resp).remove("rule"+id);
+		if(isAjax(req)){
+			Lang l=lang(req);
+			List<ServerRule> rules=ctx.getModerationController().getServerRules();
+			WebDeltaResponse wdr=new WebDeltaResponse(resp)
+					.remove("rule"+id)
+					.setContent("serverRulesSummary", l.get("admin_server_rules_summary", Map.of("count", rules.size())))
+					.remove("serverRulesSettingsMessage");
+			if(rules.isEmpty()){
+				wdr.setContent("serverRulesList", "<div class=\"emptyState\">"+l.get("admin_server_rules_empty").replace("\n", "<br>")+"</div>");
+			}
+			return wdr;
+		}
 		resp.redirect(back(req));
 		return "";
 	}

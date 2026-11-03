@@ -20,7 +20,6 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -103,7 +102,6 @@ import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.TextProcessor;
 import smithereen.util.CaptchaGenerator;
 import smithereen.util.CharacterRange;
-import smithereen.util.CryptoUtils;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.JsonObjectBuilder;
 import smithereen.util.NamedMutexCollection;
@@ -588,7 +586,7 @@ public class SystemRoutes{
 				.with("totalPosts", ctx.getWallController().getLocalPostCount(false))
 				.with("totalGroups", ctx.getGroupsController().getLocalGroupCount())
 				.with("serverVersion", BuildInfo.VERSION)
-				.with("restrictedServers", ctx.getModerationController().getAllServers(0, 10000, null, true, null).list)
+				.with("restrictedServers", ctx.getModerationController().getAllFederationRestrictions())
 				.with("serverRules", ctx.getModerationController().getServerRules());
 
 		return model;
@@ -612,12 +610,12 @@ public class SystemRoutes{
 				try{
 					Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.queryParams("group")));
 					GroupLink gl=ctx.getGroupsController().getLink(group, safeParseLong(req.queryParams("link")));
-					if(gl.isUnresolvedActivityPubObject && gl.url.toString().equals(uri)){
+					if(gl.isUnresolvedActivityPubObject && gl.getNormalizedUrl().toString().equals(uri)){
 						ctx.getGroupsController().setLinkResolved(group, gl, ObjectLinkResolver.getObjectIdFromObject(obj));
 					}
 				}catch(ObjectNotFoundException ignore){}
 			}
-			return new JsonObjectBuilder().add("success", switch(obj){
+			JsonObjectBuilder result=new JsonObjectBuilder().add("success", switch(obj){
 				case Post post when post.getReplyLevel()>0 -> Config.localURI("/posts/"+post.replyKey.getFirst()+"#comment"+post.id).toString();
 				case Post post -> post.getInternalURL().toString();
 				case Actor actor -> actor.getProfileURL();
@@ -626,7 +624,13 @@ public class SystemRoutes{
 				case Comment comment -> ctx.getCommentsController().getCommentParent(self.user, comment).getURL();
 				case BoardTopic topic -> topic.getURL();
 				default -> throw new RemoteObjectFetchException(RemoteObjectFetchException.ErrorType.UNSUPPORTED_OBJECT_TYPE, null);
-			}).build();
+			});
+			if(obj instanceof Post post){
+				result.add("post_id", (post.getReplyLevel()>0 ? post.replyKey.getFirst() : post.id)+"");
+				if(post.getReplyLevel()>0)
+					result.add("comment_id", post.id+"");
+			}
+			return result.build();
 		}catch(RemoteObjectFetchException x){
 			JsonObjectBuilder jb=new JsonObjectBuilder().add("error", switch(x.error){
 				case UNSUPPORTED_OBJECT_TYPE -> l.get("unsupported_remote_object_type");
@@ -711,7 +715,7 @@ public class SystemRoutes{
 				subtitle=TextProcessor.truncateOnWordBoundary(post.text, 200);
 				boxTitle=l.get(post.getReplyLevel()>0 ? "report_title_comment" : "report_title_post");
 				titleText=l.get(post.getReplyLevel()>0 ? "report_text_comment" : "report_text_post");
-				otherServerDomain=Config.isLocal(post.getActivityPubID()) ? null : post.getActivityPubID().getHost();
+				otherServerDomain=Config.isLocal(post.getActivityPubID()) ? null : post.getHumanReadableDomain();
 			}
 			case "user" -> {
 				int id=safeParseInt(rawID);
@@ -721,7 +725,7 @@ public class SystemRoutes{
 				subtitle="";
 				boxTitle=l.get("report_title_user");
 				titleText=l.get("report_text_user");
-				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+				otherServerDomain=user instanceof ForeignUser fu ? fu.getHumanReadableDomain() : null;
 			}
 			case "group" -> {
 				int id=safeParseInt(rawID);
@@ -731,7 +735,7 @@ public class SystemRoutes{
 				subtitle="";
 				boxTitle=l.get(group.isEvent() ? "report_title_event" : "report_title_group");
 				titleText=l.get(group.isEvent() ? "report_text_event" : "report_text_group");
-				otherServerDomain=group instanceof ForeignGroup fg ? fg.domain : null;
+				otherServerDomain=group instanceof ForeignGroup fg ? fg.getHumanReadableDomain() : null;
 			}
 			case "message" -> {
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.MAIL_MESSAGE);
@@ -742,7 +746,7 @@ public class SystemRoutes{
 				subtitle=TextProcessor.truncateOnWordBoundary(msg.text, 200);
 				boxTitle=l.get("report_title_message");
 				titleText=l.get("report_text_message");
-				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+				otherServerDomain=user instanceof ForeignUser fu ? fu.getHumanReadableDomain() : null;
 			}
 			case "photo" -> {
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.PHOTO);
@@ -757,7 +761,7 @@ public class SystemRoutes{
 				subtitle=photo.description;
 				boxTitle=l.get("report_title_photo");
 				titleText=l.get("report_text_photo");
-				otherServerDomain=user instanceof ForeignUser fu ? fu.domain : null;
+				otherServerDomain=user instanceof ForeignUser fu ? fu.getHumanReadableDomain() : null;
 			}
 			case "comment" -> {
 				long id=XTEA.decodeObjectID(rawID, ObfuscatedObjectIDType.COMMENT);
@@ -772,7 +776,7 @@ public class SystemRoutes{
 				subtitle=TextProcessor.truncateOnWordBoundary(comment.text, 200);
 				boxTitle=l.get("report_title_comment");
 				titleText=l.get("report_text_comment");
-				otherServerDomain=Config.isLocal(comment.getActivityPubID()) ? null : comment.getActivityPubID().getHost();
+				otherServerDomain=Config.isLocal(comment.getActivityPubID()) ? null : comment.getHumanReadableDomain();
 			}
 			default -> throw new BadRequestException();
 		}
@@ -936,7 +940,7 @@ public class SystemRoutes{
 				.add("width", Math.min(500, maxWidth))
 				.add("height", (String)null)
 				.add("author_name", author.getFullName())
-				.add("author_url", UriBuilder.local().rawPath(author.getFullUsername()).build().toString())
+				.add("author_url", author.getAbsoluteProfileURL())
 				.add("provider_name", Config.serverDisplayName)
 				.add("provider_url", "https://"+Config.domain+"/")
 				.add("html", model.renderToString())
@@ -1007,7 +1011,7 @@ public class SystemRoutes{
 			nameRanges.clear();
 			usernameRanges.clear();
 			String name=TextProcessor.escapeHTML(u.getFullName());
-			String username=TextProcessor.escapeHTML(u.getFullUsername());
+			String username=TextProcessor.escapeHTML(u.getFullUsernameHumanReadable());
 			for(Pattern ptn:normalizedQueryParts){
 				Matcher m=ptn.matcher(name);
 				matcherLoop:
@@ -1101,5 +1105,15 @@ public class SystemRoutes{
 				.with("currentLang", lang(req))
 				.with("languages", Lang.list);
 		return new WebDeltaResponse(resp).box(lang(req).get("choose_language_title"), model.renderToString(), null, true, "<span class=\"inlineLoader\" style=\"display: none\" id=\"langChooserLoader\"></span>");
+	}
+
+	public static Object externalShare(Request req, Response resp, Account self, ApplicationContext ctx){
+		Lang l=lang(req);
+		RenderedTemplateResponse rtr=new RenderedTemplateResponse("external_share", req)
+				.with("prefilledPostText", req.queryParams("text"))
+				.pageTitle(l.get("wall_external_share_title"));
+		if(!isMobile(req))
+			rtr.addNavBarItem(l.get("wall_external_share_title"));
+		return rtr;
 	}
 }

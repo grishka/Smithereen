@@ -4,6 +4,7 @@ import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 import smithereen.ApplicationContext;
 import smithereen.Config;
 import smithereen.SmithereenApplication;
+import smithereen.Utils;
 import smithereen.exceptions.BadRequestException;
 import smithereen.exceptions.InternalServerErrorException;
 import smithereen.exceptions.ObjectNotFoundException;
@@ -67,7 +69,12 @@ public class AdminUsersRoutes{
 		int role=safeParseInt(req.queryParams("role"));
 		String banStatusParam=req.queryParams("banStatus");
 		UserBanStatus banStatus=enumValueOpt(banStatusParam, UserBanStatus.class);
-		PaginatedList<AdminUserViewModel> items=ctx.getModerationController().getAllUsers(offset(req), 100, q, localOnly, emailDomain, lastIP, role, banStatus, "REMOTE_SUSPENDED".equals(banStatusParam));
+		String serverDomain=req.queryParams("serverDomain");
+		if(StringUtils.isNotEmpty(serverDomain))
+			serverDomain=Utils.convertIdnToAsciiIfNeeded(serverDomain.strip());
+		if(StringUtils.isEmpty(serverDomain))
+			serverDomain=null;
+		PaginatedList<AdminUserViewModel> items=ctx.getModerationController().getAllUsers(offset(req), 100, q, localOnly, emailDomain, lastIP, role, banStatus, "REMOTE_SUSPENDED".equals(banStatusParam), serverDomain);
 		model.paginate(items);
 		model.with("users", ctx.getUsersController().getUsers(items.list.stream().map(AdminUserViewModel::userID).collect(Collectors.toSet())));
 		model.with("accounts", ctx.getModerationController().getAccounts(items.list.stream().map(AdminUserViewModel::accountID).filter(i->i>0).collect(Collectors.toSet())));
@@ -82,8 +89,9 @@ public class AdminUsersRoutes{
 				.with("roleID", role)
 				.with("banStatus", banStatusParam)
 				.with("query", q)
-				.with("hasFilters", StringUtils.isNotEmpty(q) || localOnly!=null || StringUtils.isNotEmpty(emailDomain) || StringUtils.isNotEmpty(lastIP) || role>0);
-		jsLangKey(req, "cancel", "yes", "no");
+				.with("userServerDomain", req.queryParams("serverDomain"))
+				.with("hasFilters", StringUtils.isNotEmpty(q) || localOnly!=null || StringUtils.isNotEmpty(emailDomain) || StringUtils.isNotEmpty(lastIP) || role>0 || StringUtils.isNotEmpty(serverDomain));
+		jsLangKey(req, "cancel", "yes", "no", "X_users");
 		String msg=req.session().attribute("adminSettingsUsersMessage");
 		if(msg!=null){
 			req.session().removeAttribute("adminSettingsUsersMessage");
@@ -261,6 +269,19 @@ public class AdminUsersRoutes{
 	}
 
 	public static Object banUserForm(Request req, Response resp, Account self, ApplicationContext ctx){
+		int uid=safeParseInt(req.params(":id"));
+		return banUserForm(req, resp, self, ctx, List.of(uid));
+	}
+
+	public static Object banUserFormBulk(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "ids");
+		List<Integer> ids=Arrays.stream(req.queryParams("ids").split(",")).mapToInt(Utils::safeParseInt).boxed().toList();
+		if(ids.isEmpty())
+			throw new ObjectNotFoundException();
+		return banUserForm(req, resp, self, ctx, ids);
+	}
+
+	private static Object banUserForm(Request req, Response resp, Account self, ApplicationContext ctx, List<Integer> userIDs){
 		ViolationReport report;
 		boolean deleteReportContent;
 		if(req.queryParams("report")!=null){
@@ -270,9 +291,16 @@ public class AdminUsersRoutes{
 			report=null;
 			deleteReportContent=false;
 		}
-		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		Lang l=lang(req);
-		String formAction="/users/"+user.id+"/ban";
+		List<User> users=ctx.getUsersController().getUsersAsList(userIDs);
+		if(users.size()!=userIDs.size())
+			throw new ObjectNotFoundException();
+		User user=users.getFirst();
+		String formAction;
+		if(userIDs.size()==1)
+			formAction="/users/"+user.id+"/ban";
+		else
+			formAction="/settings/admin/users/ban";
 		if(report!=null){
 			formAction+="?report="+report.id;
 			if(deleteReportContent)
@@ -284,7 +312,13 @@ public class AdminUsersRoutes{
 					case "message" -> user.banInfo!=null ? user.banInfo.message() : null;
 					case "forcePasswordChange" -> user.banInfo!=null && user.banInfo.requirePasswordChange();
 					default -> throw new IllegalStateException("Unexpected value: " + s);
-				}, null, Map.of("user", user, "hideNone", report!=null, "deleteReportContent", deleteReportContent, "numDaysUntilDeletion", UserBanInfo.ACCOUNT_DELETION_DAYS));
+				}, null, Map.of(
+						"users", users,
+						"userIDs", userIDs,
+						"hideNone", report!=null,
+						"deleteReportContent", deleteReportContent,
+						"numDaysUntilDeletion", UserBanInfo.ACCOUNT_DELETION_DAYS
+				));
 		if(user.domain==null && form instanceof WebDeltaResponse wdr){
 			wdr.runScript("""
 					function userBanForm_updateFieldVisibility(){
@@ -333,6 +367,33 @@ public class AdminUsersRoutes{
 		}
 		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
 		UserBanStatus status=enumValue(req.queryParams("status"), UserBanStatus.class);
+		UserBanInfo info=doBanUser(req, self, ctx, status, report, user);
+		if(report!=null){
+			if(deleteReportContent){
+				ctx.getModerationController().deleteViolationReportContent(report, Objects.requireNonNull(sessionInfo(req)), false);
+			}
+			ctx.getModerationController().resolveViolationReport(report, self.user, status, info);
+		}
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	public static Object banUsersBulk(Request req, Response resp, Account self, ApplicationContext ctx){
+		requireQueryParams(req, "userIDs");
+		Set<Integer> ids=Arrays.stream(req.queryParams("userIDs").split(",")).mapToInt(Utils::safeParseInt).limit(100).boxed().collect(Collectors.toSet());
+		UserBanStatus status=enumValue(req.queryParams("status"), UserBanStatus.class);
+		for(User user:ctx.getUsersController().getUsers(ids).values()){
+			doBanUser(req, self, ctx, status, null, user);
+		}
+		if(isAjax(req))
+			return new WebDeltaResponse(resp).refresh();
+		resp.redirect(back(req));
+		return "";
+	}
+
+	private static UserBanInfo doBanUser(Request req, Account self, ApplicationContext ctx, UserBanStatus status, ViolationReport report, User user){
 		UserBanInfo info;
 		if(status!=UserBanStatus.NONE){
 			String message=null;
@@ -358,16 +419,7 @@ public class AdminUsersRoutes{
 				info=null;
 		}
 		ctx.getModerationController().setUserBanStatus(self.user, user, user instanceof ForeignUser ? null : ctx.getUsersController().getAccountForUser(user), status, info);
-		if(report!=null){
-			if(deleteReportContent){
-				ctx.getModerationController().deleteViolationReportContent(report, Objects.requireNonNull(sessionInfo(req)), false);
-			}
-			ctx.getModerationController().resolveViolationReport(report, self.user, status, info);
-		}
-		if(isAjax(req))
-			return new WebDeltaResponse(resp).refresh();
-		resp.redirect(back(req));
-		return "";
+		return info;
 	}
 
 	public static Object deleteAccountImmediatelyForm(Request req, Response resp, Account self, ApplicationContext ctx){

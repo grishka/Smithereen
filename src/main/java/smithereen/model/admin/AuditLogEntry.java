@@ -48,6 +48,10 @@ public record AuditLogEntry(int id, int adminID, Action action, Instant time, in
 
 		CHANGE_USER_USERNAME,
 		CHANGE_GROUP_USERNAME,
+
+		CREATE_FEDERATION_RULE,
+		UPDATE_FEDERATION_RULE,
+		DELETE_FEDERATION_RULE,
 	}
 
 	public enum ObjectType{

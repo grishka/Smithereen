@@ -75,5 +75,7 @@
   "email_content_removal_subject": "{serverName}: удаление контента",
   "email_content_removal_header": "Администрация сервера удалила контент, которым вы делились",
   "email_content_removal_body": "Что было удалено:",
-  "email_content_removal_rules": "Это произошло из-за нарушения следующих правил:"
+  "email_content_removal_rules": "Это произошло из-за нарушения следующих правил:",
+  "email_signup_request_plaintext": "{name} {gender, select, female {отправила} other {отправил}} заявку на регистрацию на вашем сервере. Смотрите все заявки здесь: {url}",
+  "email_go_to_signup_requests": "Перейти к заявкам на регистрацию"
 }

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -20,12 +21,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import smithereen.ApplicationContext;
 import smithereen.Config;
-import smithereen.Utils;
 import smithereen.activitypub.objects.Actor;
 import smithereen.activitypub.objects.ForeignActor;
 import smithereen.activitypub.objects.LocalImage;
@@ -64,10 +65,12 @@ import smithereen.storage.utils.Pair;
 import smithereen.templates.RenderedTemplateResponse;
 import smithereen.text.FormattedTextFormat;
 import smithereen.text.TextProcessor;
+import smithereen.util.JsonObjectBuilder;
 import smithereen.util.UriBuilder;
 import smithereen.util.XTEA;
 import spark.Request;
 import spark.Response;
+import spark.Session;
 import spark.utils.StringUtils;
 
 import static smithereen.Utils.*;
@@ -142,6 +145,11 @@ public class PostRoutes{
 		}
 
 		Post post=ctx.getWallController().createWallPost(self.user, owner, inReplyTo, text, self.prefs.textFormat, contentWarning, attachments, poll, repost, attachmentAltTexts, null, null, null);
+		String from=req.queryParams("from");
+
+		if("externalShare".equals(from)){
+			return ajaxAwareRedirect(req, resp, "/posts/"+post.id);
+		}
 
 		SessionInfo sess=sessionInfo(req);
 		sess.postDraftAttachments.clear();
@@ -153,7 +161,7 @@ public class PostRoutes{
 
 			CommentViewType viewType=self.prefs.commentViewType;
 
-			boolean fromNotifications="notifications".equals(req.queryParams("from"));
+			boolean fromNotifications="notifications".equals(from);
 
 			String formID=req.queryParams("formID");
 			if(repost!=null){
@@ -1364,5 +1372,153 @@ public class PostRoutes{
 		}
 		resp.redirect(back(req));
 		return "";
+	}
+
+	public static Object userWallSearch(Request req, Response resp, Account self, ApplicationContext ctx){
+		User user=ctx.getUsersController().getUserOrThrow(safeParseInt(req.params(":id")));
+		return search(req, resp, self, ctx, user);
+	}
+
+	public static Object groupWallSearch(Request req, Response resp, Account self, ApplicationContext ctx){
+		Group group=ctx.getGroupsController().getGroupOrThrow(safeParseInt(req.params(":id")));
+		if(group.wallState==GroupFeatureState.DISABLED)
+			throw new UserActionNotAllowedException("err_access_content");
+		return search(req, resp, self, ctx, group);
+	}
+
+	private static Object search(Request req, Response resp, Account self, ApplicationContext ctx, Actor owner){
+		if(owner instanceof Group group)
+			ctx.getPrivacyController().enforceUserAccessToGroupContent(self.user, group);
+		boolean ownOnly="1".equals(req.queryParams("own"));
+		boolean postsOnly="1".equals(req.queryParams("postsOnly"));
+		CommentViewType viewType=self.prefs.commentViewType;
+		String query=req.queryParams("q");
+		if(query!=null)
+			query=query.strip();
+
+		boolean canSeeAllPosts=!(owner instanceof User u) || ctx.getPrivacyController().checkUserPrivacy(self.user, u, UserPrivacySettingKey.WALL_OTHERS_POSTS);
+		if(!canSeeAllPosts || !owner.hasWall())
+			ownOnly=true;
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_search", req)
+				.with("owner", owner)
+				.with("isSearch", true)
+				.with("isGroup", owner instanceof Group)
+				.with("ownOnly", ownOnly)
+				.with("postsOnly", postsOnly)
+				.with("canSeeOthersPosts", canSeeAllPosts)
+				.with("tab", ownOnly ? "own" : "all")
+				.with("commentViewType", viewType)
+				.with("query", query)
+				.with("url", getRequestPathAndQuery(req))
+				.headerBack(owner);
+		if(owner instanceof User u)
+			model.pageTitle(lang(req).get("wall_search_title_user", Map.of("name", u.getFirstLastAndGender())));
+		else if(owner instanceof Group g)
+			model.pageTitle(lang(req).get("wall_search_title_group", Map.of("name", g.name)));
+
+		if(StringUtils.isNotEmpty(query)){
+			PaginatedList<PostViewModel> posts=PostViewModel.wrap(ctx.getWallController().searchOwnerPosts(owner, query, !postsOnly, ownOnly, offset(req), 20));
+			model.paginate(posts);
+			ctx.getWallController().populateReposts(self.user, posts.list, 2);
+			if(req.attribute("mobile")==null){
+				ctx.getWallController().populateCommentPreviews(self.user, posts.list, viewType);
+			}
+			Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(posts.list, self.user);
+			model.with("postInteractions", interactions);
+			preparePostList(ctx, posts.list, model, self);
+		}else{
+			model.paginate(new PaginatedList<>(List.of(), 0, 0, 20));
+		}
+		return model;
+	}
+
+	public static Object fetchAllReplies(Request req, Response resp, Account self, ApplicationContext ctx){
+		int postID=parseIntOrDefault(req.params(":postID"), 0);
+		String fetchID=req.queryParamOrDefault("fid", "");
+		Post post=ctx.getWallController().getPostOrThrow(postID);
+		ctx.getPrivacyController().enforcePostPrivacy(self.user, post);
+		resp.type("application/json");
+		final Session session=req.session();
+		synchronized(session){
+			record FetchRepliesRequest(Future<Post> future, Instant requestedAt, int initialCount, String fetchID){}
+			Map<Integer, FetchRepliesRequest> requests=session.attribute("fetchingReplies");
+			if(requests==null)
+				session.attribute("fetchingReplies", requests=new HashMap<>());
+			FetchRepliesRequest existingReq=requests.get(postID);
+
+			Instant removeOlderThan=Instant.now().minus(10, ChronoUnit.MINUTES);
+			requests.values().removeIf(fr->fr.requestedAt.isBefore(removeOlderThan));
+
+			if(existingReq!=null && existingReq.fetchID.equals(fetchID)){
+				int currentCount=post.replyCount;
+				JsonObjectBuilder b=new JsonObjectBuilder();
+				if(existingReq.future.isDone()){
+					b.add("status", "done")
+							.add("new_count", currentCount-existingReq.initialCount);
+				}else{
+					b.add("status", "running");
+				}
+				return b.build();
+			}
+
+			if(!post.canFetchReplies()){
+				return new JsonObjectBuilder()
+						.add("status", "done")
+						.add("new_count", 0)
+						.build();
+			}
+
+			Future<Post> future=ctx.getActivityPubWorker().fetchAllReplies(post);
+			requests.put(postID, new FetchRepliesRequest(future, Instant.now(), post.replyCount, fetchID));
+			return new JsonObjectBuilder()
+					.add("status", "running")
+					.build();
+		}
+	}
+
+	public static Object ajaxReloadComments(Request req, Response resp){
+		ApplicationContext ctx=context(req);
+		Account self=currentUserAccount(req);
+		int postID=parseIntOrDefault(req.params(":postID"), 0);
+		if(!isAjax(req)){
+			resp.redirect("/posts/"+postID);
+			return "";
+		}
+		PostViewModel post=new PostViewModel(ctx.getWallController().getPostOrThrow(postID));
+		ctx.getPrivacyController().enforcePostPrivacy(self!=null ? self.user : null, post.post);
+
+		if(post.post.getReplyLevel()>0 || post.post.isMastodonStyleRepost())
+			throw new BadRequestException();
+
+		String rid=req.queryParams("rid");
+		String ridSuffix="";
+		if(StringUtils.isNotEmpty(rid))
+			ridSuffix="_"+rid;
+
+		CommentViewType viewType=self!=null ? self.prefs.commentViewType : CommentViewType.THREADED;
+		PaginatedList<PostViewModel> comments=ctx.getWallController().getReplies(self!=null ? self.user : null, post.post.getReplyKeyForReplies(), 0, 100, 50, viewType, true);
+		comments.list=comments.list.reversed();
+
+		RenderedTemplateResponse model=new RenderedTemplateResponse("wall_reply_list", req);
+		model.with("comments", comments.list).with("baseReplyLevel", post.post.getReplyLevel());
+		if(StringUtils.isNotEmpty(rid))
+			model.with("randomID", rid);
+		preparePostList(ctx, comments.list, model, self);
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(List.of(post), comments.list).flatMap(List::stream).toList(), self!=null ? self.user : null);
+		boolean mobile=isMobile(req);
+		model.with("postInteractions", interactions)
+				.with("replyFormID", (viewType==CommentViewType.FLAT || mobile ? "wallPostForm_commentPost" : "wallPostForm_commentReplyPost")+postID+ridSuffix)
+				.with("commentViewType", viewType);
+		model.with("topLevel", post);
+
+		WebDeltaResponse wdr=new WebDeltaResponse(resp)
+				.setContent("postReplies"+postID+ridSuffix, model.renderToString())
+				.setContent("postCommentsTotal"+postID+ridSuffix, lang(req).get("X_comments", Map.of("count", post.post.replyCount)))
+				.show("postCommentsSummary"+postID+ridSuffix)
+				.remove("postNewCommentsW"+postID+ridSuffix);
+		if(req.queryParams("fromLayer")!=null){
+			wdr.runScript("LayerManager.getMediaInstance().updateAllTopOffsets();");
+		}
+		return wdr;
 	}
 }

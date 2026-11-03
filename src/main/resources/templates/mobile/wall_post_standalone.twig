@@ -3,6 +3,9 @@
 {% set realPost=post.post %}
 {%extends "page"%}
 {% block headerActionButtons %}
+	{% if currentUser is not null and post.post.canFetchReplies %}
+		<span class="inlineLoader actionButton" id="postCommentsRemoteLoader{{ post.post.id }}"></span>
+	{% endif %}
 	{% if needExpandCWsButton %}
 	    <button title="{{ L('expand_all_cws') }}" class="actionButton iconCW" onclick="expandAllCommentCWs()"></button>
 	{% endif %}
@@ -45,7 +48,7 @@
 		<li><a href="{{ realPost.internalURL }}/{{ isPinned ? 'unpin' : 'pin' }}?csrf={{ csrf }}" id="postPinButton{{ realPost.id }}" data-ajax class="ajaxReplaceWithLoader">{{ L(isPinned ? 'wall_unpin_post' : 'wall_pin_post') }}</a></li>
 	{% endif %}
 	{%if not(realPost.local)%}
-		<li><a href="{{ realPost.activityPubURL }}" target="_blank">{{ L('open_on_server_X', {'domain': realPost.activityPubURL.host}) }}</a></li>
+		<li><a href="{{ realPost.activityPubURL }}" target="_blank">{{ L('open_on_server_X', {'domain': realPost.humanReadableDomain}) }}</a></li>
 	{%endif%}
 	{%if realPost.replyLevel>0%}
 		<li><a href="/posts/{{ realPost.replyKey[0] }}">Top-level</a></li>
@@ -62,6 +65,15 @@
 	<a href="/posts/{{ post.post.id }}/layerPrevComments?offset={{ items | length }}" id="loadPrevBtn{{ post.post.id }}" data-ajax data-ajax-hide="loadPrevBtn{{ post.post.id }}" data-ajax-show="loadPrevLoader{{ post.post.id }}">{{ commentViewType=='FLAT' ? L('comments_show_X_more_comments', {'count': totalItems-(items | length)}) : L('show_previous_comments') }}</a>
 	<span class="loader inlineLoader" style="display: none" id="loadPrevLoader{{ post.post.id }}"></span>
 </div>
+{% endif %}
+{% if currentUser is not null and realPost.canFetchReplies %}
+<div id="postNewCommentsW{{ post.post.id }}" class="loadMoreComments" style="display: none">
+	<a id="postLoadNewComments{{ post.post.id }}" href="/posts/{{ post.post.id }}/ajaxReloadComments" data-ajax data-ajax-hide="postLoadNewComments{{ post.post.id }}" data-ajax-show="postNewCommentsLoader{{ post.post.id }}">{{ L('wall_show_new_remote_comments') }}</a>
+	<div class="loader inlineLoader" style="display: none" id="postNewCommentsLoader{{ post.post.id }}"></div>
+</div>
+{% script %}
+loadRemoteComments("{{ post.post.id }}");
+{% endscript %}
 {% endif %}
 <div id="postReplies{{realPost.id}}">
 	{% for reply in items %}

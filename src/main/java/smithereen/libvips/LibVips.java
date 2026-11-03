@@ -58,14 +58,19 @@ class LibVips{
 	}
 	static native int vips_image_get_bands(Pointer img);
 	static native int vips_image_get_format(Pointer img);
+	static native int vips_image_get_interpretation(Pointer img);
 	static int vips_cast_uchar(Pointer img, PointerByReference out){
 		return varArgsWrapper.vips_cast_uchar(img, out, Pointer.NULL);
 	}
 	static native Pointer vips_image_get_fields(Pointer img);
 	static native Pointer vips_image_get_typeof(Pointer img, String name);
+	static native int vips_image_get_string(Pointer img, String name, PointerByReference out);
 	static native boolean vips_image_remove(Pointer img, String name);
 	static int vips_icc_transform(Pointer img, PointerByReference out, String outputProfile){
 		return varArgsWrapper.vips_icc_transform(img, out, outputProfile, Pointer.NULL);
+	}
+	static int vips_colourspace(Pointer img, PointerByReference out, int interpretation){
+		return varArgsWrapper.vips_colourspace(img, out, interpretation, Pointer.NULL);
 	}
 
 	static native Pointer vips_region_new(Pointer img);
@@ -95,6 +100,7 @@ class LibVips{
 		int vips_image_write_to_file(Pointer img, String fileName, Object... args);
 		int vips_cast_uchar(Pointer img, PointerByReference out, Object... args);
 		int vips_icc_transform(Pointer img, PointerByReference out, String outputProfile, Object... args);
+		int vips_colourspace(Pointer img, PointerByReference out, int interpretation, Object... args);
 	}
 }
 

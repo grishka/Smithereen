@@ -3030,3 +3030,20 @@ ol.largeNumbers{
 	background: svg-load('img/post_pinned.svg', fill: $grayText);
 }
 
+.searchWithTabs{
+	display: flex;
+	.searchFieldWrap{
+		flex-grow: 1;
+	}
+	.secondaryTabBar, .buttonW{
+		flex: none;
+		border: none;
+		padding-left: 0;
+	}
+	.secondaryTabBar>a:last-child{
+		margin-right: 0;
+	}
+	.buttonW{
+		padding: 8px 8px 8px 0;
+	}
+}

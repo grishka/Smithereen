@@ -13,13 +13,14 @@ import smithereen.model.CachedRemoteImage;
 import smithereen.model.NonCachedRemoteImage;
 import smithereen.model.SizedImage;
 import smithereen.storage.MediaCache;
+import smithereen.util.UriRenderer;
 
 public class GroupLink{
 	private static final Logger LOG=LoggerFactory.getLogger(GroupLink.class);
 
 	public long id;
 	public int groupID;
-	public URI url;
+	private URI url;
 	public URI apID;
 	public String title;
 	public ObjectLinkResolver.ObjectTypeAndID object;
@@ -89,10 +90,26 @@ public class GroupLink{
 	}
 
 	public String getDescription(){
-		return object!=null ? title : url.getHost();
+		return object!=null ? title : getHumanReadableHost();
 	}
 
 	public URI getUrl(){
 		return localUrl==null ? url : localUrl;
+	}
+
+	/**
+	 * The ASCII representation of the link URL.
+	 * <b>Not suitable for displaying in the UI!</b>
+	 */
+	public URI getNormalizedUrl(){
+		return url;
+	}
+
+	public void setNormalizedUrl(URI url){
+		this.url=url;
+	}
+
+	public String getHumanReadableHost(){
+		return UriRenderer.HOST_ONLY.render(url);
 	}
 }

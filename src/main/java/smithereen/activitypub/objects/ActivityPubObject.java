@@ -53,6 +53,7 @@ import smithereen.model.ForeignUser;
 import smithereen.util.JsonArrayBuilder;
 import smithereen.util.PublicSuffixList;
 import smithereen.util.UriBuilder;
+import smithereen.util.UriRenderer;
 import spark.utils.StringUtils;
 
 public abstract class ActivityPubObject{
@@ -92,6 +93,12 @@ public abstract class ActivityPubObject{
 	public long duration;
 
 	public URI activityPubID;
+
+	@SuppressWarnings("unused") // used from templates
+	public String getHumanReadableActivityPubID(){
+		if(activityPubID==null) return null;
+		return UriRenderer.DEFAULT.render(activityPubID);
+	}
 
 	public abstract String getType();
 

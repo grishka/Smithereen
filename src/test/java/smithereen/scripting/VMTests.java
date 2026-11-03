@@ -690,7 +690,7 @@ public class VMTests{
 	@Test
 	public void testIssue219_10(){
 		Script s=Script.compile("Args.s.length;Args.ss;");
-		assertThrows(ScriptRuntimeException.class, ()->ScriptVM.execute(s));
+		assertNull(ScriptVM.execute(s));
 	}
 
 	@Test

@@ -683,6 +683,28 @@ public class CommentStorage{
 		}
 	}
 
+	public static PaginatedList<Comment> searchComments(int ownerID, CommentableObjectType parentType, String query, int offset, int count) throws SQLException{
+		try(DatabaseConnection conn=DatabaseConnectionManager.getConnection()){
+			int total=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.count()
+					.where((ownerID>0 ? "owner_user_id" : "owner_group_id")+"=? AND parent_object_type=? AND MATCH (searchable_text) AGAINST (? IN BOOLEAN MODE)", Math.abs(ownerID), parentType, query)
+					.executeAndGetInt();
+			if(total==0)
+				return PaginatedList.emptyList(count);
+			List<Comment> comments=new SQLQueryBuilder(conn)
+					.selectFrom("comments")
+					.allColumns()
+					.where((ownerID>0 ? "owner_user_id" : "owner_group_id")+"=? AND parent_object_type=? AND MATCH (searchable_text) AGAINST (? IN BOOLEAN MODE)", Math.abs(ownerID), parentType, query)
+					.limit(count, offset)
+					.orderBy("created_at DESC")
+					.executeAsStream(Comment::fromResultSet)
+					.toList();
+			postprocessComments(comments);
+			return new PaginatedList<>(comments, total, offset, count);
+		}
+	}
+
 	private static void postprocessComments(Collection<Comment> posts) throws SQLException{
 		Set<Long> needFileIDs=posts.stream()
 				.filter(p->p.attachments!=null && !p.attachments.isEmpty())

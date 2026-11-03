@@ -891,14 +891,14 @@ public class ActivityPubRoutes{
 
 		// Enforce federation blocks before doing something potentially expensive like fetching linked objects.
 		// This may help if the server in question was blocked because of DoS concerns.
-		Server server=ctx.getModerationController().getOrAddServer(activity.actor.link.getAuthority());
-		FederationRestriction restriction=server.restriction();
+		FederationRestriction restriction=ctx.getModerationController().getDomainFederationRestriction(activity.actor.link.getAuthority());
 		if(restriction!=null){
 			if(restriction.type==FederationRestriction.RestrictionType.SUSPENSION){
 				resp.status(403);
-				return "Federation with "+server.host()+" is blocked by this server's policies";
+				return "Federation with "+activity.actor.link.getAuthority()+" is blocked by this server's policies";
 			}
 		}
+		Server server=ctx.getModerationController().getOrAddServer(activity.actor.link.getAuthority());
 
 		Actor actor;
 		boolean canUpdate=true;
@@ -932,7 +932,7 @@ public class ActivityPubRoutes{
 				// Somehow, Application objects could end up interpreted as users in some previous Smithereen version.
 				if(actor instanceof ActivityPubApplication && oldActor instanceof ForeignUser fu)
 					actor=ctx.getUsersController().getUserOrThrow(fu.id);
-			}catch(ObjectNotFoundException x){
+			}catch(Exception x){
 				LOG.debug("Exception while refreshing remote actor {}", activity.actor.link, x);
 			}
 		}
@@ -962,7 +962,7 @@ public class ActivityPubRoutes{
 				if(!userID.equals(actor.activityPubID)){
 					throw new BadRequestException("LD-signature creator is not activity actor");
 				}
-				if(!LinkedDataSignatures.verify(rawActivity, actor.publicKey)){
+				if(!LinkedDataSignatures.verify(rawActivity, actor.getFirstRsaPublicKey().key())){ // TODO support EdDSA here? Are EdDSA LD signatures a thing?
 					throw new BadRequestException("LD-signature verification failed");
 				}
 				LOG.debug("verified LD signature by {}", userID);
