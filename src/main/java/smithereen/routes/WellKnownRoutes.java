@@ -105,6 +105,7 @@ public class WellKnownRoutes{
 	}
 
 	public static Object nodeInfo(Request req, Response resp){
+		resp.header("Access-Control-Allow-Origin", "*");
 		resp.type("application/json");
 		return new JsonObjectBuilder()
 				.add("links",

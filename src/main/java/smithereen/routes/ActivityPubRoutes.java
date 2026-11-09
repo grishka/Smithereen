@@ -774,6 +774,7 @@ public class ActivityPubRoutes{
 	}
 
 	public static Object nodeInfo(Request req, Response resp) throws SQLException{
+		resp.header("Access-Control-Allow-Origin", "*");
 		String ver=req.pathInfo().substring(req.pathInfo().length()-3);
 		resp.type("application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/"+ver+"#\"");
 
