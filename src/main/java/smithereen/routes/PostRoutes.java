@@ -1138,7 +1138,7 @@ public class PostRoutes{
 		if(req.attribute("mobile")==null){
 			ctx.getWallController().populateCommentPreviews(self!=null ? self.user : null, reposts.list.stream().filter(p->!p.post.isMastodonStyleRepost()).toList(), viewType);
 		}
-		UserInteractions interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null).get(post.getIDForInteractions());
+		Map<Integer, UserInteractions> interactions=ctx.getWallController().getUserInteractions(Stream.of(reposts.list, List.of(new PostViewModel(post))).flatMap(List::stream).toList(), self!=null ? self.user : null);
 		RenderedTemplateResponse model;
 		if(isMobile(req)){
 			model=new RenderedTemplateResponse("content_interactions_reposts", req);
@@ -1151,7 +1151,8 @@ public class PostRoutes{
 			model=new RenderedTemplateResponse(isAjax(req) ? "content_interactions_box" : "content_wrap", req);
 		}
 		model.paginate(reposts)
-				.with("interactions", interactions)
+				.with("postInteractions", interactions)
+				.with("interactions", interactions.get(post.getIDForInteractions()))
 				.with("post", post)
 				.with("tab", "reposts")
 				.with("url", "/posts/"+post.id)
