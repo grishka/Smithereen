@@ -1152,7 +1152,7 @@ public class PostRoutes{
 		}
 		model.paginate(reposts)
 				.with("postInteractions", interactions)
-				.with("interactions", interactions.get(post.getIDForInteractions()))
+				.with("repostedPostInteractions", interactions.get(post.getIDForInteractions()))
 				.with("post", post)
 				.with("tab", "reposts")
 				.with("url", "/posts/"+post.id)
