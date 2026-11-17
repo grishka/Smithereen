@@ -1326,6 +1326,7 @@ public class PostStorage{
 					.limit(count, offset)
 					.executeAsStream(Post::fromResultSet)
 					.toList();
+			postprocessPosts(posts);
 			return new PaginatedList<>(posts, total, offset, count);
 		}
 	}
