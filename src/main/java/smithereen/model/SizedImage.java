@@ -230,9 +230,8 @@ public sealed interface SizedImage extends BlurHashable permits LocalImage, Remo
 			return switch(this){
 				case PHOTO_THUMB_SMALL -> PHOTO_THUMB_MEDIUM;
 				case PHOTO_THUMB_MEDIUM -> PHOTO_SMALL;
-				case PHOTO_SMALL -> PHOTO_MEDIUM;
-				case PHOTO_MEDIUM -> PHOTO_LARGE;
-				case PHOTO_LARGE, PHOTO_ORIGINAL -> PHOTO_ORIGINAL;
+				case PHOTO_SMALL -> PHOTO_LARGE;
+				case PHOTO_MEDIUM, PHOTO_LARGE, PHOTO_ORIGINAL -> PHOTO_ORIGINAL;
 
 				case AVA_RECT, AVA_RECT_LARGE -> AVA_RECT_LARGE;
 				case AVA_SQUARE_SMALL -> AVA_SQUARE_MEDIUM;
